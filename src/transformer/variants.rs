@@ -267,18 +267,29 @@ cache.advance_pos(pos);
     //
     // `prev_step_buf` holds the previous loop's update direction
     // `h^(tau-1) - h^(tau-2)` so the next iteration can compute cos θ against
-    // it via `angular_change`. Allocated ONCE per `forward_looped` call (not
-    // per iteration) — honors the hot-loop rule. Matches the existing
-    // `_gate_scratch_logits` pattern: declared even in the no-halter path but
-    // never grown unless the halter fires.
+    // it via `angular_change`. Sized ONCE per `forward_looped` call (not
+    // per iteration) — honors the hot-loop rule — and ONLY when a halter was
+    // actually passed AND can run (`halter_active`, T2.2): `None` (the
+    // default probe posture of every gate) must stay zero-allocation at any
+    // feature combo (Issue 900 — the unconditional `with_capacity` here made
+    // the G4 alloc-free gate fail at wider combos with 2 dead allocs/call).
+    // Same lazy shape as `_gate_scratch_logits` above.
     #[cfg(feature = "gain_cost_halt")]
     let mut halter = halter;
     #[cfg(feature = "gain_cost_halt")]
     let halter_active = elastic_loop_override.is_none();
     #[cfg(feature = "gain_cost_halt")]
-    let mut prev_step_buf: Vec<f32> = Vec::with_capacity(n);
+    let mut prev_step_buf: Vec<f32> = if halter_active && halter.is_some() {
+        Vec::with_capacity(n)
+    } else {
+        Vec::new()
+    };
     #[cfg(feature = "gain_cost_halt")]
-    let mut curr_step_buf: Vec<f32> = Vec::with_capacity(n);
+    let mut curr_step_buf: Vec<f32> = if halter_active && halter.is_some() {
+        Vec::with_capacity(n)
+    } else {
+        Vec::new()
+    };
     // `cost_floor` is cached on the first halter evaluation (tau == 1) as
     // `0.01 × first_step_size`, mirroring LoopCoder-v2's flat Ω(r) tax. See
     // the plan's Open Question 1 resolution (Phase 2 ships the fixed-tax
@@ -787,11 +798,11 @@ cache.advance_pos(pos);
                 run.stats.state_non_finite_at = Some(run.stats.snapshots_taken - 1);
             }
             if run.capture_states {
-                run.stats.state_snapshots.push(x.to_vec());
+                run.stats.push_state(x);
             }
-            if run.check_logits {
-                // Logit-finite tripwire: one extra `lm_head` matmul per
-                // snapshot, opt-in (`check_logits`). Scratch grown once,
+            if run.check_logits || run.capture_logits {
+                // Logit-finite tripwire / Issue 898 logit lens: one extra
+                // `lm_head` matmul per snapshot, opt-in. Scratch grown once,
                 // reused thereafter.
                 run.logit_scratch.resize(config.vocab_size, 0.0);
                 standard_lm_head(
@@ -801,10 +812,14 @@ cache.advance_pos(pos);
                     config.vocab_size,
                     n,
                 );
-                if run.stats.logits_non_finite_at.is_none()
+                if run.check_logits
+                    && run.stats.logits_non_finite_at.is_none()
                     && run.logit_scratch.iter().any(|l| !l.is_finite())
                 {
                     run.stats.logits_non_finite_at = Some(run.stats.snapshots_taken - 1);
+                }
+                if run.capture_logits {
+                    run.stats.push_logits(&run.logit_scratch);
                 }
             }
         }
