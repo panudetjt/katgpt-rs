@@ -2001,6 +2001,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "katgpt-magika-wasm"
+version = "0.1.0"
+dependencies = [
+ "katgpt-types",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "katgpt-micro-belief"
 version = "0.2.1"
 dependencies = [

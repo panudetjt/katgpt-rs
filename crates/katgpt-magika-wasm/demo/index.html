@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magika WASM — File Type Detector</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --card: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --amber: #d29922;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem;
+  }
+  h1 { font-size: 1.6rem; margin: 0 0 .5rem; }
+  .subtitle { color: var(--muted); margin-bottom: 2rem; font-size: .95rem; }
+  .subtitle code { color: var(--accent); }
+  #drop {
+    width: 100%;
+    max-width: 560px;
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 3rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  #drop.dragover { border-color: var(--accent); background: rgba(88,166,255,.08); }
+  #drop .icon { font-size: 2.5rem; margin-bottom: .5rem; }
+  #drop .hint { color: var(--muted); font-size: .9rem; margin-top: .5rem; }
+  #fileInput { display: none; }
+  #result {
+    width: 100%;
+    max-width: 560px;
+    margin-top: 1.5rem;
+    display: none;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+  }
+  .card + .card { margin-top: .75rem; }
+  .row { display: flex; justify-content: space-between; gap: 1rem; padding: .3rem 0; }
+  .row .k { color: var(--muted); }
+  .row .v { text-align: right; word-break: break-all; }
+  .label {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--green);
+  }
+  .scorebar {
+    height: 8px;
+    background: var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: .5rem;
+  }
+  .scorebar > div {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--green));
+    border-radius: 4px;
+    transition: width .3s ease;
+  }
+  #status { color: var(--muted); font-size: .85rem; margin-top: 1rem; min-height: 1.2em; }
+  #history { width: 100%; max-width: 560px; margin-top: 2rem; }
+  .hist-item {
+    display: flex;
+    justify-content: space-between;
+    padding: .4rem .75rem;
+    border-bottom: 1px solid var(--border);
+    font-size: .9rem;
+  }
+  .hist-item .name { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%; }
+  .badge {
+    display: inline-block;
+    padding: .1rem .5rem;
+    border-radius: 10px;
+    font-size: .75rem;
+    background: rgba(88,166,255,.15);
+    color: var(--accent);
+  }
+  .badge.text { background: rgba(63,185,80,.15); color: var(--green); }
+  .badge.bin  { background: rgba(210,153,34,.15); color: var(--amber); }
+  footer { margin-top: 3rem; color: var(--muted); font-size: .8rem; }
+</style>
+</head>
+<body>
+<h1>Magika WASM</h1>
+<p class="subtitle">Google Magika file type detection, ported to pure-Rust WebAssembly (F32, SIMD128) — no server, all in your browser.</p>
+
+<div id="drop">
+  <div class="icon">📁</div>
+  <div><strong>Drop a file here</strong> or click to choose</div>
+  <div class="hint">Everything runs locally — the file never leaves your machine.</div>
+  <input type="file" id="fileInput">
+</div>
+
+<div id="result">
+  <div class="card">
+    <div class="row"><span class="k">Detected type</span><span class="v label" id="rLabel">—</span></div>
+    <div class="scorebar"><div id="rScoreBar" style="width:0%"></div></div>
+    <div class="row" style="margin-top:.5rem"><span class="k">Score</span><span class="v" id="rScore">—</span></div>
+  </div>
+  <div class="card">
+    <div class="row"><span class="k">MIME type</span><span class="v" id="rMime">—</span></div>
+    <div class="row"><span class="k">Group</span><span class="v" id="rGroup">—</span></div>
+    <div class="row"><span class="k">Description</span><span class="v" id="rDesc">—</span></div>
+    <div class="row"><span class="k">Extensions</span><span class="v" id="rExt">—</span></div>
+    <div class="row"><span class="k">Kind</span><span class="v" id="rKind">—</span></div>
+    <div class="row"><span class="k">File size</span><span class="v" id="rSize">—</span></div>
+    <div class="row"><span class="k">Inference time</span><span class="v" id="rTime">—</span></div>
+  </div>
+</div>
+
+<div id="history"></div>
+<div id="status"></div>
+
+<footer>katgpt-magika-wasm · model: magika standard_v3_3 · 784,223 params · F32</footer>
+
+<script type="module">
+  import init, { identify } from './pkg/katgpt_magika_wasm.js';
+
+  const drop = document.getElementById('drop');
+  const fileInput = document.getElementById('fileInput');
+  const statusEl = document.getElementById('status');
+  const resultEl = document.getElementById('result');
+  const historyEl = document.getElementById('history');
+
+  try {
+    await init();
+    statusEl.textContent = '✓ WASM model loaded';
+  } catch (e) {
+    statusEl.textContent = '✗ Failed to load WASM: ' + e;
+    throw e;
+  }
+
+  drop.addEventListener('click', () => fileInput.click());
+  drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('dragover'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+  drop.addEventListener('drop', (e) => {
+    e.preventDefault();
+    drop.classList.remove('dragover');
+    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length) handleFile(fileInput.files[0]);
+    fileInput.value = '';
+  });
+
+  async function handleFile(file) {
+    statusEl.textContent = 'Analyzing ' + file.name + ' …';
+    const buf = await file.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+
+    const t0 = performance.now();
+    const r = identify(bytes);
+    const dt = performance.now() - t0;
+
+    document.getElementById('rLabel').textContent = r.label;
+    document.getElementById('rScore').textContent = (r.score * 100).toFixed(2) + '%';
+    document.getElementById('rScoreBar').style.width = (r.score * 100).toFixed(1) + '%';
+    document.getElementById('rMime').textContent = r.mime_type;
+    document.getElementById('rGroup').textContent = r.group;
+    document.getElementById('rDesc').textContent = r.description;
+    document.getElementById('rExt').textContent = r.extensions;
+    document.getElementById('rKind').textContent = r.is_text ? 'text' : 'binary';
+    document.getElementById('rSize').textContent = formatSize(bytes.length);
+    document.getElementById('rTime').textContent = dt.toFixed(1) + ' ms';
+    resultEl.style.display = 'block';
+
+    const item = document.createElement('div');
+    item.className = 'hist-item';
+    const badge = r.is_text ? 'text' : 'bin';
+    item.innerHTML =
+      '<span class="name">' + escapeHtml(file.name) + '</span>' +
+      '<span><span class="badge ' + badge + '">' + escapeHtml(r.label) + '</span> ' +
+      (r.score * 100).toFixed(1) + '%</span>';
+    historyEl.prepend(item);
+
+    statusEl.textContent = '✓ ' + file.name + ' → ' + r.label + ' (' + dt.toFixed(1) + ' ms)';
+  }
+
+  function formatSize(n) {
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+    return (n / 1024 / 1024).toFixed(2) + ' MB';
+  }
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+</script>
+</body>
+</html>

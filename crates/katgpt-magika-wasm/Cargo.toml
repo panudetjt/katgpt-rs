@@ -1,0 +1,16 @@
+[package]
+name = "katgpt-magika-wasm"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "Pure Rust WebAssembly port of Google Magika file type detector in F32 with SIMD128 support"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+katgpt-types = { path = "../katgpt-types" }
+wasm-bindgen = "0.2"
+
+[dev-dependencies]
