@@ -46,7 +46,9 @@ const RAYON_CANDIDATE_THRESHOLD: usize = 512;
 /// Returns `Vec<usize>` where `result[k]` = token at depth `k`.
 /// Max depth: [`TreePath::MAX_TOKENS`] = 8 (sufficient for lookahead of 5–8).
 pub fn extract_parent_tokens(parent_path: TreePath, num_tokens: usize) -> Vec<usize> {
-    (0..num_tokens).map(|k| parent_path.token_at(k) as usize).collect()
+    (0..num_tokens)
+        .map(|k| parent_path.token_at(k) as usize)
+        .collect()
 }
 
 /// Zero-alloc variant of [`extract_parent_tokens`].
@@ -1484,11 +1486,13 @@ where
             marginals: marginal.to_vec(),
         };
 
-        let candidates = if let Ok(c) = generator.generate(&condition, rng) { c } else {
-                // Generator failed — use original marginals as fallback
-                filtered_marginals.push(marginal.to_vec());
-                continue;
-            };
+        let candidates = if let Ok(c) = generator.generate(&condition, rng) {
+            c
+        } else {
+            // Generator failed — use original marginals as fallback
+            filtered_marginals.push(marginal.to_vec());
+            continue;
+        };
 
         // Keep marginals only for valid candidates
         let mut filtered = vec![0.0f32; marginal.len()];
@@ -1655,10 +1659,12 @@ where
             marginals: marginal.to_vec(),
         };
 
-        let candidates = if let Ok(c) = generator.generate(&condition, rng) { c } else {
-                filtered_marginals.push(marginal.to_vec());
-                continue;
-            };
+        let candidates = if let Ok(c) = generator.generate(&condition, rng) {
+            c
+        } else {
+            filtered_marginals.push(marginal.to_vec());
+            continue;
+        };
 
         // Keep marginals only for valid candidates
         let mut filtered = vec![0.0f32; marginal.len()];
@@ -1883,13 +1889,16 @@ where
     S: Clone,
 {
     match node {
-        AndOrNode::Or { children, best, .. } => if let Some(idx) = best { children
-                .get(*idx)
-                .and_then(|c| {
-                    let path = collect_solved_path(c);
-                    if path.is_empty() { None } else { Some(path) }
-                })
-                .unwrap_or_default() } else {
+        AndOrNode::Or { children, best, .. } => {
+            if let Some(idx) = best {
+                children
+                    .get(*idx)
+                    .and_then(|c| {
+                        let path = collect_solved_path(c);
+                        if path.is_empty() { None } else { Some(path) }
+                    })
+                    .unwrap_or_default()
+            } else {
                 for child in children {
                     let path = collect_solved_path(child);
                     if !path.is_empty() {
@@ -1897,7 +1906,8 @@ where
                     }
                 }
                 Vec::new()
-            },
+            }
+        }
         AndOrNode::And {
             children,
             solved_count,

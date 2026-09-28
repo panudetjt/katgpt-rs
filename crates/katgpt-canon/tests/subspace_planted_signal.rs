@@ -16,7 +16,9 @@
 //! pipeline works end-to-end and produces positive cross-model correlation
 //! when a real shared subspace exists.
 
-use katgpt_canon::{CanonicalIntent, JointSvdFitScratch, ModelAdapter, SubspaceAdapter, fit_joint_svd_pair};
+use katgpt_canon::{
+    CanonicalIntent, JointSvdFitScratch, ModelAdapter, SubspaceAdapter, fit_joint_svd_pair,
+};
 
 /// Simple deterministic PRNG (xorshift32) so the test is reproducible
 /// across runs / platforms / Rust versions. NOT cryptographically secure.
@@ -140,7 +142,12 @@ fn subspace_adapter_recovers_planted_signal() {
     assert_eq!(fit.v_a.len(), d_a * k);
     assert_eq!(fit.v_b.len(), d_b * k);
     assert_eq!(fit.rotation.len(), k * k);
-    for x in fit.v_a.iter().chain(fit.v_b.iter()).chain(fit.rotation.iter()) {
+    for x in fit
+        .v_a
+        .iter()
+        .chain(fit.v_b.iter())
+        .chain(fit.rotation.iter())
+    {
         assert!(x.is_finite(), "fit produced non-finite value");
     }
 
@@ -166,7 +173,11 @@ fn subspace_adapter_recovers_planted_signal() {
             a_rotated[row] = s;
         }
         // Cosine similarity.
-        let dot: f32 = a_rotated.iter().zip(b_proj.iter()).map(|(a, b)| a * b).sum();
+        let dot: f32 = a_rotated
+            .iter()
+            .zip(b_proj.iter())
+            .map(|(a, b)| a * b)
+            .sum();
         let na: f32 = a_rotated.iter().map(|x| x * x).sum::<f32>().sqrt();
         let nb: f32 = b_proj.iter().map(|x| x * x).sum::<f32>().sqrt();
         if na > 1e-6 && nb > 1e-6 {
@@ -241,12 +252,21 @@ fn adapters_share_canonical_input() {
     let mag_a2: f32 = out_a2.iter().map(|x| x * x).sum::<f32>().sqrt();
     let mag_b1: f32 = out_b1.iter().map(|x| x * x).sum::<f32>().sqrt();
     let mag_b2: f32 = out_b2.iter().map(|x| x * x).sum::<f32>().sqrt();
-    assert!(mag_a1 > 1e-6 && mag_a2 > 1e-6, "model A produced degenerate output");
-    assert!(mag_b1 > 1e-6 && mag_b2 > 1e-6, "model B produced degenerate output");
+    assert!(
+        mag_a1 > 1e-6 && mag_a2 > 1e-6,
+        "model A produced degenerate output"
+    );
+    assert!(
+        mag_b1 > 1e-6 && mag_b2 > 1e-6,
+        "model B produced degenerate output"
+    );
 
     // Commitments are stable + distinct per adapter.
     let comm_a = adapter_a.commitment();
     let comm_b = adapter_b.commitment();
     assert_eq!(comm_a, adapter_a.commitment(), "commitment must be stable");
-    assert_ne!(comm_a, comm_b, "different adapters should have different commitments");
+    assert_ne!(
+        comm_a, comm_b,
+        "different adapters should have different commitments"
+    );
 }

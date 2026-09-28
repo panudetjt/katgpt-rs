@@ -122,11 +122,7 @@ impl EigenbasisScratch {
         f: impl FnOnce(&mut [f32], &mut [f32], &mut [f32]) -> R,
     ) -> R {
         self.ensure_capacity_d(d);
-        f(
-            &mut self.gram[..d * d],
-            &mut self.v[..d],
-            &mut self.w[..d],
-        )
+        f(&mut self.gram[..d * d], &mut self.v[..d], &mut self.w[..d])
     }
 }
 
@@ -773,10 +769,7 @@ mod tests {
                     best = row;
                 }
             }
-            assert_eq!(
-                best, col,
-                "col {col} peak at row {best} (expected {col})"
-            );
+            assert_eq!(best, col, "col {col} peak at row {best} (expected {col})");
         }
     }
 
@@ -869,11 +862,7 @@ mod tests {
         recover_eigenbasis_from_window(&window, t, d, &mut b, &mut lb, &mut sb, k, 5);
 
         for i in 0..a.len() {
-            assert_eq!(
-                a[i].to_bits(),
-                b[i].to_bits(),
-                "eigvec bit mismatch at {i}"
-            );
+            assert_eq!(a[i].to_bits(), b[i].to_bits(), "eigvec bit mismatch at {i}");
         }
         for i in 0..la.len() {
             assert_eq!(

@@ -239,9 +239,16 @@ mod tests {
         // H = 0.8·ln(1/0.8) + 0.2·ln(10) = 0.63902; /ln 3 = 0.58168
         let mt = m(&[0.9, 0.2, 0.1], &[0.8, 0.1, 0.1]);
         assert_eq!(mt.n, 3);
-        assert!((mt.h_norm - 0.581_68).abs() < 2e-4, "h_norm = {}", mt.h_norm);
+        assert!(
+            (mt.h_norm - 0.581_68).abs() < 2e-4,
+            "h_norm = {}",
+            mt.h_norm
+        );
         assert!((mt.top1_share - 0.8).abs() < 1e-6);
-        assert!((mt.tau - 1.0).abs() < 1e-6, "top-gate source is top-retrieved");
+        assert!(
+            (mt.tau - 1.0).abs() < 1e-6,
+            "top-gate source is top-retrieved"
+        );
         assert!((mt.top1_consumer_rank - 1.0).abs() < 1e-6);
         assert!(mt.normalized_top1_rank().abs() < 1e-6);
         assert!(!mt.rank_inversion_fires(0.5));
@@ -288,6 +295,9 @@ mod tests {
         let mut s: Vec<f64> = (0..100).map(|i| (i as f64) * 0.37).collect();
         let t = conformal_threshold(&mut s, 0.05);
         let exceed = s.iter().filter(|&&x| x > t).count();
-        assert_eq!(exceed, 4, "n−1−idx = 4 scores above the 96th order statistic");
+        assert_eq!(
+            exceed, 4,
+            "n−1−idx = 4 scores above the 96th order statistic"
+        );
     }
 }

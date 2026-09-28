@@ -58,7 +58,9 @@
 
 use crate::d2f::{D2fDecodeConfig, d2f_decode_block_with_prompt_with};
 use crate::d2f_context::D2fContext;
-use crate::d2f_verifier::{DraftAcceptPolicy, PolicyStep, prefix_match_step, softmax_argmax_step, truncated_argmax_step};
+use crate::d2f_verifier::{
+    DraftAcceptPolicy, PolicyStep, prefix_match_step, softmax_argmax_step, truncated_argmax_step,
+};
 use crate::{ForwardContext, forward};
 use katgpt_core::simd::simd_max_f32;
 use katgpt_core::speculative::sampling::sample_from_distribution;
@@ -452,7 +454,7 @@ impl SpeculativeVerifier for FlashARConsensusVerifier<'_> {
             if logits_offset + draft_config.vocab_size <= self.d2f_ctx.logits_flat.len() {
                 use katgpt_core::simd::fast_exp;
 
-let logits_p = &self.d2f_ctx.logits_flat
+                let logits_p = &self.d2f_ctx.logits_flat
                     [logits_offset..logits_offset + draft_config.vocab_size];
                 let max_logit = simd_max_f32(logits_p);
                 let mut sum_exp = 0.0f32;
@@ -514,8 +516,7 @@ let logits_p = &self.d2f_ctx.logits_flat
                     let p_dist = &self.probs_buf[..vocab_size];
                     let step = match policy {
                         DraftAcceptPolicy::PrefixMatch => prefix_match_step(p_dist, consensus_tok),
-                        DraftAcceptPolicy::SoftmaxArgmax
-                        | DraftAcceptPolicy::ExactQ => {
+                        DraftAcceptPolicy::SoftmaxArgmax | DraftAcceptPolicy::ExactQ => {
                             // Eq 21; ExactQ ≡ Eq 21 under the consensus
                             // winner's point-mass proposal law.
                             softmax_argmax_step(p_dist, consensus_tok, rng)

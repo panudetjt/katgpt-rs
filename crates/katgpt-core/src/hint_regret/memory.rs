@@ -53,10 +53,7 @@ pub fn beta_lcb_order_into(
         order.push(i);
         lcbs.push(beta_lcb(s, f, epsilon));
     }
-    order.sort_unstable_by(|&a, &b| {
-        lcbs[b].total_cmp(&lcbs[a])
-            .then(a.cmp(&b))
-    });
+    order.sort_unstable_by(|&a, &b| lcbs[b].total_cmp(&lcbs[a]).then(a.cmp(&b)));
 }
 
 /// Allocating convenience wrapper over [`beta_lcb_order_into`] (cold path —
@@ -156,7 +153,9 @@ impl RegretMemory {
 
     /// Look up a live entry by content hash.
     pub fn get(&self, content_hash: &[u8; 32]) -> Option<&RegretMemoryEntry> {
-        self.entries.iter().find(|e| &e.content_hash == content_hash)
+        self.entries
+            .iter()
+            .find(|e| &e.content_hash == content_hash)
     }
 
     /// True when this content hash is tombstoned as Intractable.
@@ -183,7 +182,8 @@ impl RegretMemory {
             return ObserveOutcome::RefusedRetired;
         }
         if regime == Regime::Intractable {
-            self.entries.retain(|e| e.content_hash != entry.content_hash);
+            self.entries
+                .retain(|e| e.content_hash != entry.content_hash);
             self.push_tombstone(entry.content_hash);
             return ObserveOutcome::RetiredIntractable;
         }
@@ -262,7 +262,10 @@ mod tests {
         // Descending check through the candidate-indexed lcbs.
         let by_rank: Vec<f32> = order.iter().map(|&i| lcbs[i]).collect();
         for w in by_rank.windows(2) {
-            assert!(w[0] >= w[1], "rank-ordered lcbs not descending: {by_rank:?}");
+            assert!(
+                w[0] >= w[1],
+                "rank-ordered lcbs not descending: {by_rank:?}"
+            );
         }
         // Sanity of the delegate: lcbs[i] matches best_belief_score directly.
         for (i, &(s, f)) in scores.iter().enumerate() {
@@ -300,18 +303,48 @@ mod tests {
     #[test]
     fn memory_stores_refreshes_and_evicts_oldest_first() {
         let mut mem = RegretMemory::new(2, 4);
-        let e1 = RegretMemoryEntry { content_hash: h(1), r_hat: 0.5, ci: 0.1, skill_tag_bits: 0, last_seen_tick: 10 };
-        let e2 = RegretMemoryEntry { content_hash: h(2), r_hat: 0.6, ci: 0.1, skill_tag_bits: 0, last_seen_tick: 20 };
-        let e3 = RegretMemoryEntry { content_hash: h(3), r_hat: 0.7, ci: 0.1, skill_tag_bits: 0, last_seen_tick: 30 };
+        let e1 = RegretMemoryEntry {
+            content_hash: h(1),
+            r_hat: 0.5,
+            ci: 0.1,
+            skill_tag_bits: 0,
+            last_seen_tick: 10,
+        };
+        let e2 = RegretMemoryEntry {
+            content_hash: h(2),
+            r_hat: 0.6,
+            ci: 0.1,
+            skill_tag_bits: 0,
+            last_seen_tick: 20,
+        };
+        let e3 = RegretMemoryEntry {
+            content_hash: h(3),
+            r_hat: 0.7,
+            ci: 0.1,
+            skill_tag_bits: 0,
+            last_seen_tick: 30,
+        };
         assert_eq!(mem.observe(e1, Regime::Frontier), ObserveOutcome::Stored);
         assert_eq!(mem.observe(e2, Regime::Frontier), ObserveOutcome::Stored);
         // Refresh e1 at a NEWER tick — must not evict anything.
-        let e1b = RegretMemoryEntry { content_hash: h(1), r_hat: 0.55, ci: 0.05, skill_tag_bits: 1, last_seen_tick: 40 };
-        assert_eq!(mem.observe(e1b, Regime::Frontier), ObserveOutcome::Refreshed);
+        let e1b = RegretMemoryEntry {
+            content_hash: h(1),
+            r_hat: 0.55,
+            ci: 0.05,
+            skill_tag_bits: 1,
+            last_seen_tick: 40,
+        };
+        assert_eq!(
+            mem.observe(e1b, Regime::Frontier),
+            ObserveOutcome::Refreshed
+        );
         assert_eq!(mem.len(), 2);
         assert_eq!(mem.get(&h(1)).unwrap().r_hat, 0.55);
         // Insert e3: oldest is now e2 (tick 20) → evicted.
-        assert_eq!(mem.observe(e3, Regime::Frontier), ObserveOutcome::StoredEvictingOldest);
+        assert_eq!(
+            mem.observe(e3, Regime::Frontier),
+            ObserveOutcome::StoredEvictingOldest
+        );
         assert_eq!(mem.len(), 2);
         assert!(mem.get(&h(2)).is_none());
         assert!(mem.get(&h(1)).is_some());
@@ -321,18 +354,39 @@ mod tests {
     #[test]
     fn intractable_eviction_is_absorbing() {
         let mut mem = RegretMemory::new(4, 2);
-        let bad = RegretMemoryEntry { content_hash: h(9), r_hat: 0.0, ci: 0.0, skill_tag_bits: 0, last_seen_tick: 1 };
+        let bad = RegretMemoryEntry {
+            content_hash: h(9),
+            r_hat: 0.0,
+            ci: 0.0,
+            skill_tag_bits: 0,
+            last_seen_tick: 1,
+        };
         // First Intractable observation → tombstone + any live copy removed.
-        assert_eq!(mem.observe(bad, Regime::Intractable), ObserveOutcome::RetiredIntractable);
+        assert_eq!(
+            mem.observe(bad, Regime::Intractable),
+            ObserveOutcome::RetiredIntractable
+        );
         assert!(mem.retired(&h(9)));
         assert_eq!(mem.len(), 0);
         // Re-observation under ANY regime is refused (absorbing).
-        assert_eq!(mem.observe(bad, Regime::Frontier), ObserveOutcome::RefusedRetired);
+        assert_eq!(
+            mem.observe(bad, Regime::Frontier),
+            ObserveOutcome::RefusedRetired
+        );
         assert_eq!(mem.len(), 0);
         // Live entry later classified Intractable is removed + tombstoned.
-        let e = RegretMemoryEntry { content_hash: h(1), r_hat: 0.5, ci: 0.1, skill_tag_bits: 0, last_seen_tick: 5 };
+        let e = RegretMemoryEntry {
+            content_hash: h(1),
+            r_hat: 0.5,
+            ci: 0.1,
+            skill_tag_bits: 0,
+            last_seen_tick: 5,
+        };
         mem.observe(e, Regime::Frontier);
-        assert_eq!(mem.observe(e, Regime::Intractable), ObserveOutcome::RetiredIntractable);
+        assert_eq!(
+            mem.observe(e, Regime::Intractable),
+            ObserveOutcome::RetiredIntractable
+        );
         assert_eq!(mem.len(), 0);
         assert!(mem.retired(&h(1)));
     }
@@ -361,11 +415,15 @@ mod tests {
     fn most_salient_orders_fresh_high_regret_first() {
         let mut mem = RegretMemory::new(8, 4);
         let mk = |seed: u8, r: f32, t: u64| RegretMemoryEntry {
-            content_hash: h(seed), r_hat: r, ci: 0.05, skill_tag_bits: 0, last_seen_tick: t,
+            content_hash: h(seed),
+            r_hat: r,
+            ci: 0.05,
+            skill_tag_bits: 0,
+            last_seen_tick: t,
         };
         mem.observe(mk(1, 0.9, 100), Regime::Frontier); // fresh + high regret
         mem.observe(mk(2, 0.1, 100), Regime::Frontier); // fresh + low regret
-        mem.observe(mk(3, 0.9, 10), Regime::Frontier);  // stale + high regret
+        mem.observe(mk(3, 0.9, 10), Regime::Frontier); // stale + high regret
         let mut out = Vec::new();
         mem.most_salient_into(100, 0.01, &mut out);
         // Salience = r_hat * sigmoid(-lambda*dt):

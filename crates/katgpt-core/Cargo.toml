@@ -2959,6 +2959,15 @@ name = "bench_888_row_logit_floor_goat"
 harness = false
 required-features = ["row_logit_floor"]
 
+# Issue 903 — row_logit_floor promotion lane: the WHOLE decode step G2
+# (per-call width policy + floor+code+LUT exp + normalize + P·V + envelope
+# tally vs the plain path), both candidate widths, N=4096/16384, G1-echo
+# envelope cell, G4 alloc-free, box-state PROVENANCE.
+[[test]]
+name = "bench_903_row_logit_floor_promotion_goat"
+harness = false
+required-features = ["row_logit_floor"]
+
 # Issue 882 P3 — differential KV eviction GOAT: G1 planted-needle retention
 # at 25%/50% budget vs the λ=0 max-recent baseline (+ trap-4 shift negative,
 # sink-exemption arm, λ=0 ≡ baseline bit-identical order), G2 bookkeeping

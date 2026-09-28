@@ -167,7 +167,14 @@ pub fn select_ranks_blocked_cv(
                     if !fits {
                         continue;
                     }
-                    super::als::fit_with_ranks_into(&b.data, *b_shape, ranks, &cv_cfg, scratch, &mut decomp)?;
+                    super::als::fit_with_ranks_into(
+                        &b.data,
+                        *b_shape,
+                        ranks,
+                        &cv_cfg,
+                        scratch,
+                        &mut decomp,
+                    )?;
                     score_sum += block_residual(b, *b_shape, &decomp);
                     scored += 1;
                 }
@@ -212,9 +219,5 @@ fn block_residual(b: &Tensor3, b_shape: [usize; 3], decomp: &SliceDecomposition)
         num += d * d;
         den += a * a;
     }
-    if den < NORM_EPS {
-        0.0
-    } else {
-        num / den
-    }
+    if den < NORM_EPS { 0.0 } else { num / den }
 }

@@ -88,11 +88,17 @@ impl Lcg {
         Self(seed)
     }
     fn next_u8(&mut self) -> u8 {
-        self.0 = self.0.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+        self.0 = self
+            .0
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1);
         (self.0 >> 40) as u8
     }
     fn next_f32(&mut self) -> f32 {
-        self.0 = self.0.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+        self.0 = self
+            .0
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1);
         2.0 * (((self.0 >> 33) as f32) / (1u64 << 31) as f32) - 1.0
     }
 }
@@ -122,8 +128,10 @@ fn row(n: usize, label: &str, disp_ns: f64, scalar_ns: f64, ratio: f64, survived
     println!("   {n:>8}  {label:>26}  {disp_ns:>14.0}  {scalar_ns:>14.0}  {ratio:>11.2}");
     // A grep-able row so the two builds can be diffed mechanically rather than
     // by eye — the cross-build delta IS the measurement (see the module doc).
-    println!("   ROW847 {label} n={n} disp_ns={disp_ns:.0} scalar_ns={scalar_ns:.0} avx2_cfg={}",
-             cfg!(target_feature = "avx2"));
+    println!(
+        "   ROW847 {label} n={n} disp_ns={disp_ns:.0} scalar_ns={scalar_ns:.0} avx2_cfg={}",
+        cfg!(target_feature = "avx2")
+    );
     assert!(
         ratio.is_finite() && ratio > 0.0,
         "instrument FAIL for {label} at n={n}: ratio {ratio} is not a measurement"
@@ -152,7 +160,9 @@ fn avx2_arms_reachability_and_price() {
         // caught. Same provenance on both arms or the comparison is not one.
         let lut_slice = lut.as_f32_slice();
         let x: Vec<f32> = (0..n).map(|_| rng.next_f32()).collect();
-        let bits: Vec<u16> = (0..n).map(|_| ((rng.next_u8() as u16) << 8) | 0x3f).collect();
+        let bits: Vec<u16> = (0..n)
+            .map(|_| ((rng.next_u8() as u16) << 8) | 0x3f)
+            .collect();
 
         // ── dequant_via_lut ────────────────────────────────────────────────
         let mut out_d = vec![0.0f32; n];
@@ -363,17 +373,22 @@ fn t2_bf16_autovec_vs_intrinsics() {
             f32_to_bf16_trunc_autovec, f32_to_bf16_trunc_into,
         };
         println!("\n   Issue 847 T2 — is the hand-written AVX2 arm worth keeping?");
-        println!("   arch = x86_64, cfg!(target_feature=\"avx2\") = {}",
-                 cfg!(target_feature = "avx2"));
-        println!("   {:>8}  {:>20}  {:>14}  {:>14}  {:>11}",
-                 "n", "kernel", "dispatch ns", "autovec ns", "disp/auto");
+        println!(
+            "   arch = x86_64, cfg!(target_feature=\"avx2\") = {}",
+            cfg!(target_feature = "avx2")
+        );
+        println!(
+            "   {:>8}  {:>20}  {:>14}  {:>14}  {:>11}",
+            "n", "kernel", "dispatch ns", "autovec ns", "disp/auto"
+        );
 
         for &(n, iters) in &NS {
             let mut rng = Lcg::new(0x0847_1111 + n as u64);
 
             // widen
-            let bits: Vec<u16> =
-                (0..n).map(|_| u16::from(rng.next_u8()) << 8 | u16::from(rng.next_u8())).collect();
+            let bits: Vec<u16> = (0..n)
+                .map(|_| u16::from(rng.next_u8()) << 8 | u16::from(rng.next_u8()))
+                .collect();
             let mut d = vec![0.0f32; n];
             let mut a = vec![0.0f32; n];
             bf16_bits_to_f32_into(&bits, &mut d);
@@ -405,15 +420,27 @@ fn t2_bf16_autovec_vs_intrinsics() {
                     black_box(a[0]);
                 },
             );
-            println!("   {n:>8}  {:>20}  {:>14.0}  {:>14.0}  {:>11.2}",
-                     "bf16_bits_to_f32", r.a_ns_per_iter(), r.b_ns_per_iter(),
-                     r.median);
-            println!("   ROW847T2 widen n={n} disp_ns={:.0} autovec_ns={:.0} ratio={:.2} avx2_cfg={}",
-                     r.a_ns_per_iter(), r.b_ns_per_iter(), r.median,
-                     cfg!(target_feature = "avx2"));
-            assert_eq!(r.ratios.len(), r.rounds,
-                       "instrument FAIL: {} of {} rounds survived (widen, n={n})",
-                       r.ratios.len(), r.rounds);
+            println!(
+                "   {n:>8}  {:>20}  {:>14.0}  {:>14.0}  {:>11.2}",
+                "bf16_bits_to_f32",
+                r.a_ns_per_iter(),
+                r.b_ns_per_iter(),
+                r.median
+            );
+            println!(
+                "   ROW847T2 widen n={n} disp_ns={:.0} autovec_ns={:.0} ratio={:.2} avx2_cfg={}",
+                r.a_ns_per_iter(),
+                r.b_ns_per_iter(),
+                r.median,
+                cfg!(target_feature = "avx2")
+            );
+            assert_eq!(
+                r.ratios.len(),
+                r.rounds,
+                "instrument FAIL: {} of {} rounds survived (widen, n={n})",
+                r.ratios.len(),
+                r.rounds
+            );
 
             // narrow (RNE) — the harder kernel, and the one whose scalar body
             // is a branchy NaN predicate rather than a shift
@@ -436,15 +463,27 @@ fn t2_bf16_autovec_vs_intrinsics() {
                     black_box(na[0]);
                 },
             );
-            println!("   {n:>8}  {:>20}  {:>14.0}  {:>14.0}  {:>11.2}",
-                     "f32_to_bf16_rne", r2.a_ns_per_iter(), r2.b_ns_per_iter(),
-                     r2.median);
-            println!("   ROW847T2 rne n={n} disp_ns={:.0} autovec_ns={:.0} ratio={:.2} avx2_cfg={}",
-                     r2.a_ns_per_iter(), r2.b_ns_per_iter(), r2.median,
-                     cfg!(target_feature = "avx2"));
-            assert_eq!(r2.ratios.len(), r2.rounds,
-                       "instrument FAIL: {} of {} rounds survived (rne, n={n})",
-                       r2.ratios.len(), r2.rounds);
+            println!(
+                "   {n:>8}  {:>20}  {:>14.0}  {:>14.0}  {:>11.2}",
+                "f32_to_bf16_rne",
+                r2.a_ns_per_iter(),
+                r2.b_ns_per_iter(),
+                r2.median
+            );
+            println!(
+                "   ROW847T2 rne n={n} disp_ns={:.0} autovec_ns={:.0} ratio={:.2} avx2_cfg={}",
+                r2.a_ns_per_iter(),
+                r2.b_ns_per_iter(),
+                r2.median,
+                cfg!(target_feature = "avx2")
+            );
+            assert_eq!(
+                r2.ratios.len(),
+                r2.rounds,
+                "instrument FAIL: {} of {} rounds survived (rne, n={n})",
+                r2.ratios.len(),
+                r2.rounds
+            );
 
             // narrow (TRUNC) — the third dispatcher. Measured rather than
             // assumed to behave like RNE: its scalar body is a bare shift
@@ -454,7 +493,10 @@ fn t2_bf16_autovec_vs_intrinsics() {
             let mut ta = vec![0u16; n];
             f32_to_bf16_trunc_into(&src, &mut td);
             unsafe { f32_to_bf16_trunc_autovec(&src, &mut ta) };
-            assert_eq!(td, ta, "trunc narrowing: same body, so bit-identical (n={n})");
+            assert_eq!(
+                td, ta,
+                "trunc narrowing: same body, so bit-identical (n={n})"
+            );
             let r3 = ab_median_ratio(
                 11,
                 iters,
@@ -468,15 +510,27 @@ fn t2_bf16_autovec_vs_intrinsics() {
                     black_box(ta[0]);
                 },
             );
-            println!("   {n:>8}  {:>20}  {:>14.0}  {:>14.0}  {:>11.2}",
-                     "f32_to_bf16_trunc", r3.a_ns_per_iter(), r3.b_ns_per_iter(),
-                     r3.median);
-            println!("   ROW847T2 trunc n={n} disp_ns={:.0} autovec_ns={:.0} ratio={:.2} avx2_cfg={}",
-                     r3.a_ns_per_iter(), r3.b_ns_per_iter(), r3.median,
-                     cfg!(target_feature = "avx2"));
-            assert_eq!(r3.ratios.len(), r3.rounds,
-                       "instrument FAIL: {} of {} rounds survived (trunc, n={n})",
-                       r3.ratios.len(), r3.rounds);
+            println!(
+                "   {n:>8}  {:>20}  {:>14.0}  {:>14.0}  {:>11.2}",
+                "f32_to_bf16_trunc",
+                r3.a_ns_per_iter(),
+                r3.b_ns_per_iter(),
+                r3.median
+            );
+            println!(
+                "   ROW847T2 trunc n={n} disp_ns={:.0} autovec_ns={:.0} ratio={:.2} avx2_cfg={}",
+                r3.a_ns_per_iter(),
+                r3.b_ns_per_iter(),
+                r3.median,
+                cfg!(target_feature = "avx2")
+            );
+            assert_eq!(
+                r3.ratios.len(),
+                r3.rounds,
+                "instrument FAIL: {} of {} rounds survived (trunc, n={n})",
+                r3.ratios.len(),
+                r3.rounds
+            );
         }
         println!(
             "   ⚠ REPORT, no bar. `disp/auto` > 1 means the AUTOVEC arm wins on \
@@ -562,13 +616,26 @@ fn t4_neon_vs_scalar_aarch64() {
                 black_box(ws[0]);
             },
         );
-        println!("   {n:>8}  {:>22}  {:>14.0}  {:>14.0}  {:>11.2}",
-                 "bf16_bits_to_f32", r1.a_ns_per_iter(), r1.b_ns_per_iter(), r1.median);
-        println!(   "   ROW847T4 widen n={n} neon_ns={:.0} scalar_ns={:.0} ratio={:.2}",
-                 r1.a_ns_per_iter(), r1.b_ns_per_iter(), r1.median);
-        assert_eq!(r1.ratios.len(), r1.rounds,
-                   "instrument FAIL: {} of {} rounds survived (widen, n={n})",
-                   r1.ratios.len(), r1.rounds);
+        println!(
+            "   {n:>8}  {:>22}  {:>14.0}  {:>14.0}  {:>11.2}",
+            "bf16_bits_to_f32",
+            r1.a_ns_per_iter(),
+            r1.b_ns_per_iter(),
+            r1.median
+        );
+        println!(
+            "   ROW847T4 widen n={n} neon_ns={:.0} scalar_ns={:.0} ratio={:.2}",
+            r1.a_ns_per_iter(),
+            r1.b_ns_per_iter(),
+            r1.median
+        );
+        assert_eq!(
+            r1.ratios.len(),
+            r1.rounds,
+            "instrument FAIL: {} of {} rounds survived (widen, n={n})",
+            r1.ratios.len(),
+            r1.rounds
+        );
 
         // narrow (RNE) — fixture in [-1, 1) plus a few interesting classes.
         let mut src = vec![0f32; n];
@@ -584,7 +651,10 @@ fn t4_neon_vs_scalar_aarch64() {
         let mut rs = vec![0u16; n];
         f32_to_bf16_rne_into(&src, &mut rd);
         f32_to_bf16_rne_scalar_into(&src, &mut rs);
-        assert_eq!(rd, rs, "rne narrowing: bit-exact for every input class (n={n})");
+        assert_eq!(
+            rd, rs,
+            "rne narrowing: bit-exact for every input class (n={n})"
+        );
         let r2 = ab_median_ratio(
             11,
             iters,
@@ -598,13 +668,26 @@ fn t4_neon_vs_scalar_aarch64() {
                 black_box(rs[0]);
             },
         );
-        println!("   {n:>8}  {:>22}  {:>14.0}  {:>14.0}  {:>11.2}",
-                 "f32_to_bf16_rne", r2.a_ns_per_iter(), r2.b_ns_per_iter(), r2.median);
-        println!(   "   ROW847T4 rne n={n} neon_ns={:.0} scalar_ns={:.0} ratio={:.2}",
-                 r2.a_ns_per_iter(), r2.b_ns_per_iter(), r2.median);
-        assert_eq!(r2.ratios.len(), r2.rounds,
-                   "instrument FAIL: {} of {} rounds survived (rne, n={n})",
-                   r2.ratios.len(), r2.rounds);
+        println!(
+            "   {n:>8}  {:>22}  {:>14.0}  {:>14.0}  {:>11.2}",
+            "f32_to_bf16_rne",
+            r2.a_ns_per_iter(),
+            r2.b_ns_per_iter(),
+            r2.median
+        );
+        println!(
+            "   ROW847T4 rne n={n} neon_ns={:.0} scalar_ns={:.0} ratio={:.2}",
+            r2.a_ns_per_iter(),
+            r2.b_ns_per_iter(),
+            r2.median
+        );
+        assert_eq!(
+            r2.ratios.len(),
+            r2.rounds,
+            "instrument FAIL: {} of {} rounds survived (rne, n={n})",
+            r2.ratios.len(),
+            r2.rounds
+        );
 
         // narrow (TRUNC) — T5's precondition. Its scalar body is a bare shift,
         // the easiest thing in this file for LLVM to autovectorise, so the
@@ -628,13 +711,26 @@ fn t4_neon_vs_scalar_aarch64() {
                 black_box(ts[0]);
             },
         );
-        println!("   {n:>8}  {:>22}  {:>14.0}  {:>14.0}  {:>11.2}",
-                 "f32_to_bf16_trunc", r3.a_ns_per_iter(), r3.b_ns_per_iter(), r3.median);
-        println!(   "   ROW847T4 trunc n={n} neon_ns={:.0} scalar_ns={:.0} ratio={:.2}",
-                 r3.a_ns_per_iter(), r3.b_ns_per_iter(), r3.median);
-        assert_eq!(r3.ratios.len(), r3.rounds,
-                   "instrument FAIL: {} of {} rounds survived (trunc, n={n})",
-                   r3.ratios.len(), r3.rounds);
+        println!(
+            "   {n:>8}  {:>22}  {:>14.0}  {:>14.0}  {:>11.2}",
+            "f32_to_bf16_trunc",
+            r3.a_ns_per_iter(),
+            r3.b_ns_per_iter(),
+            r3.median
+        );
+        println!(
+            "   ROW847T4 trunc n={n} neon_ns={:.0} scalar_ns={:.0} ratio={:.2}",
+            r3.a_ns_per_iter(),
+            r3.b_ns_per_iter(),
+            r3.median
+        );
+        assert_eq!(
+            r3.ratios.len(),
+            r3.rounds,
+            "instrument FAIL: {} of {} rounds survived (trunc, n={n})",
+            r3.ratios.len(),
+            r3.rounds
+        );
     }
     println!(
         "   ⚠ REPORT, no bar (T4). `scalar/disp` > 1 means the NEON dispatcher \
@@ -646,7 +742,6 @@ fn t4_neon_vs_scalar_aarch64() {
          the delete case for the AVX2 kernel is measured on both arches."
     );
 }
-
 
 /// Issue 847 T6 — the widen "crossover" is a BIMODALITY, and the axis is
 /// BUFFER ALIGNMENT rather than box load.
@@ -695,9 +790,14 @@ fn t6_widen_bimodality_vs_buffer_alignment() {
     {
         use katgpt_core::bf16_convert::{bf16_bits_to_f32_autovec, bf16_bits_to_f32_into};
         println!("\n   Issue 847 T6 — is the widen bimodality BUFFER ALIGNMENT?");
-        println!("   cfg!(target_feature=\"avx2\") = {}", cfg!(target_feature = "avx2"));
-        println!("   {:>8}  {:>9}  {:>9}  {:>13}  {:>13}",
-                 "n", "src%32", "dst%32", "dispatch ns", "autovec ns");
+        println!(
+            "   cfg!(target_feature=\"avx2\") = {}",
+            cfg!(target_feature = "avx2")
+        );
+        println!(
+            "   {:>8}  {:>9}  {:>9}  {:>13}  {:>13}",
+            "n", "src%32", "dst%32", "dispatch ns", "autovec ns"
+        );
 
         // One oversized allocation per buffer, sliced at a controlled offset.
         // Taking sub-slices of ONE allocation is what makes the residue the
@@ -721,8 +821,7 @@ fn t6_widen_bimodality_vs_buffer_alignment() {
             for &(so, doff) in &[(0usize, 0usize), (1, 1), (8, 4), (9, 5)] {
                 let src = &src_all[so..so + n];
                 let sres = (src.as_ptr() as usize) % 32;
-                let dres =
-                    (unsafe { d_all.as_ptr().add(doff) } as usize) % 32;
+                let dres = (unsafe { d_all.as_ptr().add(doff) } as usize) % 32;
                 {
                     let d = &mut d_all[doff..doff + n];
                     bf16_bits_to_f32_into(&src_all[..n], d);
@@ -735,10 +834,12 @@ fn t6_widen_bimodality_vs_buffer_alignment() {
                     // for writing it at the line.
                     let got: Vec<u32> = d.iter().map(|x| x.to_bits()).collect();
                     let want: Vec<u32> = oracle.iter().map(|x| x.to_bits()).collect();
-                    assert_eq!(got, want,
-                               "alignment changed the RESULT (n={n}, src%32={sres}, \
+                    assert_eq!(
+                        got, want,
+                        "alignment changed the RESULT (n={n}, src%32={sres}, \
                                 dst%32={dres}) — an alignment cannot change a \
-                                conversion, so the instrument is wrong");
+                                conversion, so the instrument is wrong"
+                    );
                 }
                 let r = {
                     let (d_chunk, a_chunk) = (doff, doff);
@@ -759,16 +860,26 @@ fn t6_widen_bimodality_vs_buffer_alignment() {
                         },
                     )
                 };
-                println!("   {n:>8}  {sres:>9}  {dres:>9}  {:>13.0}  {:>13.0}",
-                         r.a_ns_per_iter(), r.b_ns_per_iter());
-                println!("   ROW847T6 widen n={n} src_res={sres} dst_res={dres} \
+                println!(
+                    "   {n:>8}  {sres:>9}  {dres:>9}  {:>13.0}  {:>13.0}",
+                    r.a_ns_per_iter(),
+                    r.b_ns_per_iter()
+                );
+                println!(
+                    "   ROW847T6 widen n={n} src_res={sres} dst_res={dres} \
                           disp_ns={:.0} autovec_ns={:.0} avx2_cfg={}",
-                         r.a_ns_per_iter(), r.b_ns_per_iter(),
-                         cfg!(target_feature = "avx2"));
-                assert_eq!(r.ratios.len(), r.rounds,
-                           "instrument FAIL: {} of {} rounds survived \
+                    r.a_ns_per_iter(),
+                    r.b_ns_per_iter(),
+                    cfg!(target_feature = "avx2")
+                );
+                assert_eq!(
+                    r.ratios.len(),
+                    r.rounds,
+                    "instrument FAIL: {} of {} rounds survived \
                             (T6, n={n}, src%32={sres})",
-                           r.ratios.len(), r.rounds);
+                    r.ratios.len(),
+                    r.rounds
+                );
             }
         }
         println!(

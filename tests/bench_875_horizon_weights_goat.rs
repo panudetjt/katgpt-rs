@@ -23,7 +23,7 @@ mod ab_timing;
 
 use ab_timing::ab_median_ratio;
 use katgpt_core::horizon_weights::{
-    HorizonWeightTable, HORIZON_WEIGHT_GRID, pfd_horizon_weight_at, pfd_horizon_weights,
+    HORIZON_WEIGHT_GRID, HorizonWeightTable, pfd_horizon_weight_at, pfd_horizon_weights,
     remaining_horizon_weight,
 };
 use std::hint::black_box;
@@ -102,9 +102,8 @@ fn g2_lookup_beats_strong_per_call_recompute() {
     // Shared t samples, hoisted OUT of both arms so the timed bodies are
     // only the op under test (the fair fight: both arms pay the same array
     // read for t).
-    let ts: [f32; HORIZON_WEIGHT_GRID] = core::array::from_fn(|k| {
-        T * k as f32 / (HORIZON_WEIGHT_GRID - 1) as f32
-    });
+    let ts: [f32; HORIZON_WEIGHT_GRID] =
+        core::array::from_fn(|k| T * k as f32 / (HORIZON_WEIGHT_GRID - 1) as f32);
 
     // Interleaved A/B: A = per-call closed form (caller-held integral —
     // one exp + multiplies) = the BASELINE; B = table lookup = the
@@ -130,7 +129,10 @@ fn g2_lookup_beats_strong_per_call_recompute() {
             sink_b += black_box(table.w_at(black_box(ts[k])));
         },
     );
-    assert!(sink_a.is_finite() && sink_b.is_finite(), "arms must be consumed");
+    assert!(
+        sink_a.is_finite() && sink_b.is_finite(),
+        "arms must be consumed"
+    );
 
     ratio.report("G2 per-call-exp vs table-lookup");
     println!(

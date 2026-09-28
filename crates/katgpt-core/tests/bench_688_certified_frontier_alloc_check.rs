@@ -44,7 +44,7 @@ impl Lcg {
 fn certified_frontier_g4_zero_alloc_steady_state() {
     const CYCLES: usize = 1000;
 
-let cfg = FrontierConfig {
+    let cfg = FrontierConfig {
         h: 0.6,
         acquire_radius: 0.4,
         cell_spacing: 0.05,
@@ -56,7 +56,8 @@ let cfg = FrontierConfig {
     let mut rng = Lcg::new(0x6488);
     let mut f = Box::new(CertifiedFrontier::<POOL, D>::new());
     for _ in 0..POOL {
-        f.push_cell(std::array::from_fn(|_| rng.next_f32())).unwrap();
+        f.push_cell(std::array::from_fn(|_| rng.next_f32()))
+            .unwrap();
     }
     let mut buf = Box::new(PosteriorBuffer::<OBS, D>::new(1.0));
     for _ in 0..OBS {

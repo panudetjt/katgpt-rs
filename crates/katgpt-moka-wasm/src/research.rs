@@ -25,9 +25,8 @@
 
 use crate::board::{AREA as BOARD_AREA, SIZE as BOARD_SIZE};
 use crate::moka::{
-    BOTTLENECK_CHANNELS, INPUT_PLANES, NUM_BLOCKS, POLICY_CHANNELS, POLICY_MOVES,
-    TRUNK_CHANNELS, VALUE_CHANNELS, MokaScratch, MokaWeights,
-    global_mean_max_into, relu_inplace,
+    BOTTLENECK_CHANNELS, INPUT_PLANES, MokaScratch, MokaWeights, NUM_BLOCKS, POLICY_CHANNELS,
+    POLICY_MOVES, TRUNK_CHANNELS, VALUE_CHANNELS, global_mean_max_into, relu_inplace,
 };
 
 // ─── Weight accessors ───────────────────────────────────────────────────────
@@ -52,63 +51,146 @@ impl MokaWeights {
     pub fn iter_layers(&self) -> Vec<(&'static str, LayerWeightRef<'_>)> {
         let mut out = Vec::with_capacity(6 + NUM_BLOCKS * 5);
         let (stem_w, stem_b) = self.stem_w();
-        out.push(("stem", LayerWeightRef {
-            w: stem_w, b: stem_b,
-            out_dim: TRUNK_CHANNELS, in_dim: 3 * 3 * INPUT_PLANES, k: 3,
-        }));
+        out.push((
+            "stem",
+            LayerWeightRef {
+                w: stem_w,
+                b: stem_b,
+                out_dim: TRUNK_CHANNELS,
+                in_dim: 3 * 3 * INPUT_PLANES,
+                k: 3,
+            },
+        ));
         for block in self.blocks_ref() {
             let (rw, rb) = block.reduce_w();
-            out.push(("residual.reduce", LayerWeightRef {
-                w: rw, b: rb, out_dim: BOTTLENECK_CHANNELS, in_dim: TRUNK_CHANNELS, k: 1,
-            }));
+            out.push((
+                "residual.reduce",
+                LayerWeightRef {
+                    w: rw,
+                    b: rb,
+                    out_dim: BOTTLENECK_CHANNELS,
+                    in_dim: TRUNK_CHANNELS,
+                    k: 1,
+                },
+            ));
             let (fw, fb) = block.first_w();
-            out.push(("residual.first", LayerWeightRef {
-                w: fw, b: fb, out_dim: BOTTLENECK_CHANNELS, in_dim: 3 * 3 * BOTTLENECK_CHANNELS, k: 3,
-            }));
+            out.push((
+                "residual.first",
+                LayerWeightRef {
+                    w: fw,
+                    b: fb,
+                    out_dim: BOTTLENECK_CHANNELS,
+                    in_dim: 3 * 3 * BOTTLENECK_CHANNELS,
+                    k: 3,
+                },
+            ));
             if let Some(g) = block.global_ref() {
                 let (gh_w, gh_b) = g.hidden_w();
                 let g_hidden_out = gh_b.len();
-                out.push(("residual.global.hidden", LayerWeightRef {
-                    w: gh_w, b: gh_b, out_dim: g_hidden_out, in_dim: BOTTLENECK_CHANNELS * 2, k: 1,
-                }));
+                out.push((
+                    "residual.global.hidden",
+                    LayerWeightRef {
+                        w: gh_w,
+                        b: gh_b,
+                        out_dim: g_hidden_out,
+                        in_dim: BOTTLENECK_CHANNELS * 2,
+                        k: 1,
+                    },
+                ));
                 let (go_w, go_b) = g.output_w();
                 let g_out_out = go_b.len();
-                out.push(("residual.global.output", LayerWeightRef {
-                    w: go_w, b: go_b, out_dim: g_out_out, in_dim: g_hidden_out, k: 1,
-                }));
+                out.push((
+                    "residual.global.output",
+                    LayerWeightRef {
+                        w: go_w,
+                        b: go_b,
+                        out_dim: g_out_out,
+                        in_dim: g_hidden_out,
+                        k: 1,
+                    },
+                ));
             }
             let (sw, sb) = block.second_w();
-            out.push(("residual.second", LayerWeightRef {
-                w: sw, b: sb, out_dim: BOTTLENECK_CHANNELS, in_dim: 3 * 3 * BOTTLENECK_CHANNELS, k: 3,
-            }));
+            out.push((
+                "residual.second",
+                LayerWeightRef {
+                    w: sw,
+                    b: sb,
+                    out_dim: BOTTLENECK_CHANNELS,
+                    in_dim: 3 * 3 * BOTTLENECK_CHANNELS,
+                    k: 3,
+                },
+            ));
             let (ew, eb) = block.expand_w();
-            out.push(("residual.expand", LayerWeightRef {
-                w: ew, b: eb, out_dim: TRUNK_CHANNELS, in_dim: BOTTLENECK_CHANNELS, k: 1,
-            }));
+            out.push((
+                "residual.expand",
+                LayerWeightRef {
+                    w: ew,
+                    b: eb,
+                    out_dim: TRUNK_CHANNELS,
+                    in_dim: BOTTLENECK_CHANNELS,
+                    k: 1,
+                },
+            ));
         }
         let (pc_w, pc_b) = self.policy_conv_w();
-        out.push(("policy.conv", LayerWeightRef {
-            w: pc_w, b: pc_b, out_dim: POLICY_CHANNELS, in_dim: TRUNK_CHANNELS, k: 1,
-        }));
+        out.push((
+            "policy.conv",
+            LayerWeightRef {
+                w: pc_w,
+                b: pc_b,
+                out_dim: POLICY_CHANNELS,
+                in_dim: TRUNK_CHANNELS,
+                k: 1,
+            },
+        ));
         let (pl_w, pl_b) = self.policy_linear_w();
         let policy_lin_in = pl_w.len() / pl_b.len();
-        out.push(("policy.linear", LayerWeightRef {
-            w: pl_w, b: pl_b, out_dim: POLICY_MOVES, in_dim: policy_lin_in, k: 1,
-        }));
+        out.push((
+            "policy.linear",
+            LayerWeightRef {
+                w: pl_w,
+                b: pl_b,
+                out_dim: POLICY_MOVES,
+                in_dim: policy_lin_in,
+                k: 1,
+            },
+        ));
         let (vc_w, vc_b) = self.value_conv_w();
-        out.push(("value.conv", LayerWeightRef {
-            w: vc_w, b: vc_b, out_dim: VALUE_CHANNELS, in_dim: TRUNK_CHANNELS, k: 1,
-        }));
+        out.push((
+            "value.conv",
+            LayerWeightRef {
+                w: vc_w,
+                b: vc_b,
+                out_dim: VALUE_CHANNELS,
+                in_dim: TRUNK_CHANNELS,
+                k: 1,
+            },
+        ));
         let (vh_w, vh_b) = self.value_hidden_w();
         let value_hidden_out = vh_b.len();
         let value_hidden_in = vh_w.len() / value_hidden_out;
-        out.push(("value.hidden", LayerWeightRef {
-            w: vh_w, b: vh_b, out_dim: value_hidden_out, in_dim: value_hidden_in, k: 1,
-        }));
+        out.push((
+            "value.hidden",
+            LayerWeightRef {
+                w: vh_w,
+                b: vh_b,
+                out_dim: value_hidden_out,
+                in_dim: value_hidden_in,
+                k: 1,
+            },
+        ));
         let (vo_w, vo_b) = self.value_output_w();
-        out.push(("value.output", LayerWeightRef {
-            w: vo_w, b: vo_b, out_dim: 1, in_dim: value_hidden_out, k: 1,
-        }));
+        out.push((
+            "value.output",
+            LayerWeightRef {
+                w: vo_w,
+                b: vo_b,
+                out_dim: 1,
+                in_dim: value_hidden_out,
+                k: 1,
+            },
+        ));
         out.shrink_to_fit();
         out
     }
@@ -156,7 +238,11 @@ pub enum Correction<'a> {
     /// The production representation (compact rank-r LoRA or sparse COO) is
     /// what the PoC measures the QUALITY of; this variant measures the exact
     /// effect of a given correction matrix on the forward output.
-    Full { mat: &'a [f32], out_dim: usize, in_dim: usize },
+    Full {
+        mat: &'a [f32],
+        out_dim: usize,
+        in_dim: usize,
+    },
 }
 
 impl<'a> Correction<'a> {
@@ -174,7 +260,8 @@ impl<'a> Correction<'a> {
                 debug_assert_eq!(d.b.len(), y.len() * r);
                 // Intermediate: A · x → scratch[r].
                 let in_dim = x.len();
-                #[allow(clippy::needless_range_loop)] // stride math: k indexes scratch[k] AND k*in_dim offset into d.a
+                #[allow(clippy::needless_range_loop)]
+                // stride math: k indexes scratch[k] AND k*in_dim offset into d.a
                 for k in 0..r {
                     let a_row = &d.a[k * in_dim..(k + 1) * in_dim];
                     let mut acc = 0.0f32;
@@ -185,7 +272,8 @@ impl<'a> Correction<'a> {
                 }
                 // y += alpha * B · intermediate.
                 let scale = d.alpha;
-                #[allow(clippy::needless_range_loop)] // stride math: o indexes y[o] AND o*r offset into d.b
+                #[allow(clippy::needless_range_loop)]
+                // stride math: o indexes y[o] AND o*r offset into d.b
                 for o in 0..y.len() {
                     let b_row = &d.b[o * r..(o + 1) * r];
                     let mut acc = 0.0f32;
@@ -202,7 +290,11 @@ impl<'a> Correction<'a> {
                     y[o] += s.vals[n] * x[i];
                 }
             }
-            Correction::Full { mat, out_dim, in_dim } => {
+            Correction::Full {
+                mat,
+                out_dim,
+                in_dim,
+            } => {
                 debug_assert_eq!(mat.len(), out_dim * in_dim);
                 debug_assert_eq!(y.len(), *out_dim);
                 debug_assert_eq!(x.len(), *in_dim);
@@ -391,9 +483,12 @@ impl OwnedCorrections {
             // SAFETY: self.matrices[i] outlives the returned ForwardCorrections
             // because self (OwnedCorrections) is stored in PuctPlayer and
             // outlives every forward_corrections() call.
-            let mat: &'static [f32] =
-                unsafe { std::mem::transmute(&self.matrices[i][..]) };
-            Correction::Full { mat, out_dim, in_dim }
+            let mat: &'static [f32] = unsafe { std::mem::transmute(&self.matrices[i][..]) };
+            Correction::Full {
+                mat,
+                out_dim,
+                in_dim,
+            }
         };
         ForwardCorrections {
             stem: full(0),
@@ -425,16 +520,35 @@ pub fn forward_corrected_with_scratch(
     lora_scratch: &mut [f32],
 ) -> ([f32; POLICY_MOVES], f32) {
     let (
-        trunk, expand, hidden_a, hidden_b, head4, head2,
-        patch, pooled, gh, gbias, value_h, policy,
+        trunk,
+        expand,
+        hidden_a,
+        hidden_b,
+        head4,
+        head2,
+        patch,
+        pooled,
+        gh,
+        gbias,
+        value_h,
+        policy,
     ) = scratch.lend_all();
 
     // Stem conv 3×3.
     let (stem_w, stem_b) = weights.stem_w();
     conv2d_corrected_into(
-        features, BOARD_SIZE, BOARD_SIZE, INPUT_PLANES, TRUNK_CHANNELS, 3,
-        stem_w, stem_b, patch, trunk,
-        &corrections.stem, lora_scratch,
+        features,
+        BOARD_SIZE,
+        BOARD_SIZE,
+        INPUT_PLANES,
+        TRUNK_CHANNELS,
+        3,
+        stem_w,
+        stem_b,
+        patch,
+        trunk,
+        &corrections.stem,
+        lora_scratch,
     );
     relu_inplace(&mut trunk[..BOARD_AREA * TRUNK_CHANNELS]);
 
@@ -443,39 +557,73 @@ pub fn forward_corrected_with_scratch(
     for block in weights.blocks_ref() {
         let (rw, rb) = block.reduce_w();
         conv2d_corrected_into(
-            trunk, BOARD_SIZE, BOARD_SIZE, TRUNK_CHANNELS, BOTTLENECK_CHANNELS, 1,
-            rw, rb, patch, hidden_a,
-            &corrections.block_layers[ci], lora_scratch,
+            trunk,
+            BOARD_SIZE,
+            BOARD_SIZE,
+            TRUNK_CHANNELS,
+            BOTTLENECK_CHANNELS,
+            1,
+            rw,
+            rb,
+            patch,
+            hidden_a,
+            &corrections.block_layers[ci],
+            lora_scratch,
         );
         ci += 1;
         relu_inplace(hidden_a);
 
         let (fw, fb) = block.first_w();
         conv2d_corrected_into(
-            hidden_a, BOARD_SIZE, BOARD_SIZE, BOTTLENECK_CHANNELS, BOTTLENECK_CHANNELS, 3,
-            fw, fb, patch, hidden_b,
-            &corrections.block_layers[ci], lora_scratch,
+            hidden_a,
+            BOARD_SIZE,
+            BOARD_SIZE,
+            BOTTLENECK_CHANNELS,
+            BOTTLENECK_CHANNELS,
+            3,
+            fw,
+            fb,
+            patch,
+            hidden_b,
+            &corrections.block_layers[ci],
+            lora_scratch,
         );
         ci += 1;
         relu_inplace(hidden_b);
 
         if let Some(g) = block.global_ref() {
-            global_mean_max_into(hidden_b, BOARD_SIZE, BOARD_SIZE, BOTTLENECK_CHANNELS, pooled);
+            global_mean_max_into(
+                hidden_b,
+                BOARD_SIZE,
+                BOARD_SIZE,
+                BOTTLENECK_CHANNELS,
+                pooled,
+            );
             let (ghw, ghb) = g.hidden_w();
             let g_hidden_out = ghb.len();
             linear_corrected_into(
-                pooled, BOTTLENECK_CHANNELS * 2, g_hidden_out,
-                ghw, ghb, gh,
-                &corrections.block_layers[ci], lora_scratch,
+                pooled,
+                BOTTLENECK_CHANNELS * 2,
+                g_hidden_out,
+                ghw,
+                ghb,
+                gh,
+                &corrections.block_layers[ci],
+                lora_scratch,
             );
             ci += 1;
             relu_inplace(&mut gh[..g_hidden_out]);
             let (gow, gob) = g.output_w();
             let g_out_out = gob.len();
             linear_corrected_into(
-                gh, g_hidden_out, g_out_out,
-                gow, gob, gbias,
-                &corrections.block_layers[ci], lora_scratch,
+                gh,
+                g_hidden_out,
+                g_out_out,
+                gow,
+                gob,
+                gbias,
+                &corrections.block_layers[ci],
+                lora_scratch,
             );
             ci += 1;
             for pos in 0..BOARD_AREA {
@@ -488,17 +636,35 @@ pub fn forward_corrected_with_scratch(
 
         let (sw, sb) = block.second_w();
         conv2d_corrected_into(
-            hidden_b, BOARD_SIZE, BOARD_SIZE, BOTTLENECK_CHANNELS, BOTTLENECK_CHANNELS, 3,
-            sw, sb, patch, hidden_a,
-            &corrections.block_layers[ci], lora_scratch,
+            hidden_b,
+            BOARD_SIZE,
+            BOARD_SIZE,
+            BOTTLENECK_CHANNELS,
+            BOTTLENECK_CHANNELS,
+            3,
+            sw,
+            sb,
+            patch,
+            hidden_a,
+            &corrections.block_layers[ci],
+            lora_scratch,
         );
         ci += 1;
         relu_inplace(hidden_a);
         let (ew, eb) = block.expand_w();
         conv2d_corrected_into(
-            hidden_a, BOARD_SIZE, BOARD_SIZE, BOTTLENECK_CHANNELS, TRUNK_CHANNELS, 1,
-            ew, eb, patch, expand,
-            &corrections.block_layers[ci], lora_scratch,
+            hidden_a,
+            BOARD_SIZE,
+            BOARD_SIZE,
+            BOTTLENECK_CHANNELS,
+            TRUNK_CHANNELS,
+            1,
+            ew,
+            eb,
+            patch,
+            expand,
+            &corrections.block_layers[ci],
+            lora_scratch,
         );
         ci += 1;
 
@@ -511,42 +677,75 @@ pub fn forward_corrected_with_scratch(
     // Policy head.
     let (pc_w, pc_b) = weights.policy_conv_w();
     conv2d_corrected_into(
-        trunk, BOARD_SIZE, BOARD_SIZE, TRUNK_CHANNELS, POLICY_CHANNELS, 1,
-        pc_w, pc_b, patch, head4,
-        &corrections.policy_conv, lora_scratch,
+        trunk,
+        BOARD_SIZE,
+        BOARD_SIZE,
+        TRUNK_CHANNELS,
+        POLICY_CHANNELS,
+        1,
+        pc_w,
+        pc_b,
+        patch,
+        head4,
+        &corrections.policy_conv,
+        lora_scratch,
     );
     relu_inplace(head4);
     let (pl_w, pl_b) = weights.policy_linear_w();
     let policy_lin_in = pl_w.len() / pl_b.len();
     linear_corrected_into(
-        head4, policy_lin_in, POLICY_MOVES,
-        pl_w, pl_b, policy,
-        &corrections.policy_linear, lora_scratch,
+        head4,
+        policy_lin_in,
+        POLICY_MOVES,
+        pl_w,
+        pl_b,
+        policy,
+        &corrections.policy_linear,
+        lora_scratch,
     );
 
     // Value head.
     let (vc_w, vc_b) = weights.value_conv_w();
     conv2d_corrected_into(
-        trunk, BOARD_SIZE, BOARD_SIZE, TRUNK_CHANNELS, VALUE_CHANNELS, 1,
-        vc_w, vc_b, patch, head2,
-        &corrections.value_conv, lora_scratch,
+        trunk,
+        BOARD_SIZE,
+        BOARD_SIZE,
+        TRUNK_CHANNELS,
+        VALUE_CHANNELS,
+        1,
+        vc_w,
+        vc_b,
+        patch,
+        head2,
+        &corrections.value_conv,
+        lora_scratch,
     );
     relu_inplace(head2);
     let (vh_w, vh_b) = weights.value_hidden_w();
     let value_hidden_dim = vh_b.len();
     let value_hidden_in = vh_w.len() / value_hidden_dim;
     linear_corrected_into(
-        head2, value_hidden_in, value_hidden_dim,
-        vh_w, vh_b, value_h,
-        &corrections.value_hidden, lora_scratch,
+        head2,
+        value_hidden_in,
+        value_hidden_dim,
+        vh_w,
+        vh_b,
+        value_h,
+        &corrections.value_hidden,
+        lora_scratch,
     );
     relu_inplace(&mut value_h[..value_hidden_dim]);
     let (vo_w, vo_b) = weights.value_output_w();
     let mut value_out = [0f32; 1];
     linear_corrected_into(
-        value_h, value_hidden_dim, 1,
-        vo_w, vo_b, &mut value_out,
-        &corrections.value_output, lora_scratch,
+        value_h,
+        value_hidden_dim,
+        1,
+        vo_w,
+        vo_b,
+        &mut value_out,
+        &corrections.value_output,
+        lora_scratch,
     );
 
     let mut logits = [0f32; POLICY_MOVES];
@@ -674,8 +873,18 @@ pub fn forward_collecting_activations(
     layer_inputs: &mut [Vec<f32>],
 ) -> ([f32; POLICY_MOVES], f32) {
     let (
-        trunk, expand, hidden_a, hidden_b, head4, head2,
-        patch, pooled, gh, gbias, value_h, policy,
+        trunk,
+        expand,
+        hidden_a,
+        hidden_b,
+        head4,
+        head2,
+        patch,
+        pooled,
+        gh,
+        gbias,
+        value_h,
+        policy,
     ) = scratch.lend_all();
 
     let mut li = 0usize; // layer_inputs index, walks in iter_layers() order
@@ -683,8 +892,17 @@ pub fn forward_collecting_activations(
     // Stem conv 3×3.
     let (stem_w, stem_b) = weights.stem_w();
     conv2d_collecting_into(
-        features, BOARD_SIZE, BOARD_SIZE, INPUT_PLANES, TRUNK_CHANNELS, 3,
-        stem_w, stem_b, patch, trunk, &mut layer_inputs[li],
+        features,
+        BOARD_SIZE,
+        BOARD_SIZE,
+        INPUT_PLANES,
+        TRUNK_CHANNELS,
+        3,
+        stem_w,
+        stem_b,
+        patch,
+        trunk,
+        &mut layer_inputs[li],
     );
     li += 1;
     relu_inplace(&mut trunk[..BOARD_AREA * TRUNK_CHANNELS]);
@@ -692,35 +910,69 @@ pub fn forward_collecting_activations(
     for block in weights.blocks_ref() {
         let (rw, rb) = block.reduce_w();
         conv2d_collecting_into(
-            trunk, BOARD_SIZE, BOARD_SIZE, TRUNK_CHANNELS, BOTTLENECK_CHANNELS, 1,
-            rw, rb, patch, hidden_a, &mut layer_inputs[li],
+            trunk,
+            BOARD_SIZE,
+            BOARD_SIZE,
+            TRUNK_CHANNELS,
+            BOTTLENECK_CHANNELS,
+            1,
+            rw,
+            rb,
+            patch,
+            hidden_a,
+            &mut layer_inputs[li],
         );
         li += 1;
         relu_inplace(hidden_a);
 
         let (fw, fb) = block.first_w();
         conv2d_collecting_into(
-            hidden_a, BOARD_SIZE, BOARD_SIZE, BOTTLENECK_CHANNELS, BOTTLENECK_CHANNELS, 3,
-            fw, fb, patch, hidden_b, &mut layer_inputs[li],
+            hidden_a,
+            BOARD_SIZE,
+            BOARD_SIZE,
+            BOTTLENECK_CHANNELS,
+            BOTTLENECK_CHANNELS,
+            3,
+            fw,
+            fb,
+            patch,
+            hidden_b,
+            &mut layer_inputs[li],
         );
         li += 1;
         relu_inplace(hidden_b);
 
         if let Some(g) = block.global_ref() {
-            global_mean_max_into(hidden_b, BOARD_SIZE, BOARD_SIZE, BOTTLENECK_CHANNELS, pooled);
+            global_mean_max_into(
+                hidden_b,
+                BOARD_SIZE,
+                BOARD_SIZE,
+                BOTTLENECK_CHANNELS,
+                pooled,
+            );
             let (ghw, ghb) = g.hidden_w();
             let g_hidden_out = ghb.len();
             linear_collecting_into(
-                pooled, BOTTLENECK_CHANNELS * 2, g_hidden_out,
-                ghw, ghb, gh, &mut layer_inputs[li],
+                pooled,
+                BOTTLENECK_CHANNELS * 2,
+                g_hidden_out,
+                ghw,
+                ghb,
+                gh,
+                &mut layer_inputs[li],
             );
             li += 1;
             relu_inplace(&mut gh[..g_hidden_out]);
             let (gow, gob) = g.output_w();
             let g_out_out = gob.len();
             linear_collecting_into(
-                gh, g_hidden_out, g_out_out,
-                gow, gob, gbias, &mut layer_inputs[li],
+                gh,
+                g_hidden_out,
+                g_out_out,
+                gow,
+                gob,
+                gbias,
+                &mut layer_inputs[li],
             );
             li += 1;
             for pos in 0..BOARD_AREA {
@@ -733,15 +985,33 @@ pub fn forward_collecting_activations(
 
         let (sw, sb) = block.second_w();
         conv2d_collecting_into(
-            hidden_b, BOARD_SIZE, BOARD_SIZE, BOTTLENECK_CHANNELS, BOTTLENECK_CHANNELS, 3,
-            sw, sb, patch, hidden_a, &mut layer_inputs[li],
+            hidden_b,
+            BOARD_SIZE,
+            BOARD_SIZE,
+            BOTTLENECK_CHANNELS,
+            BOTTLENECK_CHANNELS,
+            3,
+            sw,
+            sb,
+            patch,
+            hidden_a,
+            &mut layer_inputs[li],
         );
         li += 1;
         relu_inplace(hidden_a);
         let (ew, eb) = block.expand_w();
         conv2d_collecting_into(
-            hidden_a, BOARD_SIZE, BOARD_SIZE, BOTTLENECK_CHANNELS, TRUNK_CHANNELS, 1,
-            ew, eb, patch, expand, &mut layer_inputs[li],
+            hidden_a,
+            BOARD_SIZE,
+            BOARD_SIZE,
+            BOTTLENECK_CHANNELS,
+            TRUNK_CHANNELS,
+            1,
+            ew,
+            eb,
+            patch,
+            expand,
+            &mut layer_inputs[li],
         );
         li += 1;
 
@@ -754,24 +1024,47 @@ pub fn forward_collecting_activations(
     // Policy head.
     let (pc_w, pc_b) = weights.policy_conv_w();
     conv2d_collecting_into(
-        trunk, BOARD_SIZE, BOARD_SIZE, TRUNK_CHANNELS, POLICY_CHANNELS, 1,
-        pc_w, pc_b, patch, head4, &mut layer_inputs[li],
+        trunk,
+        BOARD_SIZE,
+        BOARD_SIZE,
+        TRUNK_CHANNELS,
+        POLICY_CHANNELS,
+        1,
+        pc_w,
+        pc_b,
+        patch,
+        head4,
+        &mut layer_inputs[li],
     );
     li += 1;
     relu_inplace(head4);
     let (pl_w, pl_b) = weights.policy_linear_w();
     let policy_lin_in = pl_w.len() / pl_b.len();
     linear_collecting_into(
-        head4, policy_lin_in, POLICY_MOVES,
-        pl_w, pl_b, policy, &mut layer_inputs[li],
+        head4,
+        policy_lin_in,
+        POLICY_MOVES,
+        pl_w,
+        pl_b,
+        policy,
+        &mut layer_inputs[li],
     );
     li += 1;
 
     // Value head.
     let (vc_w, vc_b) = weights.value_conv_w();
     conv2d_collecting_into(
-        trunk, BOARD_SIZE, BOARD_SIZE, TRUNK_CHANNELS, VALUE_CHANNELS, 1,
-        vc_w, vc_b, patch, head2, &mut layer_inputs[li],
+        trunk,
+        BOARD_SIZE,
+        BOARD_SIZE,
+        TRUNK_CHANNELS,
+        VALUE_CHANNELS,
+        1,
+        vc_w,
+        vc_b,
+        patch,
+        head2,
+        &mut layer_inputs[li],
     );
     li += 1;
     relu_inplace(head2);
@@ -779,16 +1072,26 @@ pub fn forward_collecting_activations(
     let value_hidden_dim = vh_b.len();
     let value_hidden_in = vh_w.len() / value_hidden_dim;
     linear_collecting_into(
-        head2, value_hidden_in, value_hidden_dim,
-        vh_w, vh_b, value_h, &mut layer_inputs[li],
+        head2,
+        value_hidden_in,
+        value_hidden_dim,
+        vh_w,
+        vh_b,
+        value_h,
+        &mut layer_inputs[li],
     );
     li += 1;
     relu_inplace(&mut value_h[..value_hidden_dim]);
     let (vo_w, vo_b) = weights.value_output_w();
     let mut value_out = [0f32; 1];
     linear_collecting_into(
-        value_h, value_hidden_dim, 1,
-        vo_w, vo_b, &mut value_out, &mut layer_inputs[li],
+        value_h,
+        value_hidden_dim,
+        1,
+        vo_w,
+        vo_b,
+        &mut value_out,
+        &mut layer_inputs[li],
     );
 
     let mut logits = [0f32; POLICY_MOVES];
@@ -829,8 +1132,18 @@ pub fn forward_tapping_trunk(
     tapped_trunk: &mut [f32],
 ) -> ([f32; POLICY_MOVES], f32) {
     let (
-        trunk, expand, hidden_a, hidden_b, head4, head2,
-        patch, pooled, gh, gbias, value_h, policy,
+        trunk,
+        expand,
+        hidden_a,
+        hidden_b,
+        head4,
+        head2,
+        patch,
+        pooled,
+        gh,
+        gbias,
+        value_h,
+        policy,
     ) = scratch.lend_all();
 
     let trunk_len = BOARD_AREA * TRUNK_CHANNELS;
@@ -838,28 +1151,58 @@ pub fn forward_tapping_trunk(
     // Stem conv 3×3 (scalar — matches forward_collecting_activations).
     let (stem_w, stem_b) = weights.stem_w();
     conv2d_scalar_into(
-        features, BOARD_SIZE, BOARD_SIZE, INPUT_PLANES, TRUNK_CHANNELS, 3,
-        stem_w, stem_b, patch, trunk,
+        features,
+        BOARD_SIZE,
+        BOARD_SIZE,
+        INPUT_PLANES,
+        TRUNK_CHANNELS,
+        3,
+        stem_w,
+        stem_b,
+        patch,
+        trunk,
     );
     relu_inplace(&mut trunk[..trunk_len]);
 
     for (block_idx, block) in weights.blocks_ref().iter().enumerate() {
         let (rw, rb) = block.reduce_w();
         conv2d_scalar_into(
-            trunk, BOARD_SIZE, BOARD_SIZE, TRUNK_CHANNELS, BOTTLENECK_CHANNELS, 1,
-            rw, rb, patch, hidden_a,
+            trunk,
+            BOARD_SIZE,
+            BOARD_SIZE,
+            TRUNK_CHANNELS,
+            BOTTLENECK_CHANNELS,
+            1,
+            rw,
+            rb,
+            patch,
+            hidden_a,
         );
         relu_inplace(hidden_a);
 
         let (fw, fb) = block.first_w();
         conv2d_scalar_into(
-            hidden_a, BOARD_SIZE, BOARD_SIZE, BOTTLENECK_CHANNELS, BOTTLENECK_CHANNELS, 3,
-            fw, fb, patch, hidden_b,
+            hidden_a,
+            BOARD_SIZE,
+            BOARD_SIZE,
+            BOTTLENECK_CHANNELS,
+            BOTTLENECK_CHANNELS,
+            3,
+            fw,
+            fb,
+            patch,
+            hidden_b,
         );
         relu_inplace(hidden_b);
 
         if let Some(g) = block.global_ref() {
-            global_mean_max_into(hidden_b, BOARD_SIZE, BOARD_SIZE, BOTTLENECK_CHANNELS, pooled);
+            global_mean_max_into(
+                hidden_b,
+                BOARD_SIZE,
+                BOARD_SIZE,
+                BOTTLENECK_CHANNELS,
+                pooled,
+            );
             let (ghw, ghb) = g.hidden_w();
             let g_hidden_out = ghb.len();
             linear_scalar_into(pooled, BOTTLENECK_CHANNELS * 2, g_hidden_out, ghw, ghb, gh);
@@ -877,14 +1220,30 @@ pub fn forward_tapping_trunk(
 
         let (sw, sb) = block.second_w();
         conv2d_scalar_into(
-            hidden_b, BOARD_SIZE, BOARD_SIZE, BOTTLENECK_CHANNELS, BOTTLENECK_CHANNELS, 3,
-            sw, sb, patch, hidden_a,
+            hidden_b,
+            BOARD_SIZE,
+            BOARD_SIZE,
+            BOTTLENECK_CHANNELS,
+            BOTTLENECK_CHANNELS,
+            3,
+            sw,
+            sb,
+            patch,
+            hidden_a,
         );
         relu_inplace(hidden_a);
         let (ew, eb) = block.expand_w();
         conv2d_scalar_into(
-            hidden_a, BOARD_SIZE, BOARD_SIZE, BOTTLENECK_CHANNELS, TRUNK_CHANNELS, 1,
-            ew, eb, patch, expand,
+            hidden_a,
+            BOARD_SIZE,
+            BOARD_SIZE,
+            BOTTLENECK_CHANNELS,
+            TRUNK_CHANNELS,
+            1,
+            ew,
+            eb,
+            patch,
+            expand,
         );
 
         // Residual add + ReLU, in place on the trunk.
@@ -902,8 +1261,16 @@ pub fn forward_tapping_trunk(
     // Policy head.
     let (pc_w, pc_b) = weights.policy_conv_w();
     conv2d_scalar_into(
-        trunk, BOARD_SIZE, BOARD_SIZE, TRUNK_CHANNELS, POLICY_CHANNELS, 1,
-        pc_w, pc_b, patch, head4,
+        trunk,
+        BOARD_SIZE,
+        BOARD_SIZE,
+        TRUNK_CHANNELS,
+        POLICY_CHANNELS,
+        1,
+        pc_w,
+        pc_b,
+        patch,
+        head4,
     );
     relu_inplace(head4);
     let (pl_w, pl_b) = weights.policy_linear_w();
@@ -913,14 +1280,29 @@ pub fn forward_tapping_trunk(
     // Value head.
     let (vc_w, vc_b) = weights.value_conv_w();
     conv2d_scalar_into(
-        trunk, BOARD_SIZE, BOARD_SIZE, TRUNK_CHANNELS, VALUE_CHANNELS, 1,
-        vc_w, vc_b, patch, head2,
+        trunk,
+        BOARD_SIZE,
+        BOARD_SIZE,
+        TRUNK_CHANNELS,
+        VALUE_CHANNELS,
+        1,
+        vc_w,
+        vc_b,
+        patch,
+        head2,
     );
     relu_inplace(head2);
     let (vh_w, vh_b) = weights.value_hidden_w();
     let value_hidden_dim = vh_b.len();
     let value_hidden_in = vh_w.len() / value_hidden_dim;
-    linear_scalar_into(head2, value_hidden_in, value_hidden_dim, vh_w, vh_b, value_h);
+    linear_scalar_into(
+        head2,
+        value_hidden_in,
+        value_hidden_dim,
+        vh_w,
+        vh_b,
+        value_h,
+    );
     relu_inplace(&mut value_h[..value_hidden_dim]);
     let (vo_w, vo_b) = weights.value_output_w();
     let mut value_out = [0f32; 1];
@@ -1024,8 +1406,8 @@ mod tests {
     use super::*;
     use crate::board::{AREA as BOARD_AREA, Board};
     use crate::moka::{
-        MokaScratch, MokaWeights, NUM_BLOCKS, POLICY_MOVES, TRUNK_CHANNELS,
-        forward_with_scratch, encode_features_into, INPUT_ELEMENT_COUNT,
+        INPUT_ELEMENT_COUNT, MokaScratch, MokaWeights, NUM_BLOCKS, POLICY_MOVES, TRUNK_CHANNELS,
+        encode_features_into, forward_with_scratch,
     };
 
     /// `forward_tapping_trunk` must produce the same [policy, value] as the
@@ -1041,15 +1423,15 @@ mod tests {
 
         // Production forward.
         let mut scratch_prod = MokaScratch::new();
-        let (prod_policy, prod_value) = forward_with_scratch(&weights, &features, &mut scratch_prod);
+        let (prod_policy, prod_value) =
+            forward_with_scratch(&weights, &features, &mut scratch_prod);
 
         // Tapping forward at block 6 (mid-network, per Research 464 §4).
         let mut scratch_tap = MokaScratch::new();
         let trunk_len = BOARD_AREA * TRUNK_CHANNELS;
         let mut tapped = vec![0f32; trunk_len];
-        let (tap_policy, tap_value) = forward_tapping_trunk(
-            &weights, &features, &mut scratch_tap, 6, &mut tapped,
-        );
+        let (tap_policy, tap_value) =
+            forward_tapping_trunk(&weights, &features, &mut scratch_tap, 6, &mut tapped);
 
         // Policy should match within float epsilon (scalar vs SIMD).
         let mut max_diff = 0f32;
@@ -1057,12 +1439,21 @@ mod tests {
             max_diff = max_diff.max((prod_policy[i] - tap_policy[i]).abs());
         }
         assert!(max_diff < 1e-3, "policy max_diff too large: {max_diff}");
-        assert!((prod_value - tap_value).abs() < 1e-3, "value diff too large");
+        assert!(
+            (prod_value - tap_value).abs() < 1e-3,
+            "value diff too large"
+        );
 
         // Tapped trunk must be non-trivial.
         let non_zero = tapped.iter().filter(|&&v| v != 0.0).count();
-        assert!(non_zero > trunk_len / 2, "tapped trunk too sparse: {non_zero}/{trunk_len} non-zero");
-        assert!(tapped.iter().all(|&v| v.is_finite()), "tapped trunk has NaN/inf");
+        assert!(
+            non_zero > trunk_len / 2,
+            "tapped trunk too sparse: {non_zero}/{trunk_len} non-zero"
+        );
+        assert!(
+            tapped.iter().all(|&v| v.is_finite()),
+            "tapped trunk has NaN/inf"
+        );
     }
 
     /// Tapping at each valid block index should not panic and should produce
@@ -1080,11 +1471,13 @@ mod tests {
         for block in 0..NUM_BLOCKS {
             let mut scratch = MokaScratch::new();
             tapped.fill(0.0);
-            let (policy, value) = forward_tapping_trunk(
-                &weights, &features, &mut scratch, block, &mut tapped,
-            );
+            let (policy, value) =
+                forward_tapping_trunk(&weights, &features, &mut scratch, block, &mut tapped);
             // Sanity: policy + value are finite.
-            assert!(policy.iter().all(|&p| p.is_finite()), "block {block}: policy has NaN/inf");
+            assert!(
+                policy.iter().all(|&p| p.is_finite()),
+                "block {block}: policy has NaN/inf"
+            );
             assert!(value.is_finite(), "block {block}: value is NaN/inf");
             // Tapped trunk changed from the zero-fill (except block 0 on an empty board
             // might be sparse, but at least some non-zero values expected).
@@ -1106,13 +1499,20 @@ mod tests {
         let mut tapped = vec![f32::NAN; trunk_len]; // sentinel: if untouched, stays NaN
         let mut scratch = MokaScratch::new();
         let (policy, value) = forward_tapping_trunk(
-            &weights, &features, &mut scratch, NUM_BLOCKS + 5, &mut tapped,
+            &weights,
+            &features,
+            &mut scratch,
+            NUM_BLOCKS + 5,
+            &mut tapped,
         );
         // Forward still produced valid output.
         assert!(policy.iter().all(|&p| p.is_finite()));
         assert!(value.is_finite());
         // Tapped trunk was NOT written (still NaN sentinel).
-        assert!(tapped[0].is_nan(), "out-of-range tap should not write trunk");
+        assert!(
+            tapped[0].is_nan(),
+            "out-of-range tap should not write trunk"
+        );
     }
 
     /// Signal-availability check (Research 464 precondition): do Moka's
@@ -1139,14 +1539,20 @@ mod tests {
         boards.push(b1);
 
         let mut b2 = Board::default();
-        for &idx in &[0, 10, 20, 40, 60] { // scattered stones
-            if b2.is_legal(idx) { b2.play(idx); }
+        for &idx in &[0, 10, 20, 40, 60] {
+            // scattered stones
+            if b2.is_legal(idx) {
+                b2.play(idx);
+            }
         }
         boards.push(b2);
 
         let mut b3 = Board::default();
-        for &idx in &[0, 1, 2, 3, 4, 9, 10, 11, 12, 13] { // corner cluster
-            if b3.is_legal(idx) { b3.play(idx); }
+        for &idx in &[0, 1, 2, 3, 4, 9, 10, 11, 12, 13] {
+            // corner cluster
+            if b3.is_legal(idx) {
+                b3.play(idx);
+            }
         }
         boards.push(b3);
 
@@ -1157,7 +1563,8 @@ mod tests {
             encode_features_into(board, &[], &mut features);
             let mut scratch = MokaScratch::new();
             let mut tapped = vec![0f32; trunk_len];
-            let _ = forward_tapping_trunk(&weights, &features, &mut scratch, tap_block, &mut tapped);
+            let _ =
+                forward_tapping_trunk(&weights, &features, &mut scratch, tap_block, &mut tapped);
             trunks.push(tapped);
         }
 

@@ -32,14 +32,12 @@
 //! ```
 
 #![cfg(feature = "dual_wave")]
-
 // Index math over parallel per-layer vectors (λ_i, δ_i, W_i) is clearer as
 // range loops than iterator gymnastics — the bench_194 precedent.
 #![allow(clippy::needless_range_loop)]
 
 use katgpt_core::dual::{
-    adjoint_readout_init_into, adjoint_readout_tick_into, normalize_spectral_into,
-    AdjointScratch,
+    AdjointScratch, adjoint_readout_init_into, adjoint_readout_tick_into, normalize_spectral_into,
 };
 use std::hint::black_box;
 
@@ -56,7 +54,12 @@ impl SplitMix64 {
     }
 }
 
-fn random_chain(l: usize, d: usize, seed: u64, unit_spectral: bool) -> (Vec<Vec<f32>>, Vec<usize>, Vec<f32>, Vec<f32>) {
+fn random_chain(
+    l: usize,
+    d: usize,
+    seed: u64,
+    unit_spectral: bool,
+) -> (Vec<Vec<f32>>, Vec<usize>, Vec<f32>, Vec<f32>) {
     let mut rng = SplitMix64(seed);
     let dims = vec![d; l + 1];
     let mut weights = Vec::with_capacity(l);
@@ -101,11 +104,7 @@ fn reverse_mode(
     }
     let mut delta: Vec<Vec<f32>> = vec![Vec::new(); dims.len()];
     let last = n_layers;
-    delta[last] = h[last]
-        .iter()
-        .zip(target)
-        .map(|(&a, &b)| a - b)
-        .collect();
+    delta[last] = h[last].iter().zip(target).map(|(&a, &b)| a - b).collect();
     for lv in (0..n_layers).rev() {
         let i = lv + 1;
         let mut d_prev = vec![0.0f32; d];
@@ -197,7 +196,13 @@ fn run_chain_converged(
 }
 
 /// Fixed-budget run (for the shortcut/caveat columns).
-fn run_chain(l: usize, d: usize, seed: u64, unit_spectral: bool, ticks_factor: usize) -> (f32, f64) {
+fn run_chain(
+    l: usize,
+    d: usize,
+    seed: u64,
+    unit_spectral: bool,
+    ticks_factor: usize,
+) -> (f32, f64) {
     let (weights, dims, input, target) = random_chain(l, d, seed, unit_spectral);
     let wrefs: Vec<&[f32]> = weights.iter().map(|w| w.as_slice()).collect();
     let delta = reverse_mode(&weights, &dims, &input, &target);
@@ -242,7 +247,9 @@ fn main() {
     // W lifts A's low modes, so settling is fast) with CONVERGENCE
     // DETECTION (tick until the feasibility residual hits its floor),
     // capped at 64L. Gate: cosine ≥ 0.9 at every layer; ticks reported.
-    println!("─ gate regime: random-init layers (paper construction), tick-until-converged (cap 64L)");
+    println!(
+        "─ gate regime: random-init layers (paper construction), tick-until-converged (cap 64L)"
+    );
     for &l in &[4usize, 8, 16] {
         for seed in [0x775_0001u64, 0x775_0002, 0x775_0003] {
             let d = 16usize;
@@ -258,9 +265,7 @@ fn main() {
             );
             all_pass &= ok;
             if l == 4 && seed == 0x775_0001 {
-                println!(
-                    "    feasibility ‖r‖² = {res_norm:.6} (raw plane back at forward values)"
-                );
+                println!("    feasibility ‖r‖² = {res_norm:.6} (raw plane back at forward values)");
             }
         }
     }

@@ -373,12 +373,7 @@ pub fn twist_step_into(
 
 /// `solve_beta` over the span-normalized values (allocated scratch kept
 /// local — cold relative to the reward-query cost it amortizes).
-fn solve_beta_span_normalized(
-    values: &[f32],
-    v_min: f32,
-    inv_span: f32,
-    kl_budget: f32,
-) -> f32 {
+fn solve_beta_span_normalized(values: &[f32], v_min: f32, inv_span: f32, kl_budget: f32) -> f32 {
     let norm: Vec<f32> = values.iter().map(|&v| (v - v_min) * inv_span).collect();
     select_beta_by_budget(&norm, kl_budget)
 }
@@ -513,7 +508,10 @@ where
             }
             X0ProxyMode::Expectation => {
                 // Score each shared candidate ONCE (K calls), then weight.
-                let rc: Vec<f32> = candidates.chunks_exact(dim).map(|c| (self.reward)(c)).collect();
+                let rc: Vec<f32> = candidates
+                    .chunks_exact(dim)
+                    .map(|c| (self.reward)(c))
+                    .collect();
                 for v in &rc {
                     debug_assert!(v.is_finite(), "proxy scorer must return finite");
                 }
@@ -547,7 +545,11 @@ where
 /// end-to-end gate is Bench 692. Cold path (allocates two f64 rank
 /// buffers); delegates to the shipped `numeric_stability::spearman_rho`.
 pub fn proxy_spearman(proxy: &[f32], true_rewards: &[f32]) -> f64 {
-    assert_eq!(proxy.len(), true_rewards.len(), "proxy_spearman length mismatch");
+    assert_eq!(
+        proxy.len(),
+        true_rewards.len(),
+        "proxy_spearman length mismatch"
+    );
     let px: Vec<f64> = proxy.iter().map(|&v| v as f64).collect();
     let tx: Vec<f64> = true_rewards.iter().map(|&v| v as f64).collect();
     crate::numeric_stability::spearman_rho(&px, &tx)
@@ -825,7 +827,12 @@ mod tests {
         let mut b2 = 0.0f32;
         twist_step_into(&scaled, 0.8, &mut w2, &mut p2, &mut b2);
         for i in 0..5 {
-            assert!((w1[i] - w2[i]).abs() < 1e-4, "weight {i}: {} vs {}", w1[i], w2[i]);
+            assert!(
+                (w1[i] - w2[i]).abs() < 1e-4,
+                "weight {i}: {} vs {}",
+                w1[i],
+                w2[i]
+            );
         }
     }
 
@@ -909,13 +916,14 @@ mod tests {
         // T3.4: two fresh runs of a memo + twist + resample pipeline are
         // bit-identical (papaya iteration order never enters results).
         let run = || -> (Vec<f32>, u64, u64) {
-            use crate::distributional_steering::{systematic_resample_into, WeightedPopulation};
+            use crate::distributional_steering::{WeightedPopulation, systematic_resample_into};
             let memo = ValueMemo::new(1024, u32::MAX);
             let mut rng = SplitMix64(0x581);
             let n = 16usize;
             let dim = 2usize;
-            let mut states: Vec<f32> =
-                (0..n * dim).map(|_| rng.next_uniform() * 2.0 - 1.0).collect();
+            let mut states: Vec<f32> = (0..n * dim)
+                .map(|_| rng.next_uniform() * 2.0 - 1.0)
+                .collect();
             let mut log_w = vec![0.0f32; n];
             let mut prev = vec![0.0f32; n];
             let mut beta = 0.0f32;

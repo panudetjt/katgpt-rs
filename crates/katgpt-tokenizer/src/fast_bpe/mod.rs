@@ -79,7 +79,8 @@ pub use token::TokenId;
 pub(crate) use simd_split::{SplitEvent, WhitespaceSplitter};
 
 // Re-export the merge cores + scratch so `encode_fast` can drive them directly.
-#[allow(unused_imports)] // SHORT_MERGE_MAX + short_scalar are substrate for future pretokenization work.
+#[allow(unused_imports)]
+// SHORT_MERGE_MAX + short_scalar are substrate for future pretokenization work.
 pub use pair_rank_table::{MergeScratch, SHORT_MERGE_MAX, bpe_merge_symbols_short_scalar};
 
 #[cfg(target_arch = "aarch64")]

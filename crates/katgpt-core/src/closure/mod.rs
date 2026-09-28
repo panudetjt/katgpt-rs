@@ -56,7 +56,7 @@ pub use bridge::{
 };
 #[cfg(feature = "bridge_certified")]
 pub use bridge_certified::{
-    BridgeCertified, BridgeCertifyError, G1Corpus, G1_SEED, certified_ptg_to_motif_embedding,
+    BridgeCertified, BridgeCertifyError, G1_SEED, G1Corpus, certified_ptg_to_motif_embedding,
     certified_ptg_to_motif_embedding_into, embedding_from_bytes, embedding_to_bytes, g1_corpus,
 };
 pub use metrics::{CdgScore, PriScores, compute_tar_score};

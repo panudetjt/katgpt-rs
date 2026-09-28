@@ -295,7 +295,9 @@ fn g4_alloc(failures: &mut Vec<String>) {
             verdict(ok)
         );
         if !ok {
-            failures.push(format!("G4: {n_allocs} allocation(s) in the steady-state loop"));
+            failures.push(format!(
+                "G4: {n_allocs} allocation(s) in the steady-state loop"
+            ));
         }
     }
     #[cfg(not(any(debug_assertions, feature = "alloc_tracking")))]
@@ -331,7 +333,10 @@ fn g5_fidelity_honesty(failures: &mut Vec<String>) {
 
 fn main() {
     println!("Bench 841 — KV permanent sinks + bounded window (Issue 841)");
-    println!("policy: n_sink {N_SINK}, window {WINDOW}, ceiling {}", N_SINK + WINDOW);
+    println!(
+        "policy: n_sink {N_SINK}, window {WINDOW}, ceiling {}",
+        N_SINK + WINDOW
+    );
     let t0 = Instant::now();
     let mut failures: Vec<String> = Vec::new();
 

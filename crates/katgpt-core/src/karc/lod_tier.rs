@@ -153,11 +153,7 @@ impl KarcLodTier {
     }
 
     /// All tiers in increasing-fidelity order.
-    pub const ALL: [Self; 3] = [
-        Self::Lod0,
-        Self::Lod1,
-        Self::Lod2,
-    ];
+    pub const ALL: [Self; 3] = [Self::Lod0, Self::Lod1, Self::Lod2];
 }
 
 /// Project a source-tier `Wout` matrix into a destination-tier `Wout`.
@@ -221,7 +217,11 @@ pub fn project_wout_lod_into(
         dst_d_h,
     );
     debug_assert_eq!(src_tier.d(), dst_tier.d(), "D must match across tiers");
-    debug_assert_eq!(src_tier.r(), dst_tier.r(), "R must match across tiers (R=2 deferred)");
+    debug_assert_eq!(
+        src_tier.r(),
+        dst_tier.r(),
+        "R must match across tiers (R=2 deferred)"
+    );
 
     // The surviving features are the intersection of the source and destination
     // feature spaces. Per the nested-subset invariant (module docs):
@@ -243,7 +243,8 @@ pub fn project_wout_lod_into(
                 // Copy the surviving modes for this (lag, coord) pair.
                 dst_wout[dst_row_off + dst_feat_off..dst_row_off + dst_feat_off + surviving_m]
                     .copy_from_slice(
-                        &src_wout[src_row_off + src_feat_off..src_row_off + src_feat_off + surviving_m],
+                        &src_wout
+                            [src_row_off + src_feat_off..src_row_off + src_feat_off + surviving_m],
                     );
             }
         }
@@ -263,9 +264,7 @@ mod tests {
     use crate::{FourierBasis, KarcForecaster};
 
     /// Build a fitted `KarcForecaster` at a specific tier.
-    fn make_fitted_tier(
-        tier: KarcLodTier,
-    ) -> (Vec<f32>, Vec<f32>) {
+    fn make_fitted_tier(tier: KarcLodTier) -> (Vec<f32>, Vec<f32>) {
         // Dispatch to the right const-generic monomorphization.
         match tier {
             KarcLodTier::Lod0 => make_fitted_const::<8, 4, 2>(),
@@ -382,10 +381,8 @@ mod tests {
             for lag in 0..k_dst {
                 for coord in 0..d {
                     for mode in 0..m_dst {
-                        let src_idx =
-                            out_row * d_h_src + (lag * d + coord) * m_src + mode;
-                        let dst_idx =
-                            out_row * d_h_dst + (lag * d + coord) * m_dst + mode;
+                        let src_idx = out_row * d_h_src + (lag * d + coord) * m_src + mode;
+                        let dst_idx = out_row * d_h_dst + (lag * d + coord) * m_dst + mode;
                         assert_eq!(
                             src_wout_lod1[src_idx].to_bits(),
                             dst_wout_lod0[dst_idx].to_bits(),
@@ -424,10 +421,8 @@ mod tests {
             for lag in 0..k_src {
                 for coord in 0..d {
                     for mode in 0..m_src {
-                        let src_idx =
-                            out_row * d_h_src + (lag * d + coord) * m_src + mode;
-                        let dst_idx =
-                            out_row * d_h_dst + (lag * d + coord) * m_dst + mode;
+                        let src_idx = out_row * d_h_src + (lag * d + coord) * m_src + mode;
+                        let dst_idx = out_row * d_h_dst + (lag * d + coord) * m_dst + mode;
                         assert_eq!(
                             src_wout_lod0[src_idx].to_bits(),
                             dst_wout_lod1[dst_idx].to_bits(),
@@ -436,11 +431,9 @@ mod tests {
                     }
                     // The 4 new modes (4..8) should be zero (caller-initialized).
                     for mode in m_src..m_dst {
-                        let dst_idx =
-                            out_row * d_h_dst + (lag * d + coord) * m_dst + mode;
+                        let dst_idx = out_row * d_h_dst + (lag * d + coord) * m_dst + mode;
                         assert_eq!(
-                            dst_wout_lod1[dst_idx],
-                            0.0,
+                            dst_wout_lod1[dst_idx], 0.0,
                             "up-tier LOD0→LOD1 new column not zero at (row={out_row}, lag={lag}, coord={coord}, mode={mode})",
                         );
                     }
@@ -450,11 +443,9 @@ mod tests {
             for lag in k_src..k_dst {
                 for coord in 0..d {
                     for mode in 0..m_dst {
-                        let dst_idx =
-                            out_row * d_h_dst + (lag * d + coord) * m_dst + mode;
+                        let dst_idx = out_row * d_h_dst + (lag * d + coord) * m_dst + mode;
                         assert_eq!(
-                            dst_wout_lod1[dst_idx],
-                            0.0,
+                            dst_wout_lod1[dst_idx], 0.0,
                             "up-tier LOD0→LOD1 new-lag column not zero",
                         );
                     }
@@ -476,8 +467,7 @@ mod tests {
             &mut dst_wout_lod0,
             KarcLodTier::Lod0,
         );
-        let mut roundtrip_wout_lod1 =
-            vec![0.0f32; KarcLodTier::Lod1.d() * KarcLodTier::Lod1.d_h()];
+        let mut roundtrip_wout_lod1 = vec![0.0f32; KarcLodTier::Lod1.d() * KarcLodTier::Lod1.d_h()];
         project_wout_lod_into(
             &dst_wout_lod0,
             KarcLodTier::Lod0,
@@ -512,9 +502,18 @@ mod tests {
         assert!(is_identity_projection(KarcLodTier::Lod0, KarcLodTier::Lod0));
         assert!(is_identity_projection(KarcLodTier::Lod1, KarcLodTier::Lod1));
         assert!(is_identity_projection(KarcLodTier::Lod2, KarcLodTier::Lod2));
-        assert!(!is_identity_projection(KarcLodTier::Lod0, KarcLodTier::Lod1));
-        assert!(!is_identity_projection(KarcLodTier::Lod1, KarcLodTier::Lod2));
-        assert!(!is_identity_projection(KarcLodTier::Lod0, KarcLodTier::Lod2));
+        assert!(!is_identity_projection(
+            KarcLodTier::Lod0,
+            KarcLodTier::Lod1
+        ));
+        assert!(!is_identity_projection(
+            KarcLodTier::Lod1,
+            KarcLodTier::Lod2
+        ));
+        assert!(!is_identity_projection(
+            KarcLodTier::Lod0,
+            KarcLodTier::Lod2
+        ));
     }
 
     #[test]
@@ -541,10 +540,8 @@ mod tests {
             for lag in 0..k_dst {
                 for coord in 0..d {
                     for mode in 0..m_dst {
-                        let src_idx =
-                            out_row * d_h_src + (lag * d + coord) * m_src + mode;
-                        let dst_idx =
-                            out_row * d_h_dst + (lag * d + coord) * m_dst + mode;
+                        let src_idx = out_row * d_h_src + (lag * d + coord) * m_src + mode;
+                        let dst_idx = out_row * d_h_dst + (lag * d + coord) * m_dst + mode;
                         assert_eq!(
                             src_wout_lod2[src_idx].to_bits(),
                             dst_wout_lod0[dst_idx].to_bits(),
@@ -596,9 +593,7 @@ mod tests {
         }
         let elapsed = start.elapsed();
         let per_call = elapsed.as_nanos() / n_calls as u128;
-        eprintln!(
-            "project_wout_lod_into Lod0→Lod2 (64→512 cols × D=8): {per_call} ns/call",
-        );
+        eprintln!("project_wout_lod_into Lod0→Lod2 (64→512 cols × D=8): {per_call} ns/call",);
         assert!(
             per_call < 10_000,
             "G2 FAIL: project_wout_lod_into took {per_call} ns/call, target ≤ 10_000 ns (10 µs)",

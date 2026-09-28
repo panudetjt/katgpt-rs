@@ -198,9 +198,9 @@ struct BenchResult {
 
 fn bench_size(size: usize) -> BenchResult {
     const ITERS: usize = 2_000_000;
-const WARMUP: usize = 50_000;
+    const WARMUP: usize = 50_000;
 
-let a_f32: Vec<f32> = (0..size)
+    let a_f32: Vec<f32> = (0..size)
         .map(|i| (i as f32).sin() * 1.7 + (i as f32 * 0.3).cos() * 0.8)
         .collect();
     let b_f32: Vec<f32> = (0..size)
@@ -228,7 +228,11 @@ let a_f32: Vec<f32> = (0..size)
     }
     let start = Instant::now();
     for _ in 0..ITERS {
-        sink = black_box(dot_f32(black_box(&a_f32), black_box(&b_f32), black_box(size)));
+        sink = black_box(dot_f32(
+            black_box(&a_f32),
+            black_box(&b_f32),
+            black_box(size),
+        ));
     }
     let f32_ns = start.elapsed().as_nanos() as f64 / ITERS as f64;
 
@@ -239,7 +243,11 @@ let a_f32: Vec<f32> = (0..size)
     }
     let start = Instant::now();
     for _ in 0..ITERS {
-        sink_i = black_box(dot_i8_scalar(black_box(&a_i8), black_box(&b_i8), black_box(size)));
+        sink_i = black_box(dot_i8_scalar(
+            black_box(&a_i8),
+            black_box(&b_i8),
+            black_box(size),
+        ));
     }
     let i8_scalar_ns = start.elapsed().as_nanos() as f64 / ITERS as f64;
 
@@ -294,7 +302,11 @@ let a_f32: Vec<f32> = (0..size)
     for _ in 0..ITERS {
         let s1 = quantize_f32_to_i8(black_box(&a_f32), black_box(&mut scratch_a));
         let s2 = quantize_f32_to_i8(black_box(&b_f32), black_box(&mut scratch_b));
-        sink_i = black_box(dot_i8_scalar(black_box(&scratch_a), black_box(&scratch_b), black_box(size)));
+        sink_i = black_box(dot_i8_scalar(
+            black_box(&scratch_a),
+            black_box(&scratch_b),
+            black_box(size),
+        ));
         let _ = (s1, s2);
     }
     let full_path_ns = start.elapsed().as_nanos() as f64 / ITERS as f64;
@@ -319,9 +331,7 @@ let a_f32: Vec<f32> = (0..size)
             w
         })
         .collect();
-    let _weight_scales: Vec<f32> = (0..OUT_CH)
-        .map(|oc| 0.01 + oc as f32 * 0.001)
-        .collect();
+    let _weight_scales: Vec<f32> = (0..OUT_CH).map(|oc| 0.01 + oc as f32 * 0.001).collect();
 
     // f32 amortized baseline: OUT_CH f32 dots (no quantization)
     let weight_rows_f32: Vec<Vec<f32>> = (0..OUT_CH)
@@ -375,12 +385,20 @@ let a_f32: Vec<f32> = (0..size)
                         neon::dot_i8_sdot(black_box(&scratch_a), black_box(wrow), black_box(size))
                     });
                 } else {
-                    sink_i = black_box(dot_i8_scalar(black_box(&scratch_a), black_box(wrow), black_box(size)));
+                    sink_i = black_box(dot_i8_scalar(
+                        black_box(&scratch_a),
+                        black_box(wrow),
+                        black_box(size),
+                    ));
                 }
             }
             #[cfg(not(target_arch = "aarch64"))]
             {
-                sink_i = black_box(dot_i8_scalar(black_box(&scratch_a), black_box(wrow), black_box(size)));
+                sink_i = black_box(dot_i8_scalar(
+                    black_box(&scratch_a),
+                    black_box(wrow),
+                    black_box(size),
+                ));
             }
             let _ = act_scale;
         }
@@ -410,7 +428,10 @@ fn main() {
     #[cfg(target_arch = "aarch64")]
     {
         let has_dp = neon::has_dotprod();
-        println!("Arch: aarch64 (NEON ✓, dotprod={}, target-cpu=native)", if has_dp { "✓" } else { "✗" });
+        println!(
+            "Arch: aarch64 (NEON ✓, dotprod={}, target-cpu=native)",
+            if has_dp { "✓" } else { "✗" }
+        );
     }
     #[cfg(not(target_arch = "aarch64"))]
     {
@@ -418,10 +439,18 @@ fn main() {
     }
     println!();
 
-    println!("┌──────┬─────────┬──────────┬──────────┬──────────┬───────────────────────┬────────┐");
-    println!("│ size │ f32 ns  │ i8scal   │ i8sdot   │ fullpath │ amortized (32 OC)     │ relerr │");
-    println!("│      │ per dot │ per dot  │ per dot  │ per dot  │ f32 ns   i8 ns   sdup │        │");
-    println!("├──────┼─────────┼──────────┼──────────┼──────────┼───────────────────────┼────────┤");
+    println!(
+        "┌──────┬─────────┬──────────┬──────────┬──────────┬───────────────────────┬────────┐"
+    );
+    println!(
+        "│ size │ f32 ns  │ i8scal   │ i8sdot   │ fullpath │ amortized (32 OC)     │ relerr │"
+    );
+    println!(
+        "│      │ per dot │ per dot  │ per dot  │ per dot  │ f32 ns   i8 ns   sdup │        │"
+    );
+    println!(
+        "├──────┼─────────┼──────────┼──────────┼──────────┼───────────────────────┼────────┤"
+    );
 
     let mut dot_passes = 0;
     let mut full_passes = 0;
@@ -440,7 +469,11 @@ fn main() {
             best
         };
 
-        let dot_speedup = if best_i8 > 0.0 { r.f32_ns / best_i8 } else { 0.0 };
+        let dot_speedup = if best_i8 > 0.0 {
+            r.f32_ns / best_i8
+        } else {
+            0.0
+        };
         let full_speedup = r.f32_ns / r.full_path_ns;
 
         if dot_speedup >= 2.0 {
@@ -458,23 +491,54 @@ fn main() {
             full_passes += 1;
         }
 
-        let vmull_s = if r.i8_vmull_ns > 0.0 { format!("{:.1}", r.i8_vmull_ns) } else { "—".into() };
-        let sdot_s = if r.i8_sdot_ns > 0.0 { format!("{:.1}", r.i8_sdot_ns) } else { "—".into() };
+        let vmull_s = if r.i8_vmull_ns > 0.0 {
+            format!("{:.1}", r.i8_vmull_ns)
+        } else {
+            "—".into()
+        };
+        let sdot_s = if r.i8_sdot_ns > 0.0 {
+            format!("{:.1}", r.i8_sdot_ns)
+        } else {
+            "—".into()
+        };
         let _ = vmull_s;
 
         println!(
             "│ {:>4} │ {:>7.1} │ {:>8.1} │ {:>8} │ {:>8.1} │ {:>7.0} {:>7.0} {:>5.2}×│ {:>5.2}% │",
-            size, r.f32_ns, r.i8_scalar_ns, sdot_s, r.full_path_ns,
-            r.f32_amortized_ns, r.amortized_ns, amort_speedup, r.rel_err
+            size,
+            r.f32_ns,
+            r.i8_scalar_ns,
+            sdot_s,
+            r.full_path_ns,
+            r.f32_amortized_ns,
+            r.amortized_ns,
+            amort_speedup,
+            r.rel_err
         );
     }
 
-    println!("└──────┴─────────┴──────────┴──────────┴──────────┴───────────────────────┴────────┘");
+    println!(
+        "└──────┴─────────┴──────────┴──────────┴──────────┴───────────────────────┴────────┘"
+    );
     println!();
 
     println!("═══ Decision Gate ═══");
-    println!("  T1 (dot-only ≥2.0× at any size):           {}", if dot_passes > 0 { format!("✅ PASS ({}/{})", dot_passes, SIZES.len()) } else { "❌ FAIL".to_string() });
-    println!("  T2 (amortized conv ≥1.5× at any size):     {}", if full_passes > 0 { format!("✅ PASS ({}/{})", full_passes, SIZES.len()) } else { "❌ FAIL".to_string() });
+    println!(
+        "  T1 (dot-only ≥2.0× at any size):           {}",
+        if dot_passes > 0 {
+            format!("✅ PASS ({}/{})", dot_passes, SIZES.len())
+        } else {
+            "❌ FAIL".to_string()
+        }
+    );
+    println!(
+        "  T2 (amortized conv ≥1.5× at any size):     {}",
+        if full_passes > 0 {
+            format!("✅ PASS ({}/{})", full_passes, SIZES.len())
+        } else {
+            "❌ FAIL".to_string()
+        }
+    );
     println!();
 
     if dot_passes > 0 && full_passes > 0 {

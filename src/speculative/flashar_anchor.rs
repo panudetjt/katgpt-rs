@@ -157,10 +157,10 @@ mod tests {
     // apples-to-apples. `test_issue811_harness_matches_production` pins the
     // harness walk to byte-identical parity with the production decode.
 
+    use super::ConfidenceAnchorConfig;
     use super::anchor_fill_with_prefilled;
     use super::anchor_then_fill_with;
     use super::select_confidence_anchors;
-    use super::ConfidenceAnchorConfig;
     use crate::dllm::generate_pattern_dataset;
     use katgpt_core::simd::simd_argmax_f32;
     use katgpt_core::softmax_scaled;
@@ -208,7 +208,13 @@ mod tests {
         floor_budget: Option<usize>,
     }
 
-    fn select_anchors(row: &ArmRow, sampled: &[usize], argmax: &[usize], probs: &[f32], mask: usize) -> Vec<usize> {
+    fn select_anchors(
+        row: &ArmRow,
+        sampled: &[usize],
+        argmax: &[usize],
+        probs: &[f32],
+        mask: usize,
+    ) -> Vec<usize> {
         let mut buf = vec![mask; BLOCK];
         match row.stride {
             Some(s) => {
@@ -251,7 +257,8 @@ mod tests {
             block_size: BLOCK,
             ..D2fDecodeConfig::default()
         };
-        let (mut acc_sum, mut step_sum, mut anchor_sum, mut wall_sum) = (0.0f32, 0.0f32, 0.0f32, 0.0f32);
+        let (mut acc_sum, mut step_sum, mut anchor_sum, mut wall_sum) =
+            (0.0f32, 0.0f32, 0.0f32, 0.0f32);
         let mut all_terminated = true;
         let mut trials = 0usize;
         for (si, seq) in test_data.iter().take(N_EVAL_SEQUENCES).enumerate() {
@@ -267,15 +274,29 @@ mod tests {
             let mut argmax = [0usize; BLOCK];
             let mut probs = [0.0f32; BLOCK];
             round1_walk(
-                &mut ctx, &mut cache, weights, config, seq[0], BLOCK,
-                &mut sampled, &mut argmax, &mut probs, &mut rng,
+                &mut ctx,
+                &mut cache,
+                weights,
+                config,
+                seq[0],
+                BLOCK,
+                &mut sampled,
+                &mut argmax,
+                &mut probs,
+                &mut rng,
             );
             let anchors = select_anchors(row, &sampled, &argmax, &probs, mask);
             let n_anchors = anchors.iter().filter(|&&t| t != mask).count();
 
             let t0 = std::time::Instant::now();
             let result = anchor_fill_with_prefilled(
-                &mut dctx, weights, config, &decode_config, &anchors, &mut rng, row.floor_budget,
+                &mut dctx,
+                weights,
+                config,
+                &decode_config,
+                &anchors,
+                &mut rng,
+                row.floor_budget,
             );
             wall_sum += t0.elapsed().as_secs_f32() * 1e6;
 
@@ -383,11 +404,24 @@ mod tests {
         let mut cache = MultiLayerKVCache::new(&config);
         let mut dctx_prod = D2fContext::new(&config);
         let prod = anchor_then_fill(
-            &mut ctx, &mut cache, &mut dctx_prod, &weights, &config, &decode_config,
-            &AnchorConfig::with_stride(2), seq[0], 0, &mut rng_prod,
+            &mut ctx,
+            &mut cache,
+            &mut dctx_prod,
+            &weights,
+            &config,
+            &decode_config,
+            &AnchorConfig::with_stride(2),
+            seq[0],
+            0,
+            &mut rng_prod,
         );
 
-        let row = ArmRow { label: "parity", stride: Some(2), kappa: 0.7, floor_budget: None };
+        let row = ArmRow {
+            label: "parity",
+            stride: Some(2),
+            kappa: 0.7,
+            floor_budget: None,
+        };
         let mut rng = Rng::new(9_000);
         let mut ctx2 = ForwardContext::new(&config);
         let mut cache2 = MultiLayerKVCache::new(&config);
@@ -395,13 +429,33 @@ mod tests {
         let mut sampled = [0usize; BLOCK];
         let mut argmax = [0usize; BLOCK];
         let mut probs = [0.0f32; BLOCK];
-        round1_walk(&mut ctx2, &mut cache2, &weights, &config, seq[0], BLOCK, &mut sampled, &mut argmax, &mut probs, &mut rng);
+        round1_walk(
+            &mut ctx2,
+            &mut cache2,
+            &weights,
+            &config,
+            seq[0],
+            BLOCK,
+            &mut sampled,
+            &mut argmax,
+            &mut probs,
+            &mut rng,
+        );
         let anchors = select_anchors(&row, &sampled, &argmax, &probs, config.mask_token);
         let mine = anchor_fill_with_prefilled(
-            &mut dctx, &weights, &config, &decode_config, &anchors, &mut rng, None,
+            &mut dctx,
+            &weights,
+            &config,
+            &decode_config,
+            &anchors,
+            &mut rng,
+            None,
         );
 
-        assert_eq!(prod.tokens, mine.tokens, "harness stride arm must equal production");
+        assert_eq!(
+            prod.tokens, mine.tokens,
+            "harness stride arm must equal production"
+        );
     }
 
     #[test]
@@ -430,8 +484,16 @@ mod tests {
             let mut cache = MultiLayerKVCache::new(&config);
             let mut dctx_entry = D2fContext::new(&config);
             let entry = anchor_then_fill_with(
-                &mut ctx, &mut cache, &mut dctx_entry, &weights, &config, &decode_config,
-                &ccfg, seq[0], 0, &mut rng_entry,
+                &mut ctx,
+                &mut cache,
+                &mut dctx_entry,
+                &weights,
+                &config,
+                &decode_config,
+                &ccfg,
+                seq[0],
+                0,
+                &mut rng_entry,
             );
 
             // PoC harness arm (walk + selector + fill seam).
@@ -442,14 +504,33 @@ mod tests {
             let mut sampled = [0usize; BLOCK];
             let mut argmax = [0usize; BLOCK];
             let mut probs = [0.0f32; BLOCK];
-            round1_walk(&mut ctx2, &mut cache2, &weights, &config, seq[0], BLOCK, &mut sampled, &mut argmax, &mut probs, &mut rng);
-            let (anchors, n_anchors) =
-                select_confidence_anchors(&argmax, &probs, mask, ccfg.kappa);
+            round1_walk(
+                &mut ctx2,
+                &mut cache2,
+                &weights,
+                &config,
+                seq[0],
+                BLOCK,
+                &mut sampled,
+                &mut argmax,
+                &mut probs,
+                &mut rng,
+            );
+            let (anchors, n_anchors) = select_confidence_anchors(&argmax, &probs, mask, ccfg.kappa);
             let mine = anchor_fill_with_prefilled(
-                &mut dctx, &weights, &config, &decode_config, &anchors, &mut rng, Some(8),
+                &mut dctx,
+                &weights,
+                &config,
+                &decode_config,
+                &anchors,
+                &mut rng,
+                Some(8),
             );
 
-            assert_eq!(entry.tokens, mine.tokens, "entry vs PoC arm diverged at seq {si}");
+            assert_eq!(
+                entry.tokens, mine.tokens,
+                "entry vs PoC arm diverged at seq {si}"
+            );
             assert_eq!(entry.n_anchors, n_anchors);
             assert_eq!(entry.fill_steps_used, mine.steps_used);
         }
@@ -459,8 +540,12 @@ mod tests {
     fn test_issue811_arm_table() {
         let (config, weights) = make_trained_weights();
         let mut train_rng = Rng::new(777);
-        let test_data =
-            generate_pattern_dataset(&mut train_rng, N_EVAL_SEQUENCES, config.block_size, config.vocab_size - 1);
+        let test_data = generate_pattern_dataset(
+            &mut train_rng,
+            N_EVAL_SEQUENCES,
+            config.block_size,
+            config.vocab_size - 1,
+        );
         let budgets = [1usize, 2, 4, 8];
         let mut rows = build_rows();
         println!(
@@ -477,12 +562,21 @@ mod tests {
                     row.floor_budget = Some(budget);
                 }
                 let out = run_row(row, &config, &weights, &test_data, budget);
-                assert!(out.all_terminated || !row.label.contains("DBTM"),
-                    "DBTM arm must terminate within budget: {} k={}", row.label, budget);
+                assert!(
+                    out.all_terminated || !row.label.contains("DBTM"),
+                    "DBTM arm must terminate within budget: {} k={}",
+                    row.label,
+                    budget
+                );
                 println!(
                     "{:<32} {:>6.2} {:>8} {:>7.3} {:>8.2} {:>7.2} {:>9.1}",
-                    row.label, row.kappa, budget, out.accuracy,
-                    out.mean_fill_steps, out.mean_anchors, out.mean_wall_us
+                    row.label,
+                    row.kappa,
+                    budget,
+                    out.accuracy,
+                    out.mean_fill_steps,
+                    out.mean_anchors,
+                    out.mean_wall_us
                 );
             }
         }
@@ -515,11 +609,33 @@ mod tests {
                     let mut sampled = [0usize; BLOCK];
                     let mut argmax = [0usize; BLOCK];
                     let mut probs = [0.0f32; BLOCK];
-                    round1_walk(&mut ctx, &mut cache, &weights, &config, seq[0], BLOCK, &mut sampled, &mut argmax, &mut probs, &mut rng);
-                    let row = ArmRow { label: "term", stride: None, kappa, floor_budget: Some(budget) };
+                    round1_walk(
+                        &mut ctx,
+                        &mut cache,
+                        &weights,
+                        &config,
+                        seq[0],
+                        BLOCK,
+                        &mut sampled,
+                        &mut argmax,
+                        &mut probs,
+                        &mut rng,
+                    );
+                    let row = ArmRow {
+                        label: "term",
+                        stride: None,
+                        kappa,
+                        floor_budget: Some(budget),
+                    };
                     let anchors = select_anchors(&row, &sampled, &argmax, &probs, mask);
                     let result = anchor_fill_with_prefilled(
-                        &mut dctx, &weights, &config, &decode_config, &anchors, &mut rng, Some(budget),
+                        &mut dctx,
+                        &weights,
+                        &config,
+                        &decode_config,
+                        &anchors,
+                        &mut rng,
+                        Some(budget),
                     );
                     assert!(
                         result.tokens.iter().all(|&t| t != mask),

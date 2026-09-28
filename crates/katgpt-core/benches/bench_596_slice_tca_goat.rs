@@ -36,9 +36,9 @@
 #![cfg(feature = "slice_tca")]
 
 use katgpt_core::slice_tca::{
+    ENERGY_FLOOR_TAU, SliceClass, SliceDecomposition, SliceTcaConfig, SliceTcaScratch, Tensor3,
     covariability_shares_into, fit_single_class_into, fit_slice_into, fit_with_ranks_into,
-    route_default, SliceClass, SliceDecomposition, SliceTcaConfig, SliceTcaScratch, Tensor3,
-    ENERGY_FLOOR_TAU,
+    route_default,
 };
 use std::time::Instant;
 
@@ -139,12 +139,7 @@ fn add_noise(x: &mut Tensor3, ratio: f32, rng: &mut Rng) {
     }
 }
 
-fn fixture(
-    shape: [usize; 3],
-    plants: &[(SliceClass, usize)],
-    noise: f32,
-    seed: u64,
-) -> Tensor3 {
+fn fixture(shape: [usize; 3], plants: &[(SliceClass, usize)], noise: f32, seed: u64) -> Tensor3 {
     let mut x = Tensor3::zeros(shape);
     let mut rng = Rng::new(seed);
     for &(class, count) in plants {
@@ -166,11 +161,7 @@ fn rel_loss(x: &Tensor3, d: &SliceDecomposition) -> f32 {
         num += e * e;
         den += a * a;
     }
-    if den < 1e-12 {
-        0.0
-    } else {
-        num / den
-    }
+    if den < 1e-12 { 0.0 } else { num / den }
 }
 
 // ─── G1: class recovery + naive floors ──────────────────────────────────────
@@ -185,7 +176,12 @@ fn g1_class_recovery_and_floors() -> bool {
     let mut total = 0usize;
     for &class in &SliceClass::ALL {
         for (ni, &noise) in noises.iter().enumerate() {
-            let x = fixture(shape, &[(class, 2)], noise, 100 + class.axis() as u64 * 10 + ni as u64);
+            let x = fixture(
+                shape,
+                &[(class, 2)],
+                noise,
+                100 + class.axis() as u64 * 10 + ni as u64,
+            );
             let mut scratch = SliceTcaScratch::with_capacity(shape);
             let shares = covariability_shares_into(&x.data, shape, 2, &mut scratch);
             let routes = route_default(shares);
@@ -195,7 +191,10 @@ fn g1_class_recovery_and_floors() -> bool {
             correct += usize::from(pass);
             println!(
                 "  G1a pure {class:?} noise={noise:.2}: shares=[{:.3},{:.3},{:.3}] routed={routed:?} → {}",
-                shares[0], shares[1], shares[2], pass_str(pass)
+                shares[0],
+                shares[1],
+                shares[2],
+                pass_str(pass)
             );
         }
     }
@@ -210,7 +209,12 @@ fn g1_class_recovery_and_floors() -> bool {
 
     // (b) Two-class mixture on the G2 gate shape: joint fit vs BOTH floors.
     let shape = [64usize, 128, 32];
-    let x = fixture(shape, &[(SliceClass::Entity, 2), (SliceClass::Time, 2)], 0.05, 7);
+    let x = fixture(
+        shape,
+        &[(SliceClass::Entity, 2), (SliceClass::Time, 2)],
+        0.05,
+        7,
+    );
     let cfg = SliceTcaConfig::default();
     let mut scratch = SliceTcaScratch::with_capacity(shape);
     let mut joint = SliceDecomposition::empty(shape);
@@ -223,7 +227,10 @@ fn g1_class_recovery_and_floors() -> bool {
     };
     let routed: Vec<usize> = (0..3).filter(|&a| routes[a] > 0.5).collect();
     let split_ok = routed == vec![0, 1];
-    println!("  G1b mixture routed classes: {routed:?} (expect [0, 1]) → {}", pass_str(split_ok));
+    println!(
+        "  G1b mixture routed classes: {routed:?} (expect [0, 1]) → {}",
+        pass_str(split_ok)
+    );
     ok &= split_ok;
 
     let budget: usize = joint.ranks.iter().sum();
@@ -234,14 +241,32 @@ fn g1_class_recovery_and_floors() -> bool {
         .max_by(|&a, &b| scratch.spectra()[a][0].total_cmp(&scratch.spectra()[b][0]))
         .unwrap();
     let mut floor1_d = SliceDecomposition::empty(shape);
-    fit_single_class_into(&x.data, shape, majority, budget, ENERGY_FLOOR_TAU, &mut scratch, &mut floor1_d).unwrap();
+    fit_single_class_into(
+        &x.data,
+        shape,
+        majority,
+        budget,
+        ENERGY_FLOOR_TAU,
+        &mut scratch,
+        &mut floor1_d,
+    )
+    .unwrap();
     let floor1 = rel_loss(&x, &floor1_d);
 
     // Floor 2: best per-unfolding single-SVD fit at the same budget.
     let mut floor2 = f32::INFINITY;
     for axis in 0..3 {
         let mut d = SliceDecomposition::empty(shape);
-        fit_single_class_into(&x.data, shape, axis, budget, ENERGY_FLOOR_TAU, &mut scratch, &mut d).unwrap();
+        fit_single_class_into(
+            &x.data,
+            shape,
+            axis,
+            budget,
+            ENERGY_FLOOR_TAU,
+            &mut scratch,
+            &mut d,
+        )
+        .unwrap();
         floor2 = floor2.min(rel_loss(&x, &d));
     }
 
@@ -249,18 +274,28 @@ fn g1_class_recovery_and_floors() -> bool {
     let beats2 = joint_loss < floor2;
     println!(
         "  G1b joint={joint_loss:.4} vs floor1(majority@{budget})={floor1:.4} → {} ; vs floor2(best-unfolding@{budget})={floor2:.4} → {}",
-        pass_str(beats1), pass_str(beats2)
+        pass_str(beats1),
+        pass_str(beats2)
     );
     ok &= beats1 && beats2;
 
     // (c) Noise sweep table on the mixture (reported; no gate beyond (b)).
     print!("  G1c noise sweep (mixture [64,128,32]): ");
     for &noise in &[0.0f32, 0.05, 0.1, 0.2] {
-        let x = fixture(shape, &[(SliceClass::Entity, 2), (SliceClass::Time, 2)], noise, 7);
+        let x = fixture(
+            shape,
+            &[(SliceClass::Entity, 2), (SliceClass::Time, 2)],
+            noise,
+            7,
+        );
         let mut scratch = SliceTcaScratch::with_capacity(shape);
         let mut d = SliceDecomposition::empty(shape);
         fit_slice_into(&x.data, shape, &cfg, &mut scratch, &mut d).unwrap();
-        print!("noise={noise:.2} loss={:.4} ranks={:?} | ", rel_loss(&x, &d), d.ranks);
+        print!(
+            "noise={noise:.2} loss={:.4} ranks={:?} | ",
+            rel_loss(&x, &d),
+            d.ranks
+        );
     }
     println!();
 
@@ -276,16 +311,19 @@ fn pass_str_out(ok: bool) -> bool {
 
 fn g2_als_vs_svd_and_latency() -> bool {
     let shape = [64usize, 128, 32];
-    let x = fixture(shape, &[(SliceClass::Entity, 2), (SliceClass::Time, 2)], 0.05, 7);
+    let x = fixture(
+        shape,
+        &[(SliceClass::Entity, 2), (SliceClass::Time, 2)],
+        0.05,
+        7,
+    );
     let cfg = SliceTcaConfig::default();
     let mut scratch = SliceTcaScratch::with_capacity(shape);
     let mut d = SliceDecomposition::empty(shape);
     fit_with_ranks_into(&x.data, shape, [2, 2, 0], &cfg, &mut scratch, &mut d).unwrap();
 
     let losses = scratch.last_sweep_losses().to_vec();
-    let mono = losses
-        .windows(2)
-        .all(|w| w[1] <= w[0] + 1e-5);
+    let mono = losses.windows(2).all(|w| w[1] <= w[0] + 1e-5);
     let als_gain = *losses.last().unwrap() <= losses[0] + 1e-6;
     println!(
         "  G2a ALS monotone: {} (losses {:?}) ; final ≤ init: {}",
@@ -308,7 +346,7 @@ fn g2_als_vs_svd_and_latency() -> bool {
             let _ = covariability_shares_into(&x.data, shape, cfg.share_rank, &mut scratch);
         }
         println!(
-    "  G2b phases: shares mean {:.2} ms",
+            "  G2b phases: shares mean {:.2} ms",
             t0.elapsed().as_secs_f64() * 1e3 / n as f64
         );
         let t0 = Instant::now();
@@ -316,7 +354,7 @@ fn g2_als_vs_svd_and_latency() -> bool {
             fit_with_ranks_into(&x.data, shape, [2, 2, 0], &cfg, &mut scratch, &mut d).unwrap();
         }
         println!(
-    "  G2b phases: fit_with_ranks(als=8) mean {:.2} ms",
+            "  G2b phases: fit_with_ranks(als=8) mean {:.2} ms",
             t0.elapsed().as_secs_f64() * 1e3 / n as f64
         );
     }
@@ -390,7 +428,12 @@ fn g2_als_vs_svd_and_latency() -> bool {
 
 fn g3_determinism_and_invariance() -> bool {
     let shape = [48usize, 48, 48];
-    let x = fixture(shape, &[(SliceClass::Entity, 2), (SliceClass::Time, 2)], 0.05, 77);
+    let x = fixture(
+        shape,
+        &[(SliceClass::Entity, 2), (SliceClass::Time, 2)],
+        0.05,
+        77,
+    );
     let cfg = SliceTcaConfig::default();
 
     let mut warm = SliceTcaScratch::with_capacity(shape);
@@ -424,7 +467,8 @@ fn g3_determinism_and_invariance() -> bool {
     let rebuild_ok = d.canonical_hash() == reference;
     println!(
         "  G3a BLAKE3 determinism: 16 calls {} ; rebuild {}",
-        pass_str(det_ok), pass_str(rebuild_ok)
+        pass_str(det_ok),
+        pass_str(rebuild_ok)
     );
 
     // G3b: class-pass canonical invariance (same rank-1 tensor via two classes).
@@ -435,7 +479,10 @@ fn g3_determinism_and_invariance() -> bool {
     let w = rng.unit_vec(small[2]);
     let amp = 3.0f32;
     let mut d1 = SliceDecomposition::empty(small);
-    let m1: Vec<f32> = v.iter().flat_map(|&vv| w.iter().map(move |&ww| vv * ww)).collect();
+    let m1: Vec<f32> = v
+        .iter()
+        .flat_map(|&vv| w.iter().map(move |&ww| vv * ww))
+        .collect();
     d1.push_component(
         SliceClass::Entity,
         &u.iter().map(|&x| amp * x).collect::<Vec<_>>(),
@@ -446,7 +493,10 @@ fn g3_determinism_and_invariance() -> bool {
     )
     .unwrap();
     let mut d2 = SliceDecomposition::empty(small);
-    let m2: Vec<f32> = u.iter().flat_map(|&uu| w.iter().map(move |&ww| uu * ww)).collect();
+    let m2: Vec<f32> = u
+        .iter()
+        .flat_map(|&uu| w.iter().map(move |&ww| uu * ww))
+        .collect();
     d2.push_component(
         SliceClass::Time,
         &v.iter().map(|&x| amp * x).collect::<Vec<_>>(),
@@ -472,17 +522,15 @@ fn g3_determinism_and_invariance() -> bool {
     let inv_ok = weights_eq && max_diff < 1e-5;
     println!(
         "  G3b class-pass invariance: weights {} recon diff {max_diff:.2e} → {}",
-        pass_str(weights_eq), pass_str(inv_ok)
+        pass_str(weights_eq),
+        pass_str(inv_ok)
     );
 
     // G3c: sign/order canonicality on a fitted decomposition.
     let mut scratch = SliceTcaScratch::with_capacity(shape);
     let mut d = SliceDecomposition::empty(shape);
     fit_slice_into(&x.data, shape, &cfg, &mut scratch, &mut d).unwrap();
-    let order_ok = d
-        .weights()
-        .windows(2)
-        .all(|w| w[0] >= w[1]);
+    let order_ok = d.weights().windows(2).all(|w| w[0] >= w[1]);
     let sign_ok = (0..d.n_components).all(|i| {
         let l = d.loading(i);
         let mut best = 0.0f32;
@@ -497,7 +545,8 @@ fn g3_determinism_and_invariance() -> bool {
     });
     println!(
         "  G3c canonical order {} / sign {}",
-        pass_str(order_ok), pass_str(sign_ok)
+        pass_str(order_ok),
+        pass_str(sign_ok)
     );
 
     let ok = det_ok && rebuild_ok && inv_ok && order_ok && sign_ok;
@@ -510,7 +559,12 @@ fn g3_determinism_and_invariance() -> bool {
 fn g4_alloc_free() -> bool {
     assert_counter_is_live();
     let shape = [48usize, 48, 48];
-    let x = fixture(shape, &[(SliceClass::Entity, 2), (SliceClass::Time, 2)], 0.05, 7);
+    let x = fixture(
+        shape,
+        &[(SliceClass::Entity, 2), (SliceClass::Time, 2)],
+        0.05,
+        7,
+    );
     let cfg = SliceTcaConfig::default();
     let mut scratch = SliceTcaScratch::with_capacity(shape);
     let mut d = SliceDecomposition::empty(shape);
@@ -561,10 +615,15 @@ fn main() {
     println!();
     println!(
         "Verdict: G1={} G2={} G3={} G4={}",
-        pass_str(g1), pass_str(g2), pass_str(g3), pass_str(g4)
+        pass_str(g1),
+        pass_str(g2),
+        pass_str(g3),
+        pass_str(g4)
     );
     if g1 && g2 && g3 && g4 {
-        println!("ALL GATES PASS — primitive is GOAT-validated (opt-in; promotion is the coordinator's call).");
+        println!(
+            "ALL GATES PASS — primitive is GOAT-validated (opt-in; promotion is the coordinator's call)."
+        );
     } else {
         println!("ONE OR MORE GATES FAILED — see the measured numbers above.");
         std::process::exit(1);

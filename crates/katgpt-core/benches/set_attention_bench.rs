@@ -287,15 +287,9 @@ fn main() {
     );
     if g3_pass && g4_pass {
         println!("   → Plan 354 Phase 2 perf gates PASS.");
-        println!(
-            "   → set_attention was PROMOTED TO DEFAULT-ON 2026-07-01"
-        );
-        println!(
-            "     (Plan 354 Phase 2 + Plan 355 G6/G7/G9 ALL PASS, katgpt-core/Cargo.toml)."
-        );
-        println!(
-            "     This bench was part of the gate evidence; promotion has already landed."
-        );
+        println!("   → set_attention was PROMOTED TO DEFAULT-ON 2026-07-01");
+        println!("     (Plan 354 Phase 2 + Plan 355 G6/G7/G9 ALL PASS, katgpt-core/Cargo.toml).");
+        println!("     This bench was part of the gate evidence; promotion has already landed.");
     } else {
         println!("   → One or more perf gates FAILED — note: set_attention was previously");
         println!("     promoted 2026-07-01; a regression here would warrant re-audit.");

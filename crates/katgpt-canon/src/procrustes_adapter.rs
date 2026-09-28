@@ -177,38 +177,38 @@ impl ModelAdapter for ProcrustesAdapter {
 /// pattern breaks the loop-carried dependency that blocks a naive
 /// `for k in 0..d { s += a[k] * b[k]; }` from vectorizing.
 ///
-    /// # Performance
-    /// At d=2304 (Gemma2-2B hidden dim), the naive `.zip()` form ran at
-    /// ~scalar speed (3.9ms). The original 8-wide accumulator pattern was added
-    /// to break the fadd dependency chain, but was empirically refuted on Apple
-    /// Silicon M3 Max (2026-07-29): the 8-accumulator unroll ran 1.26× SLOWER
-    /// than a simple auto-vectorizable `for` loop (LLVM emits better NEON
-    /// `fmla` from the simple loop than from the manual unroll). The kernel was
-    /// simplified to trust the compiler.
-    ///
-    /// # DRY note
-    /// This mirrors `dot_8wide` in `katgpt-attn-match/src/score_matrix_simd.rs`
-    /// (Plan 271). The function is small enough (10 lines, no deps) that a
-    /// cross-crate dep on katgpt-attn-match would pull in attention machinery
-    /// unnecessarily. If a third crate needs this pattern, move it to
-    /// katgpt-core's math utilities + have all three depend on that.
-    ///
-    /// # Panics
-    /// Caller guarantees `a.len() == b.len() == d`.
-    #[inline]
-    fn dot_8wide(a: &[f32], b: &[f32], d: usize) -> f32 {
-        debug_assert_eq!(a.len(), d);
-        debug_assert_eq!(b.len(), d);
+/// # Performance
+/// At d=2304 (Gemma2-2B hidden dim), the naive `.zip()` form ran at
+/// ~scalar speed (3.9ms). The original 8-wide accumulator pattern was added
+/// to break the fadd dependency chain, but was empirically refuted on Apple
+/// Silicon M3 Max (2026-07-29): the 8-accumulator unroll ran 1.26× SLOWER
+/// than a simple auto-vectorizable `for` loop (LLVM emits better NEON
+/// `fmla` from the simple loop than from the manual unroll). The kernel was
+/// simplified to trust the compiler.
+///
+/// # DRY note
+/// This mirrors `dot_8wide` in `katgpt-attn-match/src/score_matrix_simd.rs`
+/// (Plan 271). The function is small enough (10 lines, no deps) that a
+/// cross-crate dep on katgpt-attn-match would pull in attention machinery
+/// unnecessarily. If a third crate needs this pattern, move it to
+/// katgpt-core's math utilities + have all three depend on that.
+///
+/// # Panics
+/// Caller guarantees `a.len() == b.len() == d`.
+#[inline]
+fn dot_8wide(a: &[f32], b: &[f32], d: usize) -> f32 {
+    debug_assert_eq!(a.len(), d);
+    debug_assert_eq!(b.len(), d);
 
-        // Simple loop — LLVM auto-vectorizes to optimal SIMD FMA. The 8-accumulator
-        // manual unroll was empirically slower (see module doc); the simple loop
-        // lets LLVM emit the optimal `fmla` sequence.
-        let mut dot = 0.0f32;
-        for k in 0..d {
-            dot += a[k] * b[k];
-        }
-        dot
+    // Simple loop — LLVM auto-vectorizes to optimal SIMD FMA. The 8-accumulator
+    // manual unroll was empirically slower (see module doc); the simple loop
+    // lets LLVM emit the optimal `fmla` sequence.
+    let mut dot = 0.0f32;
+    for k in 0..d {
+        dot += a[k] * b[k];
     }
+    dot
+}
 
 /// BLAKE3 of an f32 slice (little-endian bytes). Used for adapter state
 /// commitment — two adapters with the same rotation bytes get the same hash.
@@ -289,7 +289,10 @@ mod tests {
         let recovered = a.extract_from(&projected);
         // For orthogonal R, R^T * R * x = x. So extract(project(x)) == x.
         for (got, want) in recovered.iter().zip(d.as_slice().iter()) {
-            assert!((got - want).abs() < 1e-5, "round-trip failed: {got} vs {want}");
+            assert!(
+                (got - want).abs() < 1e-5,
+                "round-trip failed: {got} vs {want}"
+            );
         }
     }
 

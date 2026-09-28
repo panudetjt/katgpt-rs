@@ -23,10 +23,10 @@
 //! G1 determinism (bit-identical double run), G-FPR (held-out benign ≤ 9%),
 //! G-DET (AInject ≥ 80%), G-DISC (BSingle ≤ 10%).
 
+use katgpt_core::engram::{SigmoidFusionConfig, sigmoid_fuse_into};
 use katgpt_core::evidence_tripwire::{
-    conformal_threshold, tripwire_metrics_into, TripwireMetrics, DEFAULT_TIE_EPS,
+    DEFAULT_TIE_EPS, TripwireMetrics, conformal_threshold, tripwire_metrics_into,
 };
-use katgpt_core::engram::{sigmoid_fuse_into, SigmoidFusionConfig};
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -193,7 +193,12 @@ fn filler_source(tp: &Topic, rng: &mut Rng) -> (Vec<f32>, Vec<f32>) {
     orthogonalize(&mut v, &[&tp.u, &tp.w]);
     let n_terms = 3 + rng.below(4);
     let terms: Vec<(usize, f32)> = (0..n_terms)
-        .map(|_| (FILLER_START + rng.below(N_FILLER_TERMS), rng.range(0.5, 1.5)))
+        .map(|_| {
+            (
+                FILLER_START + rng.below(N_FILLER_TERMS),
+                rng.range(0.5, 1.5),
+            )
+        })
         .collect();
     (v, make_lex(terms, false, rng))
 }
@@ -203,7 +208,12 @@ fn poison(tp: &Topic, rng: &mut Rng) -> (Vec<f32>, Vec<f32>) {
     let lat: Vec<f32> = (0..D).map(|j| tp.u[j] + noise[j]).collect();
     let n_terms = 3 + rng.below(4);
     let terms: Vec<(usize, f32)> = (0..n_terms)
-        .map(|_| (FILLER_START + rng.below(N_FILLER_TERMS), rng.range(0.25, 0.6)))
+        .map(|_| {
+            (
+                FILLER_START + rng.below(N_FILLER_TERMS),
+                rng.range(0.25, 0.6),
+            )
+        })
         .collect();
     (lat, make_lex(terms, true, rng))
 }

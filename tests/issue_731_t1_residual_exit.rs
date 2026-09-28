@@ -31,7 +31,9 @@ use katgpt_rs::hla::MultiLayerAhlaCache;
 use katgpt_rs::transformer::{
     ForwardContext, MultiLayerKVCache, TransformerWeights, forward_looped,
 };
-use katgpt_rs::types::{Config, HlaMode, HybridPattern, LoopMode, ResidualGate, Rng, SdpaOutputGate};
+use katgpt_rs::types::{
+    Config, HlaMode, HybridPattern, LoopMode, ResidualGate, Rng, SdpaOutputGate,
+};
 
 /// Loop count of the baseline reference (large enough that an early exit
 /// visibly cuts work).
@@ -89,7 +91,7 @@ fn run(
         elastic,
         #[cfg(feature = "gain_cost_halt")]
         None,
-        None, // Issue 717: deep_run — None = bit-identical baseline
+        None,  // Issue 717: deep_run — None = bit-identical baseline
         probe, // Issue 731 T1: the residual-exit probe (cadence_gate builds)
     );
     logits.to_vec()

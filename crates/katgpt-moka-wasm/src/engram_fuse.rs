@@ -42,8 +42,8 @@
 
 use crate::board::{Board, Cell};
 use katgpt_core::engram::{
-    multi_head_hash, CanonicalId, EngramHash, EngramTable, EngramTableBuilder, HashHead,
-    InMemoryEngramTable, K_MAX,
+    CanonicalId, EngramHash, EngramTable, EngramTableBuilder, HashHead, InMemoryEngramTable, K_MAX,
+    multi_head_hash,
 };
 
 /// Slot row width: `[v̄, n, b]`.
@@ -255,11 +255,7 @@ pub fn keys_for(key: &[u64; 4], heads: &[HashHead; K_MAX]) -> [EngramHash; K_MAX
 impl MinedTable {
     /// Build from entries: sorts by key (determinism), builds the `n_slots`
     /// table writing each row under all K_MAX heads, records the BLAKE3 root.
-    pub fn build(
-        n_slots: usize,
-        heads: [HashHead; K_MAX],
-        mut entries: Vec<MinedEntry>,
-    ) -> Self {
+    pub fn build(n_slots: usize, heads: [HashHead; K_MAX], mut entries: Vec<MinedEntry>) -> Self {
         entries.sort_by_key(|a| a.key);
         let table = build_table_from_entries(n_slots, &heads, &entries);
         let root = table.commitment();
@@ -373,7 +369,10 @@ impl MinedTable {
         let table = build_table_from_entries(n_slots, &heads, &entries);
         let got = table.commitment();
         if got != root {
-            return Err(EngramFuseError::CommitmentMismatch { expected: root, got });
+            return Err(EngramFuseError::CommitmentMismatch {
+                expected: root,
+                got,
+            });
         }
         Ok(Self {
             n_slots,
@@ -385,11 +384,7 @@ impl MinedTable {
 }
 
 /// Cursor-bounded slice take for [`MinedTable::load`].
-fn take<'a>(
-    buf: &'a [u8],
-    cur: &mut usize,
-    n: usize,
-) -> Result<&'a [u8], EngramFuseError> {
+fn take<'a>(buf: &'a [u8], cur: &mut usize, n: usize) -> Result<&'a [u8], EngramFuseError> {
     if *cur + n > buf.len() {
         return Err(EngramFuseError::BadLength {
             expected: *cur + n,
@@ -546,21 +541,38 @@ mod tests {
                 let b = bi as f32 / 20.0;
                 let g = gi as f32 / 20.0;
                 let gamma = sharpen_gamma(b, g);
-                assert!((GAMMA_MIN..=GAMMA_MAX).contains(&gamma), "γ={gamma} at b={b} gate={g}");
+                assert!(
+                    (GAMMA_MIN..=GAMMA_MAX).contains(&gamma),
+                    "γ={gamma} at b={b} gate={g}"
+                );
             }
         }
-        assert_eq!(sharpen_gamma(0.5, 1.0), 1.0, "neutral concentration must be γ=1");
+        assert_eq!(
+            sharpen_gamma(0.5, 1.0),
+            1.0,
+            "neutral concentration must be γ=1"
+        );
     }
 
     #[test]
     fn concentration_extremes() {
         assert_eq!(visit_concentration(&[]), 0.0);
-        assert_eq!(visit_concentration(&[5]), 1.0, "single child = fully concentrated");
+        assert_eq!(
+            visit_concentration(&[5]),
+            1.0,
+            "single child = fully concentrated"
+        );
         assert_eq!(visit_concentration(&[0]), 1.0);
         let flat = visit_concentration(&[10, 10, 10, 10]);
-        assert!(flat < 0.01, "uniform visits should be ~0 concentration, got {flat}");
+        assert!(
+            flat < 0.01,
+            "uniform visits should be ~0 concentration, got {flat}"
+        );
         let peaked = visit_concentration(&[100, 1, 1, 1]);
-        assert!(peaked > 0.8, "peaked visits should be high concentration, got {peaked}");
+        assert!(
+            peaked > 0.8,
+            "peaked visits should be high concentration, got {peaked}"
+        );
     }
 
     #[test]
@@ -574,7 +586,11 @@ mod tests {
         let mut c = a;
         c.play(41);
         assert_ne!(tt_key_words(&a), tt_key_words(&c));
-        assert_eq!(tt_key_words(&a), tt_key_words(&a), "key must be deterministic");
+        assert_eq!(
+            tt_key_words(&a),
+            tt_key_words(&a),
+            "key must be deterministic"
+        );
     }
 
     #[test]
@@ -593,8 +609,14 @@ mod tests {
         ];
         let t1 = MinedTable::build(1 << 12, heads, entries.clone());
         let t2 = MinedTable::build(1 << 12, heads, entries);
-        assert_eq!(t1.root, t2.root, "same entries in any input order → same root (G6)");
-        assert!(t1.entries.windows(2).all(|w| w[0].key < w[1].key), "build must sort");
+        assert_eq!(
+            t1.root, t2.root,
+            "same entries in any input order → same root (G6)"
+        );
+        assert!(
+            t1.entries.windows(2).all(|w| w[0].key < w[1].key),
+            "build must sort"
+        );
 
         let dir = std::env::temp_dir().join(format!("e868_rt_{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
@@ -645,9 +667,19 @@ mod tests {
         };
         let t = MinedTable::build(1 << 10, heads, vec![e]);
         let mut mem = EngramPuctMemory::from_mined(&t);
-        let row = mem.read(&Board::new()).expect("the mined position must fire");
-        assert!((row.gate - 1.0).abs() < 1e-4, "n=1000 saturates, got {}", row.gate);
-        assert!((row.gamma - 1.0).abs() < 1e-5, "b=0.5 is γ-neutral, got {}", row.gamma);
+        let row = mem
+            .read(&Board::new())
+            .expect("the mined position must fire");
+        assert!(
+            (row.gate - 1.0).abs() < 1e-4,
+            "n=1000 saturates, got {}",
+            row.gate
+        );
+        assert!(
+            (row.gamma - 1.0).abs() < 1e-5,
+            "b=0.5 is γ-neutral, got {}",
+            row.gamma
+        );
         assert!(row.value_mean.abs() < 1e-6);
     }
 

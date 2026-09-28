@@ -35,7 +35,9 @@ use katgpt_core::types::TernaryWeights;
 fn fixture(m: usize) -> (Vec<f32>, TernaryWeights, Vec<f32>) {
     let mut s = 0x843_843u64;
     let mut next = || {
-        s = s.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        s = s
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         ((s >> 33) as f32 / u32::MAX as f32) * 2.0 - 1.0
     };
     let dense: Vec<f32> = (0..m * m).map(|_| next()).collect();

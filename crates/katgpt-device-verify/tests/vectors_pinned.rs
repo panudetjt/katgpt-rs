@@ -18,8 +18,8 @@ use katgpt_device_verify::merkle_verify::{
     verify_proof_bounded,
 };
 use katgpt_device_verify::vectors::{
-    FAIR_ROLL_DIVIDING_VECTORS, FAIR_ROLL_DOUBLE_REJECT_VECTORS,
-    FAIR_ROLL_FALLBACK_VECTORS, FAIR_ROLL_NONDIVIDING_VECTORS, FairRollVector, MERKLE_VECTORS,
+    FAIR_ROLL_DIVIDING_VECTORS, FAIR_ROLL_DOUBLE_REJECT_VECTORS, FAIR_ROLL_FALLBACK_VECTORS,
+    FAIR_ROLL_NONDIVIDING_VECTORS, FairRollVector, MERKLE_VECTORS,
 };
 
 /// The rejection threshold, spelled the way the implementation spells it.
@@ -199,7 +199,10 @@ fn roll_die_is_always_in_range() {
 fn zero_sides_is_refused_not_a_reset() {
     let vfy = FairRollVerifier::from_combined_seed([7u8; 32]);
     assert_eq!(vfy.checked_roll_die(0), None);
-    assert!(!vfy.verify_die(0, 1), "a malformed sides must fail verification");
+    assert!(
+        !vfy.verify_die(0, 1),
+        "a malformed sides must fail verification"
+    );
 }
 
 #[test]
@@ -237,7 +240,11 @@ fn combine_seed_is_blake3_of_the_concatenation() {
 fn roll_unit_is_in_the_half_open_unit_interval() {
     for v in all_fair_roll() {
         let u = FairRollVerifier::from_combined_seed(v.seed).roll_unit();
-        assert!((0.0..1.0).contains(&u), "{}: roll_unit {u} out of range", v.label);
+        assert!(
+            (0.0..1.0).contains(&u),
+            "{}: roll_unit {u} out of range",
+            v.label
+        );
     }
 }
 

@@ -331,7 +331,10 @@ fn run() {
     let g2_pass = hmm_success > var_success;
     println!("  HMM (exact, deterministic):  p(success) = {hmm_success:.4}");
     println!("  variational (α=1, softmax):  p(success) = {var_success:.4}");
-    println!("  G2 gate (HMM strictly higher): {}", if g2_pass { "✅ PASS" } else { "❌ FAIL" });
+    println!(
+        "  G2 gate (HMM strictly higher): {}",
+        if g2_pass { "✅ PASS" } else { "❌ FAIL" }
+    );
     println!();
     all_pass &= g2_pass;
 
@@ -362,8 +365,7 @@ fn run() {
         s_psafe.mean_pi_entropy
     );
     let g3_collapse_floor = 0.9 * s_plain.mean_pi_entropy;
-    let g3_pass =
-        s_psafe.deaths < s_plain.deaths && s_psafe.mean_pi_entropy >= g3_collapse_floor;
+    let g3_pass = s_psafe.deaths < s_plain.deaths && s_psafe.mean_pi_entropy >= g3_collapse_floor;
     println!(
         "  G3 gate (psafe strictly fewer deaths AND H(π*) ≥ 0.9× plain-MOP baseline {:.3} nat — the absolute 1.0-nat floor was miscalibrated pre-measurement: plain MOP itself sits at {:.3} nat on this arena; the no-collapse intent is anchored to the shipped baseline): {}",
         g3_collapse_floor,
@@ -404,12 +406,20 @@ fn run() {
         let mut mop_scratch = MopScratch::<RING_N, 3>::new();
         let _ = mop_solver.solve_psafe(&rp, &mp, &ps, &mut mop_scratch);
         let (_, allocs2) = alloc_delta(|| {
-            let sol = mop_solver.solve_psafe(black_box(&rp), black_box(&mp), black_box(&ps), &mut mop_scratch);
+            let sol = mop_solver.solve_psafe(
+                black_box(&rp),
+                black_box(&mp),
+                black_box(&ps),
+                &mut mop_scratch,
+            );
             black_box(&sol);
         });
         println!("  mop solve_psafe: {allocs2} allocs");
         let g4_pass = g4a && allocs2 == 0;
-        println!("  G4 verdict: {}", if g4_pass { "✅ PASS" } else { "❌ FAIL" });
+        println!(
+            "  G4 verdict: {}",
+            if g4_pass { "✅ PASS" } else { "❌ FAIL" }
+        );
         println!();
         all_pass &= g4_pass;
     }

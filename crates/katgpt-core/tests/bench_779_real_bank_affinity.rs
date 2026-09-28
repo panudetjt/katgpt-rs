@@ -68,13 +68,10 @@ fn load_bank() -> Bank {
         .unwrap_or_else(|_| panic!("set BANK779_BIN to the captured bank (see module doc)"));
     let json_path = std::env::var("BANK779_JSON")
         .unwrap_or_else(|_| panic!("set BANK779_JSON to the capture meta (see module doc)"));
-    let bytes = std::fs::read(&bin_path)
-        .unwrap_or_else(|e| panic!("cannot read {bin_path}: {e}"));
+    let bytes = std::fs::read(&bin_path).unwrap_or_else(|e| panic!("cannot read {bin_path}: {e}"));
     assert!(bytes.len() > 24, "bank file too small: {}", bytes.len());
     assert_eq!(&bytes[0..4], &MAGIC, "bad bank magic");
-    let rd_u32 = |off: usize| {
-        u32::from_le_bytes(bytes[off..off + 4].try_into().unwrap()) as usize
-    };
+    let rd_u32 = |off: usize| u32::from_le_bytes(bytes[off..off + 4].try_into().unwrap()) as usize;
     let version = rd_u32(4);
     assert_eq!(version, 1, "unsupported bank version {version}");
     let n_total = rd_u32(8);
@@ -90,7 +87,11 @@ fn load_bank() -> Bank {
     );
     let mut acts = vec![0.0_f32; n_layers * n_total * d];
     for (i, v) in acts.iter_mut().enumerate() {
-        *v = f32::from_le_bytes(bytes[acts_off + i * 4..acts_off + i * 4 + 4].try_into().unwrap());
+        *v = f32::from_le_bytes(
+            bytes[acts_off + i * 4..acts_off + i * 4 + 4]
+                .try_into()
+                .unwrap(),
+        );
     }
     let labels: Vec<usize> = bytes[acts_off + acts_bytes..]
         .iter()
@@ -142,8 +143,8 @@ fn floors(bank: &Bank) -> (f32, f32) {
     for &i in &bank.train_idx {
         counts[bank.labels[i]] += 1;
     }
-    let majority = counts.iter().copied().max().unwrap_or(0) as f32
-        / bank.train_idx.len().max(1) as f32;
+    let majority =
+        counts.iter().copied().max().unwrap_or(0) as f32 / bank.train_idx.len().max(1) as f32;
     (chance, majority)
 }
 
@@ -212,7 +213,10 @@ fn real_bank_layer_affinity_measurement() {
         println!("[i779] per-class peak layers @lambda={lambda}:");
         for (c, name) in bank.class_names.iter().enumerate() {
             let l = peaks[c];
-            println!("[i779]   {name:<10} L{l:02} (recall {:.3})", recall[l * bank.classes + c]);
+            println!(
+                "[i779]   {name:<10} L{l:02} (recall {:.3})",
+                recall[l * bank.classes + c]
+            );
         }
         if full_acc[best] > best_acc {
             best_acc = full_acc[best];
@@ -230,8 +234,8 @@ fn real_bank_layer_affinity_measurement() {
     let y_test: Vec<usize> = bank.test_idx.iter().map(|&i| bank.labels[i]).collect();
     let mut x_train = vec![0.0_f32; n_train * bank.d];
     let mut x_test = vec![0.0_f32; n_test * bank.d];
-    let layer = &bank.acts[best_layer * bank.n_total * bank.d
-        ..(best_layer + 1) * bank.n_total * bank.d];
+    let layer =
+        &bank.acts[best_layer * bank.n_total * bank.d..(best_layer + 1) * bank.n_total * bank.d];
     for (r, &i) in bank.train_idx.iter().enumerate() {
         x_train[r * bank.d..(r + 1) * bank.d].copy_from_slice(&layer[i * bank.d..(i + 1) * bank.d]);
     }
@@ -293,7 +297,10 @@ fn real_bank_layer_affinity_measurement() {
     }
 
     // ── Instrument-liveness assertions (NOT outcome asserts) ──────────────
-    assert!(best_layer < bank.n_layers, "sweep returned an out-of-range layer");
+    assert!(
+        best_layer < bank.n_layers,
+        "sweep returned an out-of-range layer"
+    );
     assert!(
         (0.0..=1.0).contains(&full),
         "full-head accuracy out of [0,1]: {full}"

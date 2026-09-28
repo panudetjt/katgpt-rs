@@ -8,8 +8,8 @@
 //! of the hot-swap path.
 
 use katgpt_core::kpt_archive::{
-    build_archive, swap_in_place, KptArchive, KptError, OwnedKptArchive, KPT_HEADER_SIZE,
-    KPT_TRAILER_SIZE,
+    KPT_HEADER_SIZE, KPT_TRAILER_SIZE, KptArchive, KptError, OwnedKptArchive, build_archive,
+    swap_in_place,
 };
 use katgpt_rs::types::TernaryWeights;
 
@@ -138,7 +138,10 @@ fn offset_beyond_eof_rejected_without_panic() {
     let e1 = KPT_HEADER_SIZE as usize + 64;
     // Declare layer 1's payload at u64::MAX-ish offset (LE bytes).
     b[e1 + 16..e1 + 24].copy_from_slice(&u64::MAX.to_le_bytes());
-    assert!(KptArchive::from_bytes(&b).is_err(), "OOB offset must be refused, not panic");
+    assert!(
+        KptArchive::from_bytes(&b).is_err(),
+        "OOB offset must be refused, not panic"
+    );
 }
 
 #[test]
@@ -149,7 +152,8 @@ fn offset_len_wrap_attack_rejected() {
     b[e1 + 16..e1 + 24].copy_from_slice(&(u64::MAX - 8).to_le_bytes());
     b[e1 + 24..e1 + 32].copy_from_slice(&16u64.to_le_bytes());
     match KptArchive::from_bytes(&b) {
-        Err(KptError::OffsetOverflow { layer: 1 }) | Err(KptError::NotSequential { layer: 1, .. }) => {}
+        Err(KptError::OffsetOverflow { layer: 1 })
+        | Err(KptError::NotSequential { layer: 1, .. }) => {}
         other => panic!("expected OffsetOverflow/NotSequential at layer 1, got {other:?}"),
     }
 }
@@ -186,7 +190,10 @@ fn blocks64_dimension_mismatch_rejected() {
     let e0 = KPT_HEADER_SIZE as usize;
     // Claim a blocks64 that contradicts cols=64 (the real value is 1).
     b[e0 + 8..e0 + 12].copy_from_slice(&2u32.to_le_bytes());
-    assert!(KptArchive::from_bytes(&b).is_err(), "inconsistent dims must be refused");
+    assert!(
+        KptArchive::from_bytes(&b).is_err(),
+        "inconsistent dims must be refused"
+    );
 }
 
 #[test]
@@ -204,7 +211,11 @@ fn valid_but_stale_archive_is_the_replay_signal() {
     };
     let va = KptArchive::from_bytes(&a).unwrap();
     let vb = KptArchive::from_bytes(&b).unwrap();
-    assert_ne!(va.archive_id(), vb.archive_id(), "replay detector: distinct models, distinct ids");
+    assert_ne!(
+        va.archive_id(),
+        vb.archive_id(),
+        "replay detector: distinct models, distinct ids"
+    );
     // Structural validity alone CANNOT tell old from new — that is the
     // documented division of labour, and why swap_in_place RETURNS the id.
 }
@@ -228,7 +239,11 @@ fn refused_swap_leaves_disk_file_untouched() {
 
     let owned = OwnedKptArchive::load(&path).unwrap();
     let live = owned.verify().unwrap();
-    assert_eq!(live.archive_id(), id0, "refused swap must not touch the live file");
+    assert_eq!(
+        live.archive_id(),
+        id0,
+        "refused swap must not touch the live file"
+    );
     let _ = std::fs::remove_file(&path);
 }
 
@@ -251,11 +266,18 @@ fn atomic_swap_replaces_whole_file_or_nothing() {
     assert!(live.to_ternary_weights(0).pos_bits == ls2[0].pos_bits);
     // No temp litter beside the archive.
     let dir = path.parent().unwrap();
-    let litter = std::fs::read_dir(dir).unwrap().filter_map(|e| e.ok()).filter(|e| {
-        let n = e.file_name().to_string_lossy().into_owned();
-        n.starts_with(".kpt_sec_atomic_") && n.ends_with(".tmp")
-    });
-    assert_eq!(litter.count(), 0, "atomic swap must not leave temp files behind");
+    let litter = std::fs::read_dir(dir)
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .filter(|e| {
+            let n = e.file_name().to_string_lossy().into_owned();
+            n.starts_with(".kpt_sec_atomic_") && n.ends_with(".tmp")
+        });
+    assert_eq!(
+        litter.count(),
+        0,
+        "atomic swap must not leave temp files behind"
+    );
     let _ = std::fs::remove_file(&path);
 }
 
@@ -275,5 +297,8 @@ fn empty_archive_is_the_documented_degenerate_case() {
         build_archive(&refs).unwrap()
     };
     assert!(KptArchive::from_bytes(&one).unwrap().layers().len() == 1);
-    assert_ne!(v.archive_id(), KptArchive::from_bytes(&one).unwrap().archive_id());
+    assert_ne!(
+        v.archive_id(),
+        KptArchive::from_bytes(&one).unwrap().archive_id()
+    );
 }

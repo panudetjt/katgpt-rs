@@ -203,7 +203,11 @@ pub fn mode_dynamics(eta: f32, sigma_sq: f32, rho: f32, alpha: f32) -> ModeDynam
     let trace = 2.0 - eta * sigma_sq * (rho + alpha);
     let det = 1.0 - eta * rho * sigma_sq;
     let radius = det.max(0.0).sqrt();
-    let cos_theta = if radius > 0.0 { trace / (2.0 * radius) } else { 1.0 };
+    let cos_theta = if radius > 0.0 {
+        trace / (2.0 * radius)
+    } else {
+        1.0
+    };
 
     // Jury stability, reduced form: |det| < 1 ⟺ ηρσ² < 2 (det < 1 always
     // holds for ηρσ² > 0), and trace > −(1+det) ⟺ ησ²(2ρ+α) < 4 (the
@@ -571,7 +575,11 @@ pub fn adjoint_readout_init_into(
     );
     assert_eq!(input.len(), dims[0]);
     assert_eq!(target.len(), dims[n_layers]);
-    assert_eq!(scratch.h.len(), dims.len(), "scratch shaped for a different chain");
+    assert_eq!(
+        scratch.h.len(),
+        dims.len(),
+        "scratch shaped for a different chain"
+    );
 
     // ---- chain-level Jury-set primal rate (BEFORE the forward init — the
     //      estimate uses the scratch activations as workspace) -------------
@@ -765,10 +773,13 @@ mod tests {
 
         let lhs: f32 = lambda.iter().zip(&r).map(|(&l, &x)| l * x).sum::<f32>()
             + 0.5 * rho * r.iter().map(|x| x * x).sum::<f32>();
-        let rhs: f32 = 0.5 * rho * r_prime.iter().map(|x| x * x).sum::<f32>()
-            - dual_energy(&lambda, rho);
+        let rhs: f32 =
+            0.5 * rho * r_prime.iter().map(|x| x * x).sum::<f32>() - dual_energy(&lambda, rho);
         let rel = ((lhs - rhs).abs() / lhs.abs().max(rhs.abs().max(1e-30))) as f64;
-        assert!(rel < 1e-4, "identity drifted: lhs={lhs} rhs={rhs} rel={rel}");
+        assert!(
+            rel < 1e-4,
+            "identity drifted: lhs={lhs} rhs={rhs} rel={rel}"
+        );
     }
 
     #[test]
@@ -954,11 +965,7 @@ mod tests {
         // Reverse.
         let mut delta: Vec<Vec<f32>> = vec![Vec::new(); dims.len()];
         let last = n_layers;
-        delta[last] = h[last]
-            .iter()
-            .zip(target)
-            .map(|(&a, &b)| a - b)
-            .collect();
+        delta[last] = h[last].iter().zip(target).map(|(&a, &b)| a - b).collect();
         for lv in (0..n_layers).rev() {
             let i = lv + 1;
             let (d_out, d_in) = (dims[i], dims[i - 1]);

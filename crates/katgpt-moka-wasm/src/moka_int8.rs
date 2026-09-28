@@ -29,9 +29,9 @@ use std::collections::HashMap;
 
 use crate::board::{AREA as BOARD_AREA, SIZE as BOARD_SIZE};
 use crate::moka::{
-    BOTTLENECK_CHANNELS, GLOBAL_BLOCK_INTERVAL, INPUT_PLANES, MANIFEST_JSON, NUM_BLOCKS,
-    POLICY_CHANNELS, POLICY_MOVES, SCORE_HIDDEN_CHANNELS, TRUNK_CHANNELS, VALUE_CHANNELS,
-    Manifest, TensorMeta, WEIGHTS_BIN, global_mean_max_into, load_bias, read_f32, relu_inplace,
+    BOTTLENECK_CHANNELS, GLOBAL_BLOCK_INTERVAL, INPUT_PLANES, MANIFEST_JSON, Manifest, NUM_BLOCKS,
+    POLICY_CHANNELS, POLICY_MOVES, SCORE_HIDDEN_CHANNELS, TRUNK_CHANNELS, TensorMeta,
+    VALUE_CHANNELS, WEIGHTS_BIN, global_mean_max_into, load_bias, read_f32, relu_inplace,
 };
 
 // ── Weight structs ──────────────────────────────────────────────────
@@ -135,7 +135,10 @@ fn load_int8(tensors: &HashMap<String, TensorMeta>, bytes: &[u8], prefix: &str) 
     // Copy raw int8 bytes — no dequantization. The on-disk layout is already
     // `[out_channels, per_channel]` in int8, matching our `w_i8` layout.
     let data_end = meta.data_offset + count;
-    let w_i8: Vec<i8> = bytes[meta.data_offset..data_end].iter().map(|&b| b as i8).collect();
+    let w_i8: Vec<i8> = bytes[meta.data_offset..data_end]
+        .iter()
+        .map(|&b| b as i8)
+        .collect();
 
     let b = load_bias(tensors, bytes, &b_name);
 
@@ -194,8 +197,8 @@ fn quantize_tensor_scalar(input: &[f32], output: &mut [i8]) -> f32 {
 #[target_feature(enable = "simd128")]
 unsafe fn quantize_tensor_wasm_simd(input: &[f32], output: &mut [i8]) -> f32 {
     use core::arch::wasm32::{
-        f32x4_abs, f32x4_extract_lane, f32x4_max, f32x4_min, f32x4_mul, f32x4_nearest,
-        f32x4_splat, v128_load,
+        f32x4_abs, f32x4_extract_lane, f32x4_max, f32x4_min, f32x4_mul, f32x4_nearest, f32x4_splat,
+        v128_load,
     };
     // Edition 2024's `unsafe_op_in_unsafe_fn`: the eleven unchecked ops below
     // (`v128_load`, `ptr::add`, `get_unchecked{,_mut}`) each need an explicit
@@ -484,7 +487,13 @@ fn conv2d_int8_into(
             let obase = pos * out_ch;
             for oc in 0..out_ch {
                 let wbase = oc * in_ch;
-                out[obase + oc] = dot_i8_scaled(pslice, scale_a, &weight.w_i8[wbase..wbase + in_ch], weight.w_scales[oc], weight.b[oc]);
+                out[obase + oc] = dot_i8_scaled(
+                    pslice,
+                    scale_a,
+                    &weight.w_i8[wbase..wbase + in_ch],
+                    weight.w_scales[oc],
+                    weight.b[oc],
+                );
             }
         }
         return;
@@ -516,7 +525,13 @@ fn conv2d_int8_into(
             let pslice = &patch_i8[..patch_len];
             for oc in 0..out_ch {
                 let wbase = oc * patch_len;
-                out[obase + oc] = dot_i8_scaled(pslice, scale_a, &weight.w_i8[wbase..wbase + patch_len], weight.w_scales[oc], weight.b[oc]);
+                out[obase + oc] = dot_i8_scaled(
+                    pslice,
+                    scale_a,
+                    &weight.w_i8[wbase..wbase + patch_len],
+                    weight.w_scales[oc],
+                    weight.b[oc],
+                );
             }
         }
     }
@@ -536,7 +551,13 @@ fn linear_int8_into(
     let scale_a = quantize_tensor(&input[..in_dim], &mut input_i8[..in_dim]);
     for (o, out_slot) in out.iter_mut().enumerate().take(out_dim) {
         let base = o * in_dim;
-        *out_slot = dot_i8_scaled(&input_i8[..in_dim], scale_a, &weight.w_i8[base..base + in_dim], weight.w_scales[o], weight.b[o]);
+        *out_slot = dot_i8_scaled(
+            &input_i8[..in_dim],
+            scale_a,
+            &weight.w_i8[base..base + in_dim],
+            weight.w_scales[o],
+            weight.b[o],
+        );
     }
 }
 
@@ -630,30 +651,74 @@ pub fn forward_int8_with_scratch(
 
     // Stem: INPUT_PLANES → TRUNK_CHANNELS, 3×3
     conv2d_int8_into(
-        features, BOARD_SIZE, BOARD_SIZE, INPUT_PLANES, TRUNK_CHANNELS, 3,
-        &weights.stem, input_i8, patch_i8, trunk,
+        features,
+        BOARD_SIZE,
+        BOARD_SIZE,
+        INPUT_PLANES,
+        TRUNK_CHANNELS,
+        3,
+        &weights.stem,
+        input_i8,
+        patch_i8,
+        trunk,
     );
     relu_inplace(&mut trunk[..BOARD_AREA * TRUNK_CHANNELS]);
 
     for block in &weights.blocks {
         // reduce: TRUNK_CHANNELS → BOTTLENECK_CHANNELS, 1×1
         conv2d_int8_into(
-            trunk, BOARD_SIZE, BOARD_SIZE, TRUNK_CHANNELS, BOTTLENECK_CHANNELS, 1,
-            &block.reduce, input_i8, patch_i8, hidden_a,
+            trunk,
+            BOARD_SIZE,
+            BOARD_SIZE,
+            TRUNK_CHANNELS,
+            BOTTLENECK_CHANNELS,
+            1,
+            &block.reduce,
+            input_i8,
+            patch_i8,
+            hidden_a,
         );
         relu_inplace(hidden_a);
         // first: BOTTLENECK_CHANNELS → BOTTLENECK_CHANNELS, 3×3
         conv2d_int8_into(
-            hidden_a, BOARD_SIZE, BOARD_SIZE, BOTTLENECK_CHANNELS, BOTTLENECK_CHANNELS, 3,
-            &block.first, input_i8, patch_i8, hidden_b,
+            hidden_a,
+            BOARD_SIZE,
+            BOARD_SIZE,
+            BOTTLENECK_CHANNELS,
+            BOTTLENECK_CHANNELS,
+            3,
+            &block.first,
+            input_i8,
+            patch_i8,
+            hidden_b,
         );
         relu_inplace(hidden_b);
 
         if let Some(g) = &block.global {
-            global_mean_max_into(hidden_b, BOARD_SIZE, BOARD_SIZE, BOTTLENECK_CHANNELS, pooled);
-            linear_int8_into(pooled, BOTTLENECK_CHANNELS * 2, g.hidden.out_channels(), &g.hidden, input_i8, gh);
+            global_mean_max_into(
+                hidden_b,
+                BOARD_SIZE,
+                BOARD_SIZE,
+                BOTTLENECK_CHANNELS,
+                pooled,
+            );
+            linear_int8_into(
+                pooled,
+                BOTTLENECK_CHANNELS * 2,
+                g.hidden.out_channels(),
+                &g.hidden,
+                input_i8,
+                gh,
+            );
             relu_inplace(&mut gh[..g.hidden.out_channels()]);
-            linear_int8_into(gh, g.hidden.out_channels(), BOTTLENECK_CHANNELS, &g.output, input_i8, gbias);
+            linear_int8_into(
+                gh,
+                g.hidden.out_channels(),
+                BOTTLENECK_CHANNELS,
+                &g.output,
+                input_i8,
+                gbias,
+            );
             for pos in 0..BOARD_AREA {
                 let row = &mut hidden_b[pos * BOTTLENECK_CHANNELS..(pos + 1) * BOTTLENECK_CHANNELS];
                 for c in 0..BOTTLENECK_CHANNELS {
@@ -664,14 +729,30 @@ pub fn forward_int8_with_scratch(
 
         // second: BOTTLENECK_CHANNELS → BOTTLENECK_CHANNELS, 3×3
         conv2d_int8_into(
-            hidden_b, BOARD_SIZE, BOARD_SIZE, BOTTLENECK_CHANNELS, BOTTLENECK_CHANNELS, 3,
-            &block.second, input_i8, patch_i8, hidden_a,
+            hidden_b,
+            BOARD_SIZE,
+            BOARD_SIZE,
+            BOTTLENECK_CHANNELS,
+            BOTTLENECK_CHANNELS,
+            3,
+            &block.second,
+            input_i8,
+            patch_i8,
+            hidden_a,
         );
         relu_inplace(hidden_a);
         // expand: BOTTLENECK_CHANNELS → TRUNK_CHANNELS, 1×1
         conv2d_int8_into(
-            hidden_a, BOARD_SIZE, BOARD_SIZE, BOTTLENECK_CHANNELS, TRUNK_CHANNELS, 1,
-            &block.expand, input_i8, patch_i8, expand,
+            hidden_a,
+            BOARD_SIZE,
+            BOARD_SIZE,
+            BOTTLENECK_CHANNELS,
+            TRUNK_CHANNELS,
+            1,
+            &block.expand,
+            input_i8,
+            patch_i8,
+            expand,
         );
 
         // residual add + relu
@@ -683,23 +764,60 @@ pub fn forward_int8_with_scratch(
 
     // Policy head
     conv2d_int8_into(
-        trunk, BOARD_SIZE, BOARD_SIZE, TRUNK_CHANNELS, POLICY_CHANNELS, 1,
-        &weights.policy_conv, input_i8, patch_i8, head4,
+        trunk,
+        BOARD_SIZE,
+        BOARD_SIZE,
+        TRUNK_CHANNELS,
+        POLICY_CHANNELS,
+        1,
+        &weights.policy_conv,
+        input_i8,
+        patch_i8,
+        head4,
     );
     relu_inplace(head4);
-    linear_int8_into(head4, POLICY_CHANNELS * BOARD_AREA, POLICY_MOVES, &weights.policy_linear, input_i8, policy);
+    linear_int8_into(
+        head4,
+        POLICY_CHANNELS * BOARD_AREA,
+        POLICY_MOVES,
+        &weights.policy_linear,
+        input_i8,
+        policy,
+    );
 
     // Value head
     conv2d_int8_into(
-        trunk, BOARD_SIZE, BOARD_SIZE, TRUNK_CHANNELS, VALUE_CHANNELS, 1,
-        &weights.value_conv, input_i8, patch_i8, head2,
+        trunk,
+        BOARD_SIZE,
+        BOARD_SIZE,
+        TRUNK_CHANNELS,
+        VALUE_CHANNELS,
+        1,
+        &weights.value_conv,
+        input_i8,
+        patch_i8,
+        head2,
     );
     relu_inplace(head2);
     let value_hidden_dim = weights.value_hidden.out_channels();
-    linear_int8_into(head2, VALUE_CHANNELS * BOARD_AREA, value_hidden_dim, &weights.value_hidden, input_i8, value_h);
+    linear_int8_into(
+        head2,
+        VALUE_CHANNELS * BOARD_AREA,
+        value_hidden_dim,
+        &weights.value_hidden,
+        input_i8,
+        value_h,
+    );
     relu_inplace(&mut value_h[..value_hidden_dim]);
     let mut value_out = [0f32; 1];
-    linear_int8_into(value_h, value_hidden_dim, 1, &weights.value_output, input_i8, &mut value_out);
+    linear_int8_into(
+        value_h,
+        value_hidden_dim,
+        1,
+        &weights.value_output,
+        input_i8,
+        &mut value_out,
+    );
 
     let mut logits = [0f32; POLICY_MOVES];
     logits.copy_from_slice(&policy[..POLICY_MOVES]);
@@ -756,8 +874,15 @@ mod tests {
                     hist.push(Some((mv / BOARD_SIZE, mv % BOARD_SIZE)));
                 }
             }
-            let last2: Vec<Option<(usize, usize)>> =
-                hist.iter().rev().take(2).copied().collect::<Vec<_>>().into_iter().rev().collect();
+            let last2: Vec<Option<(usize, usize)>> = hist
+                .iter()
+                .rev()
+                .take(2)
+                .copied()
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+                .collect();
             let mut features = vec![0.0; crate::moka::INPUT_ELEMENT_COUNT];
             encode_features_into(&board, &last2, &mut features);
 
@@ -768,8 +893,16 @@ mod tests {
             // total_cmp: this crate ships with NO katgpt-core dep by design
             // (wasm32-minimal), so float_order is unavailable here; fixtures are
             // probabilities and NaN-free by construction.
-            let f32_argmax = p_f32.iter().enumerate().max_by(|(_, a), (_, b)| a.total_cmp(b)).map(|(i, _)| i);
-            let i8_argmax = p_i8.iter().enumerate().max_by(|(_, a), (_, b)| a.total_cmp(b)).map(|(i, _)| i);
+            let f32_argmax = p_f32
+                .iter()
+                .enumerate()
+                .max_by(|(_, a), (_, b)| a.total_cmp(b))
+                .map(|(i, _)| i);
+            let i8_argmax = p_i8
+                .iter()
+                .enumerate()
+                .max_by(|(_, a), (_, b)| a.total_cmp(b))
+                .map(|(i, _)| i);
             if f32_argmax != i8_argmax {
                 argmax_mismatches += 1;
             }
@@ -785,7 +918,10 @@ mod tests {
             "g1_int8: max_value_diff={max_value_diff:.4}, argmax_mismatches={argmax_mismatches}/4"
         );
 
-        assert_eq!(argmax_mismatches, 0, "int8 argmax disagrees with f32 on {argmax_mismatches}/4 boards — move selection is wrong");
+        assert_eq!(
+            argmax_mismatches, 0,
+            "int8 argmax disagrees with f32 on {argmax_mismatches}/4 boards — move selection is wrong"
+        );
         assert!(
             max_value_diff < 0.10,
             "int8 vs f32 value diff {max_value_diff:.4} exceeds 0.10"
@@ -817,7 +953,7 @@ mod tests {
 
         const ITERS: usize = 2000;
 
-let weights_f32 = MokaWeights::load();
+        let weights_f32 = MokaWeights::load();
         let weights_i8 = MokaWeightsInt8::load();
         let mut scratch_f32 = MokaScratch::new();
         let mut scratch_i8 = MokaScratchInt8::new();
@@ -825,26 +961,40 @@ let weights_f32 = MokaWeights::load();
 
         // Warmup
         for _ in 0..50 {
-            let _ = black_box(forward_with_scratch(&weights_f32, &features, &mut scratch_f32));
-            let _ = black_box(forward_int8_with_scratch(&weights_i8, &features, &mut scratch_i8));
+            let _ = black_box(forward_with_scratch(
+                &weights_f32,
+                &features,
+                &mut scratch_f32,
+            ));
+            let _ = black_box(forward_int8_with_scratch(
+                &weights_i8,
+                &features,
+                &mut scratch_i8,
+            ));
         }
 
         let t0 = Instant::now();
         for _ in 0..ITERS {
-            let _ = black_box(forward_with_scratch(&weights_f32, &features, &mut scratch_f32));
+            let _ = black_box(forward_with_scratch(
+                &weights_f32,
+                &features,
+                &mut scratch_f32,
+            ));
         }
         let f32_ns = t0.elapsed().as_nanos() as f64 / ITERS as f64;
 
         let t0 = Instant::now();
         for _ in 0..ITERS {
-            let _ = black_box(forward_int8_with_scratch(&weights_i8, &features, &mut scratch_i8));
+            let _ = black_box(forward_int8_with_scratch(
+                &weights_i8,
+                &features,
+                &mut scratch_i8,
+            ));
         }
         let i8_ns = t0.elapsed().as_nanos() as f64 / ITERS as f64;
 
         let speedup = f32_ns / i8_ns;
-        eprintln!(
-            "g2_int8: f32={f32_ns:.0}ns/fwd, int8={i8_ns:.0}ns/fwd, speedup={speedup:.2}x"
-        );
+        eprintln!("g2_int8: f32={f32_ns:.0}ns/fwd, int8={i8_ns:.0}ns/fwd, speedup={speedup:.2}x");
 
         assert!(
             speedup >= 1.3,

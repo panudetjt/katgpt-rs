@@ -117,7 +117,9 @@ impl SamplerFeatures {
         pos: usize,
         block_size: usize,
     ) -> Self {
-        Self::from_logits_into(logits_p, vocab, mask, step, max_steps, pos, block_size, None)
+        Self::from_logits_into(
+            logits_p, vocab, mask, step, max_steps, pos, block_size, None,
+        )
     }
 
     /// [`Self::from_logits`] plus the top-3 token indices emitted into
@@ -355,8 +357,7 @@ impl StabilityTracker {
         let drift = if self.prev_valid {
             let mut a: [(u32, f32); TOPK_DRIFT_K] =
                 std::array::from_fn(|i| (self.prev_idx[i], self.prev_masses[i]));
-            let mut b: [(u32, f32); TOPK_DRIFT_K] =
-                std::array::from_fn(|i| (idx[i], masses[i]));
+            let mut b: [(u32, f32); TOPK_DRIFT_K] = std::array::from_fn(|i| (idx[i], masses[i]));
             a.sort_unstable_by_key(|t| t.0);
             b.sort_unstable_by_key(|t| t.0);
             let mut d = 0.0f32;
@@ -1422,11 +1423,23 @@ mod tests {
         let mut t = StabilityTracker::new();
         let (idx, m) = set(4, 7, 9);
         let _ = t.observe(&idx, &m, 0.7, TAU, false);
-        assert_eq!(t.observe(&idx, &m, 0.7, TAU, false).0, 1, "first held step ages to 1");
+        assert_eq!(
+            t.observe(&idx, &m, 0.7, TAU, false).0,
+            1,
+            "first held step ages to 1"
+        );
         assert_eq!(t.observe(&idx, &m, 0.7, TAU, false).0, 2);
         let (idx2, m2) = set(5, 7, 9); // argmax changed
-        assert_eq!(t.observe(&idx2, &m2, 0.7, TAU, false).0, 0, "argmax change resets");
-        assert_eq!(t.observe(&idx2, &m2, 0.7, TAU, false).0, 1, "age restarts on the new argmax");
+        assert_eq!(
+            t.observe(&idx2, &m2, 0.7, TAU, false).0,
+            0,
+            "argmax change resets"
+        );
+        assert_eq!(
+            t.observe(&idx2, &m2, 0.7, TAU, false).0,
+            1,
+            "age restarts on the new argmax"
+        );
     }
 
     #[test]
@@ -1462,7 +1475,11 @@ mod tests {
         let (idx, m) = set(4, 7, 9);
         let _ = t.observe(&idx, &m, 0.7, TAU, false);
         let _ = t.observe(&idx, &m, 0.7, TAU, false);
-        assert_eq!(t.observe(&idx, &m, 0.7, TAU, true), (0, 0.0), "remask resets everything");
+        assert_eq!(
+            t.observe(&idx, &m, 0.7, TAU, true),
+            (0, 0.0),
+            "remask resets everything"
+        );
         assert_eq!(
             t.observe(&idx, &m, 0.7, TAU, false),
             (0, 0.0),
@@ -1479,7 +1496,10 @@ mod tests {
         assert_eq!(t.observe(&idx, &m, 0.7, TAU, false).1, 0.0);
         // Fully disjoint set → bitwise ln 2 (the kernel's disjoint law).
         let (idx2, m2) = set(1, 2, 3);
-        assert_eq!(t.observe(&idx2, &m2, 0.7, TAU, false).1, std::f32::consts::LN_2);
+        assert_eq!(
+            t.observe(&idx2, &m2, 0.7, TAU, false).1,
+            std::f32::consts::LN_2
+        );
         // Partial overlap → strictly inside (0, ln 2).
         let (idx3, m3) = set(4, 2, 3);
         let drift = t.observe(&idx3, &m3, 0.7, TAU, false).1;
@@ -1499,16 +1519,8 @@ mod tests {
         logits[7] = 1.0;
         logits[3] = 0.5;
         let mut idx_out = [9u32; 3];
-        let via_into = SamplerFeatures::from_logits_into(
-            &logits,
-            vocab,
-            mask,
-            0,
-            4,
-            0,
-            4,
-            Some(&mut idx_out),
-        );
+        let via_into =
+            SamplerFeatures::from_logits_into(&logits, vocab, mask, 0, 4, 0, 4, Some(&mut idx_out));
         assert_eq!(idx_out, [5, 2, 7]);
         // The bare form stays bitwise-identical on the masses — the index
         // tracking is pure addition (the signal-diff pin).
@@ -1535,7 +1547,10 @@ mod tests {
         let degenerate =
             SamplerFeatures::from_logits_into(&logits3, vocab, mask, 0, 4, 0, 4, Some(&mut idx4));
         assert_eq!(idx4, [0; 3]);
-        assert_eq!(degenerate.top1_prob, 0.0, "degenerate row reads default features");
+        assert_eq!(
+            degenerate.top1_prob, 0.0,
+            "degenerate row reads default features"
+        );
         // Exp ties: first index wins (strict-> tracking, deterministic).
         let mut tie = [0.0f32; 8];
         tie[6] = 1.0;

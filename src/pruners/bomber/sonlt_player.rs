@@ -121,39 +121,39 @@ impl SonltPlayer {
             .filter(|v| v.len() == 6);
 
         let (lq, lk, lv, lo, lm1, lm2) = if let Some(v) = loaded {
-                // Validate each adapter's in/out dims match Config::game() projections.
-                let n = config.n_embd;
-                let kvd = kv_dim(&config);
-                let mlp = config.mlp_hidden;
-                // (adapter, expected_in, expected_out)
-                let checks: [(Option<&LoraAdapter>, usize, usize); 6] = [
-                    (Some(&v[0]), n, n),   // q
-                    (Some(&v[1]), n, kvd), // k
-                    (Some(&v[2]), n, kvd), // v
-                    (Some(&v[3]), n, n),   // o
-                    (Some(&v[4]), n, mlp), // mlp1
-                    (Some(&v[5]), mlp, n), // mlp2
-                ];
-                let dims_ok = checks
-                    .iter()
-                    .all(|(a, ein, eout)| a.is_some_and(|ad| ad.in_dim == *ein && ad.out_dim == *eout));
-                if dims_ok {
-                    let mut it = v.into_iter();
-                    let q = it.next().unwrap();
-                    let k = it.next().unwrap();
-                    let vv = it.next().unwrap();
-                    let o = it.next().unwrap();
-                    let m1 = it.next().unwrap();
-                    let m2 = it.next().unwrap();
-                    (Some(q), Some(k), Some(vv), Some(o), Some(m1), Some(m2))
-                } else {
-                    eprintln!("SonltPlayer: adapter dims mismatch — falling back to heuristic");
-                    (None, None, None, None, None, None)
-                }
+            // Validate each adapter's in/out dims match Config::game() projections.
+            let n = config.n_embd;
+            let kvd = kv_dim(&config);
+            let mlp = config.mlp_hidden;
+            // (adapter, expected_in, expected_out)
+            let checks: [(Option<&LoraAdapter>, usize, usize); 6] = [
+                (Some(&v[0]), n, n),   // q
+                (Some(&v[1]), n, kvd), // k
+                (Some(&v[2]), n, kvd), // v
+                (Some(&v[3]), n, n),   // o
+                (Some(&v[4]), n, mlp), // mlp1
+                (Some(&v[5]), mlp, n), // mlp2
+            ];
+            let dims_ok = checks
+                .iter()
+                .all(|(a, ein, eout)| a.is_some_and(|ad| ad.in_dim == *ein && ad.out_dim == *eout));
+            if dims_ok {
+                let mut it = v.into_iter();
+                let q = it.next().unwrap();
+                let k = it.next().unwrap();
+                let vv = it.next().unwrap();
+                let o = it.next().unwrap();
+                let m1 = it.next().unwrap();
+                let m2 = it.next().unwrap();
+                (Some(q), Some(k), Some(vv), Some(o), Some(m1), Some(m2))
             } else {
-                eprintln!("SonltPlayer: LoRA load failed or wrong adapter count — heuristic mode");
+                eprintln!("SonltPlayer: adapter dims mismatch — falling back to heuristic");
                 (None, None, None, None, None, None)
-            };
+            }
+        } else {
+            eprintln!("SonltPlayer: LoRA load failed or wrong adapter count — heuristic mode");
+            (None, None, None, None, None, None)
+        };
 
         let rank = lq.as_ref().map_or(0, |a| a.rank);
         let n = config.n_embd;
@@ -287,7 +287,8 @@ impl SonltPlayer {
         let best_idx = action_logits
             .iter()
             .enumerate()
-            .max_by(|(_, a), (_, b)| katgpt_core::float_order::cmp_for_max(**a, **b)).map_or(0, |(i, _)| i);
+            .max_by(|(_, a), (_, b)| katgpt_core::float_order::cmp_for_max(**a, **b))
+            .map_or(0, |(i, _)| i);
 
         // Map GameAction (0-5) → BomberAction. Detonate (6) not in model vocab.
         Some(game_action_to_bomber(best_idx))

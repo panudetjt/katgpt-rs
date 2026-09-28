@@ -17,7 +17,7 @@
 
 #![cfg(feature = "exact_mass_admit")]
 
-use katgpt_core::exact_mass_admit::{exact_mass_admit, exact_mass_admit_into, MAX_BISECT_ITERS};
+use katgpt_core::exact_mass_admit::{MAX_BISECT_ITERS, exact_mass_admit, exact_mass_admit_into};
 use katgpt_core::log_frontier::LogFrontier;
 
 /// Deterministic SplitMix64 (the workspace-bench idiom — no rand dep).
@@ -216,7 +216,10 @@ fn allocating_wrapper_matches_into() {
 
 #[test]
 fn iteration_cap_is_fifty() {
-    assert_eq!(MAX_BISECT_ITERS, 50, "the paper's fixed cap; ≤ with early exits");
+    assert_eq!(
+        MAX_BISECT_ITERS, 50,
+        "the paper's fixed cap; ≤ with early exits"
+    );
 }
 
 // ── log_frontier ──────────────────────────────────────────────────────
@@ -228,7 +231,10 @@ fn log_frontier_sign_step_both_directions() {
     let mut lf = LogFrontier::new(1024, 0.90, 0.05, 1.0, 1);
     lf.sample(0.5);
     let ceil_k = lf.observe(0.95); // acc > target → shrink, off the ceiling
-    assert!(ceil_k < 1024.0, "shrink must move off the ceiling ({ceil_k})");
+    assert!(
+        ceil_k < 1024.0,
+        "shrink must move off the ceiling ({ceil_k})"
+    );
 
     lf.sample(0.5);
     let grow_k = lf.observe(0.85); // acc < target → grow
@@ -293,7 +299,10 @@ fn log_frontier_probe_cadence() {
     for step in 1..=8u32 {
         let k = lf.sample(0.5);
         if step % 4 == 0 {
-            assert!((k - k_max).abs() < 1e-3, "step {step}: probe must return k_max");
+            assert!(
+                (k - k_max).abs() < 1e-3,
+                "step {step}: probe must return k_max"
+            );
             // Armed: observe must move (acc far below target, +lr).
             let after = lf.observe(0.0);
             assert!(

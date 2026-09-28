@@ -346,11 +346,7 @@ impl SpectralQuantKVCache {
                     dim_data.clear();
                     // Strided iteration over the flat buffer: element `dim` of
                     // each head_dim-wide row.
-                    dim_data.extend(
-                        synthetic_rotated
-                            .chunks(head_dim)
-                            .map(|row| row[dim]),
-                    );
+                    dim_data.extend(synthetic_rotated.chunks(head_dim).map(|row| row[dim]));
                     let bits_for_dim = bits
                         .and_then(|b| b.get(dim).copied())
                         .unwrap_or(b_high)

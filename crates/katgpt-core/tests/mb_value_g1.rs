@@ -83,7 +83,10 @@ fn construction_is_seed_deterministic() {
     cfg2.seed = 99;
     let c = MbCircuit::new(&cfg2);
     let wiring_differs = (0..a.n_kc()).any(|kc| a.kc_mbon_targets(kc) != c.kc_mbon_targets(kc));
-    assert!(wiring_differs, "different seeds must produce different wiring");
+    assert!(
+        wiring_differs,
+        "different seeds must produce different wiring"
+    );
 }
 
 // ── 2. canonical top-k parity (fast path == full-sort reference) ────────────
@@ -110,7 +113,11 @@ fn fast_top_k_matches_full_sort_reference() {
         for x in f.iter_mut() {
             *x = rng.normal();
         }
-        let action = if i % 2 == 0 { &actions[0..2] } else { &actions[2..4] };
+        let action = if i % 2 == 0 {
+            &actions[0..2]
+        } else {
+            &actions[2..4]
+        };
         circuit.code_into(&f, action, &mut scratch, &mut fast);
         circuit.code_reference_into(&f, action, &mut scratch, &mut reference);
         assert_eq!(fast, reference, "fast top-k diverged from reference at {i}");
@@ -151,7 +158,11 @@ fn fast_top_k_matches_reference_on_all_ties() {
     circuit.code_into(&f, &[], &mut scratch, &mut fast);
     circuit.code_reference_into(&f, &[], &mut scratch, &mut reference);
     assert_eq!(fast, reference);
-    assert_eq!(fast, vec![0, 1, 2, 3, 4, 5, 6, 7], "ties must break by index");
+    assert_eq!(
+        fast,
+        vec![0, 1, 2, 3, 4, 5, 6, 7],
+        "ties must break by index"
+    );
 }
 
 // ── 3. bounds by construction, adversarial RPE streams ──────────────────────
@@ -168,24 +179,46 @@ fn weights_stay_bounded_under_adversarial_rpe() {
     }
     let actions = vec![1.0f32, 0.0, 0.0, 1.0];
     circuit.calibrate(&feats, &actions, n, 0.5);
-    assert!(circuit.eta() > 0.0, "calibration must derive a positive eta");
+    assert!(
+        circuit.eta() > 0.0,
+        "calibration must derive a positive eta"
+    );
 
     let mut scratch = MbScratch::new(&circuit);
     let mut code = vec![0u32; circuit.kc_active()];
     let adversarial = [
-        0.0f32, 1.0, -1.0, 1e30, -1e30, f32::INFINITY, f32::NEG_INFINITY, f32::NAN, 5.0, -5.0,
-        1e38, -1e-38,
+        0.0f32,
+        1.0,
+        -1.0,
+        1e30,
+        -1e30,
+        f32::INFINITY,
+        f32::NEG_INFINITY,
+        f32::NAN,
+        5.0,
+        -5.0,
+        1e38,
+        -1e-38,
     ];
     for (i, &rpe) in adversarial.iter().enumerate().cycle().take(10_000) {
         let mut f = vec![0.0f32; cfg.n_features];
         for x in f.iter_mut() {
             *x = rng.normal();
         }
-        circuit.code_into(&f, &actions[(i % 2) * 2..(i % 2) * 2 + 2], &mut scratch, &mut code);
+        circuit.code_into(
+            &f,
+            &actions[(i % 2) * 2..(i % 2) * 2 + 2],
+            &mut scratch,
+            &mut code,
+        );
         let before = circuit.w().to_vec();
         circuit.dopamine_update(&code, rpe);
         if !rpe.is_finite() {
-            assert_eq!(before, circuit.w().to_vec(), "non-finite RPE must be a no-op");
+            assert_eq!(
+                before,
+                circuit.w().to_vec(),
+                "non-finite RPE must be a no-op"
+            );
         }
         for k in 0..circuit.w().len() {
             assert!(
@@ -243,9 +276,17 @@ fn depression_then_recovery() {
     }
     let (floor, ceiling) = circuit.saturation();
     let avoid_down = mean_code_side(&circuit, true);
-    println!("after +RPE: floor={floor:.4} ceiling={ceiling:.4} avoid-side mean {avoid_start:.4} -> {avoid_down:.4}");
-    assert!(floor > 0.02, "expected measurable depression, floor={floor}");
-    assert!(ceiling > 0.02, "expected measurable approach recovery, ceiling={ceiling}");
+    println!(
+        "after +RPE: floor={floor:.4} ceiling={ceiling:.4} avoid-side mean {avoid_start:.4} -> {avoid_down:.4}"
+    );
+    assert!(
+        floor > 0.02,
+        "expected measurable depression, floor={floor}"
+    );
+    assert!(
+        ceiling > 0.02,
+        "expected measurable approach recovery, ceiling={ceiling}"
+    );
     assert!(avoid_down < 0.2 * avoid_start, "avoid side must depress");
 
     // Below-baseline dopamine (negative RPE) lets the avoid side recover
@@ -277,7 +318,10 @@ fn calibration_report_is_sane_and_value_starts_at_zero() {
     let report = circuit.calibrate(&feats, &actions, n, 0.5);
     println!("calibration: {report:?}");
     assert!(report.eta > 0.0);
-    assert!(report.action_overlap <= 0.62, "bisection should land near 0.5");
+    assert!(
+        report.action_overlap <= 0.62,
+        "bisection should land near 0.5"
+    );
     assert!(
         report.mbons_connected > 0 && report.approach_mbons_used > 0 && report.avoid_mbons_used > 0,
         "both compartments must be connected: {report:?}"
@@ -291,8 +335,17 @@ fn calibration_report_is_sane_and_value_starts_at_zero() {
     let mut sum = 0.0f32;
     let mut worst = 0.0f32;
     for s in 0..64 {
-        let a = if rng2.next() & 1 == 0 { &actions[0..2] } else { &actions[2..4] };
-        circuit.code_into(&feats[s * cfg.n_features..(s + 1) * cfg.n_features], a, &mut scratch, &mut code);
+        let a = if rng2.next() & 1 == 0 {
+            &actions[0..2]
+        } else {
+            &actions[2..4]
+        };
+        circuit.code_into(
+            &feats[s * cfg.n_features..(s + 1) * cfg.n_features],
+            a,
+            &mut scratch,
+            &mut code,
+        );
         let v = circuit.value(&code, &mut scratch);
         sum += v;
         worst = worst.max(v.abs());
@@ -301,7 +354,6 @@ fn calibration_report_is_sane_and_value_starts_at_zero() {
     println!("V at start: mean {mean:.4} worst {worst:.4}");
     assert!(mean.abs() < 0.5, "mean V must start ≈0, got {mean}");
 }
-
 
 // ── 6. the toy corridor: value formation vs the ridge floor ────────────────
 
@@ -356,12 +408,22 @@ impl CorridorHarness {
         let scratch = MbScratch::new(&circuit);
         let code = vec![0u32; circuit.kc_active()];
         let code_next = vec![0u32; circuit.kc_active()];
-        Self { circuit, scratch, code, code_next }
+        Self {
+            circuit,
+            scratch,
+            code,
+            code_next,
+        }
     }
 
     /// State value (state-only circuit: no action code).
     fn v(&mut self, s: f32) -> f32 {
-        self.circuit.code_into(&Corridor::features(s), &[], &mut self.scratch, &mut self.code);
+        self.circuit.code_into(
+            &Corridor::features(s),
+            &[],
+            &mut self.scratch,
+            &mut self.code,
+        );
         self.circuit.value(&self.code, &mut self.scratch)
     }
 
@@ -383,7 +445,12 @@ impl CorridorHarness {
             let mut codes: Vec<Vec<f32>> = Vec::with_capacity(64);
             let a = if corridor.sign > 0.0 { 0 } else { 1 };
             for _ in 0..40 {
-                self.circuit.code_into(&Corridor::features(s), &[], &mut self.scratch, &mut self.code);
+                self.circuit.code_into(
+                    &Corridor::features(s),
+                    &[],
+                    &mut self.scratch,
+                    &mut self.code,
+                );
                 let v_sa = self.circuit.value(&self.code, &mut self.scratch);
                 if collect.is_some() {
                     let mut cf = vec![0.0f32; self.circuit.n_kc()];
@@ -396,7 +463,12 @@ impl CorridorHarness {
                 rewards.push(r);
                 // TD(0): the successor value goes through `code_next` —
                 // `self.code` keeps the DECISION code for credit assignment.
-                self.circuit.code_into(&Corridor::features(s2), &[], &mut self.scratch, &mut self.code_next);
+                self.circuit.code_into(
+                    &Corridor::features(s2),
+                    &[],
+                    &mut self.scratch,
+                    &mut self.code_next,
+                );
                 let v_next = self.circuit.value(&self.code_next, &mut self.scratch);
                 let rpe = r + corridor.gamma * v_next - v_sa;
                 self.circuit.dopamine_update(&self.code, rpe);
@@ -470,7 +542,12 @@ fn toy_corridor_value_formation_vs_ridge_floor() {
 
     // ── Phase 1: right pays. Reward scale 4, γ 0.98. V* ∈ [0.4, ~3.3]
     // inside the representable window.
-    let corridor = Corridor { step: 0.05, scale: 4.0, gamma: 0.98, sign: 1.0 };
+    let corridor = Corridor {
+        step: 0.05,
+        scale: 4.0,
+        gamma: 0.98,
+        sign: 1.0,
+    };
     let mut harness = CorridorHarness::new(circuit);
     let mut samples: Vec<(Vec<f32>, f32)> = Vec::new();
     harness.run_episodes(&corridor, &mut rng, 2_000, Some(&mut samples));
@@ -498,7 +575,12 @@ fn toy_corridor_value_formation_vs_ridge_floor() {
         let sub: Vec<(Vec<f32>, f32)> = samples.iter().take(2_000).cloned().collect();
         let pred: Vec<f32> = sub
             .iter()
-            .map(|(code, _)| code.iter().zip(u.iter()).map(|(&c, &w)| c * w as f32).sum::<f32>())
+            .map(|(code, _)| {
+                code.iter()
+                    .zip(u.iter())
+                    .map(|(&c, &w)| c * w as f32)
+                    .sum::<f32>()
+            })
             .collect();
         let targ: Vec<f32> = sub.iter().map(|(_, g)| *g).collect();
         println!("ridge in-sample r={:.4}", pearson(&pred, &targ));
@@ -521,11 +603,19 @@ fn toy_corridor_value_formation_vs_ridge_floor() {
     let r_dopa = pearson(&v_dopa, &v_star);
     let r_dopa_sp = spearman(&v_dopa, &v_star);
     let r_ridge = pearson(&v_ridge, &v_star);
-    println!("phase1: dopamine r={r_dopa:.4} (spearman {r_dopa_sp:.4}) vs ridge-batch r={r_ridge:.4}");
+    println!(
+        "phase1: dopamine r={r_dopa:.4} (spearman {r_dopa_sp:.4}) vs ridge-batch r={r_ridge:.4}"
+    );
     for i in (0..64).step_by(9) {
-        println!("  s={:.3} v*={:.3} dopa={:.3} ridge={:.3}", eval[i], v_star[i], v_dopa[i], v_ridge[i]);
+        println!(
+            "  s={:.3} v*={:.3} dopa={:.3} ridge={:.3}",
+            eval[i], v_star[i], v_dopa[i], v_ridge[i]
+        );
     }
-    assert!(r_dopa >= 0.85, "dopamine value formation too weak: r={r_dopa}");
+    assert!(
+        r_dopa >= 0.85,
+        "dopamine value formation too weak: r={r_dopa}"
+    );
     assert!(
         r_dopa >= r_ridge - 0.05,
         "dopamine must match the ridge-batch floor: {r_dopa} vs {r_ridge}"
@@ -533,7 +623,12 @@ fn toy_corridor_value_formation_vs_ridge_floor() {
 
     // ── Phase 2 (the shift arm): LEFT pays now. Online adapts; the frozen
     // batch fit cannot. ─────────────────────────────────────────────────────
-    let corridor2 = Corridor { step: 0.05, scale: 4.0, gamma: 0.98, sign: -1.0 };
+    let corridor2 = Corridor {
+        step: 0.05,
+        scale: 4.0,
+        gamma: 0.98,
+        sign: -1.0,
+    };
     let v_star2: Vec<f32> = eval.iter().map(|&s| corridor2.true_value(s)).collect();
     harness.run_episodes(&corridor2, &mut rng, 2_500, None);
 
@@ -546,7 +641,10 @@ fn toy_corridor_value_formation_vs_ridge_floor() {
     let r_ridge2 = pearson(&v_ridge2, &v_star2);
     println!("phase2 (shift): dopamine r={r_dopa2:.4} vs FROZEN ridge r={r_ridge2:.4}");
     assert!(r_dopa2 >= 0.5, "online must adapt post-shift: r={r_dopa2}");
-    assert!(r_ridge2 <= 0.0, "frozen batch fit must break post-shift: r={r_ridge2}");
+    assert!(
+        r_ridge2 <= 0.0,
+        "frozen batch fit must break post-shift: r={r_ridge2}"
+    );
 }
 
 // ── 7. trajectory determinism (bit-identical repeat) ────────────────────────
@@ -566,7 +664,12 @@ fn identical_training_streams_are_bit_identical() {
             feats[s * cfg.n_features..(s + 1) * cfg.n_features].copy_from_slice(&f);
         }
         circuit.calibrate(&feats, &[], n, 0.5);
-        let corridor = Corridor { step: 0.05, scale: 5.0, gamma: 0.98, sign: 1.0 };
+        let corridor = Corridor {
+            step: 0.05,
+            scale: 5.0,
+            gamma: 0.98,
+            sign: 1.0,
+        };
         let mut harness = CorridorHarness::new(circuit);
         harness.run_episodes(&corridor, &mut rng, 200, None);
         harness.circuit.w().to_vec()

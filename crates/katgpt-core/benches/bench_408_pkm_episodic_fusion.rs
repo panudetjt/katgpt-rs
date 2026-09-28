@@ -363,9 +363,7 @@ fn main() {
         } else {
             "❌ FAIL"
         };
-        println!(
-            "  {label}:  MSE={pkm_mse:.6}  ratio={ratio:.4}  →  {verdict}"
-        );
+        println!("  {label}:  MSE={pkm_mse:.6}  ratio={ratio:.4}  →  {verdict}");
         if ratio < best_ratio {
             best_ratio = ratio;
             best_label = label;
@@ -381,9 +379,7 @@ fn main() {
     let alloc_before = ALLOC_COUNT.load(std::sync::atomic::Ordering::Relaxed);
     let (_r, alloc_during) = alloc_delta(|| pkm_recall(&pairs, false, 4));
     let _ = alloc_before;
-    println!(
-        "  (informational) PKM unweighted k=4 write+recall allocs: {alloc_during}"
-    );
+    println!("  (informational) PKM unweighted k=4 write+recall allocs: {alloc_during}");
     println!();
 
     // ── Final verdict ──────────────────────────────────────────────────────────

@@ -176,9 +176,7 @@ fn pid_from_entity_arr(entities: &[Entity; 4], entity: Entity) -> u8 {
 fn is_player_active(world: &World, id: u8) -> bool {
     let pe = world.resource::<PlayerEntities>();
     let entity = pe.entities[id as usize];
-    world
-        .get::<Player>(entity)
-        .is_some_and(|p| !p.is_bankrupt)
+    world.get::<Player>(entity).is_some_and(|p| !p.is_bankrupt)
 }
 
 fn count_active_players(world: &World) -> u8 {
@@ -186,10 +184,7 @@ fn count_active_players(world: &World) -> u8 {
     let mut count = 0u8;
     for i in 0..4u8 {
         let entity = pe.entities[i as usize];
-        if world
-            .get::<Player>(entity)
-            .is_some_and(|p| !p.is_bankrupt)
-        {
+        if world.get::<Player>(entity).is_some_and(|p| !p.is_bankrupt) {
             count += 1;
         }
     }
@@ -692,9 +687,7 @@ fn execute_card_effect(
             let player_entities = world.resource::<PlayerEntities>().entities;
             for (i, &other) in player_entities.iter().enumerate() {
                 if other != entity && is_player_active(world, i as u8) {
-                    let can_pay = world
-                        .get::<Player>(other)
-                        .is_some_and(|p| p.cash >= amount);
+                    let can_pay = world.get::<Player>(other).is_some_and(|p| p.cash >= amount);
                     if can_pay {
                         if let Some(mut o) = world.get_mut::<Player>(other) {
                             o.pay(amount);
@@ -950,9 +943,7 @@ pub fn execute_turn(
                 let squares = world.resource::<Board>().squares;
                 let sq_entity = squares[sq as usize];
                 let cost = world.get::<Property>(sq_entity).map_or(0, |p| p.house_cost);
-                let can_afford = world
-                    .get::<Player>(entity)
-                    .is_some_and(|p| p.cash >= cost);
+                let can_afford = world.get::<Player>(entity).is_some_and(|p| p.cash >= cost);
                 if can_afford {
                     if let Some(mut p) = world.get_mut::<Player>(entity) {
                         p.pay(cost);
@@ -1470,7 +1461,12 @@ mod tests {
     }
 
     impl MonopolyPlayer for StubPlayer {
-        fn should_buy_property(&mut self, _ctx: &DecisionContext, _square: u8, _price: u32) -> bool {
+        fn should_buy_property(
+            &mut self,
+            _ctx: &DecisionContext,
+            _square: u8,
+            _price: u32,
+        ) -> bool {
             false
         }
         fn auction_bid(&mut self, _ctx: &DecisionContext, _square: u8, _current_bid: u32) -> u32 {
@@ -1535,7 +1531,10 @@ mod tests {
         // With max_jail_turns = 1 the single non-doubles jail roll must release
         // (jail_turns 1 >= 1). Under the old const (3) the player stays jailed.
         let p = world.get::<Player>(entity).unwrap();
-        assert!(!p.in_jail, "player must be released after 1 configured jail turn");
+        assert!(
+            !p.in_jail,
+            "player must be released after 1 configured jail turn"
+        );
         assert!(result.events.iter().any(|e| matches!(
             e,
             GameEvent::PlayerReleasedFromJail {
@@ -1567,7 +1566,10 @@ mod tests {
         // With max_doubles = 1 the first doubles must send the player to jail
         // for speeding. Under the old const (3) one doubles is not enough.
         let p = world.get::<Player>(entity).unwrap();
-        assert!(p.in_jail, "player must be jailed after 1 configured doubles");
+        assert!(
+            p.in_jail,
+            "player must be jailed after 1 configured doubles"
+        );
         assert!(result.events.iter().any(|e| matches!(
             e,
             GameEvent::PlayerJailed {

@@ -449,7 +449,11 @@ mod tests {
             // The borrow is still the ORIGINAL table — reads are valid and
             // unchanged (the failed swap returned ownership to us; the old
             // table was NOT dropped).
-            assert_eq!(t.commitment(), before, "borrow must stay the original table");
+            assert_eq!(
+                t.commitment(),
+                before,
+                "borrow must stay the original table"
+            );
             assert_eq!(t.num_slots(), 32);
         });
         // After the closure: the table is still the original (the nested
@@ -484,8 +488,8 @@ mod tests {
         // while a closure borrow is live. Post-733 the closure holds the
         // writer lock, so the foreign swap must get Err immediately (fail
         // closed, like any contended swap) — never drop the table mid-read.
-        use std::sync::atomic::{AtomicBool, Ordering as AOrd};
         use std::sync::Arc;
+        use std::sync::atomic::{AtomicBool, Ordering as AOrd};
 
         let hs = Arc::new(EngramHotSwap::new(make_table(32, 4, 1)));
         let closure_active = Arc::new(AtomicBool::new(false));
@@ -523,7 +527,10 @@ mod tests {
         attempted.store(true, AOrd::Release);
 
         let before = spawner.join().expect("closure thread must not panic");
-        assert!(was_err.load(AOrd::Acquire), "foreign swap during a live closure must Err");
+        assert!(
+            was_err.load(AOrd::Acquire),
+            "foreign swap during a live closure must Err"
+        );
         assert_eq!(hs.commitment_fast(), commitment_low_u64(before));
     }
 

@@ -81,7 +81,7 @@ fn dense_matrix(rows: usize, cols: usize, seed: u64) -> Vec<f32> {
 fn median_ns(reps: usize, inner: usize, mut f: impl FnMut()) -> f64 {
     const MAX_REPS: usize = 32;
 
-for _ in 0..inner {
+    for _ in 0..inner {
         f();
     }
     assert!(reps <= MAX_REPS, "reps={reps} exceeds MAX_REPS={MAX_REPS}");
@@ -167,7 +167,10 @@ fn g1_hoisted_matches_scalar_and_folded() {
         // sums of magnitude ~3, so `max(|want|, 1.0)` would flag a rare
         // near-zero row as a failure while letting large rows off lightly. See
         // the same fix in bench_582's `assert_close_rms`.
-        let rms = (y_scalar.iter().map(|v| (*v as f64) * (*v as f64)).sum::<f64>()
+        let rms = (y_scalar
+            .iter()
+            .map(|v| (*v as f64) * (*v as f64))
+            .sum::<f64>()
             / y_scalar.len() as f64)
             .sqrt() as f32;
         for r in 0..rows {

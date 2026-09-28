@@ -521,12 +521,12 @@ pub mod cluster_build;
 // Issue 657: bound-ranked / admissible stage-1 selection. Hot-path sibling of
 // `forward::clustered_lm_head`, kept separate so `forward.rs` stays in budget.
 pub mod cluster_head;
-#[cfg(feature = "coda_fusion")]
-pub use forward::forward_coda;
 pub use cluster_head::{
     ClusterCost, ClusterHeadView, ClusterScratch, ClusterStop, PackedHeadView,
     clustered_lm_head_bounded, clustered_lm_head_packed, restricted_lm_head,
 };
+#[cfg(feature = "coda_fusion")]
+pub use forward::forward_coda;
 pub use forward::{
     CPU_FORWARD_USES_DEVICE_BASE_PATH, ClusterInit, ClusterLayout, LayoutRefusal, TiedPolicy,
     attention_head, cluster_classifier_from_map, cluster_layout_from_map,

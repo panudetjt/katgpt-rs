@@ -57,11 +57,11 @@
 //! * Byte-level persistence is little-endian-native (the whole stack
 //!   targets LE); cross-endian deserialization is out of scope.
 
+use crate::spectral_pencil::DensePencil;
 use crate::spectral_pencil::dense::DenseScratch;
 use crate::spectral_pencil::gauge;
 use crate::spectral_pencil::init::seeded_dense;
 use crate::spectral_pencil::sym::SymPacked;
-use crate::spectral_pencil::DensePencil;
 
 /// Format tag (checked at [`GenomePod::from_bytes`]).
 pub const GENOME_POD_MAGIC: u32 = u32::from_le_bytes(*b"SGP1");
@@ -133,7 +133,13 @@ impl<const D: usize, const N: usize> GenomePod<D, N> {
     #[must_use]
     pub fn from_seed(seed_bytes: &[u8], k: usize) -> Self {
         let init = seeded_dense::<D, N>(seed_bytes, k);
-        Self::from_pencil(&DensePencil { a0: init.a0, a: init.a }, k)
+        Self::from_pencil(
+            &DensePencil {
+                a0: init.a0,
+                a: init.a,
+            },
+            k,
+        )
     }
 
     /// Recover the canonical pencil + temperament rung (exact copy — no
@@ -142,10 +148,13 @@ impl<const D: usize, const N: usize> GenomePod<D, N> {
     #[must_use]
     pub fn decode(&self) -> (DensePencil<D, N>, usize) {
         if self.format != GENOME_POD_MAGIC {
-            return (DensePencil {
-                a0: SymPacked::zeroed(),
-                a: [SymPacked::zeroed(); N],
-            }, 0);
+            return (
+                DensePencil {
+                    a0: SymPacked::zeroed(),
+                    a: [SymPacked::zeroed(); N],
+                },
+                0,
+            );
         }
         (self.pencil(), (self.k as usize).min(D - 1))
     }
@@ -198,11 +207,7 @@ impl<const D: usize, const N: usize> GenomePod<D, N> {
     pub fn merge_mean(&self, other: &Self) -> Self {
         let mean = |a: &SymPacked<D>, b: &SymPacked<D>| -> SymPacked<D> {
             let mut out = SymPacked::zeroed();
-            for (ro, (ra, rb)) in out
-                .data
-                .iter_mut()
-                .zip(a.data.iter().zip(b.data.iter()))
-            {
+            for (ro, (ra, rb)) in out.data.iter_mut().zip(a.data.iter().zip(b.data.iter())) {
                 for (o, (x, y)) in ro.iter_mut().zip(ra.iter().zip(rb.iter())) {
                     *o = (x + y) * 0.5;
                 }
@@ -213,10 +218,7 @@ impl<const D: usize, const N: usize> GenomePod<D, N> {
             a0: mean(&self.a0, &other.a0),
             a: {
                 let mut out = [SymPacked::<D>::zeroed(); N];
-                for (m, (x, y)) in out
-                    .iter_mut()
-                    .zip(self.a.iter().zip(other.a.iter()))
-                {
+                for (m, (x, y)) in out.iter_mut().zip(self.a.iter().zip(other.a.iter())) {
                     *m = mean(x, y);
                 }
                 out
@@ -242,10 +244,7 @@ impl<const D: usize, const N: usize> GenomePod<D, N> {
 
         let mut scratch = DenseScratch::<D>::new();
         let gap_of = |pencil: &DensePencil<D, N>, scratch: &mut DenseScratch<D>| -> f32 {
-            pencil
-                .eval(x, k, scratch)
-                .eigengap
-                .unwrap_or(f32::INFINITY)
+            pencil.eval(x, k, scratch).eigengap.unwrap_or(f32::INFINITY)
         };
         let gap_parent = gap_of(&p1, &mut scratch);
         let gap_merged = gap_of(&avg, &mut scratch);
@@ -378,12 +377,7 @@ mod tests {
             assert_eq!(merged.k(), 3);
 
             for t in 0..6_u64 {
-                let x = [
-                    ((s * 7 + t) % 5) as f32,
-                    ((s * 3 + t) % 5) as f32,
-                    2.5,
-                    1.5,
-                ];
+                let x = [((s * 7 + t) % 5) as f32, ((s * 3 + t) % 5) as f32, 2.5, 1.5];
                 let cert = merged.weyl_health_certificate(&p1, &p2, &x);
                 if !cert.healthy {
                     violations += 1;

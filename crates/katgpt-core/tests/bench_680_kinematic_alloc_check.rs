@@ -33,7 +33,7 @@ fn kinematics_g4_zero_alloc_steady_state() {
     // but let any lazy machinery settle before measuring).
     const CALLS: usize = 10_000;
 
-{
+    {
         let mut st = KinState::<4>::new(1.0).unwrap();
         let mut x = [0.0f32; 4];
         for t in 0..8u32 {
@@ -47,7 +47,10 @@ fn kinematics_g4_zero_alloc_steady_state() {
             Sched::ZeroJerk,
             Sched::ConstJerk { j: 0.25 },
             Sched::Measured,
-            Sched::ClampedCorrection { j_max: 1.0, lambda: 0.1 },
+            Sched::ClampedCorrection {
+                j_max: 1.0,
+                lambda: 0.1,
+            },
             Sched::GeometricDrag { rho: 0.5 },
         ] {
             kinematic_extrapolate_into(&st, 100, &sched, &mut out).unwrap();
@@ -85,7 +88,10 @@ fn kinematics_g4_zero_alloc_steady_state() {
             Sched::ZeroJerk,
             Sched::ConstJerk { j: 0.25 },
             Sched::Measured,
-            Sched::ClampedCorrection { j_max: 1.0, lambda: 0.1 },
+            Sched::ClampedCorrection {
+                j_max: 1.0,
+                lambda: 0.1,
+            },
             Sched::GeometricDrag { rho: 0.5 },
         ] {
             kinematic_extrapolate_into(&st, 100, &sched, &mut out).unwrap();

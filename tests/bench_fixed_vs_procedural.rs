@@ -259,9 +259,7 @@ fn bench_fixed_vs_procedural() {
     let std_ratio = fixed_stats.std_dev / proc_stats.std_dev.max(f64::EPSILON);
     println!(
         "  Fixed StdDev ({:.4}) / Procedural StdDev ({:.4}) = {:.2}",
-        fixed_stats.std_dev,
-        proc_stats.std_dev,
-        std_ratio,
+        fixed_stats.std_dev, proc_stats.std_dev, std_ratio,
     );
 
     assert!(

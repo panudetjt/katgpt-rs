@@ -61,16 +61,12 @@ use katgpt_attn::gdn2::kda_forward::KdaWeights;
 use katgpt_attn::mla::MlaWeights;
 use katgpt_core::committed_field_blend::ArchetypeFieldSource;
 use katgpt_core::latent_trajectory_geometry::from_states_into;
-use katgpt_core::swe_trajectory_freeze::{
-    GeometrySummaryEncoder, SweTrajectoryFreezer,
-};
+use katgpt_core::swe_trajectory_freeze::{GeometrySummaryEncoder, SweTrajectoryFreezer};
 use katgpt_rs::kimi_k3::decoder_layer::{
     KimiAttentionWeights, KimiDecoderLayerWeights, KimiFfnWeights,
 };
 use katgpt_rs::kimi_k3::loader::KimiK3ModelWeights;
-use katgpt_rs::kimi_k3::model::{
-    KimiK3ModelConfig, KimiK3Runtime, kimi_k3_forward_token_traced,
-};
+use katgpt_rs::kimi_k3::model::{KimiK3ModelConfig, KimiK3Runtime, kimi_k3_forward_token_traced};
 use katgpt_transformer::attn_res::AttnResWeights;
 use katgpt_transformer::moe::{MoeWeights, SwiGluExpertWeights};
 
@@ -289,9 +285,7 @@ fn extract_summary(
 ) {
     runtime.reset();
     scratch.traj_buf.clear();
-    let _ = kimi_k3_forward_token_traced(
-        config, weights, runtime, token_id, &mut scratch.traj_buf,
-    );
+    let _ = kimi_k3_forward_token_traced(config, weights, runtime, token_id, &mut scratch.traj_buf);
     let refs: Vec<&[f32]> = scratch.traj_buf.iter().map(|v| v.as_slice()).collect();
     let geom = from_states_into(&refs, &mut scratch.disp_curr, &mut scratch.disp_prev);
     encoder.encode_into(&geom, &mut scratch.summary);
@@ -373,7 +367,8 @@ fn test_sigma(
     let centroid_dist = 2.0 * centroid_dist_sq.sqrt();
 
     // Stage 2: Freeze + classify held-out trajectories.
-    let freezer = SweTrajectoryFreezer::<N, D>::with_centroid(directions, global_centroid, *encoder);
+    let freezer =
+        SweTrajectoryFreezer::<N, D>::with_centroid(directions, global_centroid, *encoder);
     let fields: [&dyn ArchetypeFieldSource<D>; N] = make_fields();
 
     let mut freeze_disp_curr = Vec::<f32>::with_capacity(d);
@@ -385,7 +380,11 @@ fn test_sigma(
     for tok_idx in N_TRAIN..N_TOKENS {
         for mode in 0..N {
             let weights = if mode == 0 { weights_a } else { weights_b };
-            let runtime = if mode == 0 { &mut *runtime_a } else { &mut *runtime_b };
+            let runtime = if mode == 0 {
+                &mut *runtime_a
+            } else {
+                &mut *runtime_b
+            };
             runtime.reset();
             scratch.traj_buf.clear();
             let _ = kimi_k3_forward_token_traced(
@@ -395,8 +394,7 @@ fn test_sigma(
                 tokens[tok_idx],
                 &mut scratch.traj_buf,
             );
-            let refs: Vec<&[f32]> =
-                scratch.traj_buf.iter().map(|v| v.as_slice()).collect();
+            let refs: Vec<&[f32]> = scratch.traj_buf.iter().map(|v| v.as_slice()).collect();
             let frozen = freezer.freeze_attempt_into(
                 &refs,
                 &fields,
@@ -432,11 +430,15 @@ fn main() {
 
     let config = KimiK3ModelConfig::kimi_k3_0_40b();
     let d = config.hidden_size;
-    println!("Config: D={d}, layers={}, MLA@[3,7], KDA@[0..6], MoE@[1..7]",
-        config.num_layers);
+    println!(
+        "Config: D={d}, layers={}, MLA@[3,7], KDA@[0..6], MoE@[1..7]",
+        config.num_layers
+    );
     println!("Summary dim: {D}, archetypes: {N} (original vs perturbed)");
-    println!("Tokens: {N_TOKENS} ({N_TRAIN} train + {} test per model)",
-        N_TOKENS - N_TRAIN);
+    println!(
+        "Tokens: {N_TOKENS} ({N_TRAIN} train + {} test per model)",
+        N_TOKENS - N_TRAIN
+    );
     println!("Sigma levels: {SIGMA_LEVELS:?}");
     println!();
 
@@ -457,11 +459,10 @@ fn main() {
 
     print!("Loading real model.safetensors ... ");
     let t0 = std::time::Instant::now();
-    let weights_a = katgpt_rs::kimi_k3::loader::load_kimi_k3(&model_path)
-        .unwrap_or_else(|e| {
-            eprintln!("\n  load failed: {e}");
-            std::process::exit(1);
-        });
+    let weights_a = katgpt_rs::kimi_k3::loader::load_kimi_k3(&model_path).unwrap_or_else(|e| {
+        eprintln!("\n  load failed: {e}");
+        std::process::exit(1);
+    });
     println!("done ({:.1}s)", t0.elapsed().as_secs_f64());
     println!();
 
@@ -477,7 +478,10 @@ fn main() {
 
     // ── Run the sensitivity sweep ─────────────────────────────────────────
     println!("── Sensitivity sweep: σ vs discrimination accuracy ──");
-    println!("  {:>10}  {:>10}  {:>12}  {:>14}  {:>10}", "sigma", "accuracy", "correct/total", "centroid_dist", "verdict");
+    println!(
+        "  {:>10}  {:>10}  {:>12}  {:>14}  {:>10}",
+        "sigma", "accuracy", "correct/total", "centroid_dist", "verdict"
+    );
     println!("  {}", "-".repeat(66));
 
     let mut results: Vec<SigmaResult> = Vec::with_capacity(SIGMA_LEVELS.len());
@@ -530,52 +534,58 @@ fn main() {
         .map(|r| r.sigma);
 
     if let Some(sigma_floor) = floor {
-            println!("   Discrimination floor (σ* where accuracy first ≥ 80%): {sigma_floor}");
-            println!();
-            if sigma_floor <= 0.001 {
-                println!("   INTERPRETATION: signal is VERY ROBUST — discrimination");
-                println!("   emerges at 0.1% relative noise (FP16 quantization level).");
-                println!("   Cross-snapshot discrimination at training-step granularity");
-                println!("   is LIKELY to work (subtle weight drift is detectable).");
-            } else if sigma_floor <= 0.01 {
-                println!("   INTERPRETATION: signal is MODERATELY ROBUST — discrimination");
-                println!("   emerges at 1% relative noise. Cross-snapshot discrimination");
-                println!("   should work for checkpoints separated by enough training");
-                println!("   steps to produce ≥1% average weight drift.");
-            } else if sigma_floor <= 0.1 {
-                println!("   INTERPRETATION: signal is MODERATE — discrimination emerges");
-                println!("   at 10% relative noise. Cross-snapshot discrimination requires");
-                println!("   significant weight divergence (many training steps).");
-            } else {
-                println!("   INTERPRETATION: signal is FRAGILE — discrimination only");
-                println!("   emerges above 10% relative noise. Fine-grained cross-snapshot");
-                println!("   discrimination is unlikely via depth trajectories alone;");
-                println!("   the iterative refinement trajectory (T5.4 path 2) becomes");
-                println!("   the necessary substrate.");
-            }
+        println!("   Discrimination floor (σ* where accuracy first ≥ 80%): {sigma_floor}");
+        println!();
+        if sigma_floor <= 0.001 {
+            println!("   INTERPRETATION: signal is VERY ROBUST — discrimination");
+            println!("   emerges at 0.1% relative noise (FP16 quantization level).");
+            println!("   Cross-snapshot discrimination at training-step granularity");
+            println!("   is LIKELY to work (subtle weight drift is detectable).");
+        } else if sigma_floor <= 0.01 {
+            println!("   INTERPRETATION: signal is MODERATELY ROBUST — discrimination");
+            println!("   emerges at 1% relative noise. Cross-snapshot discrimination");
+            println!("   should work for checkpoints separated by enough training");
+            println!("   steps to produce ≥1% average weight drift.");
+        } else if sigma_floor <= 0.1 {
+            println!("   INTERPRETATION: signal is MODERATE — discrimination emerges");
+            println!("   at 10% relative noise. Cross-snapshot discrimination requires");
+            println!("   significant weight divergence (many training steps).");
         } else {
-            // Check if even σ=0.5 didn't reach 80%.
-            let max_acc = results.iter().map(|r| r.accuracy).fold(0.0_f32, f32::max);
-            if max_acc < 0.80 {
-                println!("   NO discrimination floor found — accuracy never reached 80%");
-                println!("   even at σ=0.5 (50% relative noise). The perturbation does NOT");
-                println!("   produce discriminative depth trajectories via the freezer.");
-                println!("   NOTE: this is unexpected given bench_014's 100% on real-vs-random;");
-                println!("   it suggests the discrimination signal lives in the STRUCTURE");
-                println!("   of real weights, not just their values. Relative perturbation");
-                println!("   preserves structure; random weights destroy it.");
-            }
+            println!("   INTERPRETATION: signal is FRAGILE — discrimination only");
+            println!("   emerges above 10% relative noise. Fine-grained cross-snapshot");
+            println!("   discrimination is unlikely via depth trajectories alone;");
+            println!("   the iterative refinement trajectory (T5.4 path 2) becomes");
+            println!("   the necessary substrate.");
         }
+    } else {
+        // Check if even σ=0.5 didn't reach 80%.
+        let max_acc = results.iter().map(|r| r.accuracy).fold(0.0_f32, f32::max);
+        if max_acc < 0.80 {
+            println!("   NO discrimination floor found — accuracy never reached 80%");
+            println!("   even at σ=0.5 (50% relative noise). The perturbation does NOT");
+            println!("   produce discriminative depth trajectories via the freezer.");
+            println!("   NOTE: this is unexpected given bench_014's 100% on real-vs-random;");
+            println!("   it suggests the discrimination signal lives in the STRUCTURE");
+            println!("   of real weights, not just their values. Relative perturbation");
+            println!("   preserves structure; random weights destroy it.");
+        }
+    }
     println!();
 
     // ── Sanity check: σ=0.0 should be ~50% ─────────────────────────────────
     let sanity = &results[0];
     println!("── Sanity check (σ=0.0) ──");
     if sanity.accuracy <= 0.60 {
-        println!("   σ=0.0 accuracy = {:.2} (≤60%) ✅ — identical weights produce", sanity.accuracy);
+        println!(
+            "   σ=0.0 accuracy = {:.2} (≤60%) ✅ — identical weights produce",
+            sanity.accuracy
+        );
         println!("   no discriminative signal, confirming the test is well-calibrated.");
     } else {
-        println!("   σ=0.0 accuracy = {:.2} (>60%) ⚠️ — unexpected signal at zero", sanity.accuracy);
+        println!(
+            "   σ=0.0 accuracy = {:.2} (>60%) ⚠️ — unexpected signal at zero",
+            sanity.accuracy
+        );
         println!("   perturbation. This may indicate overfitting (directions derived");
         println!("   from the same weights that produce the test trajectories).");
     }
@@ -587,7 +597,12 @@ fn main() {
     for r in &results {
         let bar_len = (r.accuracy * 40.0) as usize;
         let bar: String = "█".repeat(bar_len);
-        println!("   σ={:<8.4}  {:>5.1}%  {}", r.sigma, r.accuracy * 100.0, bar);
+        println!(
+            "   σ={:<8.4}  {:>5.1}%  {}",
+            r.sigma,
+            r.accuracy * 100.0,
+            bar
+        );
     }
     println!();
     println!("This is a CROSS-SNAPSHOT PROXY (additive relative noise, not");

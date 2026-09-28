@@ -117,8 +117,10 @@ impl PoCTrial {
         let mut random_omega_sum = 0.0_f32;
 
         for pair_idx in 0..n_pairs_per_kind {
-            let (a_coop, a_omega) = self.run_one_agent(pair_seed, kind, pair_idx, /*is_focal=*/ true);
-            let (b_coop, b_omega) = self.run_one_agent(pair_seed, kind, pair_idx, /*is_focal=*/ false);
+            let (a_coop, a_omega) =
+                self.run_one_agent(pair_seed, kind, pair_idx, /*is_focal=*/ true);
+            let (b_coop, b_omega) =
+                self.run_one_agent(pair_seed, kind, pair_idx, /*is_focal=*/ false);
             let both_cooperated = (a_coop == 0 && b_coop == 0) as usize;
             match kind {
                 PairKind::Shared => {
@@ -225,9 +227,11 @@ impl IndirectAgent {
     /// parallel third-party encounter, not direct interaction.
     fn observe_other_via_third_party(&mut self, my_action: u8, their_action: u8) {
         if their_action == my_action {
-            self.posterior_on_other_primary.observe_match(self.n_actions);
+            self.posterior_on_other_primary
+                .observe_match(self.n_actions);
         } else {
-            self.posterior_on_other_primary.observe_mismatch(self.n_actions);
+            self.posterior_on_other_primary
+                .observe_mismatch(self.n_actions);
         }
     }
 
@@ -275,7 +279,10 @@ fn run_indirect_trial(
     for round in 0..n_info_rounds {
         for (npc_idx, &npc_seed) in npc_seeds.iter().enumerate() {
             // The situation: deterministic function of (round, npc_idx).
-            let situation = mix(trial_seed, (round as u64).wrapping_mul(31).wrapping_add(npc_idx as u64));
+            let situation = mix(
+                trial_seed,
+                (round as u64).wrapping_mul(31).wrapping_add(npc_idx as u64),
+            );
             // Both primaries act against the same NPC in the same situation.
             // (We don't actually need the NPC's action for the posterior update —
             // the evidence is (A's action, B's action) in the same situation.)
@@ -357,7 +364,9 @@ fn g5_indirect_inference_poc() {
     let shared_omega_mean = shared_omega_sum / n;
     let random_omega_mean = random_omega_sum / n;
 
-    eprintln!("G5 indirect-inference PoC ({n_trials} trials, {n_info_rounds} rounds, {n_shared_npcs} shared NPCs):");
+    eprintln!(
+        "G5 indirect-inference PoC ({n_trials} trials, {n_info_rounds} rounds, {n_shared_npcs} shared NPCs):"
+    );
     eprintln!("  Shared-policy coop rate: {shared_coop_rate:.3} (target >0.70)");
     eprintln!("  Random-policy coop rate: {random_coop_rate:.3} (target <0.25)");
     eprintln!("  Shared-policy mean ω:    {shared_omega_mean:.4}");
@@ -470,7 +479,10 @@ fn g2_random_pairs_mismatch_frequently() {
     let agree_rate = agreements as f32 / n as f32;
     eprintln!("random-shard agreement rate: {agree_rate:.3} (expected ~0.5)");
     // Should be close to 0.5; allow generous bounds for the deterministic mix.
-    assert!(agree_rate > 0.4 && agree_rate < 0.6, "agreement rate {agree_rate} outside [0.4, 0.6]");
+    assert!(
+        agree_rate > 0.4 && agree_rate < 0.6,
+        "agreement rate {agree_rate} outside [0.4, 0.6]"
+    );
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -507,7 +519,10 @@ fn g4_alloc_free_smoke() {
     // ω should have saturated to 1.0 long ago (f32 precision floor).
     assert_eq!(p.omega(), 1.0);
     // 100K calls should take <100ms even on a slow CI box (sub-µs each).
-    assert!(elapsed.as_millis() < 100, "100K observes took {elapsed:?} (>100ms)");
+    assert!(
+        elapsed.as_millis() < 100,
+        "100K observes took {elapsed:?} (>100ms)"
+    );
 }
 
 #[test]
@@ -549,9 +564,7 @@ fn g6_crowd_scale_latency() {
     );
     // Sub-µs per individual update is the aspirational target; the hard gate
     // is the 5ms/tick total. Report the per-update number for diagnostics.
-    eprintln!(
-        "G6 per-update: {per_update_ns:.0} ns (aspirational target <1000 ns)"
-    );
+    eprintln!("G6 per-update: {per_update_ns:.0} ns (aspirational target <1000 ns)");
 }
 
 #[test]
@@ -566,7 +579,9 @@ fn g6_best_response_crowd_scale() {
     let payoff = canonical_pd();
     let marginal = [0.5_f32, 0.5];
     // Simulate a range of ω values across the crowd.
-    let omegas: Vec<f32> = (0..N_ENTITIES).map(|i| (i as f32) / (N_ENTITIES as f32)).collect();
+    let omegas: Vec<f32> = (0..N_ENTITIES)
+        .map(|i| (i as f32) / (N_ENTITIES as f32))
+        .collect();
     let mut actions = vec![0u8; N_ENTITIES];
 
     let start = std::time::Instant::now();
@@ -618,7 +633,8 @@ fn soft_bayesian_omega(alpha: f32, delta: f32, n_match: u32, n_mismatch: u32) ->
     //   mismatch: log( P(mismatch|shared) / P(mismatch|indep) ) = log( (1−δ) / 0.5 )
     let llr_match = (delta / 0.5_f32).ln();
     let llr_mismatch = ((1.0 - delta) / 0.5_f32).ln();
-    let logit_omega = logit_alpha + (n_match as f32) * llr_match + (n_mismatch as f32) * llr_mismatch;
+    let logit_omega =
+        logit_alpha + (n_match as f32) * llr_match + (n_mismatch as f32) * llr_mismatch;
     crate::sigmoid(logit_omega)
 }
 
@@ -707,13 +723,26 @@ fn g7_uq_floor_comparison() {
     eprintln!("G7 UQ floor comparison ({N_PAIRS} pairs, T={T_ROUNDS}, δ={DELTA}, α={ALPHA}):");
     eprintln!("  Bayesian ω Brier:  {brier_bayes:.6}");
     eprintln!("  Floor ω Brier:     {brier_floor:.6}");
-    eprintln!("  Relative improvement: {:.1}% (target ≥10%)", relative_improvement * 100.0);
+    eprintln!(
+        "  Relative improvement: {:.1}% (target ≥10%)",
+        relative_improvement * 100.0
+    );
     eprintln!("  Mean Bayesian ω (shared): {:.4}", {
-        let s: f32 = bayes_preds.iter().zip(labels.iter()).filter(|(_, l)| **l == 1.0).map(|(p, _)| *p).sum();
+        let s: f32 = bayes_preds
+            .iter()
+            .zip(labels.iter())
+            .filter(|(_, l)| **l == 1.0)
+            .map(|(p, _)| *p)
+            .sum();
         s / (N_PAIRS as f32 / 2.0)
     });
     eprintln!("  Mean Bayesian ω (random): {:.4}", {
-        let s: f32 = bayes_preds.iter().zip(labels.iter()).filter(|(_, l)| **l == 0.0).map(|(p, _)| *p).sum();
+        let s: f32 = bayes_preds
+            .iter()
+            .zip(labels.iter())
+            .filter(|(_, l)| **l == 0.0)
+            .map(|(p, _)| *p)
+            .sum();
         s / (N_PAIRS as f32 / 2.0)
     });
 

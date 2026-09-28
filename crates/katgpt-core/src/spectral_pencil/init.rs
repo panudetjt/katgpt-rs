@@ -127,7 +127,13 @@ pub fn seeded_dense<const D: usize, const N: usize>(
     // ── A₀ = Qᵀ Λ Q with Λ = ladder (−1 … 0@k … +1) ──
     let mut ladder = [0.0_f32; D];
     for (i, e) in ladder.iter_mut().enumerate() {
-        *e = if i < k { -1.0 } else if i == k { 0.0 } else { 1.0 };
+        *e = if i < k {
+            -1.0
+        } else if i == k {
+            0.0
+        } else {
+            1.0
+        };
     }
     // A0[i][j] = Σ_l λ_l · Q[l][i] · Q[l][j]  (Qᵀ Λ Q)
     let mut a0_full = [[0.0_f32; D]; D];
@@ -167,7 +173,13 @@ pub fn seeded_tridiag<const D: usize, const N: usize>(
     let mut rng = seed_rng(seed_bytes);
     let mut a0 = Tridiagonal::zeroed();
     for (i, e) in a0.diag.iter_mut().enumerate() {
-        *e = if i < k { -1.0 } else if i == k { 0.0 } else { 1.0 };
+        *e = if i < k {
+            -1.0
+        } else if i == k {
+            0.0
+        } else {
+            1.0
+        };
     }
 
     let inv_sqrt_n = 1.0 / (N as f32).sqrt();
@@ -268,7 +280,13 @@ mod tests {
             let mut s = DenseScratch::<D>::new();
             jacobi_eigen(&init.a0.to_full(), false, &mut s);
             for (i, &v) in s.values.iter().enumerate() {
-                let expect = if i < k { -1.0 } else if i == k { 0.0 } else { 1.0 };
+                let expect = if i < k {
+                    -1.0
+                } else if i == k {
+                    0.0
+                } else {
+                    1.0
+                };
                 assert!(
                     (v - expect).abs() < 1e-5,
                     "k={k} idx {i}: {v} vs {expect} — QR not orthogonal?"

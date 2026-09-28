@@ -143,11 +143,26 @@ struct Arm {
 
 fn build_arms() -> Vec<Arm> {
     vec![
-        Arm { label: "uniform w=1 (mdlm order)", kind: ArmKind::Uniform },
-        Arm { label: "sw-default w=0.5 (incumbent)", kind: ArmKind::SwDefault },
-        Arm { label: "ar (exact)", kind: ArmKind::Ar },
-        Arm { label: "mdlm all-at-once (degenerate)", kind: ArmKind::Mdlm },
-        Arm { label: "prob-t* (new)", kind: ArmKind::ProbTStar },
+        Arm {
+            label: "uniform w=1 (mdlm order)",
+            kind: ArmKind::Uniform,
+        },
+        Arm {
+            label: "sw-default w=0.5 (incumbent)",
+            kind: ArmKind::SwDefault,
+        },
+        Arm {
+            label: "ar (exact)",
+            kind: ArmKind::Ar,
+        },
+        Arm {
+            label: "mdlm all-at-once (degenerate)",
+            kind: ArmKind::Mdlm,
+        },
+        Arm {
+            label: "prob-t* (new)",
+            kind: ArmKind::ProbTStar,
+        },
     ]
 }
 
@@ -253,9 +268,7 @@ fn train_arm(arm: &Arm, ctx: &ArmCtx<'_>) -> ArmResult {
 }
 
 fn print_table(title: &str, rows: &[ArmResult], chance_nats: f32, t_star: f32) {
-    println!(
-        "\n== Bench 809 {title} (seed {SEED}, lr {LR}) ==\n"
-    );
+    println!("\n== Bench 809 {title} (seed {SEED}, lr {LR}) ==\n");
     println!(
         "{:<32} {:>12} {:>12} {:>12} {:>10}",
         "arm", "train[0]", "train[-1]", "eval NELBO", "wall_ms"
@@ -295,7 +308,13 @@ fn g1_seam_parity_incumbent_byte_identical() {
             order_to_gen_steps(&schedule2.sample_order_with(len, || rng.uniform()))
         };
         train_mini_set_causal_with_gen_steps(
-            &config, &train, &test, M_EPOCHS, LR, &mut reveal, SEED,
+            &config,
+            &train,
+            &test,
+            M_EPOCHS,
+            LR,
+            &mut reveal,
+            SEED,
         )
     };
 
@@ -314,13 +333,8 @@ fn g1_seam_parity_incumbent_byte_identical() {
         order_to_gen_steps(&schedule3.sample_order_with(len, || rng.uniform()))
     };
     let mut rng_b = Rng::new(SEED + 7);
-    let nelbo_closure = evaluate_set_causal_nelbo_with_gen_steps(
-        &w_seam,
-        &test,
-        &config,
-        &mut closure,
-        &mut rng_b,
-    );
+    let nelbo_closure =
+        evaluate_set_causal_nelbo_with_gen_steps(&w_seam, &test, &config, &mut closure, &mut rng_b);
     assert_eq!(
         nelbo_sched, nelbo_closure,
         "G1 FAILED: schedule entry and equivalent gen-steps closure diverge"
@@ -383,8 +397,7 @@ fn g2_tstar_gate_orders_high_confidence_first() {
         .reduce(|a, b| if conf[b] > conf[a] { b } else { a })
         .unwrap();
     assert_eq!(
-        gen_steps[argmax],
-        0,
+        gen_steps[argmax], 0,
         "G2 FAILED: the argmax-confidence position must reveal first"
     );
 }
@@ -415,7 +428,12 @@ fn g3_arm_table_markov() {
     for arm in build_arms() {
         rows.push(train_arm(&arm, &ctx));
     }
-    print_table("Cell A — Markov lane (V=8 L=8, 300 epochs)", &rows, chance_nats, t_star);
+    print_table(
+        "Cell A — Markov lane (V=8 L=8, 300 epochs)",
+        &rows,
+        chance_nats,
+        t_star,
+    );
 
     for r in &rows {
         assert!(
@@ -576,7 +594,13 @@ fn g5_denoiser_realtext_table() {
             nll_b,
             wall_ms
         );
-        rows.push((arm.label.to_string(), loss_history[0], nll_a, nll_b, wall_ms));
+        rows.push((
+            arm.label.to_string(),
+            loss_history[0],
+            nll_a,
+            nll_b,
+            wall_ms,
+        ));
     }
     println!(
         "\nchance = ln 32 = {chance_nats:.4} · unigram floor (no context) = {floor_nats:.4} \

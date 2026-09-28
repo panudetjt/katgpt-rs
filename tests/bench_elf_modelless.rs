@@ -126,8 +126,13 @@ fn bench_sde_noise_path_diversity() {
     }
 }
 
-fn extract_prefix(parent_path: katgpt_core::speculative::types::TreePath, depth: usize) -> Vec<usize> {
-    (0..depth).map(|k| parent_path.token_at(k) as usize).collect()
+fn extract_prefix(
+    parent_path: katgpt_core::speculative::types::TreePath,
+    depth: usize,
+) -> Vec<usize> {
+    (0..depth)
+        .map(|k| parent_path.token_at(k) as usize)
+        .collect()
 }
 
 // ── 3. SDE Noise: Win Rate Comparison (DDTree Quality) ───────────

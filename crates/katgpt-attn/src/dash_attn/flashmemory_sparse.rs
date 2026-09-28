@@ -181,8 +181,8 @@ impl FlashMemoryBlockCache {
             }
 
             // Mean-pool c_kv for this block → latent centroid.
-            let centroid = &mut self.latent_centroids
-                [block_idx * self.d_c..(block_idx + 1) * self.d_c];
+            let centroid =
+                &mut self.latent_centroids[block_idx * self.d_c..(block_idx + 1) * self.d_c];
             centroid.fill(0.0);
             for tok in start..end {
                 let c_kv_j = cache.latent_kv_at(tok);
@@ -199,7 +199,8 @@ impl FlashMemoryBlockCache {
             for head in 0..self.n_heads {
                 let w_uk_head =
                     &weights.w_uk[head * self.d_h * self.d_c..(head + 1) * self.d_h * self.d_c];
-                let k_c_head = &mut self.key_centroids[key_off + head * self.d_h..key_off + (head + 1) * self.d_h];
+                let k_c_head = &mut self.key_centroids
+                    [key_off + head * self.d_h..key_off + (head + 1) * self.d_h];
                 simd_matmul_rows(k_c_head, w_uk_head, centroid, self.d_h, self.d_c);
             }
         }
@@ -340,8 +341,8 @@ impl GqaFlashMemoryBlockCache {
 
             // Mean-pool keys for each KV head over [start, end).
             let centroid_off = block_idx * self.n_kv_head * self.head_dim;
-            let centroid =
-                &mut self.key_centroids[centroid_off..centroid_off + self.n_kv_head * self.head_dim];
+            let centroid = &mut self.key_centroids
+                [centroid_off..centroid_off + self.n_kv_head * self.head_dim];
             centroid.fill(0.0);
             for tok in start..end {
                 let key_off = tok * kv_dim;
@@ -508,7 +509,10 @@ impl GqaFlashMemorySelector {
     }
 
     pub fn selection(&self) -> &PerHeadSelection {
-        assert!(self.selection_valid, "no valid selection — call select() first");
+        assert!(
+            self.selection_valid,
+            "no valid selection — call select() first"
+        );
         &self.last_selection
     }
 }
@@ -646,7 +650,8 @@ impl FlashMemorySelector {
 
         for head in 0..self.n_heads {
             let q_c_h = &query_content[head * d_h..(head + 1) * d_h];
-            let scores = &mut self.scores_buf[head * self.max_blocks..head * self.max_blocks + n_blocks];
+            let scores =
+                &mut self.scores_buf[head * self.max_blocks..head * self.max_blocks + n_blocks];
 
             // Score each block: dot(q_c_h, k_c_centroid_h) * attn_scale
             for (block_idx, score_slot) in scores.iter_mut().enumerate().take(n_blocks) {
@@ -668,7 +673,10 @@ impl FlashMemorySelector {
 
     /// Get the current selection (panics if not yet selected).
     pub fn selection(&self) -> &PerHeadSelection {
-        assert!(self.selection_valid, "no valid selection — call select() first");
+        assert!(
+            self.selection_valid,
+            "no valid selection — call select() first"
+        );
         &self.last_selection
     }
 }
@@ -864,20 +872,32 @@ impl DualEncoderIndexer {
     pub fn to_bytes(&self) -> Vec<u8> {
         let total_floats = 2 + // hidden, d_h
             self.hidden * self.d_h + self.hidden + self.hidden + 1 + // Q-Indexer
-            self.hidden * self.d_h + self.hidden + self.hidden + 1;  // K-Indexer
+            self.hidden * self.d_h + self.hidden + self.hidden + 1; // K-Indexer
         let mut buf = Vec::with_capacity(total_floats * 4);
         let push_f32 = |v: f32, buf: &mut Vec<u8>| {
             buf.extend_from_slice(&v.to_le_bytes());
         };
         push_f32(self.hidden as f32, &mut buf);
         push_f32(self.d_h as f32, &mut buf);
-        for &v in &self.q_w1 { push_f32(v, &mut buf); }
-        for &v in &self.q_b1 { push_f32(v, &mut buf); }
-        for &v in &self.q_w2 { push_f32(v, &mut buf); }
+        for &v in &self.q_w1 {
+            push_f32(v, &mut buf);
+        }
+        for &v in &self.q_b1 {
+            push_f32(v, &mut buf);
+        }
+        for &v in &self.q_w2 {
+            push_f32(v, &mut buf);
+        }
         push_f32(self.q_b2, &mut buf);
-        for &v in &self.k_w1 { push_f32(v, &mut buf); }
-        for &v in &self.k_b1 { push_f32(v, &mut buf); }
-        for &v in &self.k_w2 { push_f32(v, &mut buf); }
+        for &v in &self.k_w1 {
+            push_f32(v, &mut buf);
+        }
+        for &v in &self.k_b1 {
+            push_f32(v, &mut buf);
+        }
+        for &v in &self.k_w2 {
+            push_f32(v, &mut buf);
+        }
         push_f32(self.k_b2, &mut buf);
         buf
     }
@@ -895,7 +915,10 @@ impl DualEncoderIndexer {
                 return Err("buffer too short");
             }
             let v = f32::from_le_bytes([
-                data[*offset], data[*offset + 1], data[*offset + 2], data[*offset + 3],
+                data[*offset],
+                data[*offset + 1],
+                data[*offset + 2],
+                data[*offset + 3],
             ]);
             *offset += 4;
             Ok(v)
@@ -928,8 +951,7 @@ impl DualEncoderIndexer {
         let k_b2 = read_f32(&mut off)?;
 
         Ok(Self::from_weights(
-            config, d_h, n_heads, max_blocks,
-            q_w1, q_b1, q_w2, q_b2, k_w1, k_b1, k_w2, k_b2,
+            config, d_h, n_heads, max_blocks, q_w1, q_b1, q_w2, q_b2, k_w1, k_b1, k_w2, k_b2,
         ))
     }
 
@@ -1025,8 +1047,14 @@ impl DualEncoderIndexer {
             for block_idx in 0..n_blocks {
                 let centroid = block_cache.key_centroid(block_idx, head);
                 let k_score = Self::mlp_forward(
-                    &self.k_w1, &self.k_b1, &self.k_w2, self.k_b2,
-                    centroid, &mut self.mlp_scratch, hidden, d_h,
+                    &self.k_w1,
+                    &self.k_b1,
+                    &self.k_w2,
+                    self.k_b2,
+                    centroid,
+                    &mut self.mlp_scratch,
+                    hidden,
+                    d_h,
                 );
                 self.k_scores_cache[head * self.max_blocks + block_idx] = k_score;
             }
@@ -1037,8 +1065,14 @@ impl DualEncoderIndexer {
         for head in 0..n_h {
             let q_c_h = &query_content[head * d_h..(head + 1) * d_h];
             let q_score = Self::mlp_forward(
-                &self.q_w1, &self.q_b1, &self.q_w2, self.q_b2,
-                q_c_h, &mut self.mlp_scratch, hidden, d_h,
+                &self.q_w1,
+                &self.q_b1,
+                &self.q_w2,
+                self.q_b2,
+                q_c_h,
+                &mut self.mlp_scratch,
+                hidden,
+                d_h,
             );
 
             let k_off = head * self.max_blocks;
@@ -1056,7 +1090,10 @@ impl DualEncoderIndexer {
 
     /// Get the current selection (panics if not yet selected).
     pub fn selection(&self) -> &PerHeadSelection {
-        assert!(self.selection_valid, "no valid selection — call select() first");
+        assert!(
+            self.selection_valid,
+            "no valid selection — call select() first"
+        );
         &self.last_selection
     }
 
@@ -1115,8 +1152,14 @@ impl DualEncoderIndexer {
             for block_idx in 0..n_blocks {
                 let centroid = block_cache.key_centroid(block_idx, head);
                 let k_score = Self::mlp_forward(
-                    &self.k_w1, &self.k_b1, &self.k_w2, self.k_b2,
-                    centroid, &mut self.mlp_scratch, hidden, d_h,
+                    &self.k_w1,
+                    &self.k_b1,
+                    &self.k_w2,
+                    self.k_b2,
+                    centroid,
+                    &mut self.mlp_scratch,
+                    hidden,
+                    d_h,
                 );
                 self.k_scores_cache[head * self.max_blocks + block_idx] = k_score;
             }
@@ -1127,8 +1170,14 @@ impl DualEncoderIndexer {
         for head in 0..n_h {
             let q_h = &query_keys[head * d_h..(head + 1) * d_h];
             let q_score = Self::mlp_forward(
-                &self.q_w1, &self.q_b1, &self.q_w2, self.q_b2,
-                q_h, &mut self.mlp_scratch, hidden, d_h,
+                &self.q_w1,
+                &self.q_b1,
+                &self.q_w2,
+                self.q_b2,
+                q_h,
+                &mut self.mlp_scratch,
+                hidden,
+                d_h,
             );
 
             let k_off = head * self.max_blocks;
@@ -1152,26 +1201,56 @@ impl DualEncoderIndexer {
     }
 
     /// Get d_h dimension (for training access).
-    pub fn d_h_dim(&self) -> usize { self.d_h }
+    pub fn d_h_dim(&self) -> usize {
+        self.d_h
+    }
 
     /// Get hidden dimension (for training access).
-    pub fn hidden_dim(&self) -> usize { self.hidden }
+    pub fn hidden_dim(&self) -> usize {
+        self.hidden
+    }
 
     /// Extract all weights as a tuple (for training initialization).
     #[allow(clippy::type_complexity)]
-    pub fn extract_weights(&self) -> (Vec<f32>, Vec<f32>, Vec<f32>, f32, Vec<f32>, Vec<f32>, Vec<f32>, f32) {
+    pub fn extract_weights(
+        &self,
+    ) -> (
+        Vec<f32>,
+        Vec<f32>,
+        Vec<f32>,
+        f32,
+        Vec<f32>,
+        Vec<f32>,
+        Vec<f32>,
+        f32,
+    ) {
         (
-            self.q_w1.clone(), self.q_b1.clone(), self.q_w2.clone(), self.q_b2,
-            self.k_w1.clone(), self.k_b1.clone(), self.k_w2.clone(), self.k_b2,
+            self.q_w1.clone(),
+            self.q_b1.clone(),
+            self.q_w2.clone(),
+            self.q_b2,
+            self.k_w1.clone(),
+            self.k_b1.clone(),
+            self.k_w2.clone(),
+            self.k_b2,
         )
     }
 
     /// Clone for evaluation (resets refresh state but keeps weights).
     pub fn clone_for_eval(&self) -> Self {
         Self::from_weights(
-            self.config.clone(), self.d_h, self.n_heads, self.max_blocks,
-            self.q_w1.clone(), self.q_b1.clone(), self.q_w2.clone(), self.q_b2,
-            self.k_w1.clone(), self.k_b1.clone(), self.k_w2.clone(), self.k_b2,
+            self.config.clone(),
+            self.d_h,
+            self.n_heads,
+            self.max_blocks,
+            self.q_w1.clone(),
+            self.q_b1.clone(),
+            self.q_w2.clone(),
+            self.q_b2,
+            self.k_w1.clone(),
+            self.k_b1.clone(),
+            self.k_w2.clone(),
+            self.k_b2,
         )
     }
 }
@@ -1230,17 +1309,49 @@ pub fn mla_forward_token_flashmemory<'s>(
     simd_matmul_rows(&mut scratch.c_kv, &weights.w_dkv, h, d_c, d);
     simd_matmul_rows(&mut scratch.c_q, &weights.w_dq, h, d_qc, d);
 
-    rmsnorm_inplace(&mut scratch.c_q, &weights.q_a_norm_weight, config.rms_norm_eps);
-    rmsnorm_inplace(&mut scratch.c_kv, &weights.kv_a_norm_weight, config.rms_norm_eps);
+    rmsnorm_inplace(
+        &mut scratch.c_q,
+        &weights.q_a_norm_weight,
+        config.rms_norm_eps,
+    );
+    rmsnorm_inplace(
+        &mut scratch.c_kv,
+        &weights.kv_a_norm_weight,
+        config.rms_norm_eps,
+    );
 
-    simd_matmul_rows(&mut scratch.q_c, &weights.w_uq, &scratch.c_q, d_h * n_h, d_qc);
-    simd_matmul_rows(&mut scratch.q_r, &weights.w_qr, &scratch.c_q, d_r * n_h, d_qc);
+    simd_matmul_rows(
+        &mut scratch.q_c,
+        &weights.w_uq,
+        &scratch.c_q,
+        d_h * n_h,
+        d_qc,
+    );
+    simd_matmul_rows(
+        &mut scratch.q_r,
+        &weights.w_qr,
+        &scratch.c_q,
+        d_r * n_h,
+        d_qc,
+    );
     if !config.use_nope {
         apply_decoupled_rope(rope_freqs, &mut scratch.q_r, d_r, n_h, pos);
     }
 
-    simd_matmul_rows(&mut scratch.k_c, &weights.w_uk, &scratch.c_kv, d_h * n_h, d_c);
-    simd_matmul_rows(&mut scratch.v_c, &weights.w_uv, &scratch.c_kv, v_h * n_h, d_c);
+    simd_matmul_rows(
+        &mut scratch.k_c,
+        &weights.w_uk,
+        &scratch.c_kv,
+        d_h * n_h,
+        d_c,
+    );
+    simd_matmul_rows(
+        &mut scratch.v_c,
+        &weights.w_uv,
+        &scratch.c_kv,
+        v_h * n_h,
+        d_c,
+    );
 
     simd_matmul_rows(&mut scratch.k_r, &weights.w_kr, h, d_r, d);
     if !config.use_nope {
@@ -1368,7 +1479,13 @@ pub fn mla_forward_token_flashmemory<'s>(
         }
     }
 
-    simd_matmul_rows(&mut scratch.output, &weights.w_o, &scratch.attn_out, d, proj_size);
+    simd_matmul_rows(
+        &mut scratch.output,
+        &weights.w_o,
+        &scratch.attn_out,
+        d,
+        proj_size,
+    );
 
     &mut scratch.output[..d]
 }
@@ -1554,7 +1671,12 @@ mod tests {
         }
 
         // Should have refreshed exactly 2 times (step 0 and step 5).
-        assert_eq!(selector.refresh_count(), 2, "expected 2 refreshes, got {}", selector.refresh_count());
+        assert_eq!(
+            selector.refresh_count(),
+            2,
+            "expected 2 refreshes, got {}",
+            selector.refresh_count()
+        );
         assert_eq!(refreshes_at, vec![0, 5]);
     }
 
@@ -1633,7 +1755,10 @@ mod tests {
         selector.force_refresh();
         let sel_a = selector.select(&q_zero, &block_cache, scale, 0);
         let total_a = sel_a.total_selections();
-        assert!(total_a > 0, "zero query should select blocks at threshold boundary");
+        assert!(
+            total_a > 0,
+            "zero query should select blocks at threshold boundary"
+        );
 
         // Query B: high positive → should select high-centroid blocks more.
         let q_high = vec![5.0; config.n_heads * config.d_h()];
@@ -1694,7 +1819,9 @@ mod tests {
         let mut block_cache_low = FlashMemoryBlockCache::new(&config, &fm_low, max_seq);
         block_cache_low.rebuild_from_cache(&cache, &weights);
         let mut sel_low = FlashMemorySelector::new(fm_low, config.n_heads, 4);
-        let n_low = sel_low.select(&q_c, &block_cache_low, scale, 0).total_selections();
+        let n_low = sel_low
+            .select(&q_c, &block_cache_low, scale, 0)
+            .total_selections();
 
         // High threshold → fewer blocks selected.
         let fm_high = FlashMemoryConfig {
@@ -1705,7 +1832,9 @@ mod tests {
         let mut block_cache_high = FlashMemoryBlockCache::new(&config, &fm_high, max_seq);
         block_cache_high.rebuild_from_cache(&cache, &weights);
         let mut sel_high = FlashMemorySelector::new(fm_high, config.n_heads, 4);
-        let n_high = sel_high.select(&q_c, &block_cache_high, scale, 0).total_selections();
+        let n_high = sel_high
+            .select(&q_c, &block_cache_high, scale, 0)
+            .total_selections();
 
         assert!(
             n_low >= n_high,
@@ -1737,8 +1866,15 @@ mod tests {
             // Normalize h to have reasonable magnitude.
             let h_norm: Vec<f32> = h.iter().map(|&v| v / 10.0).collect();
             mla_forward_token_flashmemory(
-                &config, &weights, &mut cache, &mut scratch, &mut rope_freqs,
-                &h_norm, &mut block_cache, &mut selector, step,
+                &config,
+                &weights,
+                &mut cache,
+                &mut scratch,
+                &mut rope_freqs,
+                &h_norm,
+                &mut block_cache,
+                &mut selector,
+                step,
             );
         }
 
@@ -1746,8 +1882,15 @@ mod tests {
         assert_eq!(cache.seq_len, 8);
         // Verify the output has the right dimension.
         let output = mla_forward_token_flashmemory(
-            &config, &weights, &mut cache, &mut scratch, &mut rope_freqs,
-            &vec![0.1; config.hidden_size], &mut block_cache, &mut selector, 8,
+            &config,
+            &weights,
+            &mut cache,
+            &mut scratch,
+            &mut rope_freqs,
+            &vec![0.1; config.hidden_size],
+            &mut block_cache,
+            &mut selector,
+            8,
         );
         assert_eq!(output.len(), config.hidden_size);
         // Output should not be all-NaN.
@@ -1778,8 +1921,15 @@ mod tests {
         for step in 0..8 {
             let h = vec![0.1; config.hidden_size];
             let out = mla_forward_token_flashmemory(
-                &config, &weights, &mut cache, &mut scratch, &mut rope_freqs,
-                &h, &mut block_cache, &mut selector, step,
+                &config,
+                &weights,
+                &mut cache,
+                &mut scratch,
+                &mut rope_freqs,
+                &h,
+                &mut block_cache,
+                &mut selector,
+                step,
             );
             // Should not panic, should produce finite output.
             assert!(
@@ -1802,14 +1952,22 @@ mod tests {
         let mut scratch = MlaForwardScratch::new(&config, max_seq);
         let mut rope_freqs = RopeFreqs::new_with_theta(config.qk_rope_head_dim, config.rope_theta);
         let mut block_cache = FlashMemoryBlockCache::new(&config, &fm_config, max_seq);
-        let mut selector = FlashMemorySelector::new(fm_config, config.n_heads, max_seq.div_ceil(block_size));
+        let mut selector =
+            FlashMemorySelector::new(fm_config, config.n_heads, max_seq.div_ceil(block_size));
 
         // Process 64 tokens (4 blocks of 16).
         for step in 0..64 {
             let h = vec![((step % 10) as f32) * 0.01; config.hidden_size];
             let out = mla_forward_token_flashmemory(
-                &config, &weights, &mut cache, &mut scratch, &mut rope_freqs,
-                &h, &mut block_cache, &mut selector, step,
+                &config,
+                &weights,
+                &mut cache,
+                &mut scratch,
+                &mut rope_freqs,
+                &h,
+                &mut block_cache,
+                &mut selector,
+                step,
             );
             assert_eq!(out.len(), config.hidden_size);
             assert!(
@@ -1819,7 +1977,11 @@ mod tests {
         }
 
         // Verify the selector did periodic refreshes (τ=16, 64 steps → 4 refreshes).
-        assert_eq!(selector.refresh_count(), 4, "expected 4 refreshes over 64 steps");
+        assert_eq!(
+            selector.refresh_count(),
+            4,
+            "expected 4 refreshes over 64 steps"
+        );
     }
 
     // ── Phase B: DualEncoderIndexer (Plan 337) ───────────────────────────────
@@ -1851,13 +2013,15 @@ mod tests {
         }
         block_cache.rebuild_from_cache(&cache, &weights);
 
-        let mut indexer = DualEncoderIndexer::new_random(
-            fm_config, d_h, config.n_heads, 8, 42,
-        );
+        let mut indexer = DualEncoderIndexer::new_random(fm_config, d_h, config.n_heads, 8, 42);
 
         // Sanity: param count matches expected for d_h=16 (test config).
         // hidden = d_h/4 = 4. Params = 2 * (4*16 + 4 + 4 + 1) = 2 * 73 = 146.
-        assert_eq!(indexer.param_count(), 146, "param count for d_h=16, hidden=4");
+        assert_eq!(
+            indexer.param_count(),
+            146,
+            "param count for d_h=16, hidden=4"
+        );
 
         // Forward: indexer.select should produce a non-empty selection.
         let q_c = vec![1.0; config.n_heads * d_h];
@@ -1891,7 +2055,9 @@ mod tests {
 
         // Low threshold → more blocks.
         let fm_low = FlashMemoryConfig {
-            block_size: 16, refresh_period: 100, threshold: 0.01,
+            block_size: 16,
+            refresh_period: 100,
+            threshold: 0.01,
         };
         let mut bc_low = FlashMemoryBlockCache::new(&config, &fm_low, max_seq);
         bc_low.rebuild_from_cache(&cache, &weights);
@@ -1900,7 +2066,9 @@ mod tests {
 
         // High threshold → fewer blocks.
         let fm_high = FlashMemoryConfig {
-            block_size: 16, refresh_period: 100, threshold: 0.99,
+            block_size: 16,
+            refresh_period: 100,
+            threshold: 0.99,
         };
         let mut bc_high = FlashMemoryBlockCache::new(&config, &fm_high, max_seq);
         bc_high.rebuild_from_cache(&cache, &weights);
@@ -1936,9 +2104,7 @@ mod tests {
         }
         block_cache.rebuild_from_cache(&cache, &weights);
 
-        let mut indexer = DualEncoderIndexer::new_random(
-            fm_config, d_h, config.n_heads, 8, 99,
-        );
+        let mut indexer = DualEncoderIndexer::new_random(fm_config, d_h, config.n_heads, 8, 99);
 
         let q_c = vec![0.5; config.n_heads * d_h];
 
@@ -1977,9 +2143,8 @@ mod tests {
         }
         block_cache.rebuild_from_cache(&cache, &weights);
 
-        let mut indexer = DualEncoderIndexer::new_random(
-            fm_config.clone(), d_h, config.n_heads, 8, 7,
-        );
+        let mut indexer =
+            DualEncoderIndexer::new_random(fm_config.clone(), d_h, config.n_heads, 8, 7);
 
         let q_c = vec![1.0; config.n_heads * d_h];
         indexer.force_refresh();
@@ -1987,9 +2152,8 @@ mod tests {
 
         // Serialize → deserialize.
         let bytes = indexer.to_bytes();
-        let indexer2 = DualEncoderIndexer::from_bytes(
-            fm_config, config.n_heads, 8, &bytes,
-        ).expect("deserialization should succeed");
+        let indexer2 = DualEncoderIndexer::from_bytes(fm_config, config.n_heads, 8, &bytes)
+            .expect("deserialization should succeed");
 
         // Same query → same selection.
         let mut indexer2 = indexer2;
@@ -2023,9 +2187,8 @@ mod tests {
         }
         block_cache.rebuild_from_cache(&cache, &weights);
 
-        let mut indexer = DualEncoderIndexer::new_random(
-            fm_config, d_h, config.n_heads, max_blocks, 42,
-        );
+        let mut indexer =
+            DualEncoderIndexer::new_random(fm_config, d_h, config.n_heads, max_blocks, 42);
 
         // Kimi-K3: d_h=64, hidden=16. Params = 2*(16*64 + 16 + 16 + 1) = 2*1057 = 2114.
         assert_eq!(indexer.param_count(), 2114);
@@ -2041,7 +2204,11 @@ mod tests {
         // GQA sibling of b1: select_gqa reads raw per-KV-head centroids from
         // GqaFlashMemoryBlockCache + the KV-resolution query, and produces a
         // non-empty selection with distinct per-head results possible.
-        let fm = FlashMemoryConfig { block_size: 4, refresh_period: 100, threshold: 0.5 };
+        let fm = FlashMemoryConfig {
+            block_size: 4,
+            refresh_period: 100,
+            threshold: 0.5,
+        };
         let n_kv_head = 2;
         let head_dim = 8;
         let seq_len = 16; // 4 blocks
@@ -2092,7 +2259,11 @@ mod tests {
         // score is exactly 0 → σ(0)=0.5. Threshold 0.5 (≥) selects ALL blocks;
         // 0.5000001 selects NONE. This pins the σ(q·k) ≥ threshold contract
         // the riir-train Plan 337 checkpoints were trained under.
-        let fm_all = FlashMemoryConfig { block_size: 4, refresh_period: 100, threshold: 0.5 };
+        let fm_all = FlashMemoryConfig {
+            block_size: 4,
+            refresh_period: 100,
+            threshold: 0.5,
+        };
         let n_kv_head = 2;
         let head_dim = 8;
         let seq_len = 8; // 2 blocks
@@ -2106,9 +2277,18 @@ mod tests {
         let zeros_w1 = vec![0.0f32; 2 * head_dim];
         let zero_indexer = |fm: FlashMemoryConfig| {
             DualEncoderIndexer::from_weights(
-                fm, head_dim, n_kv_head, max_blocks,
-                zeros_w1.clone(), zeros_h.clone(), zeros1.clone(), 0.0,
-                zeros_w1.clone(), zeros_h.clone(), zeros1.clone(), 0.0,
+                fm,
+                head_dim,
+                n_kv_head,
+                max_blocks,
+                zeros_w1.clone(),
+                zeros_h.clone(),
+                zeros1.clone(),
+                0.0,
+                zeros_w1.clone(),
+                zeros_h.clone(),
+                zeros1.clone(),
+                0.0,
             )
         };
 
@@ -2118,11 +2298,19 @@ mod tests {
         let mut idx = zero_indexer(fm_all);
         let sel = idx.select_gqa(&query, &cache, 0);
         for h in 0..n_kv_head {
-            assert_eq!(sel.blocks_per_head[h].len(), 2, "all blocks selected at thr 0.5");
+            assert_eq!(
+                sel.blocks_per_head[h].len(),
+                2,
+                "all blocks selected at thr 0.5"
+            );
         }
 
         // Threshold just above 0.5: nothing selected.
-        let fm_none = FlashMemoryConfig { block_size: 4, refresh_period: 100, threshold: 0.5000001 };
+        let fm_none = FlashMemoryConfig {
+            block_size: 4,
+            refresh_period: 100,
+            threshold: 0.5000001,
+        };
         let mut idx2 = zero_indexer(fm_none);
         let sel2 = idx2.select_gqa(&query, &cache, 0);
         assert_eq!(sel2.total_selections(), 0, "no blocks selected above σ(0)");
@@ -2134,7 +2322,11 @@ mod tests {
         // Same amortization contract as the modelless GQA selector: within the
         // refresh period the cached selection is returned and refresh_count
         // does not advance.
-        let fm = FlashMemoryConfig { block_size: 4, refresh_period: 5, threshold: 0.5 };
+        let fm = FlashMemoryConfig {
+            block_size: 4,
+            refresh_period: 5,
+            threshold: 0.5,
+        };
         let n_kv_head = 1;
         let head_dim = 4;
         let seq_len = 16;
@@ -2160,7 +2352,11 @@ mod tests {
     /// GQA block cache builds correct centroids from raw keys.
     #[test]
     fn gqa_q1_block_centroids_built_from_raw_keys() {
-        let fm = FlashMemoryConfig { block_size: 4, refresh_period: 100, threshold: 0.5 };
+        let fm = FlashMemoryConfig {
+            block_size: 4,
+            refresh_period: 100,
+            threshold: 0.5,
+        };
         let n_kv_head = 2;
         let head_dim = 8;
         let seq_len = 8; // 2 blocks
@@ -2185,11 +2381,19 @@ mod tests {
 
         // Block 0: tokens 0,1,2,3. Centroid head 0 = mean(0,1,2,3) = 1.5.
         let c0_h0 = cache.key_centroid(0, 0);
-        assert!((c0_h0[0] - 1.5).abs() < 1e-5, "block 0 head 0 centroid = {}", c0_h0[0]);
+        assert!(
+            (c0_h0[0] - 1.5).abs() < 1e-5,
+            "block 0 head 0 centroid = {}",
+            c0_h0[0]
+        );
 
         // Block 0 head 1 = mean(10,11,12,13) = 11.5.
         let c0_h1 = cache.key_centroid(0, 1);
-        assert!((c0_h1[0] - 11.5).abs() < 1e-5, "block 0 head 1 centroid = {}", c0_h1[0]);
+        assert!(
+            (c0_h1[0] - 11.5).abs() < 1e-5,
+            "block 0 head 1 centroid = {}",
+            c0_h1[0]
+        );
 
         // Block 1: tokens 4,5,6,7. Centroid head 0 = mean(4,5,6,7) = 5.5.
         let c1_h0 = cache.key_centroid(1, 0);
@@ -2199,7 +2403,11 @@ mod tests {
     /// GQA block cache handles partial last block.
     #[test]
     fn gqa_q1_partial_last_block() {
-        let fm = FlashMemoryConfig { block_size: 4, refresh_period: 100, threshold: 0.5 };
+        let fm = FlashMemoryConfig {
+            block_size: 4,
+            refresh_period: 100,
+            threshold: 0.5,
+        };
         let mut cache = GqaFlashMemoryBlockCache::new(1, 4, &fm, 10);
         let keys = vec![1.0f32; 6 * 4]; // 6 tokens, 1 head, head_dim=4
         cache.rebuild_from_keys(&keys, 6);
@@ -2213,7 +2421,11 @@ mod tests {
     /// GQA selector produces valid per-KV-head selection with sigmoid threshold.
     #[test]
     fn gqa_q3_selector_sigmoid_threshold() {
-        let fm = FlashMemoryConfig { block_size: 2, refresh_period: 100, threshold: 0.5 };
+        let fm = FlashMemoryConfig {
+            block_size: 2,
+            refresh_period: 100,
+            threshold: 0.5,
+        };
         let n_kv_head = 2;
         let head_dim = 4;
         let seq_len = 8; // 4 blocks
@@ -2233,18 +2445,25 @@ mod tests {
 
         // Query head 0 aligned with block 0.
         let mut query = vec![0.0f32; n_kv_head * head_dim];
-        query[0] = 5.0; query[1] = 5.0;
+        query[0] = 5.0;
+        query[1] = 5.0;
 
         let selection = sel.select(&query, &cache, 1.0, 0);
         // Block 0 should be selected for head 0 (high dot product).
-        assert!(selection.blocks_per_head[0].contains(&0),
-            "block 0 should be selected for head 0");
+        assert!(
+            selection.blocks_per_head[0].contains(&0),
+            "block 0 should be selected for head 0"
+        );
     }
 
     /// GQA selector periodic refresh amortizes scoring.
     #[test]
     fn gqa_q2_periodic_refresh() {
-        let fm = FlashMemoryConfig { block_size: 4, refresh_period: 5, threshold: 0.5 };
+        let fm = FlashMemoryConfig {
+            block_size: 4,
+            refresh_period: 5,
+            threshold: 0.5,
+        };
         let mut cache = GqaFlashMemoryBlockCache::new(1, 4, &fm, 32);
         let keys = vec![1.0f32; 16 * 4];
         cache.rebuild_from_keys(&keys, 16);

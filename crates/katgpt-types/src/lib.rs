@@ -55,6 +55,10 @@ pub use depth_invariance::{
 /// Binary `{-1,+1}` bit-plane packed weights (Issue 145, `binary_plasma` feature).
 #[cfg(feature = "binary_plasma")]
 pub mod binary;
+/// BITCOS — distribution-adaptive ternary layout: presence bitmap +
+/// compacted signs, rate `2−z` bits/weight (Issue 864, `bitcos` feature).
+#[cfg(feature = "bitcos")]
+pub mod bitcos;
 mod enums;
 mod gpart;
 mod hydra;
@@ -82,10 +86,6 @@ pub mod simd;
 pub mod slod;
 pub mod temporal;
 mod ternary;
-/// BITCOS — distribution-adaptive ternary layout: presence bitmap +
-/// compacted signs, rate `2−z` bits/weight (Issue 864, `bitcos` feature).
-#[cfg(feature = "bitcos")]
-pub mod bitcos;
 /// Ternary `{-1,0,+1}` bit-planes with per-128 f16 group scale — the
 /// `Q2_0_g128` container (Issue 578, `ternary_group_scale` feature).
 #[cfg(feature = "ternary_group_scale")]
@@ -110,31 +110,20 @@ mod tests_types;
 pub use binary::{BinaryWeights, GROUP_SIZE};
 #[cfg(feature = "bitcos")]
 pub use bitcos::{
-    TRIT_CROSSOVER_Z, BitcosWeights, ZeroDensityReport, bitcos_bits_per_weight,
+    BitcosWeights, TRIT_CROSSOVER_Z, ZeroDensityReport, bitcos_bits_per_weight,
     bitcos_payload_bytes_per_weight, should_use_bitcos, zero_density_report,
-};
-#[cfg(feature = "ternary_group_scale")]
-pub use ternary_group::{
-    TernaryBlockAoS, TernaryBlockContiguousWeights, TernaryFfnHook, TernaryGroupWeights,
-    TernaryInputProjHook, TernaryMatvecHook,
-};
-#[cfg(feature = "act_aware_fit")]
-pub use ternary_group_act_aware::{ACT_AWARE_SEARCH_GRID, ActAwareScaleFit};
-#[cfg(feature = "ternary_trit_pack")]
-pub use ternary_trit::{
-    TRIT_CODE_LIMIT, TRIT_LUT, TRIT_POW3, TRITS_PER_BYTE, TernaryTritWeights,
 };
 pub use config::{Config, InferenceOverrides, kv_dim};
 #[cfg(feature = "domain_latent")]
 pub use domain::DomainLatent;
 #[cfg(feature = "deltanet_inference")]
 pub use enums::DeltaNetLayerType;
+#[cfg(feature = "gemma4_inference")]
+pub use enums::Gemma4LayerType;
 #[cfg(feature = "collapse_aware_thinking")]
 pub use enums::ThinkingBudget;
 #[cfg(feature = "wall_attention")]
 pub use enums::WallConfig;
-#[cfg(feature = "gemma4_inference")]
-pub use enums::Gemma4LayerType;
 pub use enums::{
     AttentionMode, AttentionProjection, CacheLayout, CalibrationMode, ConvergenceSelector,
     CopyLateShape, DashAttnConfig, DepthTier, HlaMode, HybridPattern, LoopMode, LoopStabilityMode,
@@ -175,6 +164,15 @@ pub use slod::ScaleBoundary;
 pub use temporal::{TemporalDerivativeKernel, sigmoid_surprise_gate};
 #[cfg(feature = "plasma_path")]
 pub use ternary::{TernaryPackError, TernaryWeights};
+#[cfg(feature = "ternary_group_scale")]
+pub use ternary_group::{
+    TernaryBlockAoS, TernaryBlockContiguousWeights, TernaryFfnHook, TernaryGroupWeights,
+    TernaryInputProjHook, TernaryMatvecHook,
+};
+#[cfg(feature = "act_aware_fit")]
+pub use ternary_group_act_aware::{ACT_AWARE_SEARCH_GRID, ActAwareScaleFit};
+#[cfg(feature = "ternary_trit_pack")]
+pub use ternary_trit::{TRIT_CODE_LIMIT, TRIT_LUT, TRIT_POW3, TRITS_PER_BYTE, TernaryTritWeights};
 
 // Internal helpers (read_u32_le / read_f32_le / read_u16_le) live in
 // `domain.rs` and are crate-private — not re-exported here. If other modules

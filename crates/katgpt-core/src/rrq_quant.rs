@@ -471,13 +471,7 @@ impl RrqWeights {
     /// **Allocation:** zero. `out` is zeroed by this call, accumulated into
     /// per-stage via [`RrqStage::dot_acc_into`], then read back. `scratch`
     /// is used as the per-stage accumulator (zeroed per stage).
-    pub fn prefix_dot_into(
-        &self,
-        t: usize,
-        x: &[f32],
-        out: &mut [f32],
-        scratch: &mut [f32],
-    ) {
+    pub fn prefix_dot_into(&self, t: usize, x: &[f32], out: &mut [f32], scratch: &mut [f32]) {
         assert_eq!(
             x.len(),
             self.cols,
@@ -621,8 +615,7 @@ impl RrqWeights {
                 // Build per-stage LUTs for this group (stack [f32; LEVELS_PER_STAGE]).
                 // Each LUT is the RRQ affine baked: lut[code] = zp + code * scale.
                 // Build all LUTs first, then take slices (avoids borrow conflict).
-                let mut luts_buf: [[f32; LEVELS_PER_STAGE]; 8] =
-                    [[0.0; LEVELS_PER_STAGE]; 8];
+                let mut luts_buf: [[f32; LEVELS_PER_STAGE]; 8] = [[0.0; LEVELS_PER_STAGE]; 8];
                 for k in 0..n_stages {
                     luts_buf[k] = stage_refs[k].unwrap().group_lut_at(g_global);
                 }
@@ -641,8 +634,7 @@ impl RrqWeights {
                 let flat_start = o * self.cols + col_start;
                 let mut codes_slices: [&[u8]; 8] = [&[]; 8];
                 for k in 0..n_stages {
-                    codes_slices[k] =
-                        &codes_unpacked_per_stage[k][flat_start..flat_start + gs];
+                    codes_slices[k] = &codes_unpacked_per_stage[k][flat_start..flat_start + gs];
                 }
 
                 *out_o += dequant_dot_via_lut_multi_stage_slice(
@@ -1015,9 +1007,7 @@ mod tests {
         let rrq = RrqWeights::from_weights_rtn(&weights, rows, cols, DEFAULT_N_STAGES, 8);
 
         // Input vector.
-        let x: Vec<f32> = (0..cols)
-            .map(|i| (i as f32) * 0.13 - 1.0)
-            .collect();
+        let x: Vec<f32> = (0..cols).map(|i| (i as f32) * 0.13 - 1.0).collect();
 
         // For each prefix, compare prefix_dot_into vs reconstruct-then-dot.
         let mut recon = vec![0.0_f32; n];
@@ -1064,9 +1054,7 @@ mod tests {
         let rows = 4;
         let cols = 32;
         let n = rows * cols;
-        let weights: Vec<f32> = (0..n)
-            .map(|i| ((i as f32) * 0.05).sin() * 1.5)
-            .collect();
+        let weights: Vec<f32> = (0..n).map(|i| ((i as f32) * 0.05).sin() * 1.5).collect();
 
         let rrq = RrqWeights::from_weights_rtn(&weights, rows, cols, DEFAULT_N_STAGES, 16);
 
@@ -1197,8 +1185,7 @@ mod tests {
         // Worst-case (max across groups) should report group 1's PMR.
         let weights = [
             // group 0: uniform
-            1.0_f32, 1.0, 1.0, 1.0,
-            // group 1: one spike among 3 zeros → PMR = 4
+            1.0_f32, 1.0, 1.0, 1.0, // group 1: one spike among 3 zeros → PMR = 4
             5.0, 0.0, 0.0, 0.0,
         ];
         let pmr = peak_to_mean_ratio(&weights, 4);
@@ -1213,7 +1200,12 @@ mod tests {
     /// Build a synthetic weight block of `n_groups` groups × `group_size`
     /// weights. If `outlier_factor` > 0, inject one outlier of magnitude
     /// `outlier_factor * inlier` into each group; otherwise draw flat inliers.
-    fn synthetic_weights(n_groups: usize, group_size: usize, inlier: f32, outlier_factor: f32) -> Vec<f32> {
+    fn synthetic_weights(
+        n_groups: usize,
+        group_size: usize,
+        inlier: f32,
+        outlier_factor: f32,
+    ) -> Vec<f32> {
         let n = n_groups * group_size;
         let mut w = vec![0.0_f32; n];
         let mut seed: u64 = 0x1234_5678_9ABC_DEF0;
@@ -1286,7 +1278,10 @@ mod tests {
         let group_size = 128;
         let qwen = synthetic_weights(8, group_size, 0.5, 30.0);
         let pmr = peak_to_mean_ratio(&qwen, group_size);
-        assert!(pmr > PMR_THRESHOLD_2_2, "precondition: Qwen-like PMR {pmr:.2}");
+        assert!(
+            pmr > PMR_THRESHOLD_2_2,
+            "precondition: Qwen-like PMR {pmr:.2}"
+        );
 
         // High KS (tampered) → FlagForReview, even though PMR says Rrq.
         let strat = select_quant_strategy(&qwen, group_size, 0.40, PMR_THRESHOLD_2_2);
@@ -1332,9 +1327,7 @@ mod tests {
         let cols = 128;
         let gs = 32;
         let n = rows * cols;
-        let weights: Vec<f32> = (0..n)
-            .map(|i| (i as f32 * 0.1).sin() * 2.0 - 1.0)
-            .collect();
+        let weights: Vec<f32> = (0..n).map(|i| (i as f32 * 0.1).sin() * 2.0 - 1.0).collect();
         let rrq = RrqWeights::from_weights_rtn(&weights, rows, cols, DEFAULT_N_STAGES, gs);
         let x: Vec<f32> = (0..cols).map(|i| (i as f32 * 0.05).cos()).collect();
 
@@ -1381,7 +1374,10 @@ mod tests {
         for i in 0..8 {
             let direct = stage.dequant_at(i);
             let via_lut = lut[stage.code_at(i) as usize];
-            assert!((direct - via_lut).abs() < 1e-6, "i={i}: direct={direct} lut={via_lut}");
+            assert!(
+                (direct - via_lut).abs() < 1e-6,
+                "i={i}: direct={direct} lut={via_lut}"
+            );
         }
     }
 

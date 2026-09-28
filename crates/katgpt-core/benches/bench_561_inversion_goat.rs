@@ -196,7 +196,11 @@ impl InversionGradient for BenchTransformer {
         for v in 0..self.vocab_size {
             let base = (v as usize) * D;
             let embed = &self.embedding[base..base + D];
-            let dist: f32 = proxy.iter().zip(embed.iter()).map(|(p, e)| (p - e).powi(2)).sum();
+            let dist: f32 = proxy
+                .iter()
+                .zip(embed.iter())
+                .map(|(p, e)| (p - e).powi(2))
+                .sum();
             if dist < best_dist {
                 best_dist = dist;
                 best_v = v;
@@ -264,7 +268,10 @@ fn main() {
 
     // ── G2: latency per position across vocab sizes ─────────────────────
     println!("── G2: latency per position (random policy) ──");
-    println!("  {:>6} | {:>14} | {:>16}", "|V|", "µs/position", "acceptance tests");
+    println!(
+        "  {:>6} | {:>14} | {:>16}",
+        "|V|", "µs/position", "acceptance tests"
+    );
     println!("  ------+-{}+-{}", "─".repeat(14), "─".repeat(16));
 
     for &vocab_size in &[32_u32, 128, 512] {
@@ -285,7 +292,8 @@ fn main() {
 
         // Warm-up.
         for _ in 0..3 {
-            let _ = invert_sequence_into(&observed, vocab_size, &transformer, &cfg, &mut scratch, 0);
+            let _ =
+                invert_sequence_into(&observed, vocab_size, &transformer, &cfg, &mut scratch, 0);
         }
 
         let iters = 50_usize;
@@ -304,7 +312,8 @@ fn main() {
         let per_pos_us = total_us / (iters as f64 * T as f64);
 
         // Count acceptance tests for this vocab size.
-        let r = invert_sequence_into(&observed, vocab_size, &transformer, &cfg, &mut scratch, 0).unwrap();
+        let r = invert_sequence_into(&observed, vocab_size, &transformer, &cfg, &mut scratch, 0)
+            .unwrap();
         let acceptance_tests = match r {
             InversionResult::Recovered(_) => {
                 // Random averages |V|/2 per position.
@@ -441,10 +450,20 @@ fn main() {
         }
     });
 
-    println!("  Random policy per-call:          {per_call_random:>4} allocs (prefix Vec + RandomPolicy permutation)");
-    println!("  Gradient-guided per-call:        {per_call_grad:>4} allocs (prefix + proxy + grad_scratch + fallback + bitmap)");
-    println!("  Random steady-state (10 calls):  {steady_random:>4} allocs (expected ~10 × {per_call_random} = {})", 10 * per_call_random);
-    println!("  Gradient steady-state (10 calls):{steady_grad:>4} allocs (expected ~10 × {per_call_grad} = {})", 10 * per_call_grad);
+    println!(
+        "  Random policy per-call:          {per_call_random:>4} allocs (prefix Vec + RandomPolicy permutation)"
+    );
+    println!(
+        "  Gradient-guided per-call:        {per_call_grad:>4} allocs (prefix + proxy + grad_scratch + fallback + bitmap)"
+    );
+    println!(
+        "  Random steady-state (10 calls):  {steady_random:>4} allocs (expected ~10 × {per_call_random} = {})",
+        10 * per_call_random
+    );
+    println!(
+        "  Gradient steady-state (10 calls):{steady_grad:>4} allocs (expected ~10 × {per_call_grad} = {})",
+        10 * per_call_grad
+    );
 
     // G4 PASS condition: steady-state allocs scale linearly with call count
     // (no per-trial leak). The per-call setup allocs are documented above;
@@ -454,12 +473,27 @@ fn main() {
     let grad_no_leak = steady_grad <= 10 * per_call_grad;
 
     println!("\n── Verdict ──");
-    println!("  G2 random linear-in-|V|:    ✅ PASS (latency scales ~linearly with |V|; see table above)");
-    println!("  G2 gradient-guided:          ℹ️  {grad_per_pos_us:.0} µs/position (dominated by numerical");
-    println!("                                  finite-difference gradient: O(D) forward evals per step.");
-    println!("                                  Analytical gradient on real transformers would be ~{:.0} µs.)", grad_per_pos_us / 8.0);
-    println!("  G4 no per-trial leak:        random {}  gradient-guided {}", pass_fail(random_no_leak), pass_fail(grad_no_leak));
-    println!("\n  Note: per-call allocs ({per_call_random} random, {per_call_grad} grad) are setup costs");
+    println!(
+        "  G2 random linear-in-|V|:    ✅ PASS (latency scales ~linearly with |V|; see table above)"
+    );
+    println!(
+        "  G2 gradient-guided:          ℹ️  {grad_per_pos_us:.0} µs/position (dominated by numerical"
+    );
+    println!(
+        "                                  finite-difference gradient: O(D) forward evals per step."
+    );
+    println!(
+        "                                  Analytical gradient on real transformers would be ~{:.0} µs.)",
+        grad_per_pos_us / 8.0
+    );
+    println!(
+        "  G4 no per-trial leak:        random {}  gradient-guided {}",
+        pass_fail(random_no_leak),
+        pass_fail(grad_no_leak)
+    );
+    println!(
+        "\n  Note: per-call allocs ({per_call_random} random, {per_call_grad} grad) are setup costs"
+    );
     println!("  (prefix Vec + policy buffers), NOT hot-path allocations. The inner trial loop");
     println!("  is alloc-free by construction (caller-supplied scratch + pre-allocated policy).");
     println!("  To achieve true 0-alloc steady-state, pass a long-lived policy via a future");
@@ -467,9 +501,5 @@ fn main() {
 }
 
 fn pass_fail(pass: bool) -> &'static str {
-    if pass {
-        "✅ PASS"
-    } else {
-        "❌ FAIL"
-    }
+    if pass { "✅ PASS" } else { "❌ FAIL" }
 }

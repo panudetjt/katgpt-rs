@@ -551,16 +551,12 @@ fn gate_g1_structural_advantage() -> GateResult {
 
     println!("  flat Thompson    median steps-to-90%: {med_flat}");
     println!("  hierarchical     median steps-to-90%: {med_hier}");
-    println!(
-        "  ratio (hier/flat): {ratio:.3}  (gate: ≤ {RATIO_GATE_G1:.1})"
-    );
+    println!("  ratio (hier/flat): {ratio:.3}  (gate: ≤ {RATIO_GATE_G1:.1})");
 
     if passed {
         GateResult::pass(
             "G1 structural advantage",
-            format!(
-                "hier {med_hier} ≤ {RATIO_GATE_G1:.1}× flat {med_flat} (ratio {ratio:.3})"
-            ),
+            format!("hier {med_hier} ≤ {RATIO_GATE_G1:.1}× flat {med_flat} (ratio {ratio:.3})"),
         )
     } else {
         GateResult::fail(
@@ -607,9 +603,7 @@ fn gen_clustered_embeddings_bench(trial: u64) -> Vec<Vec<f32>> {
 
 fn gate_g1_real_tree_structural_advantage() -> GateResult {
     println!("\n--- G1-real: Structural Advantage with Phase 3 build() tree ---");
-    println!(
-        "    ({N_ARMS} arms, {N_CLUSTERS} clusters, T={T_G1}, {TRIALS_G1} trials)"
-    );
+    println!("    ({N_ARMS} arms, {N_CLUSTERS} clusters, T={T_G1}, {TRIALS_G1} trials)");
 
     let mut flat_steps = Vec::with_capacity(TRIALS_G1);
     let mut hier_steps = Vec::with_capacity(TRIALS_G1);
@@ -673,12 +667,8 @@ fn gate_g1_real_tree_structural_advantage() -> GateResult {
 
     println!("  flat Thompson    median steps-to-90%: {med_flat}");
     println!("  hier (real tree) median steps-to-90%: {med_hier}");
-    println!(
-        "  ratio (hier/flat): {ratio:.3}  (gate: ≤ {RATIO_GATE_G1:.1})"
-    );
-    println!(
-        "  real tree median top-level clusters: {median_top} (domain has {N_CLUSTERS})"
-    );
+    println!("  ratio (hier/flat): {ratio:.3}  (gate: ≤ {RATIO_GATE_G1:.1})");
+    println!("  real tree median top-level clusters: {median_top} (domain has {N_CLUSTERS})");
 
     if passed {
         GateResult::pass(
@@ -771,9 +761,7 @@ fn gate_g1_real_phase_gate_sweep() -> GateResult {
         }
         let med_hier = median_u64(&mut hier_steps);
         let ratio = med_hier as f64 / med_flat as f64;
-        println!(
-            "  d={d:<2}  hier median steps-to-90%: {med_hier:<6}  ratio: {ratio:.3}"
-        );
+        println!("  d={d:<2}  hier median steps-to-90%: {med_hier:<6}  ratio: {ratio:.3}");
         sweep_results.push((d, med_hier, ratio));
         if ratio < best_ratio {
             best_ratio = ratio;
@@ -898,9 +886,7 @@ fn gate_g2_diversity() -> GateResult {
         "  hier reward advantage: {:+.2}%  (exploitation gain from structure)",
         hier_reward_advantage * 100.0
     );
-    println!(
-        "  ratio (hier/flat): {ratio:.3}  (gate: ≥ {RATIO_GATE_G2:.1})"
-    );
+    println!("  ratio (hier/flat): {ratio:.3}  (gate: ≥ {RATIO_GATE_G2:.1})");
 
     // The plan expected hierarchical to visit MORE clusters (diversity claim
     // from the paper's curriculum-learning setting). Empirically, hierarchical
@@ -928,9 +914,7 @@ fn gate_g2_diversity() -> GateResult {
                 hier_reward_advantage * 100.0
             )
         } else {
-            format!(
-                "hier {med_hier_c} < {RATIO_GATE_G2:.1}× flat {med_flat_c}"
-            )
+            format!("hier {med_hier_c} < {RATIO_GATE_G2:.1}× flat {med_flat_c}")
         };
         GateResult::fail("G2 diversity preservation", reason)
     }
@@ -1013,18 +997,10 @@ fn gate_g3_nonstationarity() -> GateResult {
     let passed = ratio <= RATIO_GATE_G3 as f64;
 
     println!("  flat (no filter)          median recovery: {med_flat}");
-    println!(
-        "  flat (filter={DRIFT_RATE})          median recovery: {med_flat_f}"
-    );
-    println!(
-        "  hier (filter={DRIFT_RATE})          median recovery: {med_hier_f}"
-    );
-    println!(
-        "  sliding-window (W={SLIDING_WINDOW_SIZE})     median recovery: {med_slide}"
-    );
-    println!(
-        "  ratio (hier+filter / flat-no-filter): {ratio:.3}  (gate: ≤ {RATIO_GATE_G3:.1})"
-    );
+    println!("  flat (filter={DRIFT_RATE})          median recovery: {med_flat_f}");
+    println!("  hier (filter={DRIFT_RATE})          median recovery: {med_hier_f}");
+    println!("  sliding-window (W={SLIDING_WINDOW_SIZE})     median recovery: {med_slide}");
+    println!("  ratio (hier+filter / flat-no-filter): {ratio:.3}  (gate: ≤ {RATIO_GATE_G3:.1})");
 
     if passed {
         GateResult::pass(
@@ -1046,7 +1022,7 @@ fn gate_g3_nonstationarity() -> GateResult {
 fn gate_g4_latency() -> GateResult {
     const BATCH: usize = 1000;
 
-println!(
+    println!(
         "\n--- G4: Latency (depth {}, branching {}, {} leaves) ---",
         DEPTH_G4,
         BRANCHING_G4,
@@ -1098,12 +1074,8 @@ println!(
     }
     let med_observe = median_duration_ns_arr(&mut observe_ns);
 
-    println!(
-        "  sample  p50: {med_sample} ns  (gate: ≤ {LATENCY_TARGET_SAMPLE_NS} ns)"
-    );
-    println!(
-        "  observe p50: {med_observe} ns  (gate: ≤ {LATENCY_TARGET_OBSERVE_NS} ns)"
-    );
+    println!("  sample  p50: {med_sample} ns  (gate: ≤ {LATENCY_TARGET_SAMPLE_NS} ns)");
+    println!("  observe p50: {med_observe} ns  (gate: ≤ {LATENCY_TARGET_OBSERVE_NS} ns)");
 
     // ── Alloc-free hot path ──
     let (_, sample_allocs) = alloc_delta(|| {

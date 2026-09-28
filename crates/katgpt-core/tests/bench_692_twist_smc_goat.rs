@@ -50,14 +50,14 @@
 
 #![cfg(feature = "twist_smc")]
 
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
-use katgpt_core::distributional_steering::{systematic_resample_into, WeightedPopulation};
+use katgpt_core::distributional_steering::{WeightedPopulation, systematic_resample_into};
 use katgpt_core::twist_cache::{
-    ess_from_log_weights, proxy_spearman, twist_after_resample, twist_step_into, ValueMemo,
-    RidgeTwistTable, X0ProxyMode, X0ProxyReward,
+    RidgeTwistTable, ValueMemo, X0ProxyMode, X0ProxyReward, ess_from_log_weights, proxy_spearman,
+    twist_after_resample, twist_step_into,
 };
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -290,7 +290,11 @@ fn marginals_a_row(x: &[f32], t: usize, grid: &[f32], out: &mut [f32]) {
         out[j] = p;
         z += p as f64;
     }
-    let inv = if z > 0.0 { 1.0 / z as f32 } else { 1.0 / DA_K as f32 };
+    let inv = if z > 0.0 {
+        1.0 / z as f32
+    } else {
+        1.0 / DA_K as f32
+    };
     for o in out.iter_mut() {
         *o *= inv;
     }
@@ -322,7 +326,7 @@ fn make_a_shared(seed: u64) -> AShared {
 fn run_a_arm(arm: Arm, seed: u64, sh: &AShared) -> ArmOutcome {
     const DA_SWITCH: usize = DA_T / 2;
 
-let started = Instant::now();
+    let started = Instant::now();
     let mut rng = SplitMix64::new(seed ^ arm_salt(&arm) ^ 0xA11CE);
     let budget = Scorer::new();
     let score_a = {
@@ -432,9 +436,10 @@ let started = Instant::now();
                     marginals_a_row(x, t, &sh.grid, &mut marg);
                     let best = argmax_row(&marg);
                     let x0 = &sh.grid[best * DA_D..(best + 1) * DA_D];
-                    vals[i] = memo.as_ref().expect("memo").lookup_or_insert(x0, t as u32, || {
-                        score_a(x0)
-                    });
+                    vals[i] = memo
+                        .as_ref()
+                        .expect("memo")
+                        .lookup_or_insert(x0, t as u32, || score_a(x0));
                 }
             }
             Arm::MemoRidge => {
@@ -452,12 +457,7 @@ let started = Instant::now();
                     }
                 } else {
                     if t == DA_SWITCH && table.is_none() {
-                        table = Some(RidgeTwistTable::fit(
-                            &cache_feats,
-                            &cache_vals,
-                            7,
-                            1e-6,
-                        ));
+                        table = Some(RidgeTwistTable::fit(&cache_feats, &cache_vals, 7, 1e-6));
                     }
                     let tab = table.as_ref().expect("mid-episode table");
                     for i in 0..DA_N {
@@ -469,18 +469,16 @@ let started = Instant::now();
             Arm::FullM => {
                 let h = DA_T - t;
                 for i in 0..DA_N {
-                    let mut cr = SplitMix64::new(state_seed(
-                        &states[i * DA_D..(i + 1) * DA_D],
-                        t as u32,
-                    ));
+                    let mut cr =
+                        SplitMix64::new(state_seed(&states[i * DA_D..(i + 1) * DA_D], t as u32));
                     let mut acc = 0.0f32;
                     for _ in 0..DA_M {
                         let mut z = states[i * DA_D..(i + 1) * DA_D].to_vec();
                         for _ in 0..h {
-                        for z_q in z.iter_mut() {
-                            *z_q = DA_A * *z_q + DA_SIG * cr.next_normal();
+                            for z_q in z.iter_mut() {
+                                *z_q = DA_A * *z_q + DA_SIG * cr.next_normal();
+                            }
                         }
-                    }
                         acc += reward_a(&z);
                         budget.calls.fetch_add(1, Ordering::Relaxed);
                     }
@@ -494,7 +492,15 @@ let started = Instant::now();
         let ess = ess_from_log_weights(&log_w);
         ess_sum += ess;
         ess_ct += 1;
-        maybe_resample(&mut states, &mut log_w, &mut prev, ess, &mut rng, DA_N, DA_D);
+        maybe_resample(
+            &mut states,
+            &mut log_w,
+            &mut prev,
+            ess,
+            &mut rng,
+            DA_N,
+            DA_D,
+        );
         if t + 1 < DA_T {
             advance_a(&mut states, &sh.noise[t]);
         }
@@ -527,7 +533,11 @@ let started = Instant::now();
     }
     ArmOutcome {
         downstream: downstream as f32,
-        ess_mean: if ess_ct > 0 { ess_sum / ess_ct as f32 } else { f32::NAN },
+        ess_mean: if ess_ct > 0 {
+            ess_sum / ess_ct as f32
+        } else {
+            f32::NAN
+        },
         diversity,
         queries: budget.calls.load(Ordering::Relaxed),
         memo_hits: memo.as_ref().map_or(0, |m| m.hits()),
@@ -665,7 +675,11 @@ fn b_marginals_row(prefix: &[f32], t: usize, cands: &mut Vec<f32>, marg: &mut [f
         marg[j] = b;
         z += b as f64;
     }
-    let inv = if z > 0.0 { 1.0 / z as f32 } else { 1.0 / DB_K as f32 };
+    let inv = if z > 0.0 {
+        1.0 / z as f32
+    } else {
+        1.0 / DB_K as f32
+    };
     for o in marg.iter_mut() {
         *o *= inv;
     }
@@ -706,7 +720,7 @@ fn distinct_frac(rows: &[f32], n: usize) -> f32 {
 fn run_b_arm(arm: Arm, seed: u64, sh: &BShared) -> ArmOutcome {
     const DB_SWITCH: usize = DB_L / 2;
 
-let started = Instant::now();
+    let started = Instant::now();
     let mut rng = SplitMix64::new(seed ^ arm_salt(&arm) ^ 0xB00B);
     let budget = Scorer::new();
     let cdf = unigram_cdf();
@@ -789,10 +803,13 @@ let started = Instant::now();
                     b_marginals_row(p, t, &mut cands, &mut marg);
                     let best = argmax_row(&marg);
                     let x0 = &cands[best * DB_L..(best + 1) * DB_L];
-                    vals[i] = memo.as_ref().expect("memo").lookup_or_insert(x0, t as u32, || {
-                        budget.calls.fetch_add(1, Ordering::Relaxed);
-                        reward_b(x0)
-                    });
+                    vals[i] = memo
+                        .as_ref()
+                        .expect("memo")
+                        .lookup_or_insert(x0, t as u32, || {
+                            budget.calls.fetch_add(1, Ordering::Relaxed);
+                            reward_b(x0)
+                        });
                 }
             }
             Arm::MemoRidge => {
@@ -812,12 +829,7 @@ let started = Instant::now();
                     }
                 } else {
                     if t == DB_SWITCH && table.is_none() {
-                        table = Some(RidgeTwistTable::fit(
-                            &cache_feats,
-                            &cache_vals,
-                            10,
-                            1e-6,
-                        ));
+                        table = Some(RidgeTwistTable::fit(&cache_feats, &cache_vals, 10, 1e-6));
                     }
                     let tab = table.as_ref().expect("mid-episode table");
                     for i in 0..DB_N {
@@ -849,7 +861,15 @@ let started = Instant::now();
         let ess = ess_from_log_weights(&log_w);
         ess_sum += ess;
         ess_ct += 1;
-        maybe_resample(&mut states, &mut log_w, &mut prev, ess, &mut rng, DB_N, DB_L);
+        maybe_resample(
+            &mut states,
+            &mut log_w,
+            &mut prev,
+            ess,
+            &mut rng,
+            DB_N,
+            DB_L,
+        );
         if t + 1 < DB_L {
             advance_b(&mut states, t, &sh.tokens[t], &cdf);
         }
@@ -869,7 +889,11 @@ let started = Instant::now();
     let diversity = distinct_frac(&states, DB_N);
     ArmOutcome {
         downstream: downstream as f32,
-        ess_mean: if ess_ct > 0 { ess_sum / ess_ct as f32 } else { f32::NAN },
+        ess_mean: if ess_ct > 0 {
+            ess_sum / ess_ct as f32
+        } else {
+            f32::NAN
+        },
         diversity,
         queries: budget.calls.load(Ordering::Relaxed),
         memo_hits: memo.as_ref().map_or(0, |m| m.hits()),
@@ -987,7 +1011,8 @@ fn collect_a() -> ATable {
         let rb = run_a_arm(Arm::FullM, seed, &sh);
         t.b.push(rb.downstream);
         t.div_da1.push((d.diversity, a1.diversity));
-        t.ess.push((rc.ess_mean, rcm.ess_mean, d.ess_mean, rb.ess_mean));
+        t.ess
+            .push((rc.ess_mean, rcm.ess_mean, d.ess_mean, rb.ess_mean));
         t.wall_ms = [
             t.wall_ms[0] + rc.wall_ms,
             t.wall_ms[1] + rcm.wall_ms,
@@ -1055,7 +1080,8 @@ fn collect_b() -> BTable {
         let rb = run_b_arm(Arm::FullM, seed, &shb);
         t.b.push(rb.downstream);
         t.div_da1.push((d.diversity, a1.diversity));
-        t.ess.push((rc.ess_mean, rcm.ess_mean, d.ess_mean, rb.ess_mean));
+        t.ess
+            .push((rc.ess_mean, rcm.ess_mean, d.ess_mean, rb.ess_mean));
         t.wall_ms = [
             t.wall_ms[0] + rc.wall_ms,
             t.wall_ms[1] + rcm.wall_ms,
@@ -1076,7 +1102,7 @@ fn collect_b() -> BTable {
 fn g2_g3_steering_uplift_and_promotion() {
     const PINNED_PROMOTE_B: bool = true;
 
-let a = collect_a();
+    let a = collect_a();
     eprintln!(
         "[Bench 692 · A] downstream ({} seeds):\\n  (e) no-steer   {:.4}\\n  (a1) BoM@{:<5} {:.4}\\n  (a2) BoM@{:<5} {:.4}\\n  (b) full-M     {:.4}\\n  (c) proxy      {:.4}\\n  (c+memo)       {:.4}\\n  (d) memo+ridge {:.4}",
         DA_SEEDS,
@@ -1182,11 +1208,7 @@ let a = collect_a();
     // the promoted-state assertion is pinned to the measured outcome.
     let d_mean_a = mean(&a.d);
     let a1_mean_a = mean(&a.a1);
-    let div_win_a = a
-        .div_da1
-        .iter()
-        .filter(|(dv, av)| dv >= av)
-        .count();
+    let div_win_a = a.div_da1.iter().filter(|(dv, av)| dv >= av).count();
     let promote_a = d_mean_a >= a1_mean_a && div_win_a as f32 >= a.div_da1.len() as f32 * 0.5;
     let d_mean_b = mean(&b.d);
     let a1_mean_b = mean(&b.a1);
@@ -1220,8 +1242,14 @@ let a = collect_a();
     );
     // No matter which way the promotion falls, the amortized arm must never
     // LOSE to no-steer (that would mean the value fit is anti-correlated).
-    assert!(d_mean_a >= mean(&a.e), "A: (d) must not regress below no-steer");
-    assert!(d_mean_b >= mean(&b.e), "B: (d) must not regress below no-steer");
+    assert!(
+        d_mean_a >= mean(&a.e),
+        "A: (d) must not regress below no-steer"
+    );
+    assert!(
+        d_mean_b >= mean(&b.e),
+        "B: (d) must not regress below no-steer"
+    );
 }
 
 // ──────────────────────────────────────────────────────────────────────────

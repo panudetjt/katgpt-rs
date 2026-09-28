@@ -3702,3 +3702,11 @@ required-features = ["state_option_scoring"]
 [[example]]
 name = "decode_01_losslessness"
 required-features = ["state_option_scoring", "template_decode"]
+
+# riir-instinct Issue 009 T5 — the tetris spot-wire information-ceiling
+# probe: does the five-ordinal option wire carry the champion's 1-ply
+# ranking, or must the Instinct lane receive the afterstate grid?
+# Consumes the closed-grammar tables (template_decode) only.
+[[example]]
+name = "tetris_10_wire_ceiling"
+required-features = ["template_decode"]

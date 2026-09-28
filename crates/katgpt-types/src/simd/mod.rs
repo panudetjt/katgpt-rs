@@ -44,17 +44,20 @@ mod argmax;
 /// Binary matvec kernels (`binary_plasma` feature, Issue 145).
 #[cfg(feature = "binary_plasma")]
 pub mod binary;
+/// BITCOS presence-bitmap GEMV kernels (`bitcos`, Issue 864).
+#[cfg(feature = "bitcos")]
+pub mod bitcos;
 mod dot;
 mod elementwise;
 mod horizontal;
 mod maxsim;
-mod research;
-mod sparse;
 /// Per-shape plasma dispatch — f32 below the L3 boundary, ternary above
 /// (Issue 843 T4 owner call, 2026-09-19). Gated with the ternary container
 /// it dispatches over (`TernaryWeights` itself is `plasma_path`-gated here).
 #[cfg(feature = "plasma_path")]
 mod plasma_dispatch;
+mod research;
+mod sparse;
 mod ternary;
 /// Group-scale ternary matvec kernels (`ternary_group_scale`, Issue 578).
 #[cfg(feature = "ternary_group_scale")]
@@ -62,9 +65,6 @@ pub mod ternary_group;
 /// Trit-packed ternary matvec kernels (`ternary_trit_pack`, Issue 582).
 #[cfg(feature = "ternary_trit_pack")]
 pub mod ternary_trit;
-/// BITCOS presence-bitmap GEMV kernels (`bitcos`, Issue 864).
-#[cfg(feature = "bitcos")]
-pub mod bitcos;
 
 #[cfg(test)]
 mod tests;
@@ -109,8 +109,7 @@ pub use dot::{
     simd_matmul_f16_f16_rows, simd_matmul_f16_f16_rows_parallel, simd_matmul_f16_f32_rows,
     simd_matmul_f16_f32_rows_parallel, simd_matmul_relu_rows, simd_matmul_rows,
     simd_matmul_rows_batched, simd_matmul_rows_parallel, simd_matvec, simd_outer_product_acc,
-    simd_outer_product_acc_scaled,
-    simd_transpose_matvec_acc, simd_transpose_matvec_into,
+    simd_outer_product_acc_scaled, simd_transpose_matvec_acc, simd_transpose_matvec_into,
 };
 pub use elementwise::{
     simd_add_inplace, simd_add_into, simd_add_scalar_inplace, simd_fused_decay_write,
@@ -121,30 +120,25 @@ pub use elementwise::{
 // the underlying items so `cargo check --no-default-features` stays green.
 #[cfg(feature = "binary_plasma")]
 pub use binary::{binary_matvec_scalar, simd_binary_matmul_batch, simd_binary_matvec};
-#[cfg(feature = "ternary_group_scale")]
-pub use ternary_group::{
-    simd_ternary_group_matmul_batch, simd_ternary_group_matvec,
-    simd_ternary_group_matvec_folded, simd_ternary_group_matvec_hoisted,
-    simd_ternary_group_matvec_parallel, ternary_group_matvec_scalar,
-};
-#[cfg(feature = "ternary_trit_pack")]
-pub use ternary_trit::{
-    simd_ternary_trit_matvec, simd_ternary_trit_matvec_parallel, ternary_trit_matvec_scalar,
-};
 #[cfg(feature = "bitcos")]
 pub use bitcos::{BITCOS_LUT, bitcos_matvec, bitcos_matvec_lut, bitcos_matvec_scalar};
 #[cfg(feature = "maxsim")]
 pub use maxsim::{maxsim_score, maxsim_score_packed};
-pub use research::{
-    coincidence_score, entropy_f32, simd_dist_sq, simd_fused_scale_acc, simd_fused_scale_acc_f16,
-    simd_fused_sub_acc, simd_gram_f32, simd_l_inf_distance_f32, simd_sum_abs_f32, simd_sum_sq,
-    simd_sum_sq_quartic,
+#[cfg(feature = "plasma_path")]
+pub use plasma_dispatch::{
+    DEFAULT_L3_BYTES, l3_cache_bytes, plasma_prefers_ternary, plasma_prefers_ternary_with_l3,
+    simd_matvec_plasma_dispatch, simd_matvec_plasma_dispatch_with_l3,
 };
 #[cfg(feature = "sigmoid_margin")]
 pub use research::{
     ArgmaxAudit, argmaxable_witness, audit_argmaxable, compute_retrieval_margin,
     dim_capacity_ceiling, dim_capacity_floor, dim_capacity_required, dim_sufficiency_bound,
     ln_binomial, matrix_rank, sigmoid_margin_loss,
+};
+pub use research::{
+    coincidence_score, entropy_f32, simd_dist_sq, simd_fused_scale_acc, simd_fused_scale_acc_f16,
+    simd_fused_sub_acc, simd_gram_f32, simd_l_inf_distance_f32, simd_sum_abs_f32, simd_sum_sq,
+    simd_sum_sq_quartic,
 };
 pub use sparse::{simd_sparse_dot_f32, simd_sparse_matmul_rows};
 pub use ternary::simd_ternary_dot_f32;
@@ -153,10 +147,15 @@ pub use ternary::{
     project_ternary_simd, project_ternary_simd_scalar, simd_ternary_matmul_batch,
     simd_ternary_matvec, ternary_matvec_scalar,
 };
-#[cfg(feature = "plasma_path")]
-pub use plasma_dispatch::{
-    l3_cache_bytes, plasma_prefers_ternary, plasma_prefers_ternary_with_l3,
-    simd_matvec_plasma_dispatch, simd_matvec_plasma_dispatch_with_l3, DEFAULT_L3_BYTES,
+#[cfg(feature = "ternary_group_scale")]
+pub use ternary_group::{
+    simd_ternary_group_matmul_batch, simd_ternary_group_matvec, simd_ternary_group_matvec_folded,
+    simd_ternary_group_matvec_hoisted, simd_ternary_group_matvec_parallel,
+    ternary_group_matvec_scalar,
+};
+#[cfg(feature = "ternary_trit_pack")]
+pub use ternary_trit::{
+    simd_ternary_trit_matvec, simd_ternary_trit_matvec_parallel, ternary_trit_matvec_scalar,
 };
 // WASM SIMD128 SWAR kernel — only available on `wasm32 +simd128`. Exported so
 // callers can invoke the specialized path directly (e.g. benches that want to

@@ -79,9 +79,8 @@ impl ToyTransformer {
     /// Random init with scale 1.0 (well-conditioned Jacobian, per Phase 2 lesson).
     fn new(rng: &mut fastrand::Rng) -> Self {
         let scale = 1.0_f32;
-        let mut rand_vec = |n: usize| -> Vec<f32> {
-            (0..n).map(|_| (rng.f32() * 2.0 - 1.0) * scale).collect()
-        };
+        let mut rand_vec =
+            |n: usize| -> Vec<f32> { (0..n).map(|_| (rng.f32() * 2.0 - 1.0) * scale).collect() };
         Self {
             embedding: rand_vec((V as usize) * D),
             w1_up: rand_vec(D * 4 * D),
@@ -298,7 +297,7 @@ fn fmt_prompt(prompt: &[u32]) -> String {
 fn main() {
     const N_PROMPTS: usize = 4;
 
-println!("╔══════════════════════════════════════════════════════════════════════╗");
+    println!("╔══════════════════════════════════════════════════════════════════════╗");
     println!("║  SipIt Transformer Inversion — Prompt Forensics Demo (Plan 561)    ║");
     println!("╚══════════════════════════════════════════════════════════════════════╝");
     println!();
@@ -344,7 +343,9 @@ println!("╔══════════════════════�
                 failed_position,
                 candidates_tried,
             } => {
-                println!("  prompt {i}: FAILED at pos {failed_position} ({candidates_tried} tried)");
+                println!(
+                    "  prompt {i}: FAILED at pos {failed_position} ({candidates_tried} tried)"
+                );
             }
         }
     }
@@ -371,7 +372,11 @@ println!("╔══════════════════════�
     match &result_rand {
         InversionResult::Recovered(r) => {
             let ok = r == &prompt;
-            println!("  Random:        {}  {}", fmt_prompt(r), if ok { "✓" } else { "✗" });
+            println!(
+                "  Random:        {}  {}",
+                fmt_prompt(r),
+                if ok { "✓" } else { "✗" }
+            );
         }
         InversionResult::Failed { .. } => println!("  Random:        FAILED"),
     }
@@ -385,7 +390,11 @@ println!("╔══════════════════════�
     match &result_grad {
         InversionResult::Recovered(r) => {
             let ok = r == &prompt;
-            println!("  GradientGuided:{}  {}", fmt_prompt(r), if ok { "✓" } else { "✗" });
+            println!(
+                "  GradientGuided:{}  {}",
+                fmt_prompt(r),
+                if ok { "✓" } else { "✗" }
+            );
         }
         InversionResult::Failed { .. } => println!("  GradientGuided:FAILED"),
     }
@@ -404,7 +413,9 @@ println!("╔══════════════════════�
     println!();
 
     let prompt: Vec<u32> = (0..T).map(|_| prompt_rng.u32(0..V)).collect();
-    let min_margin: f32 = (0..T).map(|t| min_margin_at(&model, &prompt, t)).fold(f32::INFINITY, f32::min);
+    let min_margin: f32 = (0..T)
+        .map(|t| min_margin_at(&model, &prompt, t))
+        .fold(f32::INFINITY, f32::min);
     println!("  min_t(Δ_π,t) = {min_margin:.4} (smallest per-position margin)");
     println!("  → noise tolerance = Δ/2 = {:.4}", min_margin * 0.5);
     println!();

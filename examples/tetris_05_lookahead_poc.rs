@@ -23,14 +23,14 @@
 //! 660 pts / 11 lines / 70 pieces @ p50 394 ms per piece. This POC is the
 //! search-based answer.
 
-use katgpt_tetris::sim as tetris_sim;
 use katgpt_tetris::lookahead as tetris_lookahead;
+use katgpt_tetris::sim as tetris_sim;
 
 use tetris_lookahead::{
-    apply, garbage_board, pick, Bag, Player, LINES_SCORE, W_COL_TRANS, W_DEEP_WELL, W_HOLES,
-    W_LINES, W_MAX_H, W_ROW_TRANS, W_WELLS,
+    Bag, LINES_SCORE, Player, W_COL_TRANS, W_DEEP_WELL, W_HOLES, W_LINES, W_MAX_H, W_ROW_TRANS,
+    W_WELLS, apply, garbage_board, pick,
 };
-use tetris_sim::{landing_options_with, Board, DropRule};
+use tetris_sim::{Board, DropRule, landing_options_with};
 
 // ── The game loop ────────────────────────────────────────────────────────
 
@@ -130,5 +130,7 @@ fn main() {
         );
     }
     println!();
-    println!("context (reflex-site arena T12, engine 00aa6221): fitted modelless head 140 pts / 3 lines / 46 pieces · laya 660 pts / 11 lines / 70 pieces @ 394 ms/piece");
+    println!(
+        "context (reflex-site arena T12, engine 00aa6221): fitted modelless head 140 pts / 3 lines / 46 pieces · laya 660 pts / 11 lines / 70 pieces @ 394 ms/piece"
+    );
 }

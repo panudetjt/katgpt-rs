@@ -71,7 +71,10 @@ impl Lcg {
         Self(seed)
     }
     fn next(&mut self) -> f32 {
-        self.0 = self.0.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+        self.0 = self
+            .0
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1);
         2.0 * (((self.0 >> 33) as f32) / (1u64 << 31) as f32) - 1.0
     }
 }
@@ -102,7 +105,10 @@ fn dots_plain(t: &[f32], b: &[f32], len: usize, y: &mut [f32]) {
 #[test]
 fn dot_delegation_crossover_by_length() {
     println!("\n   Issue 844 — simd_dot_f32 vs a plain loop, by dot length");
-    println!("   dispatch: simd_level() = {:?}   ({ROWS} dots per timed call)", simd_level());
+    println!(
+        "   dispatch: simd_level() = {:?}   ({ROWS} dots per timed call)",
+        simd_level()
+    );
     println!(
         "   {:>5}  {:>12}  {:>12}  {:>11}  {:>13}",
         "len", "simd ns/dot", "plain ns/dot", "plain/simd", "max |delta|"

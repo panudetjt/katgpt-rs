@@ -19,17 +19,16 @@
 //! climb: `--iters N --delta10 D --test-seed0 S --test-games N --no-hold
 //! --fitness pieces|points`
 
-use katgpt_tetris::sim as tetris_sim;
 use katgpt_tetris::lookahead as tetris_lookahead;
 use katgpt_tetris::rulebook as tetris_rulebook;
+use katgpt_tetris::sim as tetris_sim;
 
 use std::time::Instant;
-use tetris_lookahead::{apply, garbage_board, pick, Bag, Player};
+use tetris_lookahead::{Bag, Player, apply, garbage_board, pick};
 use tetris_rulebook::{
-    play_game, selftest, toggleable, GameStats, Genome, Physics, RuleId, MODES, N_MODES,
-    RULES,
+    GameStats, Genome, MODES, N_MODES, Physics, RULES, RuleId, play_game, selftest, toggleable,
 };
-use tetris_sim::{landing_options_with, Board, DropRule};
+use tetris_sim::{Board, DropRule, landing_options_with};
 
 #[derive(Clone, Copy)]
 struct Cfg {
@@ -203,7 +202,11 @@ fn cmd_anchor(cfg: &Cfg) {
             if m { "✓" } else { "✗ MISMATCH" }
         );
     }
-    assert_eq!(ok, seeds.len(), "the rulebook engine must reproduce Bench 891 ply2-shaped");
+    assert_eq!(
+        ok,
+        seeds.len(),
+        "the rulebook engine must reproduce Bench 891 ply2-shaped"
+    );
     println!("anchor ✓ {ok}/{} seeds identical", seeds.len());
 }
 
@@ -235,7 +238,11 @@ fn subset_label(g: &Genome) -> String {
         .filter(|&&id| g.on(id))
         .map(|&id| RULES[id as usize].key)
         .collect();
-    if on.is_empty() { "(classic only)".into() } else { on.join("+") }
+    if on.is_empty() {
+        "(classic only)".into()
+    } else {
+        on.join("+")
+    }
 }
 
 fn cmd_enum(cfg: &Cfg, depth: u8, beam: u8) {
@@ -273,7 +280,10 @@ fn cmd_enum(cfg: &Cfg, depth: u8, beam: u8) {
         cfg.games,
         secs
     );
-    println!("{:<4} {:<44} {:>3}  {HEADER}", "rank", "rules (owner set on top of classic)", "cx");
+    println!(
+        "{:<4} {:<44} {:>3}  {HEADER}",
+        "rank", "rules (owner set on top of classic)", "cx"
+    );
     for (rank, &i) in order.iter().enumerate() {
         println!(
             "{:<4} {:<44} {:>3}  {}",
@@ -297,7 +307,13 @@ fn cmd_enum(cfg: &Cfg, depth: u8, beam: u8) {
             j != i && ge && gt
         });
         if !dominated {
-            println!("  {:<44} cx {:>2}  {}  id {}", labels[i], gs[i].complexity(), scores[i].row(), gs[i].id());
+            println!(
+                "  {:<44} cx {:>2}  {}  id {}",
+                labels[i],
+                gs[i].complexity(),
+                scores[i].row(),
+                gs[i].id()
+            );
         }
     }
     // Marginal value of each owner rule: mean fitness with vs without.
@@ -341,7 +357,14 @@ fn mutate(g: &Genome, rng: &mut fastrand::Rng) -> (Genome, String) {
             let id = tog[rng.usize(0..tog.len())];
             let on = !m.on(id);
             m.set(id, on);
-            (m, format!("{} {}", if on { "enable" } else { "disable" }, RULES[id as usize].key))
+            (
+                m,
+                format!(
+                    "{} {}",
+                    if on { "enable" } else { "disable" },
+                    RULES[id as usize].key
+                ),
+            )
         }
         2 => {
             let d: i16 = if rng.bool() { 1 } else { -1 };
@@ -359,7 +382,11 @@ fn mutate(g: &Genome, rng: &mut fastrand::Rng) -> (Genome, String) {
             let mode = MODES[rng.usize(0..N_MODES)];
             let w = &mut m.w[id as usize][mode as usize];
             let f = if rng.bool() { 1.25 } else { 0.8 };
-            *w = if *w == 0.0 { if rng.bool() { 1.0 } else { -1.0 } } else { *w * f };
+            *w = if *w == 0.0 {
+                if rng.bool() { 1.0 } else { -1.0 }
+            } else {
+                *w * f
+            };
             // Keep weights readable (4 significant decimals) so the genome
             // line stays short and exact.
             *w = (*w * 1e4).round() / 1e4;
@@ -378,7 +405,12 @@ fn cmd_climb(train: &Cfg, test: &Cfg, iters: u32, delta: f64, depth: u8, beam: u
         g.set(RuleId::HoldI, false);
     }
     let mut best = score_genome(&g, train);
-    println!("climb start {} fitness {:.1} :: {HEADER}\n  {}", g.id(), best.fitness(), best.row());
+    println!(
+        "climb start {} fitness {:.1} :: {HEADER}\n  {}",
+        g.id(),
+        best.fitness(),
+        best.row()
+    );
     let mut rng = fastrand::Rng::with_seed(892);
     let mut accepted = 0;
     for it in 1..=iters {
@@ -397,8 +429,15 @@ fn cmd_climb(train: &Cfg, test: &Cfg, iters: u32, delta: f64, depth: u8, beam: u
             best = sc;
         }
     }
-    println!("climb: {accepted}/{iters} accepted; champion {} :: {}", g.id(), g.to_line());
-    println!("\nHELD-OUT ({} seeds from {}): {HEADER}", test.games, test.seed0);
+    println!(
+        "climb: {accepted}/{iters} accepted; champion {} :: {}",
+        g.id(),
+        g.to_line()
+    );
+    println!(
+        "\nHELD-OUT ({} seeds from {}): {HEADER}",
+        test.games, test.seed0
+    );
     let anchor = Genome::bench891_ply2_shaped();
     let full = {
         let mut f = Genome::full(Physics::FromTop);
@@ -410,7 +449,11 @@ fn cmd_climb(train: &Cfg, test: &Cfg, iters: u32, delta: f64, depth: u8, beam: u
         }
         f
     };
-    for (name, gg) in [("bench891 ply2-shaped", &anchor), ("rulebook full (defaults)", &full), ("climb champion", &g)] {
+    for (name, gg) in [
+        ("bench891 ply2-shaped", &anchor),
+        ("rulebook full (defaults)", &full),
+        ("climb champion", &g),
+    ] {
         println!("  {:<26} {}", name, score_genome(gg, test).row());
     }
 }
@@ -419,7 +462,12 @@ fn cmd_eval(line: &str, cfg: &Cfg) {
     let g = Genome::from_line(line).expect("unparseable genome line");
     let t = Instant::now();
     let sc = score_genome(&g, cfg);
-    println!("eval {} ({:.1}s)\n  {HEADER}\n  {}", g.id(), t.elapsed().as_secs_f64(), sc.row());
+    println!(
+        "eval {} ({:.1}s)\n  {HEADER}\n  {}",
+        g.id(),
+        t.elapsed().as_secs_f64(),
+        sc.row()
+    );
 }
 
 fn main() {
@@ -464,7 +512,14 @@ fn main() {
                 games: opt("--test-games", 20),
                 ..cfg
             };
-            cmd_climb(&cfg, &test, opt("--iters", 40) as u32, opt("--delta10", 20) as f64 / 10.0, depth, beam);
+            cmd_climb(
+                &cfg,
+                &test,
+                opt("--iters", 40) as u32,
+                opt("--delta10", 20) as f64 / 10.0,
+                depth,
+                beam,
+            );
         }
         "eval" => {
             let line = args.get(1).expect("eval needs a genome line (quote it)");

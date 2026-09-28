@@ -1289,7 +1289,10 @@ mod tests {
                 // Place a random 4-cell set, then clear both ways.
                 let mut cells = [(0usize, 0usize); 4];
                 for cell in &mut cells {
-                    *cell = ((next() % HEIGHT as u64) as usize, (next() % WIDTH as u64) as usize);
+                    *cell = (
+                        (next() % HEIGHT as u64) as usize,
+                        (next() % WIDTH as u64) as usize,
+                    );
                 }
                 let mut refg = g;
                 for &(r, c) in &cells {
@@ -1297,8 +1300,9 @@ mod tests {
                 }
                 let mut placed = b.clone();
                 placed.place(&cells);
-                let want_full: Vec<usize> =
-                    (0..HEIGHT).filter(|&r| refg[r].iter().all(|&v| v)).collect();
+                let want_full: Vec<usize> = (0..HEIGHT)
+                    .filter(|&r| refg[r].iter().all(|&v| v))
+                    .collect();
                 assert_eq!(placed.full_rows(), want_full, "full_rows");
                 let mut via_rows = placed.clone();
                 via_rows.clear_rows(&want_full);
@@ -1322,7 +1326,10 @@ mod tests {
                 assert_eq!(b.hole_count(), holes, "holes");
             }
         }
-        assert!(multi > 50, "the walk must exercise multi-line clears ({multi})");
+        assert!(
+            multi > 50,
+            "the walk must exercise multi-line clears ({multi})"
+        );
         // Round trip through the dump format.
         let b = garbage_like(3, 60);
         let rows = b.to_strings();

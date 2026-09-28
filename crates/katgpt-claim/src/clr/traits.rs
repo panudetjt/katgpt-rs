@@ -45,12 +45,7 @@ pub trait ClaimExtractor<T> {
     /// * `trajectory` — the trajectory to extract claims from.
     /// * `out` — flat embedding buffer, length >= `M * k`. Overwritten in-place.
     /// * `k` — embedding dimension (== `ClrConfig::k`). Each row is `k` f32s.
-    fn extract_embeddings_into(
-        &self,
-        trajectory: &Trajectory<T>,
-        out: &mut [f32],
-        k: usize,
-    ) {
+    fn extract_embeddings_into(&self, trajectory: &Trajectory<T>, out: &mut [f32], k: usize) {
         let claims = self.extract(trajectory);
         debug_assert!(
             claims.len() * k <= out.len(),

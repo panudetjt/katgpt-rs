@@ -133,7 +133,12 @@ impl Graph {
             adj_flat[fill[v]] = (other, e, sign);
             fill[v] += 1;
         }
-        Self { edges, n_vertices, adj_start, adj_flat }
+        Self {
+            edges,
+            n_vertices,
+            adj_start,
+            adj_flat,
+        }
     }
 
     /// BFS hop distance from `src` to every vertex (f64∞ for unreachable —
@@ -457,7 +462,16 @@ fn run_case(w: usize, h: usize, n_sources: usize) -> CaseResult {
     // T1a — conservation: δ₁(j) = ρ POINTWISE (the solve identity; the L1
     // magnitude of δ₁(j) is ‖ρ‖₁ ≠ 0 by design — this is a SOURCED flow,
     // not a divergence-free one).
-    coulomb_solve(&cx, &graph, &rho, &mut phi, &mut j, &mut l_free, &mut rhs_free, &mut phi_buf);
+    coulomb_solve(
+        &cx,
+        &graph,
+        &rho,
+        &mut phi,
+        &mut j,
+        &mut l_free,
+        &mut rhs_free,
+        &mut phi_buf,
+    );
     let div_j = katgpt_dec::codifferential(&cx, &j);
     let mut cons_residual = 0.0f64;
     for v in 0..n {
@@ -511,13 +525,29 @@ fn run_case(w: usize, h: usize, n_sources: usize) -> CaseResult {
 
     // G4 — zero-alloc solve path + latency (warmup, then snapshot).
     for _ in 0..10 {
-        coulomb_solve(&cx, &graph, &rho, &mut phi, &mut j, &mut l_free, &mut rhs_free, &mut phi_buf);
+        coulomb_solve(
+            &cx,
+            &graph,
+            &rho,
+            &mut phi,
+            &mut j,
+            &mut l_free,
+            &mut rhs_free,
+            &mut phi_buf,
+        );
     }
     let before = ALLOC_COUNT.load(Ordering::Relaxed);
     let t0 = Instant::now();
     for _ in 0..1000 {
         coulomb_solve(
-            &cx, &graph, &rho, &mut phi, &mut j, &mut l_free, &mut rhs_free, &mut phi_buf,
+            &cx,
+            &graph,
+            &rho,
+            &mut phi,
+            &mut j,
+            &mut l_free,
+            &mut rhs_free,
+            &mut phi_buf,
         );
     }
     black_box((&j, &phi));
@@ -593,7 +623,11 @@ fn main() {
             r.mae_naive_max,
             if fp_limited { "≥ " } else { "= " },
             ratio,
-            if fp_limited { " (Coulomb MAE below fp resolution — a floor, not a measurement)" } else { "" },
+            if fp_limited {
+                " (Coulomb MAE below fp resolution — a floor, not a measurement)"
+            } else {
+                ""
+            },
             verdict(ratio >= 10.0)
         );
         if i == 0 {
@@ -609,18 +643,10 @@ fn main() {
     if primary_ok {
         println!("══ COULOMB POC GATES PASS — T1 (a/b/c) + T2 bias ratio ══");
     } else {
-        println!(
-            "══ COULOMB POC ISSUE-FIXTURE GATE FAILS — check the READOUT first: ══"
-        );
-        println!(
-            "   this bench read a 0.119 endpoint miss as \"discretization error\" once"
-        );
-        println!(
-            "   and it was the absorption rule. Print CrowdRouter::consistent_absorption"
-        );
-        println!(
-            "   at each sink: anything pinned to 1.0 with a non-zero out_flow strands"
-        );
+        println!("══ COULOMB POC ISSUE-FIXTURE GATE FAILS — check the READOUT first: ══");
+        println!("   this bench read a 0.119 endpoint miss as \"discretization error\" once");
+        println!("   and it was the absorption rule. Print CrowdRouter::consistent_absorption");
+        println!("   at each sink: anything pinned to 1.0 with a non-zero out_flow strands");
         println!("   pass-through mass. The solve is gated by T1a independently.");
     }
     std::process::exit(if primary_ok { 0 } else { 1 });

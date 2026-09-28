@@ -27,8 +27,8 @@
 #![cfg(feature = "mop_path_entropy")]
 
 use katgpt_core::mop::{
-    arenas::{four_room_gridworld, ring_world, ring_world_noisy},
     MopConfig, MopScratch, MopSolver,
+    arenas::{four_room_gridworld, ring_world, ring_world_noisy},
 };
 use std::hint::black_box;
 use std::time::Instant;
@@ -58,10 +58,7 @@ impl Rng {
 /// Random stochastic kernel: each (s,a) row has `sparsity` uniformly-spread
 /// support with normalized weights (a valid transition kernel with
 /// H(S'|s,a) > 0 — the β term is live).
-fn random_kernel<const N: usize, const A: usize>(
-    seed: u64,
-    sparsity: usize,
-) -> [[[f32; N]; A]; N] {
+fn random_kernel<const N: usize, const A: usize>(seed: u64, sparsity: usize) -> [[[f32; N]; A]; N] {
     let mut rng = Rng::new(seed);
     let mut p = [[[0.0f32; N]; A]; N];
     for (i, p_i) in p.iter_mut().enumerate() {
@@ -247,11 +244,12 @@ fn run() {
             }
         });
         let _ = sol;
-        println!(
-            "  allocations across 1 full solve + 1000 pi_star calls: {allocs}"
-        );
+        println!("  allocations across 1 full solve + 1000 pi_star calls: {allocs}");
         let g4_pass = allocs == 0;
-        println!("  G4 verdict: {}", if g4_pass { "✅ PASS" } else { "❌ FAIL" });
+        println!(
+            "  G4 verdict: {}",
+            if g4_pass { "✅ PASS" } else { "❌ FAIL" }
+        );
         println!();
         if !(g2_pass && g4_pass) {
             println!("═══ Plan 573 GOAT: ❌ FAIL ═══");

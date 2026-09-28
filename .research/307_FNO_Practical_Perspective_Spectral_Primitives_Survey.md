@@ -6,6 +6,8 @@
 > **Related Research:** 219 (DEC operators — spectral diff in DEC vocabulary), 257/290 (FUNCATTN), 291 (Cross-Resolution Spectral Transport — **the headline FNO primitive, already shipped**), 039 (SpectralQuant eigenbasis KV), 269 (ChiARoscuro spectral salience), 100 (EGA spectral attention)
 > **Related Plans:** 251 (DEC), 308 (KARC Fourier basis), 242 (FFT-smoothed potential fields), 265 (LatCal spectral fixed-point), 310 (Cross-Resolution Spectral Transport — DEFAULT-ON)
 > **Classification:** Public
+>
+> **PASS-Redirects (synthesis):** Csillag, Schuller, Dall'Antonia, Guibas, Velho, Novello [arXiv:2606.16926 "Functional Gradient Descent with Adaptive Representations"] — FGD with adaptively refined gradient representations (trees / frequency grids / 3D grids), converging through the approximation via a relative-error certificate; the optimization half of this note's function-space family — verdict **Pass**: its PDE-via-energy-minimization arm is the training-side sibling of iFNO's adaptive-mode expansion (same trigger shape), its modelless extractions are consumerless in-stack (no field-fitting lane), and its width/rank-staging residue is covered by the measured k_V rung law, which ships as a gate-passed opt-in key (riir-train Issue 459 T2, `sample_measured`; the hand-set ladder remains `train()`'s default) — wiring it is Issue 459's residue, independent of this paper.
 
 ---
 

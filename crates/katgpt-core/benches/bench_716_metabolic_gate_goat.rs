@@ -222,7 +222,9 @@ fn main() {
     println!();
 
     if all_pass {
-        println!("=== G1+G2+G4 PASS — STAYS OPT-IN (riir-ai Plan 585 consumer re-gates at Phase 4) ===");
+        println!(
+            "=== G1+G2+G4 PASS — STAYS OPT-IN (riir-ai Plan 585 consumer re-gates at Phase 4) ==="
+        );
         std::process::exit(0);
     } else {
         println!("=== ONE OR MORE GATES FAILED ===");

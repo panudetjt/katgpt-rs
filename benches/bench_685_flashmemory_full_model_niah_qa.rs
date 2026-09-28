@@ -107,7 +107,10 @@ use katgpt_transformer::moe::moe_forward_token;
 // ---------------------------------------------------------------------------
 
 fn env_or(name: &str, default: usize) -> usize {
-    std::env::var(name).ok().and_then(|s| s.parse().ok()).unwrap_or(default)
+    std::env::var(name)
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(default)
 }
 
 fn env_list_usize(name: &str, default: &[usize]) -> Vec<usize> {
@@ -249,8 +252,12 @@ fn needle_token_ranges(
     char_ranges
         .iter()
         .map(|&(s, e)| {
-            let start = tokenizer.encode(&prompt_text[..s.min(prompt_text.len())]).len();
-            let end = tokenizer.encode(&prompt_text[..e.min(prompt_text.len())]).len();
+            let start = tokenizer
+                .encode(&prompt_text[..s.min(prompt_text.len())])
+                .len();
+            let end = tokenizer
+                .encode(&prompt_text[..e.min(prompt_text.len())])
+                .len();
             (start, end)
         })
         .collect()
@@ -317,7 +324,10 @@ fn cosine(a: &[f32], b: &[f32]) -> f32 {
 }
 
 fn max_abs_diff(a: &[f32], b: &[f32]) -> f32 {
-    a.iter().zip(b.iter()).map(|(x, y)| (x - y).abs()).fold(0.0f32, f32::max)
+    a.iter()
+        .zip(b.iter())
+        .map(|(x, y)| (x - y).abs())
+        .fold(0.0f32, f32::max)
 }
 
 fn logit_of(p: f32) -> f32 {
@@ -380,7 +390,12 @@ impl LayerFm {
 
     /// Record selection stats after a forward. `record_scores` is true only at
     /// the query step (the T2 sweep snapshot).
-    fn record_step(&mut self, mla_cfg: &MlaConfig, scratch: &MlaForwardScratch, record_scores: bool) {
+    fn record_step(
+        &mut self,
+        mla_cfg: &MlaConfig,
+        scratch: &MlaForwardScratch,
+        record_scores: bool,
+    ) {
         let selected: Vec<Vec<usize>> = self.selector.selection().blocks_per_head.clone();
         let n_heads = selected.len();
         let n_active = self.block_cache.n_active_blocks();
@@ -429,7 +444,11 @@ impl LayerFm {
                 matrix.push(row);
             }
             self.query_scores = Some(matrix);
-            self.query_block_counts = Some((0..n_active).map(|b| self.block_cache.block_count(b)).collect());
+            self.query_block_counts = Some(
+                (0..n_active)
+                    .map(|b| self.block_cache.block_count(b))
+                    .collect(),
+            );
         }
     }
 }
@@ -470,8 +489,13 @@ fn mla_layer_forward_flashmemory(
 
     // Step 1: apply_attn_res (self-attention) — mix prefix_sum with blocks.
     if !block_state.is_empty() {
-        let mixed =
-            apply_attn_res(&layer_cfg.attn_res, &layer_w.self_attn_res, block_state, res_self, prefix_sum);
+        let mixed = apply_attn_res(
+            &layer_cfg.attn_res,
+            &layer_w.self_attn_res,
+            block_state,
+            res_self,
+            prefix_sum,
+        );
         scratch_hidden.copy_from_slice(mixed);
     } else {
         scratch_hidden.copy_from_slice(prefix_sum);
@@ -487,22 +511,45 @@ fn mla_layer_forward_flashmemory(
     rmsnorm_with_gamma_eps(scratch_hidden, &layer_w.input_layernorm_weight, eps as f64);
     {
         let attn_out = mla_forward_token_flashmemory(
-            mla_cfg, mla_w, cache, scratch, rope_freqs, scratch_hidden, &mut fm.block_cache,
-            &mut fm.selector, step,
+            mla_cfg,
+            mla_w,
+            cache,
+            scratch,
+            rope_freqs,
+            scratch_hidden,
+            &mut fm.block_cache,
+            &mut fm.selector,
+            step,
         );
         simd_add_inplace(&mut prefix_sum[..d], &attn_out[..d]);
     }
 
     // Step 5: apply_attn_res (MLP).
-    let mixed = apply_attn_res(&layer_cfg.attn_res, &layer_w.mlp_attn_res, block_state, res_mlp, prefix_sum);
+    let mixed = apply_attn_res(
+        &layer_cfg.attn_res,
+        &layer_w.mlp_attn_res,
+        block_state,
+        res_mlp,
+        prefix_sum,
+    );
     scratch_hidden.copy_from_slice(mixed);
 
     // Step 6: post_attention_layernorm → FFN. MLA layers are MoE; a dense FFN
     // here would mean the layer topology changed — fail loudly.
-    rmsnorm_with_gamma_eps(scratch_hidden, &layer_w.post_attention_layernorm_weight, eps as f64);
+    rmsnorm_with_gamma_eps(
+        scratch_hidden,
+        &layer_w.post_attention_layernorm_weight,
+        eps as f64,
+    );
     let ffn_out: &[f32] = match (&layer_cfg.ffn, &layer_w.ffn) {
         (KimiFfnConfig::Moe(moe_cfg), KimiFfnWeights::Moe(moe_w)) => {
-            moe_forward_token(moe_w, moe_cfg, scratch_hidden, &mut ffn_scratch.dense_out, &mut ffn_scratch.moe);
+            moe_forward_token(
+                moe_w,
+                moe_cfg,
+                scratch_hidden,
+                &mut ffn_scratch.dense_out,
+                &mut ffn_scratch.moe,
+            );
             &ffn_scratch.dense_out[..d]
         }
         _ => panic!("flashmemory bench: non-MoE FFN on MLA layer {layer_idx} — topology changed"),
@@ -538,7 +585,8 @@ fn forward_token_sparse<'a>(
 
     // Step 1: embedding lookup.
     let embed_start = (token_id as usize) * d;
-    rt.hidden.copy_from_slice(&weights.embed_weight[embed_start..embed_start + d]);
+    rt.hidden
+        .copy_from_slice(&weights.embed_weight[embed_start..embed_start + d]);
 
     // Step 2: decoder layers.
     let mut mla_seen = 0usize;
@@ -604,10 +652,20 @@ fn forward_token_sparse<'a>(
     }
 
     // Step 4: final RMSNorm.
-    rmsnorm_with_gamma_eps(&mut rt.hidden, &weights.final_norm_weight, config.rms_eps as f64);
+    rmsnorm_with_gamma_eps(
+        &mut rt.hidden,
+        &weights.final_norm_weight,
+        config.rms_eps as f64,
+    );
 
     // Step 5: LM head.
-    simd_matmul_rows(&mut rt.logits, &weights.lm_head_weight, &rt.hidden, config.vocab_size, d);
+    simd_matmul_rows(
+        &mut rt.logits,
+        &weights.lm_head_weight,
+        &rt.hidden,
+        config.vocab_size,
+        d,
+    );
     &rt.logits
 }
 
@@ -728,7 +786,16 @@ fn run_sparse_arm(
     let query_step = seq_len - 1;
     let mut rt = KimiK3Runtime::new(config, max_seq);
     let mut fm: Vec<LayerFm> = (0..2)
-        .map(|_| LayerFm::new(config, fm_config, max_seq, needle_block, distractor_block, query_step))
+        .map(|_| {
+            LayerFm::new(
+                config,
+                fm_config,
+                max_seq,
+                needle_block,
+                distractor_block,
+                query_step,
+            )
+        })
         .collect();
 
     // Per-layer fold accumulators: [needle_sum, distr_sum, cov_sum, fb_sum].
@@ -748,7 +815,13 @@ fn run_sparse_arm(
             }
         }
         let logits = forward_token_sparse(
-            config, weights, &mut rt, tid as u32, Some(&mut fm), fm_layers, step,
+            config,
+            weights,
+            &mut rt,
+            tid as u32,
+            Some(&mut fm),
+            fm_layers,
+            step,
         );
         if step + 1 == token_ids.len() {
             query_logits = logits.to_vec();
@@ -782,7 +855,13 @@ fn run_sparse_arm(
     for k in 1..n_decode {
         let step = query_step + k;
         let logits = forward_token_sparse(
-            config, weights, &mut rt, next as u32, Some(&mut fm), fm_layers, step,
+            config,
+            weights,
+            &mut rt,
+            next as u32,
+            Some(&mut fm),
+            fm_layers,
+            step,
         );
         pw_best_rank = pw_best_rank.min(rank_of(logits, pw_first));
         // Snapshot selection stats for this decode step.
@@ -848,8 +927,13 @@ fn print_sweep(
     layer_names: &[usize],
 ) -> [usize; 2] {
     let mut floor_sigma = [0usize; 2];
-    println!("  -- T2 selection-axis sweep (query step, σ grid; sel% = needle block in selection, cov% = tokens attended) --");
-    println!("     σ     | layer {} sel%  cov% | layer {} sel%  cov%", layer_names[0], layer_names[1]);
+    println!(
+        "  -- T2 selection-axis sweep (query step, σ grid; sel% = needle block in selection, cov% = tokens attended) --"
+    );
+    println!(
+        "     σ     | layer {} sel%  cov% | layer {} sel%  cov%",
+        layer_names[0], layer_names[1]
+    );
     for &sigma in sigma_grid {
         let thr = logit_of(sigma);
         let mut row = format!("     {:.2}  |", sigma);
@@ -941,7 +1025,11 @@ fn run_probe(
         "The magic password is sunset7742. Remember it for later. ",
         "sunset7742",
     )[0];
-    let fm_cfg = FlashMemoryConfig { block_size, refresh_period: 1, threshold: 0.0 };
+    let fm_cfg = FlashMemoryConfig {
+        block_size,
+        refresh_period: 1,
+        threshold: 0.0,
+    };
     // ⚠ refresh_period=1 is LOAD-BEARING for the σ=0 equivalence: select()
     // reuses the cached selection within the refresh window, so at σ=0 with
     // refresh=64 each step attends only the blocks that existed at the last
@@ -957,19 +1045,47 @@ fn run_probe(
     );
     let arm_a = run_dense_arm(config, weights, &token_ids, n_decode, pw_first);
     let arm_b = run_sparse_arm(
-        config, weights, &token_ids, n_decode, &fm_cfg, Some(needle_block), None, pw_first,
+        config,
+        weights,
+        &token_ids,
+        n_decode,
+        &fm_cfg,
+        Some(needle_block),
+        None,
+        pw_first,
         &[false, false],
     );
     let arm_c3 = run_sparse_arm(
-        config, weights, &token_ids, n_decode, &fm_cfg, Some(needle_block), None, pw_first,
+        config,
+        weights,
+        &token_ids,
+        n_decode,
+        &fm_cfg,
+        Some(needle_block),
+        None,
+        pw_first,
         &[true, false],
     );
     let arm_c7 = run_sparse_arm(
-        config, weights, &token_ids, n_decode, &fm_cfg, Some(needle_block), None, pw_first,
+        config,
+        weights,
+        &token_ids,
+        n_decode,
+        &fm_cfg,
+        Some(needle_block),
+        None,
+        pw_first,
         &[false, true],
     );
     let arm_c11 = run_sparse_arm(
-        config, weights, &token_ids, n_decode, &fm_cfg, Some(needle_block), None, pw_first,
+        config,
+        weights,
+        &token_ids,
+        n_decode,
+        &fm_cfg,
+        Some(needle_block),
+        None,
+        pw_first,
         &[true, true],
     );
 
@@ -992,7 +1108,11 @@ fn run_probe(
         );
         max_diff
     };
-    let d_b = report("B  re-orchestration (real MLA) vs A real forward", &arm_b, &arm_a);
+    let d_b = report(
+        "B  re-orchestration (real MLA) vs A real forward",
+        &arm_b,
+        &arm_a,
+    );
     let d_c3 = report("C3 flashmemory@σ0 layer 3 only      vs B", &arm_c3, &arm_b);
     let d_c7 = report("C7 flashmemory@σ0 layer 7 only      vs B", &arm_c7, &arm_b);
     let d_c11 = report("C11 flashmemory@σ0 both layers      vs B", &arm_c11, &arm_b);
@@ -1010,7 +1130,9 @@ fn run_probe(
         0
     };
     if d_b > GATE {
-        println!("  → ORCHESTRATION diverges from the real forward (B≠A) — bench bug, NOT a flashmemory defect");
+        println!(
+            "  → ORCHESTRATION diverges from the real forward (B≠A) — bench bug, NOT a flashmemory defect"
+        );
         false
     } else if d_c11 <= GATE {
         println!(
@@ -1039,9 +1161,15 @@ fn main() {
     // coherently than it answers question-format prompts (measured both ways,
     // 2026-09-18: stem → in-domain completions + password in top 1.3%;
     // question format → disjoint gibberish). Override with FFM_QUERY=question.
-    let query_stem = std::env::var("FFM_QUERY").map(|v| v != "question").unwrap_or(true);
-    let parity_enabled = std::env::var("FFM_PARITY").map(|v| v != "0").unwrap_or(true);
-    let probe = std::env::var("FFM_PROBE").map(|v| v == "1").unwrap_or(false);
+    let query_stem = std::env::var("FFM_QUERY")
+        .map(|v| v != "question")
+        .unwrap_or(true);
+    let parity_enabled = std::env::var("FFM_PARITY")
+        .map(|v| v != "0")
+        .unwrap_or(true);
+    let probe = std::env::var("FFM_PROBE")
+        .map(|v| v == "1")
+        .unwrap_or(false);
     let sigma_grid: Vec<f32> = (0..14).map(|i| 0.30 + i as f32 * 0.05).collect();
 
     // ── Model resolution ───────────────────────────────────────────────────
@@ -1051,9 +1179,15 @@ fn main() {
         let manifest = env!("CARGO_MANIFEST_DIR");
         let local = format!("{manifest}/data/kimi-k3-0.40b");
         let sibling = format!("{manifest}/../riir-train/data/kimi-k3-0.40b");
-        if std::path::Path::new(&local).join("model.safetensors").exists() {
+        if std::path::Path::new(&local)
+            .join("model.safetensors")
+            .exists()
+        {
             local
-        } else if std::path::Path::new(&sibling).join("model.safetensors").exists() {
+        } else if std::path::Path::new(&sibling)
+            .join("model.safetensors")
+            .exists()
+        {
             sibling
         } else {
             local // will fail below with the load error naming the path
@@ -1134,12 +1268,20 @@ fn main() {
             let pw_tokens = extract_pw_tokens(&tokenizer, needle_sentence, "sunset7742");
             let pw_first = pw_tokens[0];
             let needle_block = needle_tok_start / block_size;
-            let distractor_block = if multi { Some(ranges[0].0 / block_size) } else { None };
+            let distractor_block = if multi {
+                Some(ranges[0].0 / block_size)
+            } else {
+                None
+            };
             let variant = if multi { "multi" } else { "single" };
 
-            println!("── [len={target} {variant}] {} tokens; needle(queried) tokens [{needle_tok_start},{needle_tok_end}) block {needle_block}{} ──",
+            println!(
+                "── [len={target} {variant}] {} tokens; needle(queried) tokens [{needle_tok_start},{needle_tok_end}) block {needle_block}{} ──",
                 seq_len,
-                distractor_block.map(|d| format!("; distractor block {d}")).unwrap_or_default());
+                distractor_block
+                    .map(|d| format!("; distractor block {d}"))
+                    .unwrap_or_default()
+            );
 
             // DENSE arm (the oracle — real forward path, unmodified).
             let dense = run_dense_arm(&config, &weights, &token_ids, n_decode, pw_first);
@@ -1158,10 +1300,21 @@ fn main() {
             // σ=0 misses the newest blocks, which is paper semantics for QA
             // arms but NOT dense-equivalence.
             if target == min_len && !multi && parity.is_none() && parity_enabled {
-                let par_cfg = FlashMemoryConfig { block_size, refresh_period: 1, threshold: 0.0 };
+                let par_cfg = FlashMemoryConfig {
+                    block_size,
+                    refresh_period: 1,
+                    threshold: 0.0,
+                };
                 let par = run_sparse_arm(
-                    &config, &weights, &token_ids, n_decode, &par_cfg,
-                    Some(needle_block), distractor_block, pw_first, &[true, true],
+                    &config,
+                    &weights,
+                    &token_ids,
+                    n_decode,
+                    &par_cfg,
+                    Some(needle_block),
+                    distractor_block,
+                    pw_first,
+                    &[true, true],
                 );
                 let mut max_diff = max_abs_diff(&dense.query_logits, &par.query_logits);
                 let mut min_cos = cosine(&dense.query_logits, &par.query_logits);
@@ -1181,8 +1334,15 @@ fn main() {
             let mut arm_rows: Vec<ArmRow> = Vec::new();
             for &thr in &thresholds {
                 let sparse = run_sparse_arm(
-                    &config, &weights, &token_ids, n_decode, &fm_cfg_for(thr),
-                    Some(needle_block), distractor_block, pw_first, &[true, true],
+                    &config,
+                    &weights,
+                    &token_ids,
+                    n_decode,
+                    &fm_cfg_for(thr),
+                    Some(needle_block),
+                    distractor_block,
+                    pw_first,
+                    &[true, true],
                 );
                 let sparse_answer = tokenizer.decode(&sparse.answer_ids);
                 let sparse_hit = sparse_answer.contains("sunset7742");

@@ -30,8 +30,8 @@ use std::path::PathBuf;
 
 use katgpt_core::state_option_scoring::head::{FittedHead, HeadFitter};
 use tetris_fixture::{
-    Piece, Recomputed, default_fixture, dellacherie_pick, fixture_rule, load_fixture_states, outcome_features,
-    play_game,
+    Piece, Recomputed, default_fixture, dellacherie_pick, fixture_rule, load_fixture_states,
+    outcome_features, play_game,
 };
 
 /// Design width: 11 frozen features (standardized) + intercept.

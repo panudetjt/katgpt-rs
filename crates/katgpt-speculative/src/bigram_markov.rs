@@ -684,7 +684,8 @@ mod tests {
             };
             let chain_token = s[0] as usize;
             assert!(
-                tree.iter().any(|n| n.depth == depth && n.token_idx == chain_token),
+                tree.iter()
+                    .any(|n| n.depth == depth && n.token_idx == chain_token),
                 "greedy token {chain_token} missing at depth {depth}"
             );
             prev = s[0];
@@ -727,7 +728,7 @@ mod tests {
         use std::cell::Cell;
 
         struct Counting;
-unsafe impl GlobalAlloc for Counting {
+        unsafe impl GlobalAlloc for Counting {
             unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
                 if TRACK.with(|t| t.get()) {
                     COUNT.with(|c| c.set(c.get() + 1));
@@ -738,10 +739,10 @@ unsafe impl GlobalAlloc for Counting {
                 unsafe { System.dealloc(ptr, layout) }
             }
         }
-#[global_allocator]
+        #[global_allocator]
         static A: Counting = Counting;
 
-thread_local! {
+        thread_local! {
             static TRACK: Cell<bool> = const { Cell::new(false) };
             static COUNT: Cell<usize> = const { Cell::new(0) };
         }

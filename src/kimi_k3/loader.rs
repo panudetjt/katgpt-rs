@@ -99,9 +99,7 @@ use katgpt_attn::mla::MlaWeights;
 use katgpt_transformer::attn_res::AttnResWeights;
 use katgpt_transformer::moe::{MoeWeights, SwiGluExpertWeights};
 
-use super::decoder_layer::{
-    KimiAttentionWeights, KimiDecoderLayerWeights, KimiFfnWeights,
-};
+use super::decoder_layer::{KimiAttentionWeights, KimiDecoderLayerWeights, KimiFfnWeights};
 
 /// Errors that can occur during model loading.
 #[derive(Debug)]
@@ -113,7 +111,11 @@ pub enum LoadError {
     /// A required tensor is missing from the file.
     MissingTensor(String),
     /// A tensor has an unexpected shape.
-    ShapeMismatch { tensor: String, expected: String, actual: String },
+    ShapeMismatch {
+        tensor: String,
+        expected: String,
+        actual: String,
+    },
 }
 
 impl std::fmt::Display for LoadError {
@@ -122,8 +124,15 @@ impl std::fmt::Display for LoadError {
             Self::Io(e) => write!(f, "loader I/O error: {e}"),
             Self::Safetensors(e) => write!(f, "safetensors error: {e}"),
             Self::MissingTensor(name) => write!(f, "missing tensor: {name}"),
-            Self::ShapeMismatch { tensor, expected, actual } => {
-                write!(f, "shape mismatch for '{tensor}': expected {expected}, got {actual}")
+            Self::ShapeMismatch {
+                tensor,
+                expected,
+                actual,
+            } => {
+                write!(
+                    f,
+                    "shape mismatch for '{tensor}': expected {expected}, got {actual}"
+                )
             }
         }
     }
@@ -186,8 +195,9 @@ impl KimiK3ModelWeights {
         let lm_head_weight: Vec<f32> = (0..v * d).map(|_| xavier(&mut rng)).collect();
 
         // Final norm gamma: near 1.0.
-        let final_norm_weight: Vec<f32> =
-            (0..d).map(|_| 1.0 + (rng.uniform() * 2.0 - 1.0) * 0.1).collect();
+        let final_norm_weight: Vec<f32> = (0..d)
+            .map(|_| 1.0 + (rng.uniform() * 2.0 - 1.0) * 0.1)
+            .collect();
 
         // Output attn-res.
         let output_attn_res = AttnResWeights::random(d, rng.next());
@@ -199,10 +209,12 @@ impl KimiK3ModelWeights {
             let layer_seed = rng.next();
 
             // Input + post-attention norm gammas (near 1.0).
-            let input_layernorm_weight: Vec<f32> =
-                (0..d).map(|_| 1.0 + (rng.uniform() * 2.0 - 1.0) * 0.1).collect();
-            let post_attention_layernorm_weight: Vec<f32> =
-                (0..d).map(|_| 1.0 + (rng.uniform() * 2.0 - 1.0) * 0.1).collect();
+            let input_layernorm_weight: Vec<f32> = (0..d)
+                .map(|_| 1.0 + (rng.uniform() * 2.0 - 1.0) * 0.1)
+                .collect();
+            let post_attention_layernorm_weight: Vec<f32> = (0..d)
+                .map(|_| 1.0 + (rng.uniform() * 2.0 - 1.0) * 0.1)
+                .collect();
 
             // Attention (MLA or KDA) — delegate to substrate random.
             let attention = if is_mla {
@@ -213,7 +225,11 @@ impl KimiK3ModelWeights {
 
             // FFN (Dense or MoE) — delegate to substrate random.
             let ffn = match config.ffn_config(layer_idx) {
-                super::decoder_layer::KimiFfnConfig::Dense { intermediate_size, hidden_size, .. } => {
+                super::decoder_layer::KimiFfnConfig::Dense {
+                    intermediate_size,
+                    hidden_size,
+                    ..
+                } => {
                     // Dense SiTU MLP — structurally identical to one SwiGlu expert.
                     // Note: SwiGluExpertWeights::random takes the transformer crate's
                     // own Rng (distinct type from katgpt_core::Rng).
@@ -327,7 +343,11 @@ impl KimiK3ModelWeights {
             };
 
             let ffn = match config.ffn_config(layer_idx) {
-                super::decoder_layer::KimiFfnConfig::Dense { intermediate_size, hidden_size, .. } => {
+                super::decoder_layer::KimiFfnConfig::Dense {
+                    intermediate_size,
+                    hidden_size,
+                    ..
+                } => {
                     let mut expert_rng = katgpt_transformer::moe::Rng::new(rng.next());
                     let mut expert = SwiGluExpertWeights::random(
                         &mut expert_rng,
@@ -420,7 +440,9 @@ fn normal_vec(n: usize, sigma: f32, rng: &mut katgpt_core::Rng) -> Vec<f32> {
 
 /// Generate a Vec of small uniform values in `[-scale, scale]`.
 fn small_vec(n: usize, scale: f32, rng: &mut katgpt_core::Rng) -> Vec<f32> {
-    (0..n).map(|_| (rng.uniform() * 2.0 - 1.0) * scale).collect()
+    (0..n)
+        .map(|_| (rng.uniform() * 2.0 - 1.0) * scale)
+        .collect()
 }
 
 /// Kaiming uniform init: `±sqrt(6/fan_in)` on a flat weight buffer.
@@ -486,10 +508,7 @@ fn kaiming_expert(e: &mut SwiGluExpertWeights, fan_in: usize, _fan_out: usize) {
 ///
 /// Safetensors stores tensors in their original dtype (f32 for Kimi-K3-0.40B).
 /// This function extracts the raw bytes and converts to `Vec<f32>`.
-fn extract_f32_tensor(
-    st: &safetensors::SafeTensors,
-    name: &str,
-) -> Result<Vec<f32>, LoadError> {
+fn extract_f32_tensor(st: &safetensors::SafeTensors, name: &str) -> Result<Vec<f32>, LoadError> {
     let view = st
         .tensor(name)
         .map_err(|e| LoadError::Safetensors(format!("tensor '{name}': {e}")))?;
@@ -557,7 +576,11 @@ fn load_mla_layer(
     let kv_b = get_tensor!(st, &format!("{prefix}.kv_b_proj.weight"));
     let kv_b_row_len = d_c; // in_features
     let kv_b_per_head_rows = d_h + v_h;
-    debug_assert_eq!(kv_b.len(), n_h * kv_b_per_head_rows * kv_b_row_len, "kv_b_proj size mismatch");
+    debug_assert_eq!(
+        kv_b.len(),
+        n_h * kv_b_per_head_rows * kv_b_row_len,
+        "kv_b_proj size mismatch"
+    );
     let mut w_uk = vec![0.0f32; d_h * n_h * d_c];
     let mut w_uv = vec![0.0f32; v_h * n_h * d_c];
     for head in 0..n_h {
@@ -589,7 +612,11 @@ fn load_mla_layer(
     let q_b = get_tensor!(st, &format!("{prefix}.q_b_proj.weight"));
     let q_b_row_len = d_qc; // in_features
     let q_b_per_head_rows = d_h + d_r;
-    debug_assert_eq!(q_b.len(), n_h * q_b_per_head_rows * q_b_row_len, "q_b_proj size mismatch");
+    debug_assert_eq!(
+        q_b.len(),
+        n_h * q_b_per_head_rows * q_b_row_len,
+        "q_b_proj size mismatch"
+    );
     let mut w_uq = vec![0.0f32; d_h * n_h * d_qc];
     let mut w_qr = vec![0.0f32; d_r * n_h * d_qc];
     for head in 0..n_h {
@@ -710,7 +737,8 @@ fn load_moe_layer(
     // Router centroid: [N_r, d] — `.gate.weight`
     let router_weight = get_tensor!(st, &format!("{prefix}.gate.weight"));
     // noaux_tc bias: [N_r] — `.gate.e_score_correction_bias`
-    let e_score_correction_bias = get_tensor!(st, &format!("{prefix}.gate.e_score_correction_bias"));
+    let e_score_correction_bias =
+        get_tensor!(st, &format!("{prefix}.gate.e_score_correction_bias"));
 
     // Routed experts — `.experts.N.w1/w2/w3`
     let mut experts = Vec::with_capacity(num_experts);
@@ -734,9 +762,18 @@ fn load_moe_layer(
     }
 
     // Latent MoE wrapper — `.routed_expert_*`
-    let routed_expert_down_proj = Some(get_tensor!(st, &format!("{prefix}.routed_expert_down_proj.weight")));
-    let routed_expert_up_proj = Some(get_tensor!(st, &format!("{prefix}.routed_expert_up_proj.weight")));
-    let routed_expert_norm_weight = Some(get_tensor!(st, &format!("{prefix}.routed_expert_norm.weight")));
+    let routed_expert_down_proj = Some(get_tensor!(
+        st,
+        &format!("{prefix}.routed_expert_down_proj.weight")
+    ));
+    let routed_expert_up_proj = Some(get_tensor!(
+        st,
+        &format!("{prefix}.routed_expert_up_proj.weight")
+    ));
+    let routed_expert_norm_weight = Some(get_tensor!(
+        st,
+        &format!("{prefix}.routed_expert_norm.weight")
+    ));
 
     Ok(MoeWeights {
         router_weight,
@@ -775,7 +812,9 @@ fn load_decoder_layer(
     let is_dense = layer_idx == 0;
 
     let attention = if is_mla {
-        KimiAttentionWeights::Mla(load_mla_layer(st, layer_idx, d, d_c, d_qc, d_h, d_r, v_h, n_h)?)
+        KimiAttentionWeights::Mla(load_mla_layer(
+            st, layer_idx, d, d_c, d_qc, d_h, d_r, v_h, n_h,
+        )?)
     } else {
         KimiAttentionWeights::Kda(load_kda_layer(st, layer_idx)?)
     };
@@ -783,13 +822,17 @@ fn load_decoder_layer(
     let ffn = if is_dense {
         KimiFfnWeights::Dense(load_dense_mlp(st, layer_idx)?)
     } else {
-        KimiFfnWeights::Moe(load_moe_layer(st, layer_idx, num_experts, num_shared_experts)?)
+        KimiFfnWeights::Moe(load_moe_layer(
+            st,
+            layer_idx,
+            num_experts,
+            num_shared_experts,
+        )?)
     };
 
     // Common layer norm + attn-res weights
     let lpfx = format!("language_model.model.layers.{layer_idx}");
-    let input_layernorm_weight =
-        get_tensor!(st, &format!("{lpfx}.input_layernorm.weight"));
+    let input_layernorm_weight = get_tensor!(st, &format!("{lpfx}.input_layernorm.weight"));
     let post_attention_layernorm_weight =
         get_tensor!(st, &format!("{lpfx}.post_attention_layernorm.weight"));
 

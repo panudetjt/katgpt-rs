@@ -57,7 +57,7 @@
 
 #![allow(dead_code)]
 
-use crate::subspace_phase_gate::{thin_svd_into, SvdResultScratch, SvdScratch};
+use crate::subspace_phase_gate::{SvdResultScratch, SvdScratch, thin_svd_into};
 
 // ── Seeded PRNG (house FixtureRng pattern: local SplitMix64 + Box-Muller) ──
 
@@ -158,9 +158,9 @@ pub fn basis_similarity(va: &[f32], vb: &[f32], d: usize) -> f32 {
 /// `(d, classes, n_train, n_test)`, reuse across layers/refits/evals —
 /// every function below allocates nothing.
 pub struct InterventionScratch {
-    gram: Vec<f32>,        // d×d regularized Gram
-    xty: Vec<f32>,         // d×c RHS
-    basis: Vec<f32>,       // d×rank aligned basis
+    gram: Vec<f32>,         // d×d regularized Gram
+    xty: Vec<f32>,          // d×c RHS
+    basis: Vec<f32>,        // d×rank aligned basis
     control: Vec<f32>,      // d×k random control basis
     z: Vec<f32>,            // n_test×d projected features
     coeffs: Vec<f32>,       // per-sample k projection coefficients
@@ -213,7 +213,11 @@ impl InterventionScratch {
         classes: usize,
         recall_out: &mut [f32],
     ) -> f32 {
-        let InterventionScratch { eval_hits, eval_total, .. } = self;
+        let InterventionScratch {
+            eval_hits,
+            eval_total,
+            ..
+        } = self;
         eval_head_into(x, y, n, d, w, classes, recall_out, eval_hits, eval_total)
     }
 }
@@ -523,24 +527,86 @@ pub fn three_arm_eval_on_basis(
 ) -> usize {
     debug_assert_eq!(x_test.len(), n * d);
     debug_assert!(basis.len() >= d * rank_cap);
-    let InterventionScratch { z, coeffs, control, eval_hits, eval_total, .. } = scratch;
+    let InterventionScratch {
+        z,
+        coeffs,
+        control,
+        eval_hits,
+        eval_total,
+        ..
+    } = scratch;
     for (ki, &k) in ks.iter().enumerate() {
         let k = k.min(rank_cap);
         // aligned (caller basis)
-        project_through_into(x_test, &mut z[..n * d], &basis[..d * k], n, d, k, false, coeffs);
+        project_through_into(
+            x_test,
+            &mut z[..n * d],
+            &basis[..d * k],
+            n,
+            d,
+            k,
+            false,
+            coeffs,
+        );
         aligned_out[ki] = eval_head_into(
-            &z[..n * d], y, n, d, w, classes, recall_buf, eval_hits, eval_total,
+            &z[..n * d],
+            y,
+            n,
+            d,
+            w,
+            classes,
+            recall_buf,
+            eval_hits,
+            eval_total,
         );
         // random control (seed varies with k: independent arms)
-        random_basis_into(&mut control[..d * k], d, seed ^ (k as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15));
-        project_through_into(x_test, &mut z[..n * d], &control[..d * k], n, d, k, false, coeffs);
+        random_basis_into(
+            &mut control[..d * k],
+            d,
+            seed ^ (k as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15),
+        );
+        project_through_into(
+            x_test,
+            &mut z[..n * d],
+            &control[..d * k],
+            n,
+            d,
+            k,
+            false,
+            coeffs,
+        );
         random_out[ki] = eval_head_into(
-            &z[..n * d], y, n, d, w, classes, recall_buf, eval_hits, eval_total,
+            &z[..n * d],
+            y,
+            n,
+            d,
+            w,
+            classes,
+            recall_buf,
+            eval_hits,
+            eval_total,
         );
         // residual (complement of the aligned basis)
-        project_through_into(x_test, &mut z[..n * d], &basis[..d * k], n, d, k, true, coeffs);
+        project_through_into(
+            x_test,
+            &mut z[..n * d],
+            &basis[..d * k],
+            n,
+            d,
+            k,
+            true,
+            coeffs,
+        );
         residual_out[ki] = eval_head_into(
-            &z[..n * d], y, n, d, w, classes, recall_buf, eval_hits, eval_total,
+            &z[..n * d],
+            y,
+            n,
+            d,
+            w,
+            classes,
+            recall_buf,
+            eval_hits,
+            eval_total,
         );
     }
     rank_cap
@@ -588,24 +654,68 @@ pub fn three_arm_eval(
     }
     // NOTE: inlined (not delegated to three_arm_eval_on_basis) so the
     // aligned basis stays in scratch — the whole call is zero-alloc (G4).
-    let InterventionScratch { z, coeffs, control, eval_hits, eval_total, .. } = scratch;
+    let InterventionScratch {
+        z,
+        coeffs,
+        control,
+        eval_hits,
+        eval_total,
+        ..
+    } = scratch;
     for (ki, &k) in ks.iter().enumerate() {
         let k = k.min(rank);
         // aligned
         project_through_into(x_test, &mut z[..n * d], basis, n, d, k, false, coeffs);
         aligned_out[ki] = eval_head_into(
-            &z[..n * d], y, n, d, w, classes, recall_buf, eval_hits, eval_total,
+            &z[..n * d],
+            y,
+            n,
+            d,
+            w,
+            classes,
+            recall_buf,
+            eval_hits,
+            eval_total,
         );
         // random control (seed varies with k: independent arms)
-        random_basis_into(&mut control[..d * k], d, seed ^ (k as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15));
-        project_through_into(x_test, &mut z[..n * d], &control[..d * k], n, d, k, false, coeffs);
+        random_basis_into(
+            &mut control[..d * k],
+            d,
+            seed ^ (k as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15),
+        );
+        project_through_into(
+            x_test,
+            &mut z[..n * d],
+            &control[..d * k],
+            n,
+            d,
+            k,
+            false,
+            coeffs,
+        );
         random_out[ki] = eval_head_into(
-            &z[..n * d], y, n, d, w, classes, recall_buf, eval_hits, eval_total,
+            &z[..n * d],
+            y,
+            n,
+            d,
+            w,
+            classes,
+            recall_buf,
+            eval_hits,
+            eval_total,
         );
         // residual (complement of the aligned basis)
         project_through_into(x_test, &mut z[..n * d], basis, n, d, k, true, coeffs);
         residual_out[ki] = eval_head_into(
-            &z[..n * d], y, n, d, w, classes, recall_buf, eval_hits, eval_total,
+            &z[..n * d],
+            y,
+            n,
+            d,
+            w,
+            classes,
+            recall_buf,
+            eval_hits,
+            eval_total,
         );
     }
     rank
@@ -655,7 +765,16 @@ pub fn affinity_sweep(
         for (r, &i) in test_idx.iter().enumerate() {
             x_test[r * d..(r + 1) * d].copy_from_slice(&layer[i * d..(i + 1) * d]);
         }
-        ridge_probe_fit_into(&x_train, &y_train, n_train, d, classes, lambda_scale, scratch, &mut w);
+        ridge_probe_fit_into(
+            &x_train,
+            &y_train,
+            n_train,
+            d,
+            classes,
+            lambda_scale,
+            scratch,
+            &mut w,
+        );
         full_acc_out[l] = eval_head_into(
             &x_test,
             &y_test,
@@ -757,7 +876,17 @@ mod tests {
         let mut w = vec![0.0_f32; 2 * D];
         ridge_probe_fit_into(&x, &y, 20, D, 2, 0.01, &mut scratch, &mut w);
         let mut recall = vec![0.0_f32; 2];
-        let acc = eval_head_into(&x, &y, 20, D, &w, 2, &mut recall, &mut scratch.eval_hits, &mut scratch.eval_total);
+        let acc = eval_head_into(
+            &x,
+            &y,
+            20,
+            D,
+            &w,
+            2,
+            &mut recall,
+            &mut scratch.eval_hits,
+            &mut scratch.eval_total,
+        );
         assert!(acc > 0.99, "sanity acc {acc}");
     }
 
@@ -806,13 +935,36 @@ mod tests {
         );
         let mut recall_p = vec![0.0_f32; c];
         let mut recall_d = vec![0.0_f32; c];
-        let acc_p = eval_head_into(&eval_x, &eval_y, n, d, &w_primal, c, &mut recall_p, &mut scratch.eval_hits, &mut scratch.eval_total);
-        let acc_d = eval_head_into(&eval_x, &eval_y, n, d, &w_dual, c, &mut recall_d, &mut scratch.eval_hits, &mut scratch.eval_total);
+        let acc_p = eval_head_into(
+            &eval_x,
+            &eval_y,
+            n,
+            d,
+            &w_primal,
+            c,
+            &mut recall_p,
+            &mut scratch.eval_hits,
+            &mut scratch.eval_total,
+        );
+        let acc_d = eval_head_into(
+            &eval_x,
+            &eval_y,
+            n,
+            d,
+            &w_dual,
+            c,
+            &mut recall_d,
+            &mut scratch.eval_hits,
+            &mut scratch.eval_total,
+        );
         assert!(
             (acc_p - acc_d).abs() <= 1.0 / n as f32,
             "same W to f32 tolerance must not move more than a borderline sample: {acc_p} vs {acc_d}"
         );
-        assert!(acc_p > 0.9 && acc_d > 0.9, "the fixture must be separable ({acc_p}/{acc_d})");
+        assert!(
+            acc_p > 0.9 && acc_d > 0.9,
+            "the fixture must be separable ({acc_p}/{acc_d})"
+        );
     }
 
     /// G1(a) — the projection identity: aligned@k=rank reproduces the full
@@ -825,20 +977,40 @@ mod tests {
         let mut scratch = InterventionScratch::new(D, C, N_TRAIN, N_TEST);
         let w = fit_probe(&xt, &yt, &mut scratch);
         let mut recall = vec![0.0_f32; C];
-        let full = eval_head_into(&xe, &ye, N_TEST, D, &w, C, &mut recall, &mut scratch.eval_hits, &mut scratch.eval_total);
+        let full = eval_head_into(
+            &xe,
+            &ye,
+            N_TEST,
+            D,
+            &w,
+            C,
+            &mut recall,
+            &mut scratch.eval_hits,
+            &mut scratch.eval_total,
+        );
         let ks = [1_usize, 2, 4];
         let mut al = vec![0.0_f32; 3];
         let mut ra = vec![0.0_f32; 3];
         let mut re = vec![0.0_f32; 3];
         let rank = three_arm_eval(
-            &xe, &ye, N_TEST, D, &w, C, &ks, 0xDEAD_BEEF, &mut scratch, &mut al, &mut ra, &mut re,
+            &xe,
+            &ye,
+            N_TEST,
+            D,
+            &w,
+            C,
+            &ks,
+            0xDEAD_BEEF,
+            &mut scratch,
+            &mut al,
+            &mut ra,
+            &mut re,
             &mut recall,
         );
         assert_eq!(rank, C.min(D));
         let ki_full = ks.iter().position(|&k| k >= rank).expect("some k >= rank");
         assert_eq!(
-            al[ki_full],
-            full,
+            al[ki_full], full,
             "aligned@k=rank must reproduce full exactly: {} vs {full}",
             al[ki_full]
         );
@@ -859,7 +1031,18 @@ mod tests {
         let mut ra = vec![0.0_f32; 2];
         let mut re = vec![0.0_f32; 2];
         three_arm_eval(
-            &xe, &ye, N_TEST, D, &w, C, &ks, 0xDEAD_BEEF, &mut scratch, &mut al, &mut ra, &mut re,
+            &xe,
+            &ye,
+            N_TEST,
+            D,
+            &w,
+            C,
+            &ks,
+            0xDEAD_BEEF,
+            &mut scratch,
+            &mut al,
+            &mut ra,
+            &mut re,
             &mut recall,
         );
         assert!(
@@ -896,8 +1079,20 @@ mod tests {
         let mut peaks = vec![0usize; C];
         let mut layer_buf = vec![0.0_f32; C];
         let best = affinity_sweep(
-            &packed, &labels, &train, &test, N_TOTAL, D, C, 2, 0.01, &mut scratch, &mut full_acc,
-            &mut recall, &mut peaks, &mut layer_buf,
+            &packed,
+            &labels,
+            &train,
+            &test,
+            N_TOTAL,
+            D,
+            C,
+            2,
+            0.01,
+            &mut scratch,
+            &mut full_acc,
+            &mut recall,
+            &mut peaks,
+            &mut layer_buf,
         );
         assert_eq!(best, 1, "the sweep must pick the task layer");
         assert!(peaks.iter().all(|&p| p == 1));
@@ -912,7 +1107,10 @@ mod tests {
         random_basis_into(&mut ba, D, 1);
         bb.copy_from_slice(&ba);
         let same = basis_similarity(&ba, &bb, D);
-        assert!((same - 1.0).abs() < 1e-5, "identical spans ⇒ 1.0, got {same}");
+        assert!(
+            (same - 1.0).abs() < 1e-5,
+            "identical spans ⇒ 1.0, got {same}"
+        );
         random_basis_into(&mut bb, D, 2);
         let indep = basis_similarity(&ba, &bb, D);
         assert!(
@@ -955,7 +1153,18 @@ mod tests {
         let mut re = vec![0.0_f32; 2];
         crate::alloc::reset_alloc_stats();
         let rank = three_arm_eval(
-            &xe, &ye, N_TEST, D, &w, C, &ks, 3, &mut scratch, &mut al, &mut ra, &mut re,
+            &xe,
+            &ye,
+            N_TEST,
+            D,
+            &w,
+            C,
+            &ks,
+            3,
+            &mut scratch,
+            &mut al,
+            &mut ra,
+            &mut re,
             &mut recall,
         );
         let (count, _bytes) = crate::alloc::get_alloc_stats();

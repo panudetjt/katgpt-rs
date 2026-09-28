@@ -670,9 +670,7 @@ fn t09_throughput_inv_sqrt_16x16() {
         us <= target_us,
         "ns_inv_sqrt_psd_into ({r}×{r}) took {us:.1} µs > {target_us:.0} µs target"
     );
-    eprintln!(
-        "t09 BENCH ns_inv_sqrt_psd_into ({r}×{r}): {us:.2} μs (gate {target_us:.0} μs)"
-    );
+    eprintln!("t09 BENCH ns_inv_sqrt_psd_into ({r}×{r}): {us:.2} μs (gate {target_us:.0} μs)");
 }
 
 // ── 10. Throughput: compose 4 pairs ──────────────────────────────────────

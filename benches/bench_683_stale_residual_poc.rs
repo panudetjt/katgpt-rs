@@ -37,8 +37,7 @@ use katgpt_rs::kimi_k3::decoder_layer::{KimiAttentionWeights, KimiFfnWeights};
 use katgpt_rs::kimi_k3::loader::{KimiK3ModelWeights, load_kimi_k3};
 use katgpt_rs::kimi_k3::model::{KimiK3ModelConfig, KimiK3Runtime, kimi_k3_forward_token};
 use katgpt_rs::kimi_k3::stale_residual::{
-    DeltaPredictor, StaleResidualSim, TokenCapture, capture_forward_token,
-    router_logit_features,
+    DeltaPredictor, StaleResidualSim, TokenCapture, capture_forward_token, router_logit_features,
 };
 use katgpt_rs::kimi_k3::tiktoken::{TiktokenRanks, TiktokenTokenizer, load_tiktoken_bpe};
 
@@ -120,7 +119,10 @@ fn load_srtr(path: &std::path::Path) -> Option<SrtrTrace> {
         per_layer.push(vec_at(&mut off, n_pos * dim));
     }
     if off != bytes.len() {
-        eprintln!("[trace] {path:?}: trailing bytes (off {off}, len {})", bytes.len());
+        eprintln!(
+            "[trace] {path:?}: trailing bytes (off {off}, len {})",
+            bytes.len()
+        );
     }
     Some(SrtrTrace {
         name,
@@ -221,12 +223,9 @@ fn run() {
         assert!(identical, "G1a determinism failed");
 
         let mut rt_ref = KimiK3Runtime::new(&config, prompt_len + GEN_TOKENS + 8);
-        let ok = prompts[0]
-            .iter()
-            .zip(caps_a.iter())
-            .all(|(&t, cap)| {
-                kimi_k3_forward_token(&config, &weights, &mut rt_ref, t) == cap.logits.as_slice()
-            });
+        let ok = prompts[0].iter().zip(caps_a.iter()).all(|(&t, cap)| {
+            kimi_k3_forward_token(&config, &weights, &mut rt_ref, t) == cap.logits.as_slice()
+        });
         println!(
             "  G1b capture ≡ kimi_k3_forward_token:  {}",
             if ok { "PASS" } else { "FAIL" }
@@ -292,9 +291,8 @@ fn run() {
     );
 
     // ── T1 cross-model traces ──
-    let trace_dir = std::env::var("STALE_RESIDUAL_TRACES").unwrap_or_else(|_| {
-        format!("{}/data/stale_residual_traces", env!("CARGO_MANIFEST_DIR"))
-    });
+    let trace_dir = std::env::var("STALE_RESIDUAL_TRACES")
+        .unwrap_or_else(|_| format!("{}/data/stale_residual_traces", env!("CARGO_MANIFEST_DIR")));
     for (file, label) in [("bonsai.srtr", "Bonsai-27B"), ("gemma2.srtr", "Gemma-2-2B")] {
         let p = std::path::Path::new(&trace_dir).join(file);
         if !p.exists() {
@@ -349,7 +347,10 @@ fn run() {
     );
 
     let thetas = [0.01f32, 0.02, 0.05, 0.10, 0.20, 0.50];
-    println!("  {:>6} | {:>7} {:>11} {:>8}", "theta", "accept", "top1|acc", "meanKL");
+    println!(
+        "  {:>6} | {:>7} {:>11} {:>8}",
+        "theta", "accept", "top1|acc", "meanKL"
+    );
     let mut cells_at_005: Vec<katgpt_core::stale_residual::SweepCell> = Vec::new();
     for &theta in &thetas {
         let mut accepts = Vec::new();
@@ -504,8 +505,7 @@ fn run() {
                     continue;
                 }
                 for cap in row {
-                    if router_logit_features(&config, &weights, delay, &cap.x_in[delay], &mut phi)
-                    {
+                    if router_logit_features(&config, &weights, delay, &cap.x_in[delay], &mut phi) {
                         xs.extend_from_slice(&phi);
                         ys.extend_from_slice(&delta_of(cap, delay));
                         n += 1;
@@ -537,10 +537,29 @@ fn run() {
         }
         println!("  fit done ({:.1}s)", t0.elapsed().as_secs_f64());
 
-        println!("  {:>5} {:>12} {:>14} {:>12}", "delay", "router R²(ho)", "x_in-lin R²(ho)", "router R²(is)");
+        println!(
+            "  {:>5} {:>12} {:>14} {:>12}",
+            "delay", "router R²(ho)", "x_in-lin R²(ho)", "router R²(is)"
+        );
         for delay in 1..n_layer - 1 {
-            let r_router = heldout_r2(&caps, n_train, delay, true, router_preds[delay].as_ref(), &config, &weights);
-            let r_lin = heldout_r2(&caps, n_train, delay, false, lin_preds[delay].as_ref(), &config, &weights);
+            let r_router = heldout_r2(
+                &caps,
+                n_train,
+                delay,
+                true,
+                router_preds[delay].as_ref(),
+                &config,
+                &weights,
+            );
+            let r_lin = heldout_r2(
+                &caps,
+                n_train,
+                delay,
+                false,
+                lin_preds[delay].as_ref(),
+                &config,
+                &weights,
+            );
             let is_r = router_preds[delay].as_ref().map(|p| p.r_squared);
             println!(
                 "  {:>5} {:>12.4} {:>14.4} {:>12.4}",
@@ -568,7 +587,10 @@ fn run() {
         let best_delay = (1..n_layer - 1)
             .max_by(|&a, &b| katgpt_core::float_order::cmp_for_max(ho_r2[a], ho_r2[b]))
             .unwrap_or(1);
-        if let Some(pred) = router_preds[best_delay].as_ref().filter(|_| ho_r2[best_delay].is_finite()) {
+        if let Some(pred) = router_preds[best_delay]
+            .as_ref()
+            .filter(|_| ho_r2[best_delay].is_finite())
+        {
             println!("  corrected replay @ delay {best_delay} (router predictor):");
             let mut phi = Vec::new();
             let mut corrected = Vec::new();
@@ -579,7 +601,13 @@ fn run() {
                     let stale = cap.x_in[best_delay].clone();
                     let out_s = sim.replay_stale(cap, best_delay, &stale);
                     stale_outcomes.push(out_s.core);
-                    router_logit_features(&config, &weights, best_delay, &cap.x_in[best_delay], &mut phi);
+                    router_logit_features(
+                        &config,
+                        &weights,
+                        best_delay,
+                        &cap.x_in[best_delay],
+                        &mut phi,
+                    );
                     pred.predict_into(&phi, &mut corrected);
                     for (c, s) in corrected.iter_mut().zip(cap.x_in[best_delay].iter()) {
                         *c += s;
@@ -637,9 +665,9 @@ fn run() {
             .layers
             .iter()
             .map(|lw| {
-                let mut n: u64 =
-                    (lw.input_layernorm_weight.len() + lw.post_attention_layernorm_weight.len())
-                        as u64;
+                let mut n: u64 = (lw.input_layernorm_weight.len()
+                    + lw.post_attention_layernorm_weight.len())
+                    as u64;
                 match &lw.attention {
                     KimiAttentionWeights::Mla(w) => {
                         n += (w.w_dkv.len()
@@ -706,12 +734,33 @@ fn run() {
 
         // (label, compute FLOP/s, bandwidth B/s, bits/weight, shared_bus)
         let regimes: &[(&str, f64, f64, f64, bool)] = &[
-            ("M3 Max RAM-resident f32 (shared bus)", 80e9, 300e9, 32.0, true),
-            ("Disk-resident Q4 (NVMe, hideable IO)", 80e9, 6e9, 4.6, false),
-            ("Disk-resident ternary 1.58b/w (hideable)", 80e9, 6e9, 1.58, false),
+            (
+                "M3 Max RAM-resident f32 (shared bus)",
+                80e9,
+                300e9,
+                32.0,
+                true,
+            ),
+            (
+                "Disk-resident Q4 (NVMe, hideable IO)",
+                80e9,
+                6e9,
+                4.6,
+                false,
+            ),
+            (
+                "Disk-resident ternary 1.58b/w (hideable)",
+                80e9,
+                6e9,
+                1.58,
+                false,
+            ),
             ("GPU H2D cold-thaw (hideable IO)", 200e9, 20e9, 8.0, false),
         ];
-        println!("  {:>38} {:>18} {:>14}", "regime", "paper (C+IO)/max", "pair speedup");
+        println!(
+            "  {:>38} {:>18} {:>14}",
+            "regime", "paper (C+IO)/max", "pair speedup"
+        );
         for (label, compute, bw, bits, shared) in regimes {
             let m = OverlapLatency {
                 compute_rate: *compute,

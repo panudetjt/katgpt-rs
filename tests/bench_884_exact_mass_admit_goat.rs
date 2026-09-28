@@ -86,10 +86,9 @@ fn sum_tol(n: usize) -> f64 {
 /// `s >= thresh` admits exactly k.
 fn hardcut_sigmoid_into(scores: &[f32], k: usize, out: &mut [f32], scratch: &mut [f32]) {
     scratch.copy_from_slice(scores);
-    scratch.select_nth_unstable_by(
-        k - 1,
-        |a, b| b.partial_cmp(a).unwrap_or(core::cmp::Ordering::Equal),
-    );
+    scratch.select_nth_unstable_by(k - 1, |a, b| {
+        b.partial_cmp(a).unwrap_or(core::cmp::Ordering::Equal)
+    });
     let thresh = scratch[k - 1];
     for (o, &s) in out.iter_mut().zip(scores) {
         *o = if s >= thresh {
@@ -127,7 +126,9 @@ fn g1_calibration_at_scale() {
 /// pins the mass at every N and (b) the gross regression ceiling.
 #[test]
 fn g2_cost_vs_calibration_table() {
-    println!("bench_884 G2 — best-of-arms = per-arm MIN over round-robin samples (load-invariant form)");
+    println!(
+        "bench_884 G2 — best-of-arms = per-arm MIN over round-robin samples (load-invariant form)"
+    );
 
     // N = 1e3: three arms (gate is in its designed regime here only).
     {
@@ -144,9 +145,7 @@ fn g2_cost_vs_calibration_table() {
         let mut errs = Vec::new();
         exact_mass_admit_into(&scores, k as f32, 1.0, &mut mask);
         errs.push((mask_sum(&mask) - k as f64).abs());
-        let kk = gate_sigmoid_topk_into(
-            &x, &scores, n, 1, 1.0, k, &mut gate_scores, &mut gate_idx,
-        );
+        let kk = gate_sigmoid_topk_into(&x, &scores, n, 1, 1.0, k, &mut gate_scores, &mut gate_idx);
         let gate_mass: f64 = gate_idx[..kk].iter().map(|&i| gate_scores[i] as f64).sum();
         errs.push((gate_mass - k as f64).abs());
         hardcut_sigmoid_into(&scores, k, &mut mask, &mut scratch);
@@ -160,8 +159,14 @@ fn g2_cost_vs_calibration_table() {
                 }
                 1 => {
                     let kk = gate_sigmoid_topk_into(
-                        black_box(&x), black_box(&scores), n, 1, 1.0, k,
-                        &mut gate_scores, &mut gate_idx,
+                        black_box(&x),
+                        black_box(&scores),
+                        n,
+                        1,
+                        1.0,
+                        k,
+                        &mut gate_scores,
+                        &mut gate_idx,
                     );
                     black_box(kk);
                 }
@@ -237,7 +242,9 @@ fn g2_cost_vs_calibration_table() {
         }
     }
     println!("└─────────┴──────────┴────────────────┴──────────────────────┘");
-    println!("(gate arm at N≥1e5: absent — its own doc bounds the O(k·N) selection sort to game-scale N; absence-of-regime, not a result)");
+    println!(
+        "(gate arm at N≥1e5: absent — its own doc bounds the O(k·N) selection sort to game-scale N; absence-of-regime, not a result)"
+    );
 
     // The only hard perf assertion: a GROSS regression ceiling on ours
     // (measured 1.1 s/call at N=1e7 — ~2.2 ns per expit·element across
@@ -248,5 +255,7 @@ fn g2_cost_vs_calibration_table() {
         ours_1e7_us < 2_500_000.0,
         "G2 gross regression: exact_mass_admit_into @1e7 = {ours_1e7_us:.0} µs > 2.5 s ceiling"
     );
-    println!("G2: PASS — calibration pinned at every N; cost recorded as-is (no relative-perf assert, the no-assumed-win rule)");
+    println!(
+        "G2: PASS — calibration pinned at every N; cost recorded as-is (no relative-perf assert, the no-assumed-win rule)"
+    );
 }

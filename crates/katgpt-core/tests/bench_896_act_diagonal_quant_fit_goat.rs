@@ -113,8 +113,16 @@ fn dists() -> Vec<Dist> {
     let heavy: Vec<bool> = (0..C).map(|j| j % 97 == 13).collect(); // ~1% of channels
     let sig_heavy: Vec<f32> = heavy.iter().map(|&h| if h { 20.0 } else { 1.0 }).collect();
     vec![
-        Dist { name: "D0 uniform (control)", sigma: vec![1.0; C], mu: vec![0.0; C] },
-        Dist { name: "D1 1% heavy x20, zero-mean", sigma: sig_heavy.clone(), mu: vec![0.0; C] },
+        Dist {
+            name: "D0 uniform (control)",
+            sigma: vec![1.0; C],
+            mu: vec![0.0; C],
+        },
+        Dist {
+            name: "D1 1% heavy x20, zero-mean",
+            sigma: sig_heavy.clone(),
+            mu: vec![0.0; C],
+        },
         Dist {
             name: "D2 1% heavy x20, mean 0.5σ",
             mu: sig_heavy.iter().map(|s| 0.5 * s).collect(),
@@ -177,7 +185,11 @@ fn rel_output_mse(w: &[f32], wq: &[f32], xs: &[f32]) -> f64 {
 }
 
 fn weight_mse(w: &[f32], wq: &[f32]) -> f64 {
-    w.iter().zip(wq).map(|(a, b)| f64::from(a - b).powi(2)).sum::<f64>() / w.len() as f64
+    w.iter()
+        .zip(wq)
+        .map(|(a, b)| f64::from(a - b).powi(2))
+        .sum::<f64>()
+        / w.len() as f64
 }
 
 fn payload_bytes(t: &TernaryGroupWeights) -> Vec<u8> {
@@ -204,7 +216,11 @@ fn legacy_quantize(w: &[f32], rows: usize, cols: usize) -> TernaryGroupWeights {
             let g_end = (g_start + GROUP_SIZE).min(cols);
             let group = &row[g_start..g_end];
             let abs_sum: f32 = group.iter().map(|v| v.abs()).sum();
-            let scale = if abs_sum > 0.0 { abs_sum / group.len() as f32 } else { 1.0 };
+            let scale = if abs_sum > 0.0 {
+                abs_sum / group.len() as f32
+            } else {
+                1.0
+            };
             out.group_scale[group_base + g] = f16::from_f32(scale);
             let scale = out.group_scale[group_base + g].to_f32();
             let threshold = 0.5 * scale;
@@ -249,7 +265,10 @@ fn int4_dequant(w: &[f32], diag: Option<&[f32]>) -> Vec<f32> {
                 Some(h) => {
                     let hg = &h[g * GROUP_SIZE..(g + 1) * GROUP_SIZE];
                     let hmax = hg.iter().fold(0.0f32, |m, &v| m.max(v));
-                    let u: Vec<f32> = hg.iter().map(|&v| if hmax > 0.0 { v / hmax } else { 1.0 }).collect();
+                    let u: Vec<f32> = hg
+                        .iter()
+                        .map(|&v| if hmax > 0.0 { v / hmax } else { 1.0 })
+                        .collect();
                     let eval = |s: f32| -> (f32, f32, f32) {
                         let (mut e, mut n, mut d) = (0.0f32, 0.0f32, 0.0f32);
                         for (&v, &uw) in grp.iter().zip(&u) {
@@ -310,9 +329,17 @@ fn main() {
             h,
             ActAwareScaleFit::WeightedMeanAbs,
         );
-        check(&mut failed, payload_bytes(&t) == base_bytes, format!("G3 uniform {label}: payload bytes identical ({} B)", base_bytes.len()));
+        check(
+            &mut failed,
+            payload_bytes(&t) == base_bytes,
+            format!(
+                "G3 uniform {label}: payload bytes identical ({} B)",
+                base_bytes.len()
+            ),
+        );
     }
-    check(&mut failed, 
+    check(
+        &mut failed,
         payload_bytes(&legacy_quantize(&w_g, R, C)) == base_bytes,
         "G3 refactored baseline == pre-refactor transcription".into(),
     );
@@ -334,15 +361,33 @@ fn main() {
             let base = rel_output_mse(&w, &base_q, &eval_x);
             let uniform = vec![1.0f32; C];
             let arms: [(&str, &[f32], ActAwareScaleFit); 5] = [
-                ("WMA[E x²]", diag.mean_sq(0), ActAwareScaleFit::WeightedMeanAbs),
-                ("WMA[mean|x|]", diag.mean_abs(0), ActAwareScaleFit::WeightedMeanAbs),
-                ("Search[E x²]", diag.mean_sq(0), ActAwareScaleFit::WeightedSearch),
-                ("Search[mean|x|]", diag.mean_abs(0), ActAwareScaleFit::WeightedSearch),
+                (
+                    "WMA[E x²]",
+                    diag.mean_sq(0),
+                    ActAwareScaleFit::WeightedMeanAbs,
+                ),
+                (
+                    "WMA[mean|x|]",
+                    diag.mean_abs(0),
+                    ActAwareScaleFit::WeightedMeanAbs,
+                ),
+                (
+                    "Search[E x²]",
+                    diag.mean_sq(0),
+                    ActAwareScaleFit::WeightedSearch,
+                ),
+                (
+                    "Search[mean|x|]",
+                    diag.mean_abs(0),
+                    ActAwareScaleFit::WeightedSearch,
+                ),
                 ("Search[blind]", &uniform, ActAwareScaleFit::WeightedSearch),
             ];
             let mut line = format!("  ternary {wname} {:<32} base {base:.5}", d.name);
             for (name, h, fit) in arms {
-                let q = dequant(&TernaryGroupWeights::quantize_from_f32_act_aware(&w, R, C, h, fit));
+                let q = dequant(&TernaryGroupWeights::quantize_from_f32_act_aware(
+                    &w, R, C, h, fit,
+                ));
                 let m = rel_output_mse(&w, &q, &eval_x);
                 if !m.is_finite() || m <= 0.0 {
                     failed.push(format!("G1 non-finite metric {name} {}", d.name));
@@ -350,7 +395,9 @@ fn main() {
                 if name == "Search[blind]" {
                     let wm = weight_mse(&w, &q);
                     if wm > base_wmse * (1.0 + 1e-6) {
-                        failed.push(format!("G1 blind search weight-MSE {wm} > baseline {base_wmse}"));
+                        failed.push(format!(
+                            "G1 blind search weight-MSE {wm} > baseline {base_wmse}"
+                        ));
                     }
                 }
                 line += &format!(" | {name} {:+.2}%", (m / base - 1.0) * 100.0);
@@ -393,7 +440,11 @@ fn main() {
         t.elapsed()
     });
     let ns_per_elem = obs_us * 1e3 / (OW * OB) as f64;
-    check(&mut failed, ns_per_elem <= 2.0, format!("G2a observe: {ns_per_elem:.3} ns/element @ width {OW} (bar 2.0)"));
+    check(
+        &mut failed,
+        ns_per_elem <= 2.0,
+        format!("G2a observe: {ns_per_elem:.3} ns/element @ width {OW} (bar 2.0)"),
+    );
 
     let (fr, fc) = (256usize, 4096usize);
     let wf = weights_n(false, 0x886_0300, fr * fc);
@@ -453,7 +504,14 @@ fn main() {
         },
     );
     reg.report("G2b refactored/legacy baseline");
-    check(&mut failed, reg.median <= 1.05, format!("G2b refactored/legacy baseline median {:.4} (bar 1.05)", reg.median));
+    check(
+        &mut failed,
+        reg.median <= 1.05,
+        format!(
+            "G2b refactored/legacy baseline median {:.4} (bar 1.05)",
+            reg.median
+        ),
+    );
     let wr = ab_median_ratio(
         15,
         2,
@@ -474,9 +532,17 @@ fn main() {
         },
     );
     wr.report("G2c WMA/baseline");
-    check(&mut failed, wr.median <= 1.50, format!("G2c WMA/baseline median {:.4} (bar 1.50)", wr.median));
+    check(
+        &mut failed,
+        wr.median <= 1.50,
+        format!("G2c WMA/baseline median {:.4} (bar 1.50)", wr.median),
+    );
     let sr = srch_us / base_us;
-    check(&mut failed, sr <= 46.0, format!("G2d Search/baseline best-of ratio {sr:.2} (bar 46 = 2 × 23 carry passes)"));
+    check(
+        &mut failed,
+        sr <= 46.0,
+        format!("G2d Search/baseline best-of ratio {sr:.2} (bar 46 = 2 × 23 carry passes)"),
+    );
     black_box((sink_a, sink_b));
 
     // ── G4: allocation discipline ─────────────────────────────────────────
@@ -490,19 +556,34 @@ fn main() {
     mom.observe_batch(0, black_box(&obs));
     mom.observe(1, black_box(&small));
     let obs_allocs = allocs() - before;
-    check(&mut failed, obs_allocs == 0, format!("G4a observe/observe_batch allocs: {obs_allocs}"));
+    check(
+        &mut failed,
+        obs_allocs == 0,
+        format!("G4a observe/observe_batch allocs: {obs_allocs}"),
+    );
     let before = allocs();
     black_box(TernaryGroupWeights::quantize_from_f32(&wf, fr, fc));
     let base_allocs = allocs() - before;
-    for fit in [ActAwareScaleFit::WeightedMeanAbs, ActAwareScaleFit::WeightedSearch] {
+    for fit in [
+        ActAwareScaleFit::WeightedMeanAbs,
+        ActAwareScaleFit::WeightedSearch,
+    ] {
         let before = allocs();
-        black_box(TernaryGroupWeights::quantize_from_f32_act_aware(&wf, fr, fc, &diag_f, fit));
+        black_box(TernaryGroupWeights::quantize_from_f32_act_aware(
+            &wf, fr, fc, &diag_f, fit,
+        ));
         let a = allocs() - before;
-        check(&mut failed, a == base_allocs, format!("G4b {fit:?} fit allocs {a} == baseline {base_allocs}"));
+        check(
+            &mut failed,
+            a == base_allocs,
+            format!("G4b {fit:?} fit allocs {a} == baseline {base_allocs}"),
+        );
     }
 
     if failed.is_empty() {
-        println!("bench_896: ALL GATES PASSED (G1 recorded above — either sign is a valid measurement)");
+        println!(
+            "bench_896: ALL GATES PASSED (G1 recorded above — either sign is a valid measurement)"
+        );
     } else {
         println!("bench_896: {} GATE(S) FAILED:", failed.len());
         for f in &failed {

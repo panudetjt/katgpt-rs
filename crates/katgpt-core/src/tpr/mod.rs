@@ -132,16 +132,24 @@ pub fn tpr_enabled() -> bool {
 
 #[inline]
 fn enabled() -> Result<(), TprError> {
-    if kill_switch() { Err(TprError::Disabled) } else { Ok(()) }
+    if kill_switch() {
+        Err(TprError::Disabled)
+    } else {
+        Ok(())
+    }
 }
 
 #[inline]
 fn check_len(what: &'static str, got: usize, expected: usize) -> Result<(), TprError> {
-    if got == expected { Ok(()) } else { Err(TprError::DimMismatch {
+    if got == expected {
+        Ok(())
+    } else {
+        Err(TprError::DimMismatch {
             what,
             expected,
             got,
-        }) }
+        })
+    }
 }
 
 /// `out += alpha · src` over a contiguous run. No cross-iteration
@@ -162,10 +170,12 @@ fn block_axpy(art: &TprArtifact, base: usize, filler: &[f32], alpha: f32, out: &
     let dim = art.dim;
     for (j, &fv) in filler.iter().enumerate() {
         let a = alpha * fv;
-        if a == 0.0 { continue } else {
-                let s = base + j * dim;
-                axpy(out, &art.w[s..s + dim], a);
-            }
+        if a == 0.0 {
+            continue;
+        } else {
+            let s = base + j * dim;
+            axpy(out, &art.w[s..s + dim], a);
+        }
     }
 }
 
@@ -215,11 +225,17 @@ impl TprScratch {
 #[inline]
 fn role_weights<'a>(art: &'a TprArtifact, role: u16) -> Result<RoleWeights<'a>, TprError> {
     match &art.scheme {
-        TprScheme::Orthogonal { arity } => if (role as usize) < *arity { Ok(RoleWeights::OneHot(role as usize)) } else { Err(TprError::BadId {
-                what: "role",
-                max: arity.saturating_sub(1),
-                got: role as usize,
-            }) },
+        TprScheme::Orthogonal { arity } => {
+            if (role as usize) < *arity {
+                Ok(RoleWeights::OneHot(role as usize))
+            } else {
+                Err(TprError::BadId {
+                    what: "role",
+                    max: arity.saturating_sub(1),
+                    got: role as usize,
+                })
+            }
+        }
         TprScheme::RoleVectors { .. } => match art.scheme.role_vec(role) {
             Some(r) => Ok(RoleWeights::Dense(r)),
             None => Err(TprError::BadId {
@@ -255,7 +271,11 @@ fn bind_accum(
         }
         RoleWeights::Dense(r) => {
             for (blk, &rw) in r.iter().enumerate().take(art.m) {
-                if rw == 0.0 { continue } else { block_axpy(art, art.block_offset(blk), filler, alpha * rw, out) }
+                if rw == 0.0 {
+                    continue;
+                } else {
+                    block_axpy(art, art.block_offset(blk), filler, alpha * rw, out)
+                }
             }
         }
     }
@@ -319,12 +339,14 @@ pub fn core_encode_into(
             }
             RoleWeights::Dense(r) => {
                 for (blk, &rw) in r.iter().enumerate().take(art.m) {
-                    if rw == 0.0 { continue } else {
-                            let off = blk * art.d;
-                            for (j, &fv) in f.iter().enumerate() {
-                                core[off + j] = rw.mul_add(fv, core[off + j]);
-                            }
+                    if rw == 0.0 {
+                        continue;
+                    } else {
+                        let off = blk * art.d;
+                        for (j, &fv) in f.iter().enumerate() {
+                            core[off + j] = rw.mul_add(fv, core[off + j]);
                         }
+                    }
                 }
             }
         }
@@ -348,10 +370,12 @@ pub fn state_from_core_into(
         let base = art.block_offset(p);
         for j in 0..d {
             let c = core[p * d + j];
-            if c == 0.0 { continue } else {
-                    let s = base + j * dim;
-                    axpy(out, &art.w[s..s + dim], c);
-                }
+            if c == 0.0 {
+                continue;
+            } else {
+                let s = base + j * dim;
+                axpy(out, &art.w[s..s + dim], c);
+            }
         }
     }
     Ok(())
@@ -391,36 +415,42 @@ pub fn unbind_into(
     match (&art.scheme, &art.unbind_basis) {
         (TprScheme::Orthogonal { arity }, _) => {
             let p = role as usize;
-            if !(p < *arity) { Err(TprError::BadId {
+            if !(p < *arity) {
+                Err(TprError::BadId {
                     what: "role",
                     max: arity.saturating_sub(1),
                     got: p,
-                }) } else {
-                    let off = p * art.d;
-                    out.copy_from_slice(&core[off..off + art.d]);
-                    Ok(())
-                }
+                })
+            } else {
+                let off = p * art.d;
+                out.copy_from_slice(&core[off..off + art.d]);
+                Ok(())
+            }
         }
         (TprScheme::RoleVectors { .. }, Some(basis)) => {
             let p = role as usize;
             let m = art.m;
-            if !((p + 1) * m <= basis.len()) { Err(TprError::BadId {
+            if !((p + 1) * m <= basis.len()) {
+                Err(TprError::BadId {
                     what: "role",
                     max: basis.len() / m.max(1) - 1,
                     got: p,
-                }) } else {
-                    let bp = &basis[p * m..(p + 1) * m];
-                    out.fill(0.0);
-                    for (blk, &w) in bp.iter().enumerate() {
-                        if w == 0.0 { continue } else {
-                                let off = blk * art.d;
-                                for (j, o) in out.iter_mut().enumerate() {
-                                    *o = w.mul_add(core[off + j], *o);
-                                }
-                            }
+                })
+            } else {
+                let bp = &basis[p * m..(p + 1) * m];
+                out.fill(0.0);
+                for (blk, &w) in bp.iter().enumerate() {
+                    if w == 0.0 {
+                        continue;
+                    } else {
+                        let off = blk * art.d;
+                        for (j, o) in out.iter_mut().enumerate() {
+                            *o = w.mul_add(core[off + j], *o);
+                        }
                     }
-                    Ok(())
                 }
+                Ok(())
+            }
         }
         (TprScheme::RoleVectors { .. }, None) => Err(TprError::BadEncoding(
             "role-vector artifact without an unbind basis",
@@ -525,7 +555,9 @@ pub fn state_to_core_into(
 ) -> Result<(), TprError> {
     enabled()?;
     check_len("state", state.len(), art.dim)?;
-    let Some(inv) = &art.projection_inv else { return Err(TprError::ProjectionUnavailable) };
+    let Some(inv) = &art.projection_inv else {
+        return Err(TprError::ProjectionUnavailable);
+    };
     let k = art.core_len();
     let d = art.d;
     let dim = art.dim;

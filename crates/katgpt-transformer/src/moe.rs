@@ -236,8 +236,7 @@ impl MoeWeights {
 
         let router_weight = (0..n_r * d).map(|_| rng.next_f32() * 0.4 - 0.2).collect();
         // Bias range: small ±0.5 — large enough to flip top-K selection in tests.
-        let e_score_correction_bias =
-            (0..n_r).map(|_| rng.next_f32() * 1.0 - 0.5).collect();
+        let e_score_correction_bias = (0..n_r).map(|_| rng.next_f32() * 1.0 - 0.5).collect();
         // Routed experts operate on d_moe (latent dim when latent MoE is active)
         let experts = (0..n_r)
             .map(|_| SwiGluExpertWeights::random(&mut rng, d_moe, d_ffn))
@@ -253,7 +252,11 @@ impl MoeWeights {
                 let down = (0..d_moe * d).map(|_| rng.next_f32() * 0.4 - 0.2).collect();
                 let up = (0..d * d_moe).map(|_| rng.next_f32() * 0.4 - 0.2).collect();
                 let norm = if config.latent_moe_use_norm {
-                    Some((0..d_moe).map(|_| 1.0 + rng.next_f32() * 0.2 - 0.1).collect::<Vec<_>>())
+                    Some(
+                        (0..d_moe)
+                            .map(|_| 1.0 + rng.next_f32() * 0.2 - 0.1)
+                            .collect::<Vec<_>>(),
+                    )
                 } else {
                     None
                 };
@@ -484,7 +487,11 @@ pub fn moe_forward_token(
             config.situ_linear_beta,
         );
         // hidden_out += expert_output
-        for (ho, eo) in hidden_out.iter_mut().zip(scratch.expert_output.iter()).take(d) {
+        for (ho, eo) in hidden_out
+            .iter_mut()
+            .zip(scratch.expert_output.iter())
+            .take(d)
+        {
             *ho += *eo;
         }
     }
@@ -519,7 +526,8 @@ pub fn moe_forward_token(
                 config.situ_linear_beta,
             );
             // latent_output += w * expert_output
-            for (lo, eo) in scratch.latent_output
+            for (lo, eo) in scratch
+                .latent_output
                 .iter_mut()
                 .zip(scratch.expert_output.iter())
                 .take(d_moe)
@@ -547,7 +555,11 @@ pub fn moe_forward_token(
             d,
             d_moe,
         );
-        for (ho, eo) in hidden_out.iter_mut().zip(scratch.expert_output.iter()).take(d) {
+        for (ho, eo) in hidden_out
+            .iter_mut()
+            .zip(scratch.expert_output.iter())
+            .take(d)
+        {
             *ho += *eo;
         }
     } else {
@@ -568,7 +580,11 @@ pub fn moe_forward_token(
                 config.situ_linear_beta,
             );
             // hidden_out += w * expert_output
-            for (ho, eo) in hidden_out.iter_mut().zip(scratch.expert_output.iter()).take(d) {
+            for (ho, eo) in hidden_out
+                .iter_mut()
+                .zip(scratch.expert_output.iter())
+                .take(d)
+            {
                 *ho += w * *eo;
             }
         }
@@ -724,7 +740,11 @@ impl Rng {
     pub fn new(seed: u64) -> Self {
         // Avoid the degenerate all-zero state.
         Self {
-            state: if seed == 0 { 0x9E37_79B9_7F4A_7C15 } else { seed },
+            state: if seed == 0 {
+                0x9E37_79B9_7F4A_7C15
+            } else {
+                seed
+            },
         }
     }
 

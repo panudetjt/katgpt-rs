@@ -210,7 +210,8 @@ pub fn probe(
     d2: usize,
     cfg: &LeakProbeConfig,
 ) -> Result<LeakReport, LeakProbeError> {
-    if d1 == 0 || d2 == 0 || !x_ours.len().is_multiple_of(d1) || !x_foreign.len().is_multiple_of(d2) {
+    if d1 == 0 || d2 == 0 || !x_ours.len().is_multiple_of(d1) || !x_foreign.len().is_multiple_of(d2)
+    {
         return Err(LeakProbeError::DimMismatch);
     }
     let n1 = x_ours.len() / d1;
@@ -218,7 +219,12 @@ pub fn probe(
     if labels_ours.len() != n1 || labels_foreign.len() != n2 {
         return Err(LeakProbeError::DimMismatch);
     }
-    if labels_ours.iter().collect::<std::collections::BTreeSet<_>>().len() < 2 {
+    if labels_ours
+        .iter()
+        .collect::<std::collections::BTreeSet<_>>()
+        .len()
+        < 2
+    {
         return Err(LeakProbeError::InsufficientLabelClasses);
     }
     let k = transport::validate_dims(n1, d1, n2, d2, cfg.latent_dim).map_err(probe_err)?;
@@ -228,12 +234,8 @@ pub fn probe(
     let mut sc = transport::TransportScratch::new();
     let mut w1 = Vec::with_capacity(n1 * k);
     let mut w2 = Vec::with_capacity(n2 * k);
-    transport::project_topk(
-        x_ours, n1, d1, k, cfg.subspace_iters, &mut w1, &mut sc,
-    );
-    transport::project_topk(
-        x_foreign, n2, d2, k, cfg.subspace_iters, &mut w2, &mut sc,
-    );
+    transport::project_topk(x_ours, n1, d1, k, cfg.subspace_iters, &mut w1, &mut sc);
+    transport::project_topk(x_foreign, n2, d2, k, cfg.subspace_iters, &mut w2, &mut sc);
     transport::whiten_inplace(&mut w1, n1, k, &mut sc);
     transport::whiten_inplace(&mut w2, n2, k, &mut sc);
 
@@ -273,50 +275,57 @@ pub fn probe(
             }
         }
         for _ in 0..cfg.transport_rounds.max(1) {
-        // CSLS-corrected cosine cost (Conneau et al. 2018 — the canonical
-        // hubness fix for unsupervised nearest-neighbor matching; without
-        // it ICP locks onto high-degree hub points in isotropic clouds):
-        // sim' = 2·cos − r_x − r_y, cost = −sim' = r_x + r_y − 2·cos.
-        let r_m = mean_topk_sims_rowwise(&mapped, &w2, k, cfg.knn_k, &mut sims, &mut top);
-        let r_f = mean_topk_sims_rowwise(&w2, &mapped, k, cfg.knn_k, &mut sims, &mut top);
-        for i in 0..n1 {
-            let mi = &mapped[i * k..(i + 1) * k];
-            for j in 0..n2 {
-                let fj = &w2[j * k..(j + 1) * k];
+            // CSLS-corrected cosine cost (Conneau et al. 2018 — the canonical
+            // hubness fix for unsupervised nearest-neighbor matching; without
+            // it ICP locks onto high-degree hub points in isotropic clouds):
+            // sim' = 2·cos − r_x − r_y, cost = −sim' = r_x + r_y − 2·cos.
+            let r_m = mean_topk_sims_rowwise(&mapped, &w2, k, cfg.knn_k, &mut sims, &mut top);
+            let r_f = mean_topk_sims_rowwise(&w2, &mapped, k, cfg.knn_k, &mut sims, &mut top);
+            for i in 0..n1 {
+                let mi = &mapped[i * k..(i + 1) * k];
+                for j in 0..n2 {
+                    let fj = &w2[j * k..(j + 1) * k];
+                    let mut dot = 0.0f32;
+                    for t in 0..k {
+                        dot += mi[t] * fj[t];
+                    }
+                    cost[i * n2 + j] = r_m[i] + r_f[j] - 2.0 * dot;
+                }
+            }
+            transport::sinkhorn_plan(
+                &cost,
+                n1,
+                n2,
+                cfg.sinkhorn_eps,
+                cfg.sinkhorn_iters,
+                &mut plan,
+            );
+            pairs = transport::greedy_pairs(&plan, n1, n2);
+            transport::procrustes_polar_into(&w1, &w2, &pairs, n1, k, &mut sc, &mut r);
+            // mapped = w1 · r
+            for i in 0..n1 {
+                let src_start = i * k;
+                let src: Vec<f32> = w1[src_start..src_start + k].to_vec();
+                for b in 0..k {
+                    let mut acc = 0.0f32;
+                    for t in 0..k {
+                        acc += src[t] * r[t * k + b];
+                    }
+                    mapped[src_start + b] = acc;
+                }
+            }
+            // Alignment quality on this round's pseudo-pairs.
+            let mut cos_sum = 0.0f32;
+            for (i, &j) in pairs.iter().enumerate() {
+                let a = &mapped[i * k..(i + 1) * k];
+                let b = &w2[j * k..(j + 1) * k];
                 let mut dot = 0.0f32;
                 for t in 0..k {
-                    dot += mi[t] * fj[t];
+                    dot += a[t] * b[t];
                 }
-                cost[i * n2 + j] = r_m[i] + r_f[j] - 2.0 * dot;
+                cos_sum += dot;
             }
-        }
-        transport::sinkhorn_plan(&cost, n1, n2, cfg.sinkhorn_eps, cfg.sinkhorn_iters, &mut plan);
-        pairs = transport::greedy_pairs(&plan, n1, n2);
-        transport::procrustes_polar_into(&w1, &w2, &pairs, n1, k, &mut sc, &mut r);
-        // mapped = w1 · r
-        for i in 0..n1 {
-            let src_start = i * k;
-            let src: Vec<f32> = w1[src_start..src_start + k].to_vec();
-            for b in 0..k {
-                let mut acc = 0.0f32;
-                for t in 0..k {
-                    acc += src[t] * r[t * k + b];
-                }
-                mapped[src_start + b] = acc;
-            }
-        }
-        // Alignment quality on this round's pseudo-pairs.
-        let mut cos_sum = 0.0f32;
-        for (i, &j) in pairs.iter().enumerate() {
-            let a = &mapped[i * k..(i + 1) * k];
-            let b = &w2[j * k..(j + 1) * k];
-            let mut dot = 0.0f32;
-            for t in 0..k {
-                dot += a[t] * b[t];
-            }
-            cos_sum += dot;
-        }
-        alignment = cos_sum / n1 as f32;
+            alignment = cos_sum / n1 as f32;
         }
         if alignment > best_align {
             best_align = alignment;
@@ -403,12 +412,7 @@ fn majority_frequency(labels: &[u32]) -> f32 {
             counts.push((l, 1));
         }
     }
-    counts
-        .iter()
-        .map(|&(_, c)| c)
-        .max()
-        .unwrap_or(0) as f32
-        / labels.len().max(1) as f32
+    counts.iter().map(|&(_, c)| c).max().unwrap_or(0) as f32 / labels.len().max(1) as f32
 }
 
 /// Indices of the `k` largest values, best-first (ties → lower index,
@@ -475,7 +479,9 @@ fn probe_err(e: transport::TransportError) -> LeakProbeError {
         transport::TransportError::TooFewSamples => LeakProbeError::TooFewSamples,
         transport::TransportError::DimTooLarge => LeakProbeError::DimTooLarge,
         transport::TransportError::LatentDimTooLarge => LeakProbeError::LatentDimTooLarge,
-        transport::TransportError::LatentDimExceedsSamples => LeakProbeError::LatentDimExceedsSamples,
+        transport::TransportError::LatentDimExceedsSamples => {
+            LeakProbeError::LatentDimExceedsSamples
+        }
     }
 }
 
@@ -532,7 +538,14 @@ mod tests {
 
     /// Observed space: x = z·A + σ·noise (n × d_out). Deterministic per
     /// seed.
-    fn make_space(z: &[f32], n: usize, d_latent: usize, d_out: usize, seed: u64, sigma: f32) -> Vec<f32> {
+    fn make_space(
+        z: &[f32],
+        n: usize,
+        d_latent: usize,
+        d_out: usize,
+        seed: u64,
+        sigma: f32,
+    ) -> Vec<f32> {
         let mut lcg = Lcg(seed);
         let a: Vec<f32> = (0..d_latent * d_out).map(|_| lcg.next_unit()).collect();
         let mut x = vec![0.0f32; n * d_out];

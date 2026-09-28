@@ -24,7 +24,7 @@
 //! is an independent [0,1] confidence, classified by priority + hysteresis,
 //! not by normalized competition.
 
-use crate::kinematics::{KinState, SQRT2, SQRT20, SQRT6, extrapolation_weight_ss, lattice};
+use crate::kinematics::{KinState, SQRT2, SQRT6, SQRT20, extrapolation_weight_ss, lattice};
 
 // ===== looming: time to contact =====
 
@@ -227,13 +227,12 @@ pub fn regime_gates(snap: &RegimeSnapshot, cfg: &RegimeConfig) -> RegimeGates {
     // Jerk relative to the acceleration scale: |j|·Δt²/|v|.
     let j_rel = snap.jerk_mag * snap.dt * snap.dt / speed_floor;
 
-    let uniform = crate::sigmoid((cfg.uniform_curv - curv) / 0.02)
-        * crate::sigmoid((0.05 - j_rel) / 0.02);
+    let uniform =
+        crate::sigmoid((cfg.uniform_curv - curv) / 0.02) * crate::sigmoid((0.05 - j_rel) / 0.02);
 
     // Parabolic: |‖a‖ − g| small AND jerk small.
     let g_err = (snap.acc_mag - cfg.g).abs() / cfg.g.max(1e-6);
-    let parabolic =
-        crate::sigmoid((0.3 - g_err) / 0.1) * crate::sigmoid((0.05 - j_rel) / 0.02);
+    let parabolic = crate::sigmoid((0.3 - g_err) / 0.1) * crate::sigmoid((0.05 - j_rel) / 0.02);
 
     // Impulse: |Δv|/Δt versus the running force scale.
     let force_scale = snap.running_acc.max(1e-6);
@@ -520,7 +519,10 @@ impl ResidualMonitor {
                         axis: Some(axis),
                         e: Some(e),
                     },
-                    ImpulseRaw::Free => EventKind::Impulse { axis: None, e: None },
+                    ImpulseRaw::Free => EventKind::Impulse {
+                        axis: None,
+                        e: None,
+                    },
                 })
             } else if self.cusum_pos > self.cfg.cusum_h * sig
                 || -self.cusum_neg > self.cfg.cusum_h * sig
@@ -569,7 +571,10 @@ impl ResidualMonitor {
 
 /// Internal impulse classification (wall vs free force).
 enum ImpulseRaw {
-    Wall { axis: usize, e: f32 },
+    Wall {
+        axis: usize,
+        e: f32,
+    },
     /// No sign flip anywhere — a free force impulse (no wall).
     Free,
 }

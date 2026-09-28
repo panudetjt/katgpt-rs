@@ -355,11 +355,7 @@ fn normal_cdf(z: f64) -> f64 {
         * t
         * (0.319381530
             + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
-    if z >= 0.0 {
-        1.0 - p
-    } else {
-        p
-    }
+    if z >= 0.0 { 1.0 - p } else { p }
 }
 
 /// Kolmogorov distribution complementary CDF `Q_KS(λ)` — the p-value of a
@@ -481,7 +477,9 @@ mod tests {
         assert!(
             report.score > 0.5,
             "Gaussian fixture must accept: score={} p_min={:.4} worst_d={:.4} dir={}",
-            report.score, report.min_p_value, report.per_direction[report.worst_direction],
+            report.score,
+            report.min_p_value,
+            report.per_direction[report.worst_direction],
             report.worst_direction
         );
         for (a, &dd) in report.per_direction.iter().enumerate() {
@@ -501,7 +499,8 @@ mod tests {
         assert!(
             report.score < 0.5,
             "bimodal fixture must reject: score={} p_min={:.3e}",
-            report.score, report.min_p_value
+            report.score,
+            report.min_p_value
         );
         assert_eq!(
             report.worst_direction, 0,
@@ -539,14 +538,11 @@ mod tests {
         assert!(
             report.score < 0.5,
             "radial heavy-tail must reject: score={} p_min={:.3e}",
-            report.score, report.min_p_value
+            report.score,
+            report.min_p_value
         );
         // Margin-wide departure: at least 12 of 16 directions reject.
-        let rejecting = report
-            .per_direction
-            .iter()
-            .filter(|&&dd| dd > 0.1)
-            .count();
+        let rejecting = report.per_direction.iter().filter(|&&dd| dd > 0.1).count();
         assert!(
             rejecting >= 12,
             "radial heavy-tail is margin-wide; only {rejecting}/16 directions D>0.1 ({:?})",
@@ -563,7 +559,9 @@ mod tests {
         assert!(
             report.score < 0.5,
             "lattice fixture must reject: score={} p_min={:.3e} per_direction={:?}",
-            report.score, report.min_p_value, report.per_direction
+            report.score,
+            report.min_p_value,
+            report.per_direction
         );
     }
 
@@ -680,9 +678,7 @@ mod tests {
         let _sentinel: Vec<u8> = vec![0u8; 256];
         let (sent_count, _) = get_alloc_stats();
         if sent_count == 0 {
-            eprintln!(
-                "g4_zero_alloc_steady_state: TrackingAllocator not installed — SKIPPED"
-            );
+            eprintln!("g4_zero_alloc_steady_state: TrackingAllocator not installed — SKIPPED");
             return;
         }
         drop(_sentinel);

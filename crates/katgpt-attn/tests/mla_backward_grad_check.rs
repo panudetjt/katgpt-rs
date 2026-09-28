@@ -11,9 +11,7 @@
 #![cfg(feature = "mla_backward")]
 
 use katgpt_attn::mla::{MlaConfig, MlaForwardScratch, MlaKVCache, MlaWeights, mla_forward_token};
-use katgpt_attn::mla_backward::{
-    MlaGradients, mla_backward_token, mla_forward_token_with_saved,
-};
+use katgpt_attn::mla_backward::{MlaGradients, mla_backward_token, mla_forward_token_with_saved};
 use katgpt_kv::shard_kv::rope::RopeFreqs;
 
 // ─── Config + helpers ───────────────────────────────────────────────────────
@@ -36,11 +34,7 @@ fn grad_check_config() -> MlaConfig {
 }
 
 /// Run the forward for a sequence of L tokens, compute sum-of-squares loss.
-fn run_forward_seq(
-    config: &MlaConfig,
-    weights: &MlaWeights,
-    h_seq: &[Vec<f32>],
-) -> f32 {
+fn run_forward_seq(config: &MlaConfig, weights: &MlaWeights, h_seq: &[Vec<f32>]) -> f32 {
     let mut cache = MlaKVCache::new(config, h_seq.len());
     let mut scratch = MlaForwardScratch::new(config, h_seq.len());
     let mut rope = RopeFreqs::new_with_theta(config.qk_rope_head_dim, config.rope_theta);
@@ -73,11 +67,7 @@ fn gradient_check_all_params_nope() {
 
     let weights = MlaWeights::random(&config, 42);
     let h_seq: Vec<Vec<f32>> = (0..l)
-        .map(|t| {
-            (0..d)
-                .map(|i| ((i + t * 7) as f32).sin() * 0.3)
-                .collect()
-        })
+        .map(|t| (0..d).map(|i| ((i + t * 7) as f32).sin() * 0.3).collect())
         .collect();
 
     // ── Run forward with saved for each token ──
@@ -155,7 +145,12 @@ fn gradient_check_all_params_nope() {
                 assert!(
                     re < tol,
                     "{}[{}]: rel_err {:.4} >= tol {:.4} (analytic={:.6e}, numeric={:.6e})",
-                    $name, i, re, tol, a, n
+                    $name,
+                    i,
+                    re,
+                    tol,
+                    a,
+                    n
                 );
             }
         };
@@ -250,9 +245,7 @@ fn gradient_check_all_params_nope() {
         );
     }
 
-    println!(
-        "MLA gradient check (nope) PASSED. max_rel_err = {max_rel_err:.4} ({worst})"
-    );
+    println!("MLA gradient check (nope) PASSED. max_rel_err = {max_rel_err:.4} ({worst})");
 }
 
 // ─── Input hidden gradient check ────────────────────────────────────────────
@@ -346,7 +339,12 @@ fn rmsnorm_backward_isolated() {
     // Analytic backward
     let mut grad_gamma = vec![0.0f32; n];
     let dx = katgpt_attn::mla_backward::rmsnorm_backward(
-        &d_y, &x_raw, &gamma, inv_rms, &mut grad_gamma, eps,
+        &d_y,
+        &x_raw,
+        &gamma,
+        inv_rms,
+        &mut grad_gamma,
+        eps,
     );
 
     // Finite difference for each x_raw element
@@ -374,7 +372,14 @@ fn rmsnorm_backward_isolated() {
             .sum();
         let numeric = (loss_plus - loss_minus) / (2.0 * fd_eps);
         let re = (dx[k] - numeric).abs() / dx[k].abs().max(numeric.abs()).max(1e-6);
-        assert!(re < 1e-2, "rmsnorm dx[{}]: analytic={:.6e} numeric={:.6e} re={:.4}", k, dx[k], numeric, re);
+        assert!(
+            re < 1e-2,
+            "rmsnorm dx[{}]: analytic={:.6e} numeric={:.6e} re={:.4}",
+            k,
+            dx[k],
+            numeric,
+            re
+        );
     }
 
     println!("RMSNorm backward isolated test PASSED.");

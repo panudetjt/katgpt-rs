@@ -121,7 +121,10 @@ impl BranchRouter {
     #[inline]
     #[must_use]
     pub const fn new(tau_snap: f32, tau_jaccard: f32) -> Self {
-        Self { tau_snap, tau_jaccard }
+        Self {
+            tau_snap,
+            tau_jaccard,
+        }
     }
 
     /// Route a query embedding to a branch (dot-product snap only).

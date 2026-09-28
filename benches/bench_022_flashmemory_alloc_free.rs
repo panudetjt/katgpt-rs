@@ -128,8 +128,14 @@ fn main() {
         }
     }
 
-    println!("Config: hidden={}, n_heads={}, kv_lora_rank={}", config.hidden_size, config.n_heads, config.kv_lora_rank);
-    println!("FlashMemory: block_size={}, refresh_period={}, threshold={}", fm_config.block_size, fm_config.refresh_period, fm_config.threshold);
+    println!(
+        "Config: hidden={}, n_heads={}, kv_lora_rank={}",
+        config.hidden_size, config.n_heads, config.kv_lora_rank
+    );
+    println!(
+        "FlashMemory: block_size={}, refresh_period={}, threshold={}",
+        fm_config.block_size, fm_config.refresh_period, fm_config.threshold
+    );
     println!("Tokens: warmup={WARMUP_TOKENS}, steady={STEADY_TOKENS}, total={TOTAL_TOKENS}");
     println!();
 
@@ -153,7 +159,10 @@ fn main() {
 
     let warmup_refreshes = selector.refresh_count();
     println!("Warmup complete: {WARMUP_TOKENS} tokens, {warmup_refreshes} selector refreshes");
-    assert!(warmup_refreshes > 0, "warmup must trigger at least one selector refresh");
+    assert!(
+        warmup_refreshes > 0,
+        "warmup must trigger at least one selector refresh"
+    );
 
     // ── Measure: decode STEADY_TOKENS, counting allocations ───────────
     let before = ALLOC_COUNT.load(Ordering::Relaxed);
@@ -190,11 +199,20 @@ fn main() {
     println!();
 
     let g4_pass = total_allocs == 0;
-    println!("  G4 verdict: {}", if g4_pass { "✅ PASS (0 allocations in steady state)" } else { "❌ FAIL" });
+    println!(
+        "  G4 verdict: {}",
+        if g4_pass {
+            "✅ PASS (0 allocations in steady state)"
+        } else {
+            "❌ FAIL"
+        }
+    );
     println!();
 
     if !g4_pass {
-        eprintln!("FAIL: FlashMemory sparse MLA forward allocated {total_allocs} bytes across {STEADY_TOKENS} steady tokens.");
+        eprintln!(
+            "FAIL: FlashMemory sparse MLA forward allocated {total_allocs} bytes across {STEADY_TOKENS} steady tokens."
+        );
         eprintln!("      Expected 0 (alloc-free steady state per GOAT G4).");
         eprintln!("      This means a per-token or per-refresh allocation was introduced.");
         std::process::exit(1);

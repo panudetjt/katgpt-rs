@@ -269,13 +269,7 @@ pub fn swiglu_inplace(hidden: &mut [f32], up: &[f32]) {
 /// `simd_exp_inplace` is deferred to Phase 6 when end-to-end perf becomes a
 /// gate (Proposal 032).
 #[inline(always)]
-pub fn situ(
-    hidden: &mut [f32],
-    gate: &[f32],
-    up: &[f32],
-    beta: f32,
-    linear_beta: Option<f32>,
-) {
+pub fn situ(hidden: &mut [f32], gate: &[f32], up: &[f32], beta: f32, linear_beta: Option<f32>) {
     debug_assert!(beta > 0.0, "situ beta must be positive");
     let inv_beta = 1.0 / beta;
     // Slice the read-only inputs to the output length up front so the per-element

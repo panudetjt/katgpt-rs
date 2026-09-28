@@ -251,28 +251,45 @@ mod tests {
         xs.sort_by(|a, b| desc(*a, *b));
         let mut reals: Vec<f32> = xs.iter().copied().filter(|v| !v.is_nan()).collect();
         reals.sort_by(|a, b| b.total_cmp(a));
-        assert_eq!(&xs[..reals.len()], &reals[..], "reals must come out fully sorted");
+        assert_eq!(
+            &xs[..reals.len()],
+            &reals[..],
+            "reals must come out fully sorted"
+        );
         assert_eq!(reals.len() + 7, xs.len());
     }
 
     #[test]
     fn selection_never_returns_nan() {
         let xs = [1.0, f32::NAN, 3.0];
-        assert_eq!(xs.iter().copied().max_by(|a, b| cmp_for_max(*a, *b)), Some(3.0));
-        assert_eq!(xs.iter().copied().min_by(|a, b| cmp_for_min(*a, *b)), Some(1.0));
+        assert_eq!(
+            xs.iter().copied().max_by(|a, b| cmp_for_max(*a, *b)),
+            Some(3.0)
+        );
+        assert_eq!(
+            xs.iter().copied().min_by(|a, b| cmp_for_min(*a, *b)),
+            Some(1.0)
+        );
         // NaN at the end, the legacy idiom's failure position.
         let ys = [3.0, f32::NAN];
-        assert_eq!(ys.iter().copied().max_by(|a, b| cmp_for_max(*a, *b)), Some(3.0));
-        assert_eq!(ys.iter().copied().min_by(|a, b| cmp_for_min(*a, *b)), Some(3.0));
+        assert_eq!(
+            ys.iter().copied().max_by(|a, b| cmp_for_max(*a, *b)),
+            Some(3.0)
+        );
+        assert_eq!(
+            ys.iter().copied().min_by(|a, b| cmp_for_min(*a, *b)),
+            Some(3.0)
+        );
         // All-NaN input still returns NaN (nothing better exists) but never
         // aborts.
         let zs = [f32::NAN, f32::NAN];
-        assert!(zs
-            .iter()
-            .copied()
-            .max_by(|a, b| cmp_for_max(*a, *b))
-            .unwrap()
-            .is_nan());
+        assert!(
+            zs.iter()
+                .copied()
+                .max_by(|a, b| cmp_for_max(*a, *b))
+                .unwrap()
+                .is_nan()
+        );
     }
 
     #[test]
@@ -282,14 +299,34 @@ mod tests {
         // test — it is the record of why cmp_for_max exists.
         let legacy = |a: f32, b: f32| a.partial_cmp(&b).unwrap_or(Equal);
         let ys = [3.0, f32::NAN];
-        assert!(ys.iter().copied().max_by(|a, b| legacy(*a, *b)).unwrap().is_nan());
+        assert!(
+            ys.iter()
+                .copied()
+                .max_by(|a, b| legacy(*a, *b))
+                .unwrap()
+                .is_nan()
+        );
     }
 
     #[test]
     fn sort_comparators_agree_off_nan() {
-        for (a, b) in [(1.0, 2.0), (2.0, 1.0), (-0.5, 0.5), (-5.5, 5.5), (0.0, -0.0)] {
-            assert_eq!(desc(a, b), asc(b, a), "desc(a,b) must equal asc(b,a) off NaN");
-            assert_eq!(cmp_for_max(a, b), cmp_for_min(a, b), "selection comparators agree off NaN");
+        for (a, b) in [
+            (1.0, 2.0),
+            (2.0, 1.0),
+            (-0.5, 0.5),
+            (-5.5, 5.5),
+            (0.0, -0.0),
+        ] {
+            assert_eq!(
+                desc(a, b),
+                asc(b, a),
+                "desc(a,b) must equal asc(b,a) off NaN"
+            );
+            assert_eq!(
+                cmp_for_max(a, b),
+                cmp_for_min(a, b),
+                "selection comparators agree off NaN"
+            );
         }
     }
 
@@ -315,7 +352,11 @@ mod tests {
             for b in corpus {
                 let legacy = a.partial_cmp(&b).unwrap_or(Equal);
                 assert_eq!(asc_f64(a, b), legacy, "asc_f64({a},{b}) diverged");
-                assert_eq!(desc_f64(a, b), legacy.reverse(), "desc_f64({a},{b}) diverged");
+                assert_eq!(
+                    desc_f64(a, b),
+                    legacy.reverse(),
+                    "desc_f64({a},{b}) diverged"
+                );
             }
         }
     }
@@ -326,7 +367,10 @@ mod tests {
         let mut xs = [1.0, f64::NAN, f64::INFINITY, f64::NAN, -2.0, 0.0];
         xs.sort_by(|a, b| desc_f64(*a, *b));
         assert_eq!(&xs[..4], &[f64::INFINITY, 1.0, 0.0, -2.0]);
-        assert!(xs[4..].iter().all(|v| v.is_nan()), "NaN must sort last (desc)");
+        assert!(
+            xs[4..].iter().all(|v| v.is_nan()),
+            "NaN must sort last (desc)"
+        );
 
         let mut ys = [1.0, f64::NAN, f64::INFINITY, f64::NAN, -2.0, 0.0];
         ys.sort_by(|a, b| asc_f64(*a, *b));
@@ -347,12 +391,24 @@ mod tests {
     #[test]
     fn f64_selection_never_returns_nan() {
         let xs = [1.0, f64::NAN, 3.0];
-        assert_eq!(xs.iter().copied().max_by(|a, b| cmp_for_max_f64(*a, *b)), Some(3.0));
-        assert_eq!(xs.iter().copied().min_by(|a, b| cmp_for_min_f64(*a, *b)), Some(1.0));
+        assert_eq!(
+            xs.iter().copied().max_by(|a, b| cmp_for_max_f64(*a, *b)),
+            Some(3.0)
+        );
+        assert_eq!(
+            xs.iter().copied().min_by(|a, b| cmp_for_min_f64(*a, *b)),
+            Some(1.0)
+        );
         // NaN at the end, the legacy idiom's failure position.
         let ys = [3.0, f64::NAN];
-        assert_eq!(ys.iter().copied().max_by(|a, b| cmp_for_max_f64(*a, *b)), Some(3.0));
-        assert_eq!(ys.iter().copied().min_by(|a, b| cmp_for_min_f64(*a, *b)), Some(3.0));
+        assert_eq!(
+            ys.iter().copied().max_by(|a, b| cmp_for_max_f64(*a, *b)),
+            Some(3.0)
+        );
+        assert_eq!(
+            ys.iter().copied().min_by(|a, b| cmp_for_min_f64(*a, *b)),
+            Some(3.0)
+        );
     }
 
     #[test]

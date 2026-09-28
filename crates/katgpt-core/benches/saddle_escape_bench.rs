@@ -144,9 +144,7 @@ fn g5_bit_reproducible() -> bool {
             });
             match d {
                 GateDecision::Continue => out.push((0, [0; 32], 0)),
-                GateDecision::Kick { dir_seed, eps } => {
-                    out.push((1, dir_seed, eps.to_bits()))
-                }
+                GateDecision::Kick { dir_seed, eps } => out.push((1, dir_seed, eps.to_bits())),
                 GateDecision::Halt(_) => out.push((2, [0; 32], 0)),
             }
         }
@@ -159,18 +157,27 @@ fn main() {
     let mut pass = true;
 
     let (ns, ok) = g2_continue_latency();
-    println!("G2 decide() Continue  : {ns:8.1} ns/loop  (≤ {CONTINUE_BUDGET_NS:.0})  {}", if ok { "PASS" } else { "FAIL" });
+    println!(
+        "G2 decide() Continue  : {ns:8.1} ns/loop  (≤ {CONTINUE_BUDGET_NS:.0})  {}",
+        if ok { "PASS" } else { "FAIL" }
+    );
     pass &= ok;
 
     let (ns, ok) = g2_kick_latency();
-    println!("G2 decide() trap-path : {ns:8.1} ns/loop  (≤ {KICK_BUDGET_NS:.0})  {}", if ok { "PASS" } else { "FAIL" });
+    println!(
+        "G2 decide() trap-path : {ns:8.1} ns/loop  (≤ {KICK_BUDGET_NS:.0})  {}",
+        if ok { "PASS" } else { "FAIL" }
+    );
     pass &= ok;
 
     let ns = g2_apply_kick_report();
     println!("G2 apply_kick d=1024  : {ns:8.1} ns/kick  (reported, rare op)");
 
     let ok = g5_bit_reproducible();
-    println!("G5 bit-reproducible   : {}", if ok { "PASS" } else { "FAIL" });
+    println!(
+        "G5 bit-reproducible   : {}",
+        if ok { "PASS" } else { "FAIL" }
+    );
     pass &= ok;
 
     if pass {

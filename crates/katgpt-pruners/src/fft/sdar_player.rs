@@ -363,9 +363,7 @@ impl SdarFFTPlayer {
         // Pick best blended action
         (0..NUM_ACTIONS)
             .filter(|&i| blended[i] > f32::NEG_INFINITY)
-            .max_by(|a, b| {
-                katgpt_core::float_order::cmp_for_max(blended[*a], blended[*b])
-            })
+            .max_by(|a, b| katgpt_core::float_order::cmp_for_max(blended[*a], blended[*b]))
             .map_or(ActionType::Wait, ActionType::from)
     }
 

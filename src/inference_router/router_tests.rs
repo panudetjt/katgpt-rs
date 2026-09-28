@@ -843,7 +843,9 @@ fn simulate_cascade(
     let tier_after_trust = ComputeTier::CpuOnly;
 
     // RV gate (Plan 202).
-    let tier_after_rv = gate.rv_tier_boost(rv, rv_thresholds).unwrap_or(tier_after_trust);
+    let tier_after_rv = gate
+        .rv_tier_boost(rv, rv_thresholds)
+        .unwrap_or(tier_after_trust);
 
     // Critical-interval gate skipped (orthogonal — entropy-driven).
     let tier_after_critical = tier_after_rv;

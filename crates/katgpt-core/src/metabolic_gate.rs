@@ -129,11 +129,7 @@ pub fn defector_starves(eps: f32, repl_cost: f32, alpha: f32, delta: f32) -> boo
 /// log pair — bounded, allocation-free.
 #[must_use]
 pub fn metabolic_drag_threshold(eps: f32, repl_cost: f32) -> f32 {
-    if !eps.is_finite()
-        || !repl_cost.is_finite()
-        || repl_cost <= 0.0
-        || eps <= repl_cost
-    {
+    if !eps.is_finite() || !repl_cost.is_finite() || repl_cost <= 0.0 || eps <= repl_cost {
         return f32::NAN;
     }
     // repl_cost > 0 and eps > repl_cost here, so the bracket (0, 2ε/L − 1)

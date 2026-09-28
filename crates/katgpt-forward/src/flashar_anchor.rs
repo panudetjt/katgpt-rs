@@ -109,7 +109,10 @@ impl Default for ConfidenceAnchorConfig {
     /// 600's acceptance bar (T8 all-green + T9 on real text); the strided
     /// [`AnchorConfig`] entry stays as the no-floor comparator.
     fn default() -> Self {
-        Self { kappa: 0.9, floor: true }
+        Self {
+            kappa: 0.9,
+            floor: true,
+        }
     }
 }
 
@@ -132,11 +135,7 @@ pub fn select_confidence_anchors_into(
     kappa: f32,
     out: &mut [usize],
 ) -> usize {
-    assert_eq!(
-        argmax.len(),
-        probs.len(),
-        "argmax/probs length mismatch"
-    );
+    assert_eq!(argmax.len(), probs.len(), "argmax/probs length mismatch");
     assert_eq!(out.len(), argmax.len(), "out buffer length mismatch");
     out.fill(mask_token);
     let mut n = 0usize;
@@ -759,10 +758,7 @@ mod tests {
                         break;
                     }
                 }
-                assert_eq!(
-                    r, 0,
-                    "floor must empty {remaining} within {budget} rounds"
-                );
+                assert_eq!(r, 0, "floor must empty {remaining} within {budget} rounds");
             }
         }
     }

@@ -129,7 +129,10 @@ impl BernoulliCoin {
     /// streams containing that token.
     #[inline]
     pub fn new(p: f32) -> Self {
-        assert!(p > 0.0 && p < 1.0, "BernoulliCoin: p must be in (0, 1), got {p}");
+        assert!(
+            p > 0.0 && p < 1.0,
+            "BernoulliCoin: p must be in (0, 1), got {p}"
+        );
         Self { p }
     }
 }
@@ -209,8 +212,14 @@ impl Mess3Block {
     /// negative or a row mass vanishes).
     #[inline]
     pub fn new(alpha: f32, x: f32) -> Self {
-        assert!(alpha > 0.0 && alpha < 1.0, "Mess3Block: alpha must be in (0, 1), got {alpha}");
-        assert!(x > 0.0 && x <= 0.5, "Mess3Block: x must be in (0, 0.5], got {x}");
+        assert!(
+            alpha > 0.0 && alpha < 1.0,
+            "Mess3Block: alpha must be in (0, 1), got {alpha}"
+        );
+        assert!(
+            x > 0.0 && x <= 0.5,
+            "Mess3Block: x must be in (0, 0.5], got {x}"
+        );
         let beta = (1.0 - alpha) / 2.0;
         let y = 1.0 - 2.0 * x;
         Self { alpha, x, beta, y }
@@ -227,7 +236,11 @@ impl Mess3Block {
 
     #[inline]
     fn col_weight(&self, j: usize, token: u8) -> f32 {
-        if j as u8 == token { self.alpha } else { self.beta }
+        if j as u8 == token {
+            self.alpha
+        } else {
+            self.beta
+        }
     }
 
     /// Closed-form row mass of `T^(token)` for state `i`.
@@ -298,7 +311,10 @@ impl SyntheticBlock {
     /// Build a synthetic component over `dim` states (1..=64).
     #[inline]
     pub fn new(dim: usize, seed: u64) -> Self {
-        assert!((1..=64).contains(&dim), "SyntheticBlock: dim must be in 1..=64, got {dim}");
+        assert!(
+            (1..=64).contains(&dim),
+            "SyntheticBlock: dim must be in 1..=64, got {dim}"
+        );
         let mut emit_one = [0.0f32; 64];
         let mut trans = [[0.0f32; 64]; 64];
         let s = seed as usize;
@@ -315,7 +331,11 @@ impl SyntheticBlock {
                 trans[i][j] *= inv;
             }
         }
-        Self { dim, emit_one, trans }
+        Self {
+            dim,
+            emit_one,
+            trans,
+        }
     }
 
     #[inline]
@@ -333,7 +353,11 @@ impl ComponentModel for SyntheticBlock {
     /// `katgpt_types::simd::simd_dot_f32`).
     #[inline]
     fn likelihood(&self, eta: &[f32], token: u8) -> f32 {
-        debug_assert_eq!(eta.len(), self.dim, "SyntheticBlock: eta.len() must equal dim");
+        debug_assert_eq!(
+            eta.len(),
+            self.dim,
+            "SyntheticBlock: eta.len() must equal dim"
+        );
         if !(0..=1).contains(&token) {
             return 0.0;
         }
@@ -349,7 +373,11 @@ impl ComponentModel for SyntheticBlock {
     /// auto-vectorizes; zero allocation.
     #[inline]
     fn update_into(&self, eta: &[f32], token: u8, out: &mut [f32]) {
-        debug_assert_eq!(eta.len(), self.dim, "SyntheticBlock: eta.len() must equal dim");
+        debug_assert_eq!(
+            eta.len(),
+            self.dim,
+            "SyntheticBlock: eta.len() must equal dim"
+        );
         debug_assert!(out.len() >= self.dim, "SyntheticBlock: out too short");
         if !(0..=1).contains(&token) {
             for v in out.iter_mut().take(self.dim) {
@@ -445,7 +473,12 @@ impl<'a, const K: usize, const D: usize> NonergodicFilter<'a, K, D> {
                 *v = 1.0 / (D as f32);
             }
         }
-        Self { models, eta, log_w, w }
+        Self {
+            models,
+            eta,
+            log_w,
+            w,
+        }
     }
 
     /// Builder: override the initial inner beliefs per component (rows are
@@ -685,7 +718,10 @@ mod tests {
                         total += m.entry(i, j, t);
                     }
                 }
-                assert!(close(total, 1.0, EPS), "alpha={alpha} x={x} state={i}: {total}");
+                assert!(
+                    close(total, 1.0, EPS),
+                    "alpha={alpha} x={x} state={i}: {total}"
+                );
             }
         }
     }

@@ -15,8 +15,8 @@ mod common;
 counting_allocator!();
 
 use katgpt_core::set_admission::{
-    admit_into, certify_scratch, fan_cap_ladder_into, AdmissionScratch, FanScratch,
-    SetAdmissionConfig, CAP_RUNGS, DIM,
+    AdmissionScratch, CAP_RUNGS, DIM, FanScratch, SetAdmissionConfig, admit_into, certify_scratch,
+    fan_cap_ladder_into,
 };
 use std::sync::atomic::Ordering;
 
@@ -32,7 +32,9 @@ fn unit(x: [f32; DIM]) -> [f32; DIM] {
 fn seeded(n: usize, seed: u64) -> Vec<[f32; DIM]> {
     let mut s = seed;
     let mut next = || {
-        s = s.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        s = s
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         let z = s ^ (s >> 32);
         ((z >> 40) as f32 / (1u32 << 24) as f32) * 2.0 - 1.0
     };
@@ -59,7 +61,9 @@ fn set_admission_zero_alloc_over_1000_cycles() {
         }
         x
     });
-    let quality: Vec<f32> = (0..pool.len()).map(|i| 0.9 + 0.1 * (i % 3) as f32 / 2.0).collect();
+    let quality: Vec<f32> = (0..pool.len())
+        .map(|i| 0.9 + 0.1 * (i % 3) as f32 / 2.0)
+        .collect();
 
     let mut scratch = AdmissionScratch::new();
     let mut fan = FanScratch::new();
@@ -72,7 +76,13 @@ fn set_admission_zero_alloc_over_1000_cycles() {
     admit_into(&cfg, &pool, &quality, &query, &mut out, &mut scratch);
     let _ = certify_scratch(&cfg, &scratch);
     let _ = fan_cap_ladder_into(
-        &query, &corpus, &CAP_RUNGS, 0.3, &mut fan_idx, &mut fan_pool, &mut fan,
+        &query,
+        &corpus,
+        &CAP_RUNGS,
+        0.3,
+        &mut fan_idx,
+        &mut fan_pool,
+        &mut fan,
     );
 
     let alloc_before = ALLOC_COUNT.load(Ordering::Relaxed);
@@ -86,7 +96,13 @@ fn set_admission_zero_alloc_over_1000_cycles() {
         // Alternate cycles exercise the fan too (steady-state refills).
         if cycle % 2 == 0 {
             let _ = fan_cap_ladder_into(
-                &query, &corpus, &CAP_RUNGS, 0.3, &mut fan_idx, &mut fan_pool, &mut fan,
+                &query,
+                &corpus,
+                &CAP_RUNGS,
+                0.3,
+                &mut fan_idx,
+                &mut fan_pool,
+                &mut fan,
             );
             sink += fan_idx[0] as usize;
         }

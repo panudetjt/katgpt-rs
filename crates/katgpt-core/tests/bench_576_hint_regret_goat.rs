@@ -24,8 +24,8 @@
 #![cfg(feature = "hint_regret")]
 
 use katgpt_core::hint_regret::{
-    HintRegretEstimator, Regime, ReturnBounds, hoeffding_half_width, hoeffding_k, learnable_band_gate,
-    triage,
+    HintRegretEstimator, Regime, ReturnBounds, hoeffding_half_width, hoeffding_k,
+    learnable_band_gate, triage,
 };
 use std::time::Instant;
 
@@ -84,7 +84,11 @@ struct EpsilonGreedy {
 
 impl EpsilonGreedy {
     fn new(arms: usize, epsilon: f32) -> Self {
-        Self { counts: vec![0; arms], sums: vec![0.0; arms], epsilon }
+        Self {
+            counts: vec![0; arms],
+            sums: vec![0.0; arms],
+            epsilon,
+        }
     }
     /// Picks an arm using `rng` (the shared stream). Optimistic init is NOT
     /// used — the first pass explores uniformly via the ε-coin, so the
@@ -98,7 +102,11 @@ impl EpsilonGreedy {
             let mut best_mean = f32::NEG_INFINITY;
             for j in 0..arms {
                 // Unseen arms rate as 0.5 (uninformative prior mean).
-                let m = if self.counts[j] == 0 { 0.5 } else { self.sums[j] / self.counts[j] as f32 };
+                let m = if self.counts[j] == 0 {
+                    0.5
+                } else {
+                    self.sums[j] / self.counts[j] as f32
+                };
                 // Deterministic first-max (scan order breaks ties).
                 if m > best_mean {
                     best_mean = m;
@@ -234,7 +242,11 @@ fn g1_hinted_shortest_path_beta_inf_is_bit_exact() {
     }
     // The demo is the max-per-node sum, so r̂ > 0 strictly (the hint pays).
     let e = est.estimate(0.05);
-    assert!(e.r_hat > 0.0, "hint regret must be positive, got {}", e.r_hat);
+    assert!(
+        e.r_hat > 0.0,
+        "hint regret must be positive, got {}",
+        e.r_hat
+    );
     // Sanity: with bounded edges the regret is at most the max-total − min-total.
     assert!(e.r_hat <= 24.0);
 }
@@ -296,9 +308,7 @@ fn g1_bandit_calibration_within_2x_bound_and_coverage_at_nominal() {
         "Hoeffding coverage {coverage:.3} below nominal {}",
         1.0 - delta
     );
-    println!(
-        "G1: E[r]≈{e_r:.4} h(K)={h_k:.4} max_err={max_err:.4} coverage={coverage:.3} (K={k})"
-    );
+    println!("G1: E[r]≈{e_r:.4} h(K)={h_k:.4} max_err={max_err:.4} coverage={coverage:.3} (K={k})");
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -339,7 +349,9 @@ fn g2_crn_variance_ratio_at_least_2x() {
     let v_crn = var(&crn_rhats);
     let v_indep = var(&indep_rhats);
     let ratio = v_indep / v_crn.max(1e-12);
-    println!("G2: Var_crn={v_crn:.6} Var_indep={v_indep:.6} ratio={ratio:.2}x ({reps} reps, n={n})");
+    println!(
+        "G2: Var_crn={v_crn:.6} Var_indep={v_indep:.6} ratio={ratio:.2}x ({reps} reps, n={n})"
+    );
     assert!(
         ratio >= 2.0,
         "CRN variance ratio {ratio:.2}x below the 2x gate \
@@ -352,7 +364,7 @@ fn g2_per_pair_cost_sub_microsecond() {
     // Warm up, then time 10^4 record_pair + estimate calls.
     const ITERS: usize = 10_000;
 
-let mut est = HintRegretEstimator::new(ReturnBounds { lo: 0.0, hi: 1.0 });
+    let mut est = HintRegretEstimator::new(ReturnBounds { lo: 0.0, hi: 1.0 });
     for i in 0..256u32 {
         est.record_pair(0.5, 0.3 + (i % 5) as f32 * 0.02);
     }
@@ -476,7 +488,10 @@ fn g_floor_paired_arm_beats_single_arm_banding() {
         "paired advantage {:+.3} below the 5pp significance bar",
         paired_acc - floor_acc
     );
-    assert!(paired_acc >= 0.90, "paired accuracy {paired_acc:.3} below 0.90");
+    assert!(
+        paired_acc >= 0.90,
+        "paired accuracy {paired_acc:.3} below 0.90"
+    );
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -546,7 +561,11 @@ fn g8_learnable_share_rises_under_regret_gated_selection() {
             if win {
                 // Productive struggle: wins just above current skill teach
                 // the most; everything else teaches a little.
-                theta += if (theta - d) > -0.5 && (theta - d) < 1.5 { 0.012 } else { 0.003 };
+                theta += if (theta - d) > -0.5 && (theta - d) < 1.5 {
+                    0.012
+                } else {
+                    0.003
+                };
             }
             let in_band = (0.2..=0.8).contains(&p_win);
             picked_total += 1;

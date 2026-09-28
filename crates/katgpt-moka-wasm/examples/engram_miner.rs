@@ -27,7 +27,7 @@
 use katgpt_core::engram::{HashHead, K_MAX};
 use katgpt_moka_wasm::board::{Board, Cell};
 use katgpt_moka_wasm::engram_fuse::{
-    keys_for, tt_key_words, visit_concentration, EngramPuctMemory, MinedEntry, MinedTable, ROW_DIM,
+    EngramPuctMemory, MinedEntry, MinedTable, ROW_DIM, keys_for, tt_key_words, visit_concentration,
 };
 use katgpt_moka_wasm::puct::PuctPlayer;
 
@@ -117,11 +117,7 @@ fn main() {
             probe_boards.entry(key).or_insert(board);
             let mv = player.select_move(&board);
             let conc = {
-                let counts: Vec<u32> = player
-                    .root_child_visits()
-                    .iter()
-                    .map(|(_, v)| *v)
-                    .collect();
+                let counts: Vec<u32> = player.root_child_visits().iter().map(|(_, v)| *v).collect();
                 visit_concentration(&counts)
             };
             total_plies += 1;
@@ -264,7 +260,12 @@ fn main() {
     mined
         .save(std::path::Path::new(&out))
         .unwrap_or_else(|e| panic!("save {out}: {e}"));
-    let root_hex: String = mined.root.iter().take(8).map(|b| format!("{b:02x}")).collect();
+    let root_hex: String = mined
+        .root
+        .iter()
+        .take(8)
+        .map(|b| format!("{b:02x}"))
+        .collect();
     println!(
         "\nsaved {} entries → {out} (n_slots={}, root={root_hex}…, {:.1} s total)",
         mined.entries.len(),

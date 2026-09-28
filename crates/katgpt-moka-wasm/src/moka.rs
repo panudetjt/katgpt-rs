@@ -33,8 +33,10 @@ pub(crate) const SCORE_HIDDEN_CHANNELS: usize = 32;
 const MOKA_KOMI: f32 = 7.0;
 const KOMI_NORMALIZATION: f32 = 15.0;
 
-pub(crate) static MANIFEST_JSON: &str = include_str!("../../katgpt-pruners/assets/moka/go-model.json");
-pub(crate) static WEIGHTS_BIN: &[u8] = include_bytes!("../../katgpt-pruners/assets/moka/go-model.bin");
+pub(crate) static MANIFEST_JSON: &str =
+    include_str!("../../katgpt-pruners/assets/moka/go-model.json");
+pub(crate) static WEIGHTS_BIN: &[u8] =
+    include_bytes!("../../katgpt-pruners/assets/moka/go-model.bin");
 
 #[derive(Deserialize)]
 pub(crate) struct Manifest {
@@ -61,12 +63,16 @@ pub(crate) fn read_f32(bytes: &[u8], offset: usize, count: usize) -> Vec<f32> {
 }
 
 fn load_dequantized(tensors: &HashMap<String, TensorMeta>, bytes: &[u8], name: &str) -> Vec<f32> {
-    let meta = tensors.get(name).unwrap_or_else(|| panic!("moka manifest missing tensor {name}"));
+    let meta = tensors
+        .get(name)
+        .unwrap_or_else(|| panic!("moka manifest missing tensor {name}"));
     assert_eq!(meta.dtype, "int8", "expected int8 weight tensor {name}");
     let out_channels = meta.shape[0];
     let count: usize = meta.shape.iter().product();
     let per_channel = count / out_channels;
-    let scale_offset = meta.scale_offset.unwrap_or_else(|| panic!("{name} missing scaleOffset"));
+    let scale_offset = meta
+        .scale_offset
+        .unwrap_or_else(|| panic!("{name} missing scaleOffset"));
     let scales = read_f32(bytes, scale_offset, out_channels);
     let mut out = Vec::with_capacity(count);
     for (oc, &scale) in scales.iter().enumerate() {
@@ -79,8 +85,14 @@ fn load_dequantized(tensors: &HashMap<String, TensorMeta>, bytes: &[u8], name: &
     out
 }
 
-pub(crate) fn load_bias(tensors: &HashMap<String, TensorMeta>, bytes: &[u8], name: &str) -> Vec<f32> {
-    let meta = tensors.get(name).unwrap_or_else(|| panic!("moka manifest missing tensor {name}"));
+pub(crate) fn load_bias(
+    tensors: &HashMap<String, TensorMeta>,
+    bytes: &[u8],
+    name: &str,
+) -> Vec<f32> {
+    let meta = tensors
+        .get(name)
+        .unwrap_or_else(|| panic!("moka manifest missing tensor {name}"));
     assert_eq!(meta.dtype, "float32", "expected float32 bias tensor {name}");
     let count: usize = meta.shape.iter().product();
     read_f32(bytes, meta.data_offset, count)
@@ -116,7 +128,8 @@ pub struct MokaWeights {
 
 impl MokaWeights {
     pub fn load() -> Self {
-        let manifest: Manifest = serde_json::from_str(MANIFEST_JSON).expect("vendored moka manifest is valid JSON");
+        let manifest: Manifest =
+            serde_json::from_str(MANIFEST_JSON).expect("vendored moka manifest is valid JSON");
         let tensors = &manifest.tensors;
         let get = |prefix: &str| -> Wb {
             Wb {
@@ -163,7 +176,6 @@ use katgpt_nn::{
 };
 // Re-export for sibling modules (moka_int8.rs, research.rs access these via crate::moka::*).
 pub(crate) use katgpt_nn::{global_mean_max_into, relu_inplace};
-
 
 pub struct MokaScratch {
     trunk: Vec<f32>,
@@ -213,42 +225,70 @@ impl Default for MokaScratch {
 #[cfg(feature = "research")]
 impl MokaWeights {
     #[inline]
-    pub fn stem_w(&self) -> (&[f32], &[f32]) { (&self.stem.w, &self.stem.b) }
+    pub fn stem_w(&self) -> (&[f32], &[f32]) {
+        (&self.stem.w, &self.stem.b)
+    }
     #[inline]
     #[allow(private_interfaces)] // ResidualBlock stays pub(crate); riir-poc uses only the pub inherent methods below, never names the type
-    pub fn blocks_ref(&self) -> &[ResidualBlock] { &self.blocks }
+    pub fn blocks_ref(&self) -> &[ResidualBlock] {
+        &self.blocks
+    }
     #[inline]
-    pub fn policy_conv_w(&self) -> (&[f32], &[f32]) { (&self.policy_conv.w, &self.policy_conv.b) }
+    pub fn policy_conv_w(&self) -> (&[f32], &[f32]) {
+        (&self.policy_conv.w, &self.policy_conv.b)
+    }
     #[inline]
-    pub fn policy_linear_w(&self) -> (&[f32], &[f32]) { (&self.policy_linear.w, &self.policy_linear.b) }
+    pub fn policy_linear_w(&self) -> (&[f32], &[f32]) {
+        (&self.policy_linear.w, &self.policy_linear.b)
+    }
     #[inline]
-    pub fn value_conv_w(&self) -> (&[f32], &[f32]) { (&self.value_conv.w, &self.value_conv.b) }
+    pub fn value_conv_w(&self) -> (&[f32], &[f32]) {
+        (&self.value_conv.w, &self.value_conv.b)
+    }
     #[inline]
-    pub fn value_hidden_w(&self) -> (&[f32], &[f32]) { (&self.value_hidden.w, &self.value_hidden.b) }
+    pub fn value_hidden_w(&self) -> (&[f32], &[f32]) {
+        (&self.value_hidden.w, &self.value_hidden.b)
+    }
     #[inline]
-    pub fn value_output_w(&self) -> (&[f32], &[f32]) { (&self.value_output.w, &self.value_output.b) }
+    pub fn value_output_w(&self) -> (&[f32], &[f32]) {
+        (&self.value_output.w, &self.value_output.b)
+    }
 }
 
 #[cfg(feature = "research")]
 impl ResidualBlock {
     #[inline]
-    pub fn reduce_w(&self) -> (&[f32], &[f32]) { (&self.reduce.w, &self.reduce.b) }
+    pub fn reduce_w(&self) -> (&[f32], &[f32]) {
+        (&self.reduce.w, &self.reduce.b)
+    }
     #[inline]
-    pub fn first_w(&self) -> (&[f32], &[f32]) { (&self.first.w, &self.first.b) }
+    pub fn first_w(&self) -> (&[f32], &[f32]) {
+        (&self.first.w, &self.first.b)
+    }
     #[inline]
-    pub fn second_w(&self) -> (&[f32], &[f32]) { (&self.second.w, &self.second.b) }
+    pub fn second_w(&self) -> (&[f32], &[f32]) {
+        (&self.second.w, &self.second.b)
+    }
     #[inline]
-    pub fn expand_w(&self) -> (&[f32], &[f32]) { (&self.expand.w, &self.expand.b) }
+    pub fn expand_w(&self) -> (&[f32], &[f32]) {
+        (&self.expand.w, &self.expand.b)
+    }
     #[inline]
-    pub fn global_ref(&self) -> Option<&GlobalBranch> { self.global.as_ref() }
+    pub fn global_ref(&self) -> Option<&GlobalBranch> {
+        self.global.as_ref()
+    }
 }
 
 #[cfg(feature = "research")]
 impl GlobalBranch {
     #[inline]
-    pub fn hidden_w(&self) -> (&[f32], &[f32]) { (&self.hidden.w, &self.hidden.b) }
+    pub fn hidden_w(&self) -> (&[f32], &[f32]) {
+        (&self.hidden.w, &self.hidden.b)
+    }
     #[inline]
-    pub fn output_w(&self) -> (&[f32], &[f32]) { (&self.output.w, &self.output.b) }
+    pub fn output_w(&self) -> (&[f32], &[f32]) {
+        (&self.output.w, &self.output.b)
+    }
 }
 
 #[cfg(feature = "research")]
@@ -263,36 +303,123 @@ impl MokaScratch {
     pub fn lend_all(
         &mut self,
     ) -> (
-        &mut [f32], &mut [f32], &mut [f32], &mut [f32], &mut [f32], &mut [f32],
-        &mut [f32], &mut [f32], &mut [f32], &mut [f32], &mut [f32], &mut [f32],
+        &mut [f32],
+        &mut [f32],
+        &mut [f32],
+        &mut [f32],
+        &mut [f32],
+        &mut [f32],
+        &mut [f32],
+        &mut [f32],
+        &mut [f32],
+        &mut [f32],
+        &mut [f32],
+        &mut [f32],
     ) {
         (
-            &mut self.trunk, &mut self.expand, &mut self.hidden_a, &mut self.hidden_b,
-            &mut self.head4, &mut self.head2, &mut self.patch, &mut self.pooled,
-            &mut self.gh, &mut self.gbias, &mut self.value_h, &mut self.policy,
+            &mut self.trunk,
+            &mut self.expand,
+            &mut self.hidden_a,
+            &mut self.hidden_b,
+            &mut self.head4,
+            &mut self.head2,
+            &mut self.patch,
+            &mut self.pooled,
+            &mut self.gh,
+            &mut self.gbias,
+            &mut self.value_h,
+            &mut self.policy,
         )
     }
 }
 
-pub fn forward_with_scratch(weights: &MokaWeights, features: &[f32], scratch: &mut MokaScratch) -> ([f32; POLICY_MOVES], f32) {
+pub fn forward_with_scratch(
+    weights: &MokaWeights,
+    features: &[f32],
+    scratch: &mut MokaScratch,
+) -> ([f32; POLICY_MOVES], f32) {
     let MokaScratch {
-        trunk, expand, hidden_a, hidden_b, head4, head2, patch, pooled, gh, gbias, value_h, policy,
+        trunk,
+        expand,
+        hidden_a,
+        hidden_b,
+        head4,
+        head2,
+        patch,
+        pooled,
+        gh,
+        gbias,
+        value_h,
+        policy,
     } = scratch;
 
-    conv2d_into(features, BOARD_SIZE, BOARD_SIZE, INPUT_PLANES, TRUNK_CHANNELS, 3, &weights.stem.w, &weights.stem.b, patch, trunk);
+    conv2d_into(
+        features,
+        BOARD_SIZE,
+        BOARD_SIZE,
+        INPUT_PLANES,
+        TRUNK_CHANNELS,
+        3,
+        &weights.stem.w,
+        &weights.stem.b,
+        patch,
+        trunk,
+    );
     relu_inplace(&mut trunk[..BOARD_AREA * TRUNK_CHANNELS]);
 
     for block in &weights.blocks {
-        conv2d_into(trunk, BOARD_SIZE, BOARD_SIZE, TRUNK_CHANNELS, BOTTLENECK_CHANNELS, 1, &block.reduce.w, &block.reduce.b, patch, hidden_a);
+        conv2d_into(
+            trunk,
+            BOARD_SIZE,
+            BOARD_SIZE,
+            TRUNK_CHANNELS,
+            BOTTLENECK_CHANNELS,
+            1,
+            &block.reduce.w,
+            &block.reduce.b,
+            patch,
+            hidden_a,
+        );
         relu_inplace(hidden_a);
-        conv2d_into(hidden_a, BOARD_SIZE, BOARD_SIZE, BOTTLENECK_CHANNELS, BOTTLENECK_CHANNELS, 3, &block.first.w, &block.first.b, patch, hidden_b);
+        conv2d_into(
+            hidden_a,
+            BOARD_SIZE,
+            BOARD_SIZE,
+            BOTTLENECK_CHANNELS,
+            BOTTLENECK_CHANNELS,
+            3,
+            &block.first.w,
+            &block.first.b,
+            patch,
+            hidden_b,
+        );
         relu_inplace(hidden_b);
 
         if let Some(g) = &block.global {
-            global_mean_max_into(hidden_b, BOARD_SIZE, BOARD_SIZE, BOTTLENECK_CHANNELS, pooled);
-            linear_into(pooled, BOTTLENECK_CHANNELS * 2, g.hidden.b.len(), &g.hidden.w, &g.hidden.b, gh);
+            global_mean_max_into(
+                hidden_b,
+                BOARD_SIZE,
+                BOARD_SIZE,
+                BOTTLENECK_CHANNELS,
+                pooled,
+            );
+            linear_into(
+                pooled,
+                BOTTLENECK_CHANNELS * 2,
+                g.hidden.b.len(),
+                &g.hidden.w,
+                &g.hidden.b,
+                gh,
+            );
             relu_inplace(&mut gh[..g.hidden.b.len()]);
-            linear_into(gh, g.hidden.b.len(), BOTTLENECK_CHANNELS, &g.output.w, &g.output.b, gbias);
+            linear_into(
+                gh,
+                g.hidden.b.len(),
+                BOTTLENECK_CHANNELS,
+                &g.output.w,
+                &g.output.b,
+                gbias,
+            );
             for pos in 0..BOARD_AREA {
                 let row = &mut hidden_b[pos * BOTTLENECK_CHANNELS..(pos + 1) * BOTTLENECK_CHANNELS];
                 for c in 0..BOTTLENECK_CHANNELS {
@@ -301,9 +428,31 @@ pub fn forward_with_scratch(weights: &MokaWeights, features: &[f32], scratch: &m
             }
         }
 
-        conv2d_into(hidden_b, BOARD_SIZE, BOARD_SIZE, BOTTLENECK_CHANNELS, BOTTLENECK_CHANNELS, 3, &block.second.w, &block.second.b, patch, hidden_a);
+        conv2d_into(
+            hidden_b,
+            BOARD_SIZE,
+            BOARD_SIZE,
+            BOTTLENECK_CHANNELS,
+            BOTTLENECK_CHANNELS,
+            3,
+            &block.second.w,
+            &block.second.b,
+            patch,
+            hidden_a,
+        );
         relu_inplace(hidden_a);
-        conv2d_into(hidden_a, BOARD_SIZE, BOARD_SIZE, BOTTLENECK_CHANNELS, TRUNK_CHANNELS, 1, &block.expand.w, &block.expand.b, patch, expand);
+        conv2d_into(
+            hidden_a,
+            BOARD_SIZE,
+            BOARD_SIZE,
+            BOTTLENECK_CHANNELS,
+            TRUNK_CHANNELS,
+            1,
+            &block.expand.w,
+            &block.expand.b,
+            patch,
+            expand,
+        );
 
         for i in 0..BOARD_AREA * TRUNK_CHANNELS {
             let v = trunk[i] + expand[i];
@@ -311,17 +460,60 @@ pub fn forward_with_scratch(weights: &MokaWeights, features: &[f32], scratch: &m
         }
     }
 
-    conv2d_into(trunk, BOARD_SIZE, BOARD_SIZE, TRUNK_CHANNELS, POLICY_CHANNELS, 1, &weights.policy_conv.w, &weights.policy_conv.b, patch, head4);
+    conv2d_into(
+        trunk,
+        BOARD_SIZE,
+        BOARD_SIZE,
+        TRUNK_CHANNELS,
+        POLICY_CHANNELS,
+        1,
+        &weights.policy_conv.w,
+        &weights.policy_conv.b,
+        patch,
+        head4,
+    );
     relu_inplace(head4);
-    linear_into(head4, POLICY_CHANNELS * BOARD_AREA, POLICY_MOVES, &weights.policy_linear.w, &weights.policy_linear.b, policy);
+    linear_into(
+        head4,
+        POLICY_CHANNELS * BOARD_AREA,
+        POLICY_MOVES,
+        &weights.policy_linear.w,
+        &weights.policy_linear.b,
+        policy,
+    );
 
-    conv2d_into(trunk, BOARD_SIZE, BOARD_SIZE, TRUNK_CHANNELS, VALUE_CHANNELS, 1, &weights.value_conv.w, &weights.value_conv.b, patch, head2);
+    conv2d_into(
+        trunk,
+        BOARD_SIZE,
+        BOARD_SIZE,
+        TRUNK_CHANNELS,
+        VALUE_CHANNELS,
+        1,
+        &weights.value_conv.w,
+        &weights.value_conv.b,
+        patch,
+        head2,
+    );
     relu_inplace(head2);
     let value_hidden_dim = weights.value_hidden.b.len();
-    linear_into(head2, VALUE_CHANNELS * BOARD_AREA, value_hidden_dim, &weights.value_hidden.w, &weights.value_hidden.b, value_h);
+    linear_into(
+        head2,
+        VALUE_CHANNELS * BOARD_AREA,
+        value_hidden_dim,
+        &weights.value_hidden.w,
+        &weights.value_hidden.b,
+        value_h,
+    );
     relu_inplace(&mut value_h[..value_hidden_dim]);
     let mut value_out = [0f32; 1];
-    linear_into(value_h, value_hidden_dim, 1, &weights.value_output.w, &weights.value_output.b, &mut value_out);
+    linear_into(
+        value_h,
+        value_hidden_dim,
+        1,
+        &weights.value_output.w,
+        &weights.value_output.b,
+        &mut value_out,
+    );
 
     let mut logits = [0f32; POLICY_MOVES];
     logits.copy_from_slice(&policy[..POLICY_MOVES]);
@@ -351,14 +543,14 @@ pub struct MokaBatchScratch {
     hidden_b: Vec<f32>,
     head4: Vec<f32>,
     head2: Vec<f32>,
-    patches_3x3_trunk: Vec<f32>,     // batch × (3·3·TRUNK_CHANNELS)  — stem
+    patches_3x3_trunk: Vec<f32>, // batch × (3·3·TRUNK_CHANNELS)  — stem
     patches_3x3_bottleneck: Vec<f32>, // batch × (3·3·BOTTLENECK_CHANNELS) — first/second
-    pooled: Vec<f32>,                // batch × (BOTTLENECK_CHANNELS·2)
-    gh: Vec<f32>,                    // batch × 8
-    gbias: Vec<f32>,                 // batch × BOTTLENECK_CHANNELS
-    value_h: Vec<f32>,               // batch × SCORE_HIDDEN_CHANNELS
-    policy: Vec<f32>,                // batch × POLICY_MOVES
-    value_out: Vec<f32>,             // batch × 1
+    pooled: Vec<f32>,            // batch × (BOTTLENECK_CHANNELS·2)
+    gh: Vec<f32>,                // batch × 8
+    gbias: Vec<f32>,             // batch × BOTTLENECK_CHANNELS
+    value_h: Vec<f32>,           // batch × SCORE_HIDDEN_CHANNELS
+    policy: Vec<f32>,            // batch × POLICY_MOVES
+    value_out: Vec<f32>,         // batch × 1
 }
 
 impl MokaBatchScratch {
@@ -400,7 +592,12 @@ pub fn forward_batch_with_scratch(
     policy_batch: &mut [f32],
     value_batch: &mut [f32],
 ) {
-    debug_assert!(scratch.batch >= batch, "scratch must be sized for at least this batch; scratch={}, batch={}", scratch.batch, batch);
+    debug_assert!(
+        scratch.batch >= batch,
+        "scratch must be sized for at least this batch; scratch={}, batch={}",
+        scratch.batch,
+        batch
+    );
     let MokaBatchScratch {
         trunk,
         expand,
@@ -425,9 +622,17 @@ pub fn forward_batch_with_scratch(
     // Stem: 3×3 conv, 12 → 32 channels. The patch gather happens once per
     // (sample, position); the weight slice is reused across all K samples.
     conv2d_batched_into(
-        features_batch, batch,
-        BOARD_SIZE, BOARD_SIZE, INPUT_PLANES, TRUNK_CHANNELS, 3,
-        &weights.stem.w, &weights.stem.b, patches_3x3_trunk, trunk,
+        features_batch,
+        batch,
+        BOARD_SIZE,
+        BOARD_SIZE,
+        INPUT_PLANES,
+        TRUNK_CHANNELS,
+        3,
+        &weights.stem.w,
+        &weights.stem.b,
+        patches_3x3_trunk,
+        trunk,
     );
     for s in 0..batch {
         relu_inplace(&mut trunk[s * trunk_len..][..trunk_len]);
@@ -436,18 +641,34 @@ pub fn forward_batch_with_scratch(
     for block in &weights.blocks {
         // reduce: 1×1 conv, 32 → 16.
         conv2d_batched_into(
-            trunk, batch,
-            BOARD_SIZE, BOARD_SIZE, TRUNK_CHANNELS, BOTTLENECK_CHANNELS, 1,
-            &block.reduce.w, &block.reduce.b, patches_3x3_trunk, hidden_a,
+            trunk,
+            batch,
+            BOARD_SIZE,
+            BOARD_SIZE,
+            TRUNK_CHANNELS,
+            BOTTLENECK_CHANNELS,
+            1,
+            &block.reduce.w,
+            &block.reduce.b,
+            patches_3x3_trunk,
+            hidden_a,
         );
         for s in 0..batch {
             relu_inplace(&mut hidden_a[s * bn_len..][..bn_len]);
         }
         // first: 3×3 conv, 16 → 16.
         conv2d_batched_into(
-            hidden_a, batch,
-            BOARD_SIZE, BOARD_SIZE, BOTTLENECK_CHANNELS, BOTTLENECK_CHANNELS, 3,
-            &block.first.w, &block.first.b, patches_3x3_bottleneck, hidden_b,
+            hidden_a,
+            batch,
+            BOARD_SIZE,
+            BOARD_SIZE,
+            BOTTLENECK_CHANNELS,
+            BOTTLENECK_CHANNELS,
+            3,
+            &block.first.w,
+            &block.first.b,
+            patches_3x3_bottleneck,
+            hidden_b,
         );
         for s in 0..batch {
             relu_inplace(&mut hidden_b[s * bn_len..][..bn_len]);
@@ -455,19 +676,34 @@ pub fn forward_batch_with_scratch(
 
         if let Some(g) = &block.global {
             global_mean_max_batched_into(
-                hidden_b, batch, BOARD_SIZE, BOARD_SIZE, BOTTLENECK_CHANNELS, pooled,
+                hidden_b,
+                batch,
+                BOARD_SIZE,
+                BOARD_SIZE,
+                BOTTLENECK_CHANNELS,
+                pooled,
             );
             let gh_len = g.hidden.b.len();
             linear_batched_into(
-                pooled, batch, BOTTLENECK_CHANNELS * 2, gh_len,
-                &g.hidden.w, &g.hidden.b, gh,
+                pooled,
+                batch,
+                BOTTLENECK_CHANNELS * 2,
+                gh_len,
+                &g.hidden.w,
+                &g.hidden.b,
+                gh,
             );
             for s in 0..batch {
                 relu_inplace(&mut gh[s * gh_len..][..gh_len]);
             }
             linear_batched_into(
-                gh, batch, gh_len, BOTTLENECK_CHANNELS,
-                &g.output.w, &g.output.b, gbias,
+                gh,
+                batch,
+                gh_len,
+                BOTTLENECK_CHANNELS,
+                &g.output.w,
+                &g.output.b,
+                gbias,
             );
             for s in 0..batch {
                 let row = &mut hidden_b[s * bn_len..];
@@ -483,18 +719,34 @@ pub fn forward_batch_with_scratch(
 
         // second: 3×3 conv, 16 → 16.
         conv2d_batched_into(
-            hidden_b, batch,
-            BOARD_SIZE, BOARD_SIZE, BOTTLENECK_CHANNELS, BOTTLENECK_CHANNELS, 3,
-            &block.second.w, &block.second.b, patches_3x3_bottleneck, hidden_a,
+            hidden_b,
+            batch,
+            BOARD_SIZE,
+            BOARD_SIZE,
+            BOTTLENECK_CHANNELS,
+            BOTTLENECK_CHANNELS,
+            3,
+            &block.second.w,
+            &block.second.b,
+            patches_3x3_bottleneck,
+            hidden_a,
         );
         for s in 0..batch {
             relu_inplace(&mut hidden_a[s * bn_len..][..bn_len]);
         }
         // expand: 1×1 conv, 16 → 32, then residual add into trunk.
         conv2d_batched_into(
-            hidden_a, batch,
-            BOARD_SIZE, BOARD_SIZE, BOTTLENECK_CHANNELS, TRUNK_CHANNELS, 1,
-            &block.expand.w, &block.expand.b, patches_3x3_trunk, expand,
+            hidden_a,
+            batch,
+            BOARD_SIZE,
+            BOARD_SIZE,
+            BOTTLENECK_CHANNELS,
+            TRUNK_CHANNELS,
+            1,
+            &block.expand.w,
+            &block.expand.b,
+            patches_3x3_trunk,
+            expand,
         );
         for s in 0..batch {
             let t = &mut trunk[s * trunk_len..][..trunk_len];
@@ -509,39 +761,70 @@ pub fn forward_batch_with_scratch(
     // Policy head.
     let head4_len = BOARD_AREA * POLICY_CHANNELS;
     conv2d_batched_into(
-        trunk, batch,
-        BOARD_SIZE, BOARD_SIZE, TRUNK_CHANNELS, POLICY_CHANNELS, 1,
-        &weights.policy_conv.w, &weights.policy_conv.b, patches_3x3_trunk, head4,
+        trunk,
+        batch,
+        BOARD_SIZE,
+        BOARD_SIZE,
+        TRUNK_CHANNELS,
+        POLICY_CHANNELS,
+        1,
+        &weights.policy_conv.w,
+        &weights.policy_conv.b,
+        patches_3x3_trunk,
+        head4,
     );
     for s in 0..batch {
         relu_inplace(&mut head4[s * head4_len..][..head4_len]);
     }
     linear_batched_into(
-        head4, batch, POLICY_CHANNELS * BOARD_AREA, POLICY_MOVES,
-        &weights.policy_linear.w, &weights.policy_linear.b, policy,
+        head4,
+        batch,
+        POLICY_CHANNELS * BOARD_AREA,
+        POLICY_MOVES,
+        &weights.policy_linear.w,
+        &weights.policy_linear.b,
+        policy,
     );
 
     // Value head.
     let head2_len = BOARD_AREA * VALUE_CHANNELS;
     conv2d_batched_into(
-        trunk, batch,
-        BOARD_SIZE, BOARD_SIZE, TRUNK_CHANNELS, VALUE_CHANNELS, 1,
-        &weights.value_conv.w, &weights.value_conv.b, patches_3x3_trunk, head2,
+        trunk,
+        batch,
+        BOARD_SIZE,
+        BOARD_SIZE,
+        TRUNK_CHANNELS,
+        VALUE_CHANNELS,
+        1,
+        &weights.value_conv.w,
+        &weights.value_conv.b,
+        patches_3x3_trunk,
+        head2,
     );
     for s in 0..batch {
         relu_inplace(&mut head2[s * head2_len..][..head2_len]);
     }
     let value_hidden_dim = weights.value_hidden.b.len();
     linear_batched_into(
-        head2, batch, VALUE_CHANNELS * BOARD_AREA, value_hidden_dim,
-        &weights.value_hidden.w, &weights.value_hidden.b, value_h,
+        head2,
+        batch,
+        VALUE_CHANNELS * BOARD_AREA,
+        value_hidden_dim,
+        &weights.value_hidden.w,
+        &weights.value_hidden.b,
+        value_h,
     );
     for s in 0..batch {
         relu_inplace(&mut value_h[s * value_hidden_dim..][..value_hidden_dim]);
     }
     linear_batched_into(
-        value_h, batch, value_hidden_dim, 1,
-        &weights.value_output.w, &weights.value_output.b, value_out,
+        value_h,
+        batch,
+        value_hidden_dim,
+        1,
+        &weights.value_output.w,
+        &weights.value_output.b,
+        value_out,
     );
 
     // Copy out into the caller-owned buffers + tanh the value.
@@ -611,19 +894,23 @@ pub fn encode_features_into(board: &Board, history: &[Option<(usize, usize)>], o
             continue;
         }
         if let Some((r, c)) = history[history.len() - offset] {
-                let plane = if offset == 1 { 7 } else { 8 };
-                feats[idx(r, c, plane)] = 1.0;
-            } else {
-                let plane = 8 + offset;
-                for row in 0..size {
-                    for col in 0..size {
-                        feats[idx(row, col, plane)] = 1.0;
-                    }
+            let plane = if offset == 1 { 7 } else { 8 };
+            feats[idx(r, c, plane)] = 1.0;
+        } else {
+            let plane = 8 + offset;
+            for row in 0..size {
+                for col in 0..size {
+                    feats[idx(row, col, plane)] = 1.0;
                 }
             }
+        }
     }
 
-    let next_color: f32 = if board.to_play == Cell::Black { 1.0 } else { -1.0 };
+    let next_color: f32 = if board.to_play == Cell::Black {
+        1.0
+    } else {
+        -1.0
+    };
     let komi_value = (-MOKA_KOMI * next_color) / KOMI_NORMALIZATION;
     for row in 0..size {
         for col in 0..size {
@@ -677,17 +964,35 @@ mod batch_tests {
                 }
             }
             // Take last-2 for the feature encoder.
-            let last2: Vec<Option<(usize, usize)>> =
-                hist.iter().rev().take(2).copied().collect::<Vec<_>>().into_iter().rev().collect();
+            let last2: Vec<Option<(usize, usize)>> = hist
+                .iter()
+                .rev()
+                .take(2)
+                .copied()
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+                .collect();
             encode_features_into(&board, &last2, &mut features[s * INPUT_ELEMENT_COUNT..]);
-            let (p, v) = forward_with_scratch(&weights, &features[s * INPUT_ELEMENT_COUNT..], &mut seq_scratch);
+            let (p, v) = forward_with_scratch(
+                &weights,
+                &features[s * INPUT_ELEMENT_COUNT..],
+                &mut seq_scratch,
+            );
             seq_policy[s] = p;
             seq_value[s] = v;
         }
 
         let mut batch_policy = vec![0f32; k * POLICY_MOVES];
         let mut batch_value = vec![0f32; k];
-        forward_batch_with_scratch(&weights, &features, k, &mut batch_scratch, &mut batch_policy, &mut batch_value);
+        forward_batch_with_scratch(
+            &weights,
+            &features,
+            k,
+            &mut batch_scratch,
+            &mut batch_policy,
+            &mut batch_value,
+        );
 
         // Compare. Allow generous epsilon — f32 reassociation in the batched
         // dot loop can accumulate slightly differently than the sequential
@@ -715,6 +1020,8 @@ mod batch_tests {
             max_value_diff < EPS,
             "batched vs sequential value diff {max_value_diff:e} exceeds {EPS:e}"
         );
-        eprintln!("g1 PASS: max policy diff {max_policy_diff:e}, max value diff {max_value_diff:e}");
+        eprintln!(
+            "g1 PASS: max policy diff {max_policy_diff:e}, max value diff {max_value_diff:e}"
+        );
     }
 }

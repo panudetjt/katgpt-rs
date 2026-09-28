@@ -364,7 +364,8 @@ impl QuantErrorLora {
 
         let r = self.rank;
         // Intermediate: A · x → scratch[r].
-        #[allow(clippy::needless_range_loop)] // stride math: k indexes scratch[k] AND k*self.in_dim offset into self.a
+        #[allow(clippy::needless_range_loop)]
+        // stride math: k indexes scratch[k] AND k*self.in_dim offset into self.a
         for k in 0..r {
             let a_row = &self.a[k * self.in_dim..(k + 1) * self.in_dim];
             let mut acc = 0.0f32;
@@ -384,7 +385,8 @@ impl QuantErrorLora {
         }
         // Accumulate: y += alpha * B · intermediate.
         let scale = self.alpha;
-        #[allow(clippy::needless_range_loop)] // stride math: o indexes y[o] AND o*r offset into self.b
+        #[allow(clippy::needless_range_loop)]
+        // stride math: o indexes y[o] AND o*r offset into self.b
         for o in 0..self.out_dim {
             let b_row = &self.b[o * r..(o + 1) * r];
             let mut acc = 0.0f32;
@@ -404,10 +406,12 @@ impl QuantErrorLora {
         for o in 0..self.out_dim {
             let b_row = &self.b[o * r..(o + 1) * r];
             let out_row = &mut out[o * self.in_dim..(o + 1) * self.in_dim];
-            #[allow(clippy::needless_range_loop)] // stride math: i indexes out_row[i] AND k*self.in_dim+i offset into self.a
+            #[allow(clippy::needless_range_loop)]
+            // stride math: i indexes out_row[i] AND k*self.in_dim+i offset into self.a
             for i in 0..self.in_dim {
                 let mut acc = 0.0f32;
-                #[allow(clippy::needless_range_loop)] // stride math: k indexes b_row[k] AND k*self.in_dim+i offset into self.a
+                #[allow(clippy::needless_range_loop)]
+                // stride math: k indexes b_row[k] AND k*self.in_dim+i offset into self.a
                 for k in 0..r {
                     acc += b_row[k] * self.a[k * self.in_dim + i];
                 }
@@ -460,9 +464,7 @@ impl SparseErrorBypass {
             .collect();
         // Partial sort: partition so the top-k are at the front (unordered is fine
         // — we don't need them sorted, just selected).
-        indexed.select_nth_unstable_by(k - 1, |a, b| {
-            b.0.total_cmp(&a.0)
-        });
+        indexed.select_nth_unstable_by(k - 1, |a, b| b.0.total_cmp(&a.0));
 
         let mut rows = Vec::with_capacity(k);
         let mut cols = Vec::with_capacity(k);
@@ -520,11 +522,7 @@ pub fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
         nb += b[i] * b[i];
     }
     let denom = (na * nb).sqrt();
-    if denom > 0.0 {
-        dot / denom
-    } else {
-        0.0
-    }
+    if denom > 0.0 { dot / denom } else { 0.0 }
 }
 
 /// Measure how much of the error matrix's energy the rank-r LoRA captures.
@@ -536,7 +534,11 @@ pub fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
 /// Used by the PoC's T12 task (Small-Kernel Paradox confirmation): if this
 /// fraction is low at rank-8, the error matrix is near-full-rank and the
 /// Small-Kernel Paradox holds.
-pub fn captured_energy_fraction(lora: &QuantErrorLora, w_ref: &[f32], w_quant_dequant: &[f32]) -> f32 {
+pub fn captured_energy_fraction(
+    lora: &QuantErrorLora,
+    w_ref: &[f32],
+    w_quant_dequant: &[f32],
+) -> f32 {
     let total = w_ref.len();
     let mut e_full_sq = 0.0f32;
     for i in 0..total {
@@ -589,10 +591,22 @@ mod tests {
         let zero = vec![0.0f32; out_dim * in_dim];
         let mut svd_result = SvdResultScratch::with_capacity(out_dim, in_dim);
         let mut svd_work = SvdScratch::with_capacity(in_dim, out_dim);
-        let lora = QuantErrorLora::from_error(&e, &zero, out_dim, in_dim, rank_true, 1.0, &mut svd_result, &mut svd_work);
+        let lora = QuantErrorLora::from_error(
+            &e,
+            &zero,
+            out_dim,
+            in_dim,
+            rank_true,
+            1.0,
+            &mut svd_result,
+            &mut svd_work,
+        );
         let frac = captured_energy_fraction(&lora, &e, &zero);
         // A rank-3 matrix should be nearly fully captured at rank 3.
-        assert!(frac > 0.999, "captured fraction {frac} should be >0.999 for a rank-3 matrix at rank 3");
+        assert!(
+            frac > 0.999,
+            "captured fraction {frac} should be >0.999 for a rank-3 matrix at rank 3"
+        );
     }
 
     #[test]
@@ -605,7 +619,16 @@ mod tests {
         let w_q: Vec<f32> = (0..out_dim * in_dim).map(|i| (i as f32) * 0.005).collect();
         let mut svd_result = SvdResultScratch::with_capacity(out_dim, in_dim);
         let mut svd_work = SvdScratch::with_capacity(in_dim, out_dim);
-        let lora = QuantErrorLora::from_error(&w_ref, &w_q, out_dim, in_dim, rank, 1.0, &mut svd_result, &mut svd_work);
+        let lora = QuantErrorLora::from_error(
+            &w_ref,
+            &w_q,
+            out_dim,
+            in_dim,
+            rank,
+            1.0,
+            &mut svd_result,
+            &mut svd_work,
+        );
 
         let x: Vec<f32> = (0..in_dim).map(|i| (i as f32) * 0.1).collect();
         let mut y_apply = vec![0.0f32; out_dim];
@@ -622,7 +645,12 @@ mod tests {
             }
         }
         for o in 0..out_dim {
-            assert!(approx_eq(y_apply[o], y_recon[o], 1e-4), "output {o}: apply={:.6} recon={:.6}", y_apply[o], y_recon[o]);
+            assert!(
+                approx_eq(y_apply[o], y_recon[o], 1e-4),
+                "output {o}: apply={:.6} recon={:.6}",
+                y_apply[o],
+                y_recon[o]
+            );
         }
     }
 
@@ -631,11 +659,22 @@ mod tests {
         // out_dim < in_dim (the Moka conv case: 32 × 288). SVD via transpose.
         let out_dim = 4;
         let in_dim = 12;
-        let w_ref: Vec<f32> = (0..out_dim * in_dim).map(|i| ((i as f32) * 0.1).sin()).collect();
+        let w_ref: Vec<f32> = (0..out_dim * in_dim)
+            .map(|i| ((i as f32) * 0.1).sin())
+            .collect();
         let w_q = vec![0.0f32; out_dim * in_dim];
         let mut svd_result = SvdResultScratch::with_capacity(in_dim, out_dim);
         let mut svd_work = SvdScratch::with_capacity(out_dim, in_dim);
-        let lora = QuantErrorLora::from_error(&w_ref, &w_q, out_dim, in_dim, 4, 1.0, &mut svd_result, &mut svd_work);
+        let lora = QuantErrorLora::from_error(
+            &w_ref,
+            &w_q,
+            out_dim,
+            in_dim,
+            4,
+            1.0,
+            &mut svd_result,
+            &mut svd_work,
+        );
         assert!(lora.rank <= 4);
         assert_eq!(lora.a.len(), lora.rank * in_dim);
         assert_eq!(lora.b.len(), out_dim * lora.rank);
@@ -648,7 +687,9 @@ mod tests {
         // fraction (both pick the top-r energy directions).
         let out_dim = 4;
         let in_dim = 4;
-        let w_ref: Vec<f32> = (0..out_dim * in_dim).map(|i| ((i as f32) * 0.1).sin()).collect();
+        let w_ref: Vec<f32> = (0..out_dim * in_dim)
+            .map(|i| ((i as f32) * 0.1).sin())
+            .collect();
         let w_q = vec![0.0f32; out_dim * in_dim];
         let n_cal = in_dim;
         // Identity calibration: X = I.
@@ -659,13 +700,31 @@ mod tests {
         let mut svd_result = SvdResultScratch::with_capacity(out_dim, n_cal);
         let mut svd_work = SvdScratch::with_capacity(n_cal, out_dim);
         let lora_da = QuantErrorLora::from_error_data_aware(
-            &w_ref, &w_q, out_dim, in_dim, &x_cal, n_cal, 2, 1.0, &mut svd_result, &mut svd_work,
+            &w_ref,
+            &w_q,
+            out_dim,
+            in_dim,
+            &x_cal,
+            n_cal,
+            2,
+            1.0,
+            &mut svd_result,
+            &mut svd_work,
         );
         let frac_da = captured_energy_fraction(&lora_da, &w_ref, &w_q);
 
         let mut svd_result2 = SvdResultScratch::with_capacity(out_dim, in_dim);
         let mut svd_work2 = SvdScratch::with_capacity(in_dim, out_dim);
-        let lora_ws = QuantErrorLora::from_error(&w_ref, &w_q, out_dim, in_dim, 2, 1.0, &mut svd_result2, &mut svd_work2);
+        let lora_ws = QuantErrorLora::from_error(
+            &w_ref,
+            &w_q,
+            out_dim,
+            in_dim,
+            2,
+            1.0,
+            &mut svd_result2,
+            &mut svd_work2,
+        );
         let frac_ws = captured_energy_fraction(&lora_ws, &w_ref, &w_q);
 
         // With identity calibration, both should capture the same fraction

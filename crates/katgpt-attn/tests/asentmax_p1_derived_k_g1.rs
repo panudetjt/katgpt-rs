@@ -17,7 +17,7 @@
 
 #![cfg(feature = "asentmax_schedule")]
 
-use katgpt_attn::dash_attn::adaptive_k::{compute_derived_k, AdaptiveKConfig};
+use katgpt_attn::dash_attn::adaptive_k::{AdaptiveKConfig, compute_derived_k};
 use katgpt_attn::dash_attn::asentmax::AsentmaxSchedule;
 use katgpt_attn::dash_attn::entmax::{entmax_1p5, entmax_support};
 

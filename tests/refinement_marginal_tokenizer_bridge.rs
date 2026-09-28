@@ -33,8 +33,8 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 use katgpt_core::refinement_marginal::{
-    coarse_grain_first, coarse_grain_step, error_bound, expected_escalation_cost,
-    CoarseGrainScratch, CoarseRecord, TERMINAL_BIN,
+    CoarseGrainScratch, CoarseRecord, TERMINAL_BIN, coarse_grain_first, coarse_grain_step,
+    error_bound, expected_escalation_cost,
 };
 use katgpt_rs::refinement_bridge::{decode_argmax, refinement_table_from_bpe};
 use katgpt_tokenizer::BpeTrainer;
@@ -70,11 +70,7 @@ impl Lcg {
 
 /// The paper's Marginalize-It + terminal bin, written as an independent
 /// full-vocab rescan (a different code path from the streaming frontier).
-fn naive_reference(
-    probs: &[f32],
-    id_bytes: &[&[u8]],
-    prefix: &[u8],
-) -> (Vec<f32>, f32, f32) {
+fn naive_reference(probs: &[f32], id_bytes: &[&[u8]], prefix: &[u8]) -> (Vec<f32>, f32, f32) {
     let k = prefix.len();
     let mut bins = vec![0.0_f32; 257];
     let mut alive = 0.0_f32;
@@ -103,11 +99,7 @@ fn tokenizer_bridge_streaming_matches_reference_and_bound_holds() {
     assert!(n >= 64, "vocab too small for the integration run: {n}");
 
     // Snapshot the byte sequences for the reference path.
-    let id_bytes: Vec<&[u8]> = tok
-        .id_to_vocab
-        .iter()
-        .map(|s| s.as_bytes())
-        .collect();
+    let id_bytes: Vec<&[u8]> = tok.id_to_vocab.iter().map(|s| s.as_bytes()).collect();
 
     let mut rng = Lcg(0x5EED_0598);
     let mut scratch = CoarseGrainScratch::new(n);
@@ -132,8 +124,7 @@ fn tokenizer_bridge_streaming_matches_reference_and_bound_holds() {
         let mut records: Vec<CoarseRecord> = Vec::new();
         for depth in 0..MAX_DEPTH {
             // ── reference agreement ──
-            let (ref_bins, ref_terminal, ref_alive) =
-                naive_reference(&probs, &id_bytes, &prefix);
+            let (ref_bins, ref_terminal, ref_alive) = naive_reference(&probs, &id_bytes, &prefix);
             assert!(
                 (rec.alive_mass - ref_alive).abs() < 1e-4,
                 "depth {depth}: alive {} vs reference {ref_alive}",

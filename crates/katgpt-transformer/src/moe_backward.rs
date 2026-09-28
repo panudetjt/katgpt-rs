@@ -23,9 +23,7 @@
 //! Production inference never calls this — it's gated behind `moe_backward`
 //! (implies `transformer_moe`) and only consumed by riir-train.
 
-use crate::moe::{
-    MoeConfig, MoeForwardScratch, MoeWeights, select_topk_indices, situ_inplace,
-};
+use crate::moe::{MoeConfig, MoeForwardScratch, MoeWeights, select_topk_indices, situ_inplace};
 use katgpt_core::simd::{
     simd_dot_f32, simd_matmul_rows, simd_outer_product_acc, simd_sum_sq, simd_transpose_matvec_acc,
     simd_transpose_matvec_into,
@@ -147,10 +145,7 @@ impl MoeGradients {
                 .routed_expert_down_proj
                 .as_ref()
                 .map(|x| vec![0.0; x.len()]),
-            routed_expert_up_proj: w
-                .routed_expert_up_proj
-                .as_ref()
-                .map(|x| vec![0.0; x.len()]),
+            routed_expert_up_proj: w.routed_expert_up_proj.as_ref().map(|x| vec![0.0; x.len()]),
             routed_expert_norm_weight: w
                 .routed_expert_norm_weight
                 .as_ref()
@@ -250,17 +245,34 @@ pub fn moe_forward_token_with_saved(
     let shared_up_buf = &mut scratch.expert_up[..d_ffn_shared];
     let shared_out = &mut scratch.expert_output[..d];
     // gate_proj · h
-    simd_matmul_rows(shared_gate_inter_buf, &shared.gate_proj, hidden_in, d_ffn_shared, d);
+    simd_matmul_rows(
+        shared_gate_inter_buf,
+        &shared.gate_proj,
+        hidden_in,
+        d_ffn_shared,
+        d,
+    );
     // up_proj · h
     simd_matmul_rows(shared_up_buf, &shared.up_proj, hidden_in, d_ffn_shared, d);
     // Snapshot pre-SiTU gate/up
     let shared_gate_inter: Vec<f32> = shared_gate_inter_buf.to_vec();
     let shared_up_inter: Vec<f32> = shared_up_buf.to_vec();
     // SiTU in-place on gate_buf
-    situ_inplace(shared_gate_inter_buf, shared_up_buf, config.situ_beta, config.situ_linear_beta);
+    situ_inplace(
+        shared_gate_inter_buf,
+        shared_up_buf,
+        config.situ_beta,
+        config.situ_linear_beta,
+    );
     let shared_act_out: Vec<f32> = shared_gate_inter_buf.to_vec();
     // down_proj · act → out
-    simd_matmul_rows(shared_out, &shared.down_proj, shared_gate_inter_buf, d, d_ffn_shared);
+    simd_matmul_rows(
+        shared_out,
+        &shared.down_proj,
+        shared_gate_inter_buf,
+        d,
+        d_ffn_shared,
+    );
     let shared_output: Vec<f32> = shared_out.to_vec();
 
     // hidden_out starts with shared_output
@@ -278,7 +290,11 @@ pub fn moe_forward_token_with_saved(
         simd_matmul_rows(up_buf, &shared_s.up_proj, hidden_in, d_ffn_shared, d);
         situ_inplace(gate_buf, up_buf, config.situ_beta, config.situ_linear_beta);
         simd_matmul_rows(out_buf, &shared_s.down_proj, gate_buf, d, d_ffn_shared);
-        for (ho, eo) in hidden_out.iter_mut().zip(scratch.expert_output.iter()).take(d) {
+        for (ho, eo) in hidden_out
+            .iter_mut()
+            .zip(scratch.expert_output.iter())
+            .take(d)
+        {
             *ho += *eo;
         }
     }
@@ -314,9 +330,21 @@ pub fn moe_forward_token_with_saved(
             let out_buf = &mut scratch.expert_output[..d_moe];
 
             // gate_proj · h_latent
-            simd_matmul_rows(gate_buf, &expert.gate_proj, &scratch.latent_hidden, d_ffn, d_moe);
+            simd_matmul_rows(
+                gate_buf,
+                &expert.gate_proj,
+                &scratch.latent_hidden,
+                d_ffn,
+                d_moe,
+            );
             // up_proj · h_latent
-            simd_matmul_rows(up_buf, &expert.up_proj, &scratch.latent_hidden, d_ffn, d_moe);
+            simd_matmul_rows(
+                up_buf,
+                &expert.up_proj,
+                &scratch.latent_hidden,
+                d_ffn,
+                d_moe,
+            );
 
             // Snapshot pre-SiTU
             expert_gate_inter[k * d_ffn..(k + 1) * d_ffn].copy_from_slice(gate_buf);
@@ -371,7 +399,11 @@ pub fn moe_forward_token_with_saved(
             d,
             d_moe,
         );
-        for (ho, eo) in hidden_out.iter_mut().zip(scratch.expert_output.iter()).take(d) {
+        for (ho, eo) in hidden_out
+            .iter_mut()
+            .zip(scratch.expert_output.iter())
+            .take(d)
+        {
             *ho += *eo;
         }
 
@@ -498,7 +530,13 @@ pub fn moe_backward_token(
         simd_transpose_matvec_into(&mut d_act, &shared.down_proj, d_output, d, d_ffn_shared);
 
         // dL/d(down_proj) += outer(d_output, act_out)
-        simd_outer_product_acc(&mut shared_grads.down_proj, d_output, act_out, d, d_ffn_shared);
+        simd_outer_product_acc(
+            &mut shared_grads.down_proj,
+            d_output,
+            act_out,
+            d,
+            d_ffn_shared,
+        );
 
         // Backward through SiTU: dL/d(gate_inter), dL/d(up_inter)
         let mut d_gate = vec![0.0f32; d_ffn_shared];
@@ -515,7 +553,13 @@ pub fn moe_backward_token(
         );
 
         // dL/d(gate_proj) += outer(d_gate, h)
-        simd_outer_product_acc(&mut shared_grads.gate_proj, &d_gate, &saved.h, d_ffn_shared, d);
+        simd_outer_product_acc(
+            &mut shared_grads.gate_proj,
+            &d_gate,
+            &saved.h,
+            d_ffn_shared,
+            d,
+        );
         // dL/d(up_proj) += outer(d_up, h)
         simd_outer_product_acc(&mut shared_grads.up_proj, &d_up, &saved.h, d_ffn_shared, d);
 
@@ -605,30 +649,33 @@ fn moe_backward_latent(
     // gamma multiplies ONLY the direct dy term — `g*r*(dy - x*r²*dot/d)`
     // over-applies gamma to the correction term (Issue 693 H2).
     // dL/d(gamma[i]) += dy[i] * x[i] * r
-    let d_latent_prenorm: Vec<f32> = if let Some(norm_w) = weights.routed_expert_norm_weight.as_ref() {
-        let norm_grad = grads.routed_expert_norm_weight.as_mut().unwrap();
-        let r = inv_rms;
-        let r2 = r * r;
-        let inv_d = 1.0 / d_moe as f32;
+    let d_latent_prenorm: Vec<f32> =
+        if let Some(norm_w) = weights.routed_expert_norm_weight.as_ref() {
+            let norm_grad = grads.routed_expert_norm_weight.as_mut().unwrap();
+            let r = inv_rms;
+            let r2 = r * r;
+            let inv_d = 1.0 / d_moe as f32;
 
-        // dot = sum_j(x[j] * g[j] * dy[j])  — note y[j] = x[j]*g[j]*r so x[j]*g[j] = y[j]/r
-        // dot = (1/r) * sum_j(y[j] * dy[j])
-        let dot_ydy: f32 = (0..d_moe).map(|j| latent_postnorm[j] * d_latent_postnorm[j]).sum();
-        let dot = dot_ydy / r; // = sum_j(x[j]*g[j]*dy[j])
+            // dot = sum_j(x[j] * g[j] * dy[j])  — note y[j] = x[j]*g[j]*r so x[j]*g[j] = y[j]/r
+            // dot = (1/r) * sum_j(y[j] * dy[j])
+            let dot_ydy: f32 = (0..d_moe)
+                .map(|j| latent_postnorm[j] * d_latent_postnorm[j])
+                .sum();
+            let dot = dot_ydy / r; // = sum_j(x[j]*g[j]*dy[j])
 
-        let mut dx = vec![0.0f32; d_moe];
-        for i in 0..d_moe {
-            // dL/d(gamma[i]) += x[i] * r * dy[i] = (latent_postnorm[i] / (g[i] * r)) ... simpler:
-            // x[i] = latent_output_prenorm[i]
-            let x_i = saved.latent_output_prenorm[i];
-            norm_grad[i] += x_i * r * d_latent_postnorm[i];
-            // dx[i] = r * (g[i] * dy[i] - x_i * r² * dot / d)
-            dx[i] = r * (norm_w[i] * d_latent_postnorm[i] - x_i * r2 * dot * inv_d);
-        }
-        dx
-    } else {
-        d_latent_postnorm
-    };
+            let mut dx = vec![0.0f32; d_moe];
+            for i in 0..d_moe {
+                // dL/d(gamma[i]) += x[i] * r * dy[i] = (latent_postnorm[i] / (g[i] * r)) ... simpler:
+                // x[i] = latent_output_prenorm[i]
+                let x_i = saved.latent_output_prenorm[i];
+                norm_grad[i] += x_i * r * d_latent_postnorm[i];
+                // dx[i] = r * (g[i] * dy[i] - x_i * r² * dot / d)
+                dx[i] = r * (norm_w[i] * d_latent_postnorm[i] - x_i * r2 * dot * inv_d);
+            }
+            dx
+        } else {
+            d_latent_postnorm
+        };
 
     // ── Steps 6-7 backward: per-expert backward + router weight grad ──
     // latent_output_prenorm = sum_k topk_weights[k] * expert_out_k
@@ -655,8 +702,7 @@ fn moe_backward_latent(
         d_topk_weights[k] = simd_dot_f32(d_latent_prenorm.as_slice(), expert_out_k, d_expert);
 
         // dL/d(expert_out_k) = topk_weights[k] * d_latent_prenorm
-        let d_expert_out: Vec<f32> =
-            (0..d_expert).map(|i| w * d_latent_prenorm[i]).collect();
+        let d_expert_out: Vec<f32> = (0..d_expert).map(|i| w * d_latent_prenorm[i]).collect();
 
         // Backward through expert FFN: out = down_proj · SiTU(gate_proj · h_latent, up_proj · h_latent)
         let act_out = &saved.expert_act_out[k * d_ffn..(k + 1) * d_ffn];
@@ -665,10 +711,22 @@ fn moe_backward_latent(
 
         // dL/d(act_out) = down_proj^T · d_expert_out
         let mut d_act = vec![0.0f32; d_ffn];
-        simd_transpose_matvec_into(&mut d_act, &expert.down_proj, &d_expert_out, d_expert, d_ffn);
+        simd_transpose_matvec_into(
+            &mut d_act,
+            &expert.down_proj,
+            &d_expert_out,
+            d_expert,
+            d_ffn,
+        );
 
         // dL/d(down_proj) += outer(d_expert_out, act_out)
-        simd_outer_product_acc(&mut expert_grad.down_proj, &d_expert_out, act_out, d_expert, d_ffn);
+        simd_outer_product_acc(
+            &mut expert_grad.down_proj,
+            &d_expert_out,
+            act_out,
+            d_expert,
+            d_ffn,
+        );
 
         // Backward through SiTU
         let mut d_gate = vec![0.0f32; d_ffn];
@@ -767,9 +825,21 @@ fn moe_backward_nonlatent(
         let up_inter = &saved.expert_up_inter[k * d_ffn..(k + 1) * d_ffn];
 
         let mut d_act = vec![0.0f32; d_ffn];
-        simd_transpose_matvec_into(&mut d_act, &expert.down_proj, &d_expert_out, d_expert, d_ffn);
+        simd_transpose_matvec_into(
+            &mut d_act,
+            &expert.down_proj,
+            &d_expert_out,
+            d_expert,
+            d_ffn,
+        );
 
-        simd_outer_product_acc(&mut expert_grad.down_proj, &d_expert_out, act_out, d_expert, d_ffn);
+        simd_outer_product_acc(
+            &mut expert_grad.down_proj,
+            &d_expert_out,
+            act_out,
+            d_expert,
+            d_ffn,
+        );
 
         let mut d_gate = vec![0.0f32; d_ffn];
         let mut d_up = vec![0.0f32; d_ffn];
@@ -957,12 +1027,11 @@ fn situ_backward(
             //       = beta * tanh(g/beta) * sigmoid(g) * (1 - tanh²(u/lb))
 
             let gs = 1.0 / (1.0 + (-g).exp()); // sigmoid(g)
-            let gt = (g * inv_beta).tanh();    // tanh(g/beta)
+            let gt = (g * inv_beta).tanh(); // tanh(g/beta)
             let ut = lb * (u * inv_lb).tanh(); // lb * tanh(u/lb)
 
             // dA/dg
-            let d_act_dg = (1.0 - gt * gt) * gs * ut
-                + beta * gt * gs * (1.0 - gs) * ut;
+            let d_act_dg = (1.0 - gt * gt) * gs * ut + beta * gt * gs * (1.0 - gs) * ut;
             // dA/du
             let tanh_u = (u * inv_lb).tanh();
             let d_act_du = beta * gt * gs * (1.0 - tanh_u * tanh_u);
@@ -978,12 +1047,11 @@ fn situ_backward(
 
             // act = beta * tanh(g/beta) * sigmoid(g) * u
             let gs = 1.0 / (1.0 + (-g).exp()); // sigmoid(g)
-            let gt = (g * inv_beta).tanh();    // tanh(g/beta)
+            let gt = (g * inv_beta).tanh(); // tanh(g/beta)
 
             // dA/dg = (1 - tanh²(g/beta)) * sigmoid(g) * u
             //       + beta * tanh(g/beta) * sigmoid(g) * (1 - sigmoid(g)) * u
-            let d_act_dg = (1.0 - gt * gt) * gs * u
-                + beta * gt * gs * (1.0 - gs) * u;
+            let d_act_dg = (1.0 - gt * gt) * gs * u + beta * gt * gs * (1.0 - gs) * u;
             // dA/du = beta * tanh(g/beta) * sigmoid(g)
             let d_act_du = beta * gt * gs;
 

@@ -10,7 +10,7 @@ use crate::transformer::{
     ForwardContext, MultiLayerKVCache, PagedKVCache, RavenKVCache, TransformerWeights, forward,
     forward_paged, forward_raven, raven_readout, raven_update,
 };
-#[cfg(any(feature = "turboquant", feature = "hla_attention"))]
+#[cfg(feature = "turboquant")]
 use crate::types::kv_dim;
 use crate::types::{Config, Rng};
 #[cfg(feature = "turboquant")]
@@ -815,20 +815,14 @@ pub fn bench_pflash_maxsim_block_scoring() -> BenchResult {
     // GOAT re-run measures a different synthetic corpus and the recorded
     // numbers stop being comparable (Issue 809).
     let mut rng = fastrand::Rng::with_seed(809);
-    let mut block_queries: Vec<f32> = (0..block_size * dim)
-        .map(|_| rng.f32() * 0.1)
-        .collect();
+    let mut block_queries: Vec<f32> = (0..block_size * dim).map(|_| rng.f32() * 0.1).collect();
     // Spike in last query block
     for v in block_queries.iter_mut().take(dim) {
         *v = 1.0;
     }
 
     let mut block_keys: Vec<Vec<f32>> = (0..num_blocks)
-        .map(|_| {
-            (0..block_size * dim)
-                .map(|_| rng.f32() * 0.1)
-                .collect()
-        })
+        .map(|_| (0..block_size * dim).map(|_| rng.f32() * 0.1).collect())
         .collect();
 
     // Plant needles: every 20th block has a spike matching the query

@@ -208,7 +208,8 @@ impl FrozenPrunerMemory {
         if self.magic != Self::MAGIC {
             return Err(format!(
                 "FrozenPrunerMemory: bad magic {:?}, expected {:?}",
-                self.magic, Self::MAGIC
+                self.magic,
+                Self::MAGIC
             ));
         }
         if self.version != Self::VERSION {

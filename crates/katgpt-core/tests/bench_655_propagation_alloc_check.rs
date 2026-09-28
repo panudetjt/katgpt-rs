@@ -55,18 +55,37 @@ fn g4_zero_alloc_steady_state_both_blends() {
     for blend in [PropagationBlend::Mass, PropagationBlend::Mean] {
         const CALLS: usize = 100;
 
-let cfg = PropagationConfig { blend, ..Default::default() };
+        let cfg = PropagationConfig {
+            blend,
+            ..Default::default()
+        };
         // Warmup: settle any lazy allocations (SIMD dispatcher, etc.).
         for _ in 0..5 {
             let _ = propagate_selection_to_fixpoint_into(
-                &offsets, &targets, &weights, &seed, N, 32, &cfg, &mut out, &mut scratch,
+                &offsets,
+                &targets,
+                &weights,
+                &seed,
+                N,
+                32,
+                &cfg,
+                &mut out,
+                &mut scratch,
             );
         }
         let alloc_before = ALLOC_COUNT.load(Ordering::Relaxed);
         let dealloc_before = DEALLOC_COUNT.load(Ordering::Relaxed);
         for _ in 0..CALLS {
             let _ = propagate_selection_to_fixpoint_into(
-                &offsets, &targets, &weights, &seed, N, 32, &cfg, &mut out, &mut scratch,
+                &offsets,
+                &targets,
+                &weights,
+                &seed,
+                N,
+                32,
+                &cfg,
+                &mut out,
+                &mut scratch,
             );
         }
         let allocs = ALLOC_COUNT.load(Ordering::Relaxed) - alloc_before;

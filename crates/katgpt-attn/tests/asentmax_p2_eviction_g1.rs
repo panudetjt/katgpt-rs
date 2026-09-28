@@ -112,7 +112,10 @@ fn p2_g1_bit_identity_sweep() {
                 for seed in 0..4_u64 {
                     for (builder, label) in [
                         (row_random as fn(usize, f32, f32, u64) -> Vec<f32>, "random"),
-                        (row_max_at_far as fn(usize, f32, f32, u64) -> Vec<f32>, "max_at_far"),
+                        (
+                            row_max_at_far as fn(usize, f32, f32, u64) -> Vec<f32>,
+                            "max_at_far",
+                        ),
                         (
                             row_tied_clusters as fn(usize, f32, f32, u64) -> Vec<f32>,
                             "tied_clusters",

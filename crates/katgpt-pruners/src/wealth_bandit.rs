@@ -182,9 +182,7 @@ impl<P: ScreeningPruner> WealthBanditPruner<P> {
         self.arms
             .iter()
             .enumerate()
-            .max_by(|(_, a), (_, b)| {
-                katgpt_core::float_order::cmp_for_max_f64(a.wealth, b.wealth)
-            })
+            .max_by(|(_, a), (_, b)| katgpt_core::float_order::cmp_for_max_f64(a.wealth, b.wealth))
             .map_or(0, |(i, _)| i)
     }
 

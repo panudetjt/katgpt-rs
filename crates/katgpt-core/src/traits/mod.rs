@@ -74,7 +74,11 @@ pub trait ConstraintPruner: Send + Sync {
     /// Returns 1.0 for valid, 0.0 for invalid by default.
     /// Override for soft scoring (ManifoldE point-to-manifold, Plan 234).
     fn manifold_score(&self, depth: usize, token_idx: usize, parent_tokens: &[usize]) -> f32 {
-        if self.is_valid(depth, token_idx, parent_tokens) { 1.0 } else { 0.0 }
+        if self.is_valid(depth, token_idx, parent_tokens) {
+            1.0
+        } else {
+            0.0
+        }
     }
 
     /// Returns the constraint as a half-space (normal vector, threshold) if available.
@@ -103,7 +107,11 @@ pub trait ConstraintPruner: Send + Sync {
     /// - Range `[0.0, 1.0]` — callers clamp defensively but impls should not rely on it.
     #[inline]
     fn reject_confidence(&self, depth: usize, token_idx: usize, parent_tokens: &[usize]) -> f32 {
-        if self.is_valid(depth, token_idx, parent_tokens) { 0.0 } else { 1.0 }
+        if self.is_valid(depth, token_idx, parent_tokens) {
+            0.0
+        } else {
+            1.0
+        }
     }
 
     /// Batch reject-confidence mirroring [`batch_is_valid`](Self::batch_is_valid)
@@ -181,13 +189,7 @@ pub trait ConstraintPruner: Send + Sync {
     /// the whole tree and reports it as a clean result, which is the silent
     /// direction. Gate every call on `legal_degree(..).is_some()`.
     #[inline]
-    fn for_each_legal(
-        &self,
-        _depth: usize,
-        _parent_tokens: &[usize],
-        _f: &mut dyn FnMut(usize),
-    ) {
-    }
+    fn for_each_legal(&self, _depth: usize, _parent_tokens: &[usize], _f: &mut dyn FnMut(usize)) {}
 }
 
 /// No-op pruner: allows all tokens (original DDTree behavior).
@@ -418,7 +420,11 @@ pub struct BinaryScreeningPruner<P>(pub P);
 impl<P: ConstraintPruner + Send + Sync> ScreeningPruner for BinaryScreeningPruner<P> {
     #[inline]
     fn relevance(&self, depth: usize, token_idx: usize, parent_tokens: &[usize]) -> f32 {
-        if self.0.is_valid(depth, token_idx, parent_tokens) { 1.0 } else { 0.0 }
+        if self.0.is_valid(depth, token_idx, parent_tokens) {
+            1.0
+        } else {
+            0.0
+        }
     }
 }
 
@@ -726,13 +732,17 @@ impl ActionSpaceLog {
 
 impl fmt::Display for ActionSpaceLog {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.entries.is_empty() { write!(f, "ActionSpaceLog(empty)") } else { write!(
+        if self.entries.is_empty() {
+            write!(f, "ActionSpaceLog(empty)")
+        } else {
+            write!(
                 f,
                 "ActionSpaceLog(entries={}, avg={:.1}, peak={})",
                 self.entries.len(),
                 self.avg_action_space(),
                 self.peak_action_space()
-            ) }
+            )
+        }
     }
 }
 
@@ -879,7 +889,13 @@ pub trait AllGoalsUpdate {
             .zip(next_q_max.iter())
             .zip(next_lambda_return.iter())
             .zip(done.iter())
-            .map(|(((&r, &q_max), &g_next), &d)| if d { r } else { r + gamma * (lambda * g_next + (1.0 - lambda) * q_max) })
+            .map(|(((&r, &q_max), &g_next), &d)| {
+                if d {
+                    r
+                } else {
+                    r + gamma * (lambda * g_next + (1.0 - lambda) * q_max)
+                }
+            })
             .collect()
     }
 }

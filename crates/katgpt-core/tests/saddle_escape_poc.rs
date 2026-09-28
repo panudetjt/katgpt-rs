@@ -249,7 +249,10 @@ fn run_toy_a(x0: f32, who: Competitor) -> RunOutcome {
                 state_bytes: &sb,
             }) {
                 GateDecision::Continue => Step::Cont,
-                GateDecision::Kick { dir_seed, eps } => Step::Kick { seed: dir_seed, eps },
+                GateDecision::Kick { dir_seed, eps } => Step::Kick {
+                    seed: dir_seed,
+                    eps,
+                },
                 GateDecision::Halt(HaltOutcome::Trapped { .. }) => Step::Halt { trapped: true },
                 GateDecision::Halt(_) => Step::Halt { trapped: false },
             },
@@ -268,11 +271,7 @@ fn run_toy_a(x0: f32, who: Competitor) -> RunOutcome {
         match step_ctl {
             Step::Cont => {
                 if who == Competitor::AlwaysOnNoise {
-                    apply_kick(
-                        std::slice::from_mut(&mut x),
-                        seed32(0xA11CE, i as u64),
-                        1.0,
-                    );
+                    apply_kick(std::slice::from_mut(&mut x), seed32(0xA11CE, i as u64), 1.0);
                     perturbations += 1;
                 }
             }
@@ -400,7 +399,10 @@ fn run_toy_b(x0: [f32; 2], who: Competitor) -> RunOutcome {
                 state_bytes: &sb,
             }) {
                 GateDecision::Continue => Step::Cont,
-                GateDecision::Kick { dir_seed, eps } => Step::Kick { seed: dir_seed, eps },
+                GateDecision::Kick { dir_seed, eps } => Step::Kick {
+                    seed: dir_seed,
+                    eps,
+                },
                 GateDecision::Halt(HaltOutcome::Trapped { .. }) => Step::Halt { trapped: true },
                 GateDecision::Halt(_) => Step::Halt { trapped: false },
             },

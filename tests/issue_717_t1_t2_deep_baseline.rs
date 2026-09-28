@@ -146,7 +146,11 @@ fn t1_deep_run_harness_t16_to_t1024() {
             run_deep(&config, &weights, &gate, &sdpa, 0, Some(&mut run));
 
         // Structural invariants at EVERY depth:
-        assert_eq!(stats.snapshots_taken, t / every, "T={t}: snapshot count mismatch");
+        assert_eq!(
+            stats.snapshots_taken,
+            t / every,
+            "T={t}: snapshot count mismatch"
+        );
         assert!(
             stats.state_non_finite_at.is_none(),
             "T={t}: carried state went non-finite at snapshot {:?}",
@@ -172,7 +176,9 @@ fn t1_deep_run_harness_t16_to_t1024() {
             n_last / n_first
         );
     }
-    println!("[T1] ✅ harness drives the full ladder; state + tripwire logits finite at every depth");
+    println!(
+        "[T1] ✅ harness drives the full ladder; state + tripwire logits finite at every depth"
+    );
 }
 
 // ── T2: baseline verdict — consistency-vs-T + norm-vs-T ─────────────────
@@ -247,7 +253,11 @@ fn f32_state_contract() {
     run.capture_states = true;
     let (_logits, _norm, stats) = run_deep(&config, &weights, &gate, &sdpa, 0, Some(&mut run));
 
-    assert_eq!(stats.state_snapshots.len(), 8, "expected 8 snapshots at T=256/32");
+    assert_eq!(
+        stats.state_snapshots.len(),
+        8,
+        "expected 8 snapshots at T=256/32"
+    );
     let all: Vec<f32> = stats.state_snapshots.concat();
     assert!(!all.is_empty(), "no state captured");
 

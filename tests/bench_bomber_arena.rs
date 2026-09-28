@@ -645,7 +645,8 @@ fn test_scoreboard_resource_updates_during_game() {
 
         for _ in 0..TICK_LIMIT {
             let tick_events: Vec<GameEvent> = {
-                let mut event_reader = world.resource_mut::<bevy_ecs::message::Messages<GameEvent>>();
+                let mut event_reader =
+                    world.resource_mut::<bevy_ecs::message::Messages<GameEvent>>();
                 event_reader.drain().collect()
             };
 

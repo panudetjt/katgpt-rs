@@ -1140,14 +1140,25 @@ mod tests {
             // NaN floor, cap below floor, cap > 1, negative floor — all
             // fall back to the DEFAULT fractions.
             for h in [
-                RenoiseCeHorizon { floor_frac: f32::NAN, cap_frac: 0.98 },
-                RenoiseCeHorizon { floor_frac: 0.5, cap_frac: 0.1 },
-                RenoiseCeHorizon { floor_frac: 0.02, cap_frac: 1.5 },
-                RenoiseCeHorizon { floor_frac: -0.1, cap_frac: 0.98 },
+                RenoiseCeHorizon {
+                    floor_frac: f32::NAN,
+                    cap_frac: 0.98,
+                },
+                RenoiseCeHorizon {
+                    floor_frac: 0.5,
+                    cap_frac: 0.1,
+                },
+                RenoiseCeHorizon {
+                    floor_frac: 0.02,
+                    cap_frac: 1.5,
+                },
+                RenoiseCeHorizon {
+                    floor_frac: -0.1,
+                    cap_frac: 0.98,
+                },
             ] {
                 let op = RecordingProbe::new();
-                let _ =
-                    renoise_ce_score_horizon(&op, &candidate, &cfg, &h, &mut Rng::with_seed(3));
+                let _ = renoise_ce_score_horizon(&op, &candidate, &cfg, &h, &mut Rng::with_seed(3));
                 let levels = op.take_levels();
                 assert!(!levels.is_empty());
                 let (t_min, t_max) = (0.02 * 0.40_f32, 0.98 * 0.40_f32);
@@ -1221,7 +1232,11 @@ mod tests {
                 }
                 fn perturb(&self, _s: &mut Self::State, _level: f32, _rng: &mut Rng) {}
                 fn drift_ce(c: &Self::State, r: &Self::State) -> f32 {
-                    c.iter().zip(r.iter()).map(|(a, b)| (a - b) * (a - b)).sum::<f32>() / 8.0
+                    c.iter()
+                        .zip(r.iter())
+                        .map(|(a, b)| (a - b) * (a - b))
+                        .sum::<f32>()
+                        / 8.0
                 }
             }
             let cand = [0.0f32; 8];
@@ -1258,7 +1273,11 @@ mod tests {
                     }
                 }
                 fn drift_ce(c: &Self::State, r: &Self::State) -> f32 {
-                    c.iter().zip(r.iter()).map(|(a, b)| (a - b) * (a - b)).sum::<f32>() / 8.0
+                    c.iter()
+                        .zip(r.iter())
+                        .map(|(a, b)| (a - b) * (a - b))
+                        .sum::<f32>()
+                        / 8.0
                 }
             }
             let candidate = [0.25f32; 8];
@@ -1327,7 +1346,11 @@ mod tests {
                 }
             }
             fn drift_ce(c: &Self::State, r: &Self::State) -> f32 {
-                c.iter().zip(r.iter()).map(|(a, b)| (a - b) * (a - b)).sum::<f32>() / 8.0
+                c.iter()
+                    .zip(r.iter())
+                    .map(|(a, b)| (a - b) * (a - b))
+                    .sum::<f32>()
+                    / 8.0
             }
         }
 
@@ -1390,14 +1413,19 @@ mod tests {
                 }
                 fn perturb(&self, _s: &mut Self::State, _level: f32, _rng: &mut Rng) {}
                 fn drift_ce(c: &Self::State, r: &Self::State) -> f32 {
-                    c.iter().zip(r.iter()).map(|(a, b)| (a - b) * (a - b)).sum::<f32>() / 8.0
+                    c.iter()
+                        .zip(r.iter())
+                        .map(|(a, b)| (a - b) * (a - b))
+                        .sum::<f32>()
+                        / 8.0
                 }
             }
             let cand = [0.0f32; 8];
             let target = [1.0f32; 8];
             let cfg = s_config();
             let inc = renoise_ce_score(&OffsetProbe, &cand, &cfg, &mut Rng::with_seed(2));
-            let sur = renoise_ce_surprise(&OffsetProbe, &target, &cand, &cfg, &mut Rng::with_seed(2));
+            let sur =
+                renoise_ce_surprise(&OffsetProbe, &target, &cand, &cfg, &mut Rng::with_seed(2));
             assert!((inc.drift - 0.04).abs() < 1e-6, "incumbent {}", inc.drift);
             assert!((sur.drift - 0.64).abs() < 1e-6, "surprise {}", sur.drift);
         }
@@ -1422,7 +1450,8 @@ mod tests {
             for k in [0u8, 200] {
                 let mut cfg = s_config();
                 cfg.k_draws = k;
-                let s = renoise_ce_surprise(&TwoBasinProbe, &target, &x, &cfg, &mut Rng::with_seed(4));
+                let s =
+                    renoise_ce_surprise(&TwoBasinProbe, &target, &x, &cfg, &mut Rng::with_seed(4));
                 let used = s.per_draw.iter().filter(|d| **d != 0.0).count().max(1);
                 assert!(used <= 8, "k={k} must clamp to 8");
                 if k == 0 {
@@ -1459,7 +1488,11 @@ mod tests {
                 }
                 fn perturb(&self, _s: &mut Self::State, _level: f32, _rng: &mut Rng) {}
                 fn drift_ce(c: &Self::State, r: &Self::State) -> f32 {
-                    c.iter().zip(r.iter()).map(|(a, b)| (a - b) * (a - b)).sum::<f32>() / 8.0
+                    c.iter()
+                        .zip(r.iter())
+                        .map(|(a, b)| (a - b) * (a - b))
+                        .sum::<f32>()
+                        / 8.0
                 }
             }
             let cand = [0.0f32; 8];
@@ -1467,7 +1500,8 @@ mod tests {
             for (tau, want) in [(0.65, true), (0.64, false)] {
                 let mut cfg = s_config();
                 cfg.tau = tau;
-                let s = renoise_ce_surprise(&OffsetProbe, &target, &cand, &cfg, &mut Rng::with_seed(2));
+                let s =
+                    renoise_ce_surprise(&OffsetProbe, &target, &cand, &cfg, &mut Rng::with_seed(2));
                 assert_eq!(s.accepted, want, "tau={tau}");
                 assert!((s.drift - 0.64).abs() < 1e-6, "drift={}", s.drift);
             }

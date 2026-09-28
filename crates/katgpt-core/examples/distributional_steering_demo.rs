@@ -59,7 +59,11 @@ fn main() {
     let mut cluster_of = [0usize; N];
     for i in 0..N {
         let a = rng.next_uniform() < BASE_W_A;
-        let (cx, cy) = if a { (CENTER_A[0], CENTER_A[1]) } else { (CENTER_B[0], CENTER_B[1]) };
+        let (cx, cy) = if a {
+            (CENTER_A[0], CENTER_A[1])
+        } else {
+            (CENTER_B[0], CENTER_B[1])
+        };
         cluster_of[i] = if a { 0 } else { 1 };
         states[i * DIM] = (cx + 0.45 * rng.next_normal()) as f32;
         states[i * DIM + 1] = (cy + 0.45 * rng.next_normal()) as f32;
@@ -68,7 +72,11 @@ fn main() {
     let mut target = vec![0.0f32; 256 * DIM];
     for t in target.chunks_mut(DIM) {
         let a = rng.next_uniform() < TARGET_W_A;
-        let (cx, cy) = if a { (CENTER_A[0], CENTER_A[1]) } else { (CENTER_B[0], CENTER_B[1]) };
+        let (cx, cy) = if a {
+            (CENTER_A[0], CENTER_A[1])
+        } else {
+            (CENTER_B[0], CENTER_B[1])
+        };
         t[0] = (cx + 0.45 * rng.next_normal()) as f32;
         t[1] = (cy + 0.45 * rng.next_normal()) as f32;
     }
@@ -92,7 +100,10 @@ fn main() {
         let mut tt = 0.0;
         for i in 0..256 {
             for j in 0..256 {
-                tt += kf(&target[i * DIM..(i + 1) * DIM], &target[j * DIM..(j + 1) * DIM]);
+                tt += kf(
+                    &target[i * DIM..(i + 1) * DIM],
+                    &target[j * DIM..(j + 1) * DIM],
+                );
             }
         }
         tt /= (256 * 256) as f64;
@@ -140,7 +151,12 @@ fn main() {
 
     // ── FK+Picard steering loop (sampling-consumer protocol) ─────────────
     let damping = (2.0 / LAM as f64).min(1.0) as f32;
-    let stepper = FkStepper { steer_scale: LAM, k_fp: 8, damping, clip_log_delta: 1.0 };
+    let stepper = FkStepper {
+        steer_scale: LAM,
+        k_fp: 8,
+        damping,
+        clip_log_delta: 1.0,
+    };
     let mut scratch = SteeringScratch::new(N, DIM);
     let mut log_w = vec![0.0f32; N];
     let mut st = states.clone();
@@ -167,7 +183,10 @@ fn main() {
         for &l in &log_w {
             sum += ((l - mx) as f64).exp();
         }
-        let w: Vec<f32> = log_w.iter().map(|&l| (((l - mx) as f64).exp() / sum) as f32).collect();
+        let w: Vec<f32> = log_w
+            .iter()
+            .map(|&l| (((l - mx) as f64).exp() / sum) as f32)
+            .collect();
         let ess = 1.0 / w.iter().map(|x| (*x as f64) * (*x as f64)).sum::<f64>();
         if ess < 0.5 * N as f64 {
             let u = rng.next_uniform() as f32;
@@ -192,14 +211,20 @@ fn main() {
     for &l in &log_w {
         sum += ((l - mx) as f64).exp();
     }
-    let w: Vec<f32> = log_w.iter().map(|&l| (((l - mx) as f64).exp() / sum) as f32).collect();
+    let w: Vec<f32> = log_w
+        .iter()
+        .map(|&l| (((l - mx) as f64).exp() / sum) as f32)
+        .collect();
     let ess = 1.0 / w.iter().map(|x| (*x as f64) * (*x as f64)).sum::<f64>();
 
     let mmd_after = mmd_sq(&st);
     let (wa, wb) = cluster_share(&st, &w);
     let mut top: Vec<f32> = w.clone();
     top.sort_by(|a, b| b.total_cmp(a));
-    println!("AFTER : MMD²={mmd_after:.5}  ({:.1}% of before)", 100.0 * mmd_after / mmd_before);
+    println!(
+        "AFTER : MMD²={mmd_after:.5}  ({:.1}% of before)",
+        100.0 * mmd_after / mmd_before
+    );
     println!(
         "         weighted cluster shares A/B = {wa:.3}/{wb:.3}  (target {}/{})",
         TARGET_W_A,

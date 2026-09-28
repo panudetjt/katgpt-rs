@@ -108,8 +108,20 @@ mod tests {
         let mut b = evidence_state();
         let mut sa = GuidedWidthScratch::with_capacity(8, BELIEF_DIM);
         let mut sb = GuidedWidthScratch::with_capacity(8, BELIEF_DIM);
-        let ra = guided_evolve_belief(&mut a, &cfg, Hooks::default(), &mut Transversal::default(), &mut sa);
-        let rb = guided_evolve_belief(&mut b, &cfg, Hooks::default(), &mut Transversal::default(), &mut sb);
+        let ra = guided_evolve_belief(
+            &mut a,
+            &cfg,
+            Hooks::default(),
+            &mut Transversal::default(),
+            &mut sa,
+        );
+        let rb = guided_evolve_belief(
+            &mut b,
+            &cfg,
+            Hooks::default(),
+            &mut Transversal::default(),
+            &mut sb,
+        );
         assert_eq!(ra, rb);
         assert_eq!(a.belief().map(f32::to_bits), b.belief().map(f32::to_bits));
         assert_eq!(ra.step_evals, 8 * 12);

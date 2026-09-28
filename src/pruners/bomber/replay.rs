@@ -67,11 +67,15 @@ impl ReplaySample {
         let py = player_pos[1] as i32;
 
         let danger_level = Self::compute_danger_level(grid, &bombs, px, py);
-        let nearest_opponent_dist = if opponent_positions.is_empty() { 255 } else { opponent_positions
+        let nearest_opponent_dist = if opponent_positions.is_empty() {
+            255
+        } else {
+            opponent_positions
                 .iter()
                 .map(|&(ox, oy)| (px - ox).unsigned_abs() + (py - oy).unsigned_abs())
                 .min()
-                .unwrap_or(255) as u8 };
+                .unwrap_or(255) as u8
+        };
         let escape_routes = Self::count_escape_routes(grid, px, py);
         let bomb_count = bombs.len();
 

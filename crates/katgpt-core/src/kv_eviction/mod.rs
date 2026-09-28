@@ -183,6 +183,31 @@ impl UsageScoreTable {
         out.clear();
         out.extend(self.rows[..self.len].iter().map(|r| score(r, tick)));
     }
+
+    /// Keep the rows named by `keep` (ascending indices into the live
+    /// prefix), in order, compacting the table in place: row `keep[j]`
+    /// becomes row `j`, and `len` becomes `keep.len()`. The KV-cache
+    /// compaction twin — when the caller gathers retained cache slots to the
+    /// front, the per-slot score rows must gather the same way or the side
+    /// table desynchronizes from the cache it indexes. `queries`-style
+    /// global state does not exist here; `UsageRow.admission_tick` travels
+    /// with its row, so age semantics are preserved exactly.
+    ///
+    /// O(len), zero allocation, in place (the write index never passes the
+    /// read index). `keep` must be ascending with every index `< len`;
+    /// violations are a caller bug (`debug_assert!`). Rows past the new
+    /// `len` hold moved-out data and are only ever read after a
+    /// [`Self::reset_row`] re-admission, which overwrites them.
+    pub fn gather_rows(&mut self, keep: &[usize]) {
+        for (j, &r) in keep.iter().enumerate() {
+            debug_assert!(r < self.len, "gather index {r} out of live prefix");
+            debug_assert!(j == 0 || keep[j - 1] < r, "gather indices must ascend");
+            if r != j {
+                self.rows[j] = self.rows[r];
+            }
+        }
+        self.len = keep.len();
+    }
 }
 
 /// Lowest-`k` eviction selection among unpinned rows, reusing `out`.
@@ -299,12 +324,12 @@ impl RunawayStats {
                 (ratios[n / 2 - 1] + ratios[n / 2]) / 2.0
             }
         };
-        let p_cap = if n == 0 { 0.0 } else { at_cap as f32 / n as f32 };
-        Self {
-            r_median,
-            p_cap,
-            n,
-        }
+        let p_cap = if n == 0 {
+            0.0
+        } else {
+            at_cap as f32 / n as f32
+        };
+        Self { r_median, p_cap, n }
     }
 }
 
@@ -413,6 +438,31 @@ mod tests {
         assert_eq!(score(&row, 500), 3.0);
     }
 
+    #[test]
+    fn gather_rows_moves_rows_with_their_ticks() {
+        // Distinct histories; keep rows 1 and 3 and verify each survivor
+        // carries its exact prior (cum_mass, admission_tick) at its NEW
+        // index, so age semantics survive the compaction.
+        let mut t = UsageScoreTable::with_capacity(5);
+        for i in 0..5 {
+            t.reset_row(i, 100 + i as u64);
+        }
+        observe(t.row_mut(1), 0.25, 200);
+        observe(t.row_mut(1), 0.25, 200);
+        observe(t.row_mut(3), 0.5, 200);
+        t.gather_rows(&[1, 3]);
+        assert_eq!(t.len(), 2);
+        assert_eq!(t.row(0).cum_mass, 0.5);
+        assert_eq!(t.row(0).admission_tick, 101);
+        assert_eq!(t.row(1).cum_mass, 0.5);
+        assert_eq!(t.row(1).admission_tick, 103);
+        // Scoring after the gather reads the moved rows: age is REAL age
+        // (tick 204 minus the moved admission ticks 101 / 103).
+        let mut out = Vec::new();
+        t.scores(204, &mut out);
+        assert_eq!(out, vec![0.5 / 103.0, 0.5 / 101.0]);
+    }
+
     // ── T1.1 table shape ──────────────────────────────────────────────
 
     #[test]
@@ -515,7 +565,10 @@ mod tests {
         let s0 = score(&row, 1);
         let s1 = score(&row, 2);
         let s2 = score(&row, 10);
-        assert!(s0 > s1 && s1 > s2, "score must decay with age: {s0} {s1} {s2}");
+        assert!(
+            s0 > s1 && s1 > s2,
+            "score must decay with age: {s0} {s1} {s2}"
+        );
     }
 
     #[test]
@@ -536,9 +589,7 @@ mod tests {
         // Sanity: at k = n the selection is the full unpinned set in
         // eviction-priority order (score asc, ties ascending index).
         let mut expected: Vec<usize> = (0..32).filter(|&i| !pinned[i]).collect();
-        expected.sort_by(|&a, &b| {
-            float_order::cmp_for_min(scores[a], scores[b]).then(a.cmp(&b))
-        });
+        expected.sort_by(|&a, &b| float_order::cmp_for_min(scores[a], scores[b]).then(a.cmp(&b)));
         assert_eq!(select_evict(&scores, 32, &pinned), expected);
     }
 
@@ -694,30 +745,63 @@ mod tests {
     fn null_bar_strictly_requires_recall_beating_the_pinned_null() {
         // Equal recall: the null wins on cost — the tie hands the slot to
         // the null, it does not split it.
-        let policy = PolicyControl { recall: 0.5, keystone_survival: 1.0 };
-        let null = PolicyControl { recall: 0.5, keystone_survival: 1.0 };
+        let policy = PolicyControl {
+            recall: 0.5,
+            keystone_survival: 1.0,
+        };
+        let null = PolicyControl {
+            recall: 0.5,
+            keystone_survival: 1.0,
+        };
         assert!(
             !beats_random_prompt_pin(&policy, &null),
             "a tie must NOT keep a scored policy's slot (the null is cheaper)"
         );
         // Strictly better recall passes.
-        let better = PolicyControl { recall: 0.5 + 1e-6, keystone_survival: 1.0 };
+        let better = PolicyControl {
+            recall: 0.5 + 1e-6,
+            keystone_survival: 1.0,
+        };
         assert!(beats_random_prompt_pin(&better, &null));
         // Strictly worse recall fails.
-        let worse = PolicyControl { recall: 0.25, keystone_survival: 1.0 };
+        let worse = PolicyControl {
+            recall: 0.25,
+            keystone_survival: 1.0,
+        };
         assert!(!beats_random_prompt_pin(&worse, &null));
     }
 
     #[test]
     fn null_bar_fails_closed_on_non_finite_recall() {
-        let null = PolicyControl { recall: 1.0, keystone_survival: 1.0 };
-        let nan_policy = PolicyControl { recall: f32::NAN, keystone_survival: 1.0 };
-        assert!(!beats_random_prompt_pin(&nan_policy, &null), "NaN is not a pass");
-        let inf_policy = PolicyControl { recall: f32::INFINITY, keystone_survival: 1.0 };
+        let null = PolicyControl {
+            recall: 1.0,
+            keystone_survival: 1.0,
+        };
+        let nan_policy = PolicyControl {
+            recall: f32::NAN,
+            keystone_survival: 1.0,
+        };
+        assert!(
+            !beats_random_prompt_pin(&nan_policy, &null),
+            "NaN is not a pass"
+        );
+        let inf_policy = PolicyControl {
+            recall: f32::INFINITY,
+            keystone_survival: 1.0,
+        };
         assert!(!beats_random_prompt_pin(&inf_policy, &null));
-        let nan_null = PolicyControl { recall: f32::NAN, keystone_survival: 1.0 };
-        let policy = PolicyControl { recall: 0.9, keystone_survival: 1.0 };
-        assert!(!beats_random_prompt_pin(&policy, &nan_null), "unfair null is not a pass");
+        let nan_null = PolicyControl {
+            recall: f32::NAN,
+            keystone_survival: 1.0,
+        };
+        let policy = PolicyControl {
+            recall: 0.9,
+            keystone_survival: 1.0,
+        };
+        assert!(
+            !beats_random_prompt_pin(&policy, &nan_null),
+            "unfair null is not a pass"
+        );
     }
 
     #[test]
@@ -725,8 +809,14 @@ mod tests {
         // A policy that loses recall to the pinned null on a real-shaped
         // comparison (mass_age 0.5 vs pinned-random 1.0 on this fixture's
         // cap=32 regime) fails even with perfect keystone survival.
-        let policy = PolicyControl { recall: 0.5, keystone_survival: 1.0 };
-        let null = PolicyControl { recall: 1.0, keystone_survival: 1.0 };
+        let policy = PolicyControl {
+            recall: 0.5,
+            keystone_survival: 1.0,
+        };
+        let null = PolicyControl {
+            recall: 1.0,
+            keystone_survival: 1.0,
+        };
         assert!(!beats_random_prompt_pin(&policy, &null));
     }
 

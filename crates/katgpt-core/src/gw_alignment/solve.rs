@@ -1,7 +1,7 @@
 //! Solver core for [`crate::gw_alignment`]: validation, the projected
 //! product-graph power iteration, and the sum-exact loss evaluation.
 
-use super::{GwError, GwScratch, GW_ITERS, GW_MAX, GW_TAIL_PASSES};
+use super::{GW_ITERS, GW_MAX, GW_TAIL_PASSES, GwError, GwScratch};
 
 /// Validated problem shape (n, m already checked against [`GW_MAX`]).
 pub(crate) struct SolveCore {
@@ -142,7 +142,8 @@ impl SolveCore {
             // silently collapses the two indices into one (this exact bug
             // shipped briefly and halved the greedy init's quality).
             let inv_nm = 1.0 / ((n * m) as f64);
-            #[allow(clippy::needless_range_loop)] // dense 4-array index loops; the iterator form collapsed two independent indices (see comment above)
+            #[allow(clippy::needless_range_loop)]
+            // dense 4-array index loops; the iterator form collapsed two independent indices (see comment above)
             for i in 0..n {
                 for k in 0..m {
                     let mut acc = 0.0f64;
@@ -190,8 +191,7 @@ impl SolveCore {
                     let mut inner = 0.0f64;
                     for ii in 0..nn {
                         for jj in 0..nn {
-                            inner +=
-                                f64::from(a[ii][jj]) * f64::from(b[perm[ii]][perm[jj]]);
+                            inner += f64::from(a[ii][jj]) * f64::from(b[perm[ii]][perm[jj]]);
                         }
                     }
                     let f = base - 2.0 * inner / ((nn * nn) as f64);
@@ -295,10 +295,10 @@ impl SolveCore {
                             if kj == usize::MAX || kj == ki {
                                 continue;
                             }
-                            let cur = f64::from(scratch.prod[i][ki])
-                                + f64::from(scratch.prod[j][kj]);
-                            let swapped = f64::from(scratch.prod[i][kj])
-                                + f64::from(scratch.prod[j][ki]);
+                            let cur =
+                                f64::from(scratch.prod[i][ki]) + f64::from(scratch.prod[j][kj]);
+                            let swapped =
+                                f64::from(scratch.prod[i][kj]) + f64::from(scratch.prod[j][ki]);
                             if swapped < cur {
                                 let mi = scratch.t[i][ki];
                                 let mj = scratch.t[j][kj];
@@ -399,8 +399,7 @@ impl SolveCore {
             if s.is_finite() && s > f64::MIN_POSITIVE {
                 for i in 0..n {
                     for k in 0..m {
-                        let v =
-                            f64::from(scratch.t[i][k]) * f64::from(scratch.prod[i][k]) / s;
+                        let v = f64::from(scratch.t[i][k]) * f64::from(scratch.prod[i][k]) / s;
                         scratch.t[i][k] = v as f32;
                     }
                 }

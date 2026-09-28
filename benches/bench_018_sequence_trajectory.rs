@@ -47,10 +47,8 @@ use katgpt_core::swe_trajectory_freeze::GeometrySummaryEncoder;
 use katgpt_rs::kimi_k3::decoder_layer::{
     KimiAttentionWeights, KimiDecoderLayerWeights, KimiFfnWeights,
 };
-use katgpt_rs::kimi_k3::loader::{load_kimi_k3, KimiK3ModelWeights};
-use katgpt_rs::kimi_k3::model::{
-    kimi_k3_forward_token_traced, KimiK3ModelConfig, KimiK3Runtime,
-};
+use katgpt_rs::kimi_k3::loader::{KimiK3ModelWeights, load_kimi_k3};
+use katgpt_rs::kimi_k3::model::{KimiK3ModelConfig, KimiK3Runtime, kimi_k3_forward_token_traced};
 use katgpt_transformer::attn_res::AttnResWeights;
 use katgpt_transformer::moe::{MoeWeights, SwiGluExpertWeights};
 
@@ -246,13 +244,8 @@ impl SeqExtractScratch {
 
         for &tok in tokens {
             self.depth_traj.clear();
-            let final_hidden = kimi_k3_forward_token_traced(
-                config,
-                weights,
-                runtime,
-                tok,
-                &mut self.depth_traj,
-            );
+            let final_hidden =
+                kimi_k3_forward_token_traced(config, weights, runtime, tok, &mut self.depth_traj);
             // Capture the final hidden state (after all layers + norm).
             self.seq_states.push(final_hidden.to_vec());
         }
@@ -311,13 +304,19 @@ fn encode_seq_disp_stats(states: &[Vec<f32>], out: &mut [f32; D_MAX]) {
 
     // Aggregate stats.
     let mean_norm = disp_norms.iter().sum::<f32>() / n_disps as f32;
-    let var_norm = disp_norms.iter().map(|x| (x - mean_norm).powi(2)).sum::<f32>()
+    let var_norm = disp_norms
+        .iter()
+        .map(|x| (x - mean_norm).powi(2))
+        .sum::<f32>()
         / n_disps as f32;
     let std_norm = var_norm.sqrt();
     let max_norm = disp_norms.iter().cloned().fold(0.0_f32, f32::max);
 
     let mean_disp = disp_means.iter().sum::<f32>() / n_disps as f32;
-    let var_disp = disp_means.iter().map(|x| (x - mean_disp).powi(2)).sum::<f32>()
+    let var_disp = disp_means
+        .iter()
+        .map(|x| (x - mean_disp).powi(2))
+        .sum::<f32>()
         / n_disps as f32;
     let std_disp = var_disp.sqrt();
 
@@ -882,8 +881,10 @@ fn main() {
     let d_model = config.hidden_size;
     println!("Config: D_model={d_model}, layers={}", config.num_layers);
     println!("Sequence length: {SEQ_LEN} tokens per prompt (KV cache grows)");
-    println!("Prompts: {N_PROMPTS} ({N_TRAIN} train + {} test per model)",
-        N_PROMPTS - N_TRAIN);
+    println!(
+        "Prompts: {N_PROMPTS} ({N_TRAIN} train + {} test per model)",
+        N_PROMPTS - N_TRAIN
+    );
     println!("Sigma levels: {SIGMA_LEVELS:?}");
     println!();
     println!("KEY DIFFERENCE from bench_012-017:");
@@ -921,7 +922,8 @@ fn main() {
         .map(|p| {
             (0..SEQ_LEN)
                 .map(|i| {
-                    ((p as u32).wrapping_mul(31)
+                    ((p as u32)
+                        .wrapping_mul(31)
                         .wrapping_add((i as u32).wrapping_mul(7))
                         .wrapping_add(3))
                         % (BENCH_VOCAB as u32)
@@ -945,7 +947,9 @@ fn main() {
     ];
 
     // ── Cache Model A sequence trajectories (extracted once, reused) ──────
-    println!("Extracting Model A sequence trajectories ({N_PROMPTS} prompts × {SEQ_LEN} tokens) ...");
+    println!(
+        "Extracting Model A sequence trajectories ({N_PROMPTS} prompts × {SEQ_LEN} tokens) ..."
+    );
     let t0 = std::time::Instant::now();
     let mut traj_a: Vec<Vec<Vec<f32>>> = Vec::with_capacity(N_PROMPTS);
     for prompt in &prompts {
@@ -975,7 +979,15 @@ fn main() {
         println!("── σ = {sigma} ──────────────────────────────────────────");
         println!(
             "  {:>14}  {:>3}  {:>9}  {:>9}  {:>9}  {:>6}  {:>9}  {:>9}  {:>8}",
-            "encoder", "d", "Euclidean", "DiagMaha", "FullMaha", "λ_LW", "d_Euclid", "d_Maha", "BayesOpt"
+            "encoder",
+            "d",
+            "Euclidean",
+            "DiagMaha",
+            "FullMaha",
+            "λ_LW",
+            "d_Euclid",
+            "d_Maha",
+            "BayesOpt"
         );
         println!("  {}", "-".repeat(100));
 
@@ -985,8 +997,20 @@ fn main() {
             let mut summaries = [[[0.0_f32; D_MAX]; N_PROMPTS]; N_CLASSES];
 
             for (prompt_idx, _) in prompts.iter().enumerate() {
-                encode(ek, &traj_a[prompt_idx], &mut scratch, &geom_encoder, &mut summaries[0][prompt_idx]);
-                encode(ek, &traj_b[prompt_idx], &mut scratch, &geom_encoder, &mut summaries[1][prompt_idx]);
+                encode(
+                    ek,
+                    &traj_a[prompt_idx],
+                    &mut scratch,
+                    &geom_encoder,
+                    &mut summaries[0][prompt_idx],
+                );
+                encode(
+                    ek,
+                    &traj_b[prompt_idx],
+                    &mut scratch,
+                    &geom_encoder,
+                    &mut summaries[1][prompt_idx],
+                );
             }
 
             let result = test_classifiers(&summaries, ek, sigma);
@@ -1017,7 +1041,9 @@ fn main() {
         let best = all_results
             .iter()
             .filter(|r| r.encoder == ek && r.sigma > 0.0)
-            .max_by(|a, b| katgpt_core::float_order::cmp_for_max(a.mahalanobis_acc, b.mahalanobis_acc));
+            .max_by(|a, b| {
+                katgpt_core::float_order::cmp_for_max(a.mahalanobis_acc, b.mahalanobis_acc)
+            });
 
         if let Some(r) = best {
             let improvement = (r.mahalanobis_acc - r.euclidean_acc) * 100.0;
@@ -1044,7 +1070,10 @@ fn main() {
     println!();
     println!("  bench_018 (sequence, {SEQ_LEN} steps/prompt, {N_PROMPTS} prompts):");
     for &ek in &encoders {
-        if let Some(r) = all_results.iter().find(|r| r.encoder == ek && r.sigma == 0.5) {
+        if let Some(r) = all_results
+            .iter()
+            .find(|r| r.encoder == ek && r.sigma == 0.5)
+        {
             println!(
                 "    {:>14}: Maha={:>5.1}%  Bayes={:>5.1}%  d_M={:.3}  d_E={:.3}",
                 ek.name(),
@@ -1058,17 +1087,17 @@ fn main() {
     println!();
 
     // ── Verdict ───────────────────────────────────────────────────────────
-    let any_maha_80 = all_results.iter().any(|r| {
-        r.sigma > 0.0 && r.mahalanobis_acc >= 0.80
-    });
+    let any_maha_80 = all_results
+        .iter()
+        .any(|r| r.sigma > 0.0 && r.mahalanobis_acc >= 0.80);
 
-    let any_bayes_80 = all_results.iter().any(|r| {
-        r.sigma > 0.0 && r.bayes_optimal >= 0.80
-    });
+    let any_bayes_80 = all_results
+        .iter()
+        .any(|r| r.sigma > 0.0 && r.bayes_optimal >= 0.80);
 
-    let any_bayes_70 = all_results.iter().any(|r| {
-        r.sigma > 0.0 && r.bayes_optimal >= 0.70
-    });
+    let any_bayes_70 = all_results
+        .iter()
+        .any(|r| r.sigma > 0.0 && r.bayes_optimal >= 0.70);
 
     // Compare best d_M to bench_017's best (0.285 for DispStats).
     let best_dm = all_results

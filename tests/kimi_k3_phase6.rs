@@ -145,8 +145,14 @@ fn t6_3_forward_pass_produces_finite_logits() {
         }
     }
 
-    eprintln!("   logits: len={}, nan={}, inf={}, min={:.4}, max={:.4}",
-        logits.len(), nan_count, inf_count, min_logit, max_logit);
+    eprintln!(
+        "   logits: len={}, nan={}, inf={}, min={:.4}, max={:.4}",
+        logits.len(),
+        nan_count,
+        inf_count,
+        min_logit,
+        max_logit
+    );
 
     // Find top-5 predicted tokens
     let mut indexed: Vec<(usize, f32)> = logits.iter().copied().enumerate().collect();
@@ -204,8 +210,11 @@ fn g1_logits_match_pytorch_reference() {
     rust_pairs.sort_by(|a, b| b.0.total_cmp(&a.0));
     let rust_top5: Vec<usize> = rust_pairs.iter().take(5).map(|(_, i)| *i).collect();
 
-    let mut ref_pairs: Vec<(f32, usize)> =
-        ref_logits.iter().enumerate().map(|(i, &v)| (v, i)).collect();
+    let mut ref_pairs: Vec<(f32, usize)> = ref_logits
+        .iter()
+        .enumerate()
+        .map(|(i, &v)| (v, i))
+        .collect();
     ref_pairs.sort_by(|a, b| b.0.total_cmp(&a.0));
     let ref_top5: Vec<usize> = ref_pairs.iter().take(5).map(|(_, i)| *i).collect();
 
@@ -231,10 +240,15 @@ fn g1_logits_match_pytorch_reference() {
 
     let mean_diff = sum_diff / logits.len() as f64;
     eprintln!("   max_diff = {max_diff:.4e} at logit[{max_idx}]");
-    eprintln!("   rust[{max_idx}] = {:.6}, ref[{max_idx}] = {:.6}",
-        logits[max_idx], ref_logits[max_idx]);
+    eprintln!(
+        "   rust[{max_idx}] = {:.6}, ref[{max_idx}] = {:.6}",
+        logits[max_idx], ref_logits[max_idx]
+    );
     eprintln!("   mean_diff = {mean_diff:.4e}");
-    eprintln!("   significant diffs (>0.01): {count_significant}/{}", logits.len());
+    eprintln!(
+        "   significant diffs (>0.01): {count_significant}/{}",
+        logits.len()
+    );
 
     // G1 gate: top-1 token must match (the most basic correctness check)
     assert_eq!(

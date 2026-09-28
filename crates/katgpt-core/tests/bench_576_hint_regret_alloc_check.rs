@@ -6,8 +6,7 @@
 #![cfg(feature = "hint_regret")]
 
 use katgpt_core::hint_regret::{
-    HintRegretEstimator, Regime, RegretMemory, RegretMemoryEntry, ReturnBounds,
-    beta_lcb_order_into,
+    HintRegretEstimator, Regime, RegretMemory, RegretMemoryEntry, ReturnBounds, beta_lcb_order_into,
 };
 
 #[path = "common/mod.rs"]

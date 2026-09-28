@@ -93,7 +93,8 @@ fn g1_pretok_bit_identical_on_code_like_text() {
         let reference = BpeTokenizerImpl::encode(&tokenizer, text);
         encoder.encode_into_pretok(text, &mut out_pretok);
         assert_eq!(
-            out_pretok, reference,
+            out_pretok,
+            reference,
             "G1 pretok divergence on code-like text (len={}): first diff at {}",
             text.len(),
             out_pretok
@@ -121,7 +122,8 @@ fn g1_pretok_bit_identical_on_repeated_corpus() {
     let reference = BpeTokenizerImpl::encode(&tokenizer, corpus);
     encoder.encode_into_pretok(corpus, &mut out_pretok);
     assert_eq!(
-        out_pretok, reference,
+        out_pretok,
+        reference,
         "G1 pretok divergence on repeated corpus ({} chars)",
         corpus.len()
     );
@@ -258,7 +260,9 @@ fn build_zipfian_corpus(target_chars: usize, vocab_size: usize) -> String {
     // Per-test-invocation LCG state — deterministic per (vocab_size, target_chars)
     // pair so re-runs reproduce. Seed mixes both params.
     let seed = (vocab_size as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15)
-        ^ ((target_chars as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15).rotate_left(13));
+        ^ ((target_chars as u64)
+            .wrapping_mul(0x9E37_79B9_7F4A_7C15)
+            .rotate_left(13));
     let state = RefCell::new(seed);
     let next_rand = || {
         let mut s = state.borrow_mut();
@@ -318,7 +322,10 @@ fn g2_pretok_corpus_scale_scaling_curve() {
         let corpus = build_zipfian_corpus(target_chars, vocab_size);
         let actual_chars = corpus.len();
         // Count unique whitespace-delimited tokens for context on cache coverage.
-        let unique_pretokens = corpus.split_whitespace().collect::<std::collections::HashSet<_>>().len();
+        let unique_pretokens = corpus
+            .split_whitespace()
+            .collect::<std::collections::HashSet<_>>()
+            .len();
 
         // Whole-text path (no pretokenization, no cache). Single encode — the
         // corpus is large enough that one pass dominates measurement noise.
@@ -350,6 +357,9 @@ fn g2_pretok_corpus_scale_scaling_curve() {
         let mut b = Vec::new();
         encoder_plain.encode_into(&corpus, &mut a);
         encoder_pretok.encode_into_pretok(&corpus, &mut b);
-        assert_eq!(a, b, "G1 pretok divergence at {label} chars ({actual_chars})");
+        assert_eq!(
+            a, b,
+            "G1 pretok divergence at {label} chars ({actual_chars})"
+        );
     }
 }

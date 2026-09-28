@@ -97,13 +97,16 @@
 //!   --features conformal_predictive_intervals,karc_forecaster -- --nocapture
 //! ```
 
-#![cfg(all(feature = "conformal_predictive_intervals", feature = "karc_forecaster"))]
+#![cfg(all(
+    feature = "conformal_predictive_intervals",
+    feature = "karc_forecaster"
+))]
 #![allow(clippy::needless_range_loop)]
 
 use katgpt_core::{
-    ChebyshevBasis, ConformalIntervalCalibrator, DecayUnit, FloorComparisonReport, KarcChannelForecaster,
-    KarcForecaster, OverallVerdict, PointForecaster, PredictiveInterval, PredictiveOutput, ResidualMode,
-    TrajectoryCorpus, UqPrimitiveUnderTest, run_floor_comparison,
+    ChebyshevBasis, ConformalIntervalCalibrator, DecayUnit, FloorComparisonReport,
+    KarcChannelForecaster, KarcForecaster, OverallVerdict, PointForecaster, PredictiveInterval,
+    PredictiveOutput, ResidualMode, TrajectoryCorpus, UqPrimitiveUnderTest, run_floor_comparison,
 };
 
 // ── KARC shape ────────────────────────────────────────────────────────────
@@ -228,7 +231,8 @@ impl<const K: usize> KarcOverlayAdapter<K> {
     /// once on a training slice and use the fitted model in production.
     pub fn new_fitted(warmup_corpus: &[f32], alpha: f32) -> Self {
         let basis = ChebyshevBasis::<M>::new();
-        let mut karc = KarcForecaster::<ChebyshevBasis<M>, D, M, K>::with_capacity(basis, warmup_corpus.len());
+        let mut karc =
+            KarcForecaster::<ChebyshevBasis<M>, D, M, K>::with_capacity(basis, warmup_corpus.len());
 
         // Build training pairs: for each t ∈ [K-1, n-1], delay_state =
         // [y_t, y_{t-1}, ..., y_{t-K+1}] flattened (K·D values, here D=1 so
@@ -258,14 +262,14 @@ impl<const K: usize> KarcOverlayAdapter<K> {
         let adapter = KarcChannelForecaster::new(karc, 0);
         let calibrator = ConformalIntervalCalibrator::new(
             adapter,
-            1,                // n_channels (matches D=1)
-            1,                // max_h (KARC is h=1)
-            1,                // m=1 (non-seasonal — matches the floor)
+            1, // n_channels (matches D=1)
+            1, // max_h (KARC is h=1)
+            1, // m=1 (non-seasonal — matches the floor)
             POOL_CAPACITY,
-            0.0,              // exp_lambda=0 — equal weight, matches floor
+            0.0, // exp_lambda=0 — equal weight, matches floor
             DecayUnit::Step,
             ResidualMode::HStep,
-            false,            // orientation
+            false, // orientation
         );
 
         Self {
@@ -312,9 +316,8 @@ impl<const K: usize> UqPrimitiveUnderTest for KarcOverlayAdapter<K> {
         // (Alternative: use a `&'static str` via `concat!`, but `K` is generic —
         // can't `concat!` a const generic. `format!` + `Box::leak` is the
         // cleanest escape hatch for one-off cold-path formatting.)
-        let s: String = format!(
-            "KARC+overlay (Chebyshev M={M}, K={K}, D={D}; pre-fitted on warmup)"
-        );
+        let s: String =
+            format!("KARC+overlay (Chebyshev M={M}, K={K}, D={D}; pre-fitted on warmup)");
         Box::leak(s.into_boxed_str())
     }
 
@@ -356,8 +359,7 @@ impl<const K: usize> UqPrimitiveUnderTest for KarcOverlayAdapter<K> {
         // residual BEFORE pushing y into the window (which would change what
         // the NEXT forecast sees, not the residual we're scoring now).
         if self.warmed_up {
-            self.calibrator
-                .update_residual(y, self.last_point, 0, 1);
+            self.calibrator.update_residual(y, self.last_point, 0, 1);
             self.calibrator.step();
         }
         self.push_observation(y);
@@ -452,13 +454,8 @@ fn floor_comparison_stationary_seasonal() {
     let warmup = corpus.recommended_warmup;
 
     let mut adapter = KarcOverlayAdapter::<K4>::new_fitted(&corpus.values[..warmup], ALPHA);
-    let report: FloorComparisonReport = run_floor_comparison(
-        &mut adapter,
-        &corpus.values,
-        ALPHA,
-        warmup,
-        &corpus.name,
-    );
+    let report: FloorComparisonReport =
+        run_floor_comparison(&mut adapter, &corpus.values, ALPHA, warmup, &corpus.name);
 
     println!("── KARC+overlay vs floor on {} ──", corpus.name);
     println!("{report:.?}");
@@ -521,13 +518,8 @@ fn floor_comparison_lorenz_x() {
     let corpus = TrajectoryCorpus::from_slice("lorenz_x_dt0.02", &traj, warmup);
 
     let mut adapter = KarcOverlayAdapter::<K4>::new_fitted(&corpus.values[..warmup], ALPHA);
-    let report: FloorComparisonReport = run_floor_comparison(
-        &mut adapter,
-        &corpus.values,
-        ALPHA,
-        warmup,
-        &corpus.name,
-    );
+    let report: FloorComparisonReport =
+        run_floor_comparison(&mut adapter, &corpus.values, ALPHA, warmup, &corpus.name);
 
     println!("── KARC+overlay vs floor on {} ──", corpus.name);
     println!("{report:.?}");
@@ -612,13 +604,8 @@ fn floor_comparison_stationary_seasonal_k12() {
     let warmup = corpus.recommended_warmup;
 
     let mut adapter = KarcOverlayAdapter::<K12>::new_fitted(&corpus.values[..warmup], ALPHA);
-    let report: FloorComparisonReport = run_floor_comparison(
-        &mut adapter,
-        &corpus.values,
-        ALPHA,
-        warmup,
-        &corpus.name,
-    );
+    let report: FloorComparisonReport =
+        run_floor_comparison(&mut adapter, &corpus.values, ALPHA, warmup, &corpus.name);
 
     println!("── KARC+overlay (K=12) vs floor on {} ──", corpus.name);
     println!("{report:.?}");
@@ -685,13 +672,8 @@ fn floor_comparison_lorenz_x_k12() {
     let corpus = TrajectoryCorpus::from_slice("lorenz_x_dt0.02", &traj, warmup);
 
     let mut adapter = KarcOverlayAdapter::<K12>::new_fitted(&corpus.values[..warmup], ALPHA);
-    let report: FloorComparisonReport = run_floor_comparison(
-        &mut adapter,
-        &corpus.values,
-        ALPHA,
-        warmup,
-        &corpus.name,
-    );
+    let report: FloorComparisonReport =
+        run_floor_comparison(&mut adapter, &corpus.values, ALPHA, warmup, &corpus.name);
 
     println!("── KARC+overlay (K=12) vs floor on {} ──", corpus.name);
     println!("{report:.?}");
@@ -726,7 +708,5 @@ fn floor_comparison_lorenz_x_k12() {
     } else {
         f32::NAN
     };
-    println!(
-        "K=12 Lorenz-x CRPS ratio (prim/floor): {crps_ratio:.4} (K=4 baseline was 0.0047)"
-    );
+    println!("K=12 Lorenz-x CRPS ratio (prim/floor): {crps_ratio:.4} (K=4 baseline was 0.0047)");
 }

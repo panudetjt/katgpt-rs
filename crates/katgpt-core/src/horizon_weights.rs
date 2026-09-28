@@ -138,10 +138,17 @@ pub fn remaining_horizon_weights(out: &mut [f32]) {
 /// not a sync-boundary value.
 #[inline]
 pub fn remaining_horizon_t_sample(u: f32, t_min: f32, t_max: f32, horizon: f32) -> f32 {
-    let u = if u.is_finite() { u.clamp(0.0, 1.0) } else { 0.0 };
+    let u = if u.is_finite() {
+        u.clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
     // Fallback (uniform lerp) on any degenerate/incomparable input — the
     // partial_cmp form keeps the function total under NaN (None → fallback).
-    let range_ok = matches!(t_max.partial_cmp(&t_min), Some(core::cmp::Ordering::Greater));
+    let range_ok = matches!(
+        t_max.partial_cmp(&t_min),
+        Some(core::cmp::Ordering::Greater)
+    );
     let horizon_ok = matches!(
         horizon.partial_cmp(&t_max),
         Some(core::cmp::Ordering::Greater) | Some(core::cmp::Ordering::Equal)
@@ -420,7 +427,8 @@ impl HorizonWeightTable {
         let mut hasher = blake3::Hasher::new();
         hasher.update(&self.inv_horizon.to_bits().to_le_bytes());
         hasher.update(bytemuck::cast_slice(&self.w));
-        self.commitment.copy_from_slice(hasher.finalize().as_bytes());
+        self.commitment
+            .copy_from_slice(hasher.finalize().as_bytes());
     }
 
     /// Verify the stored commitment against the stored weights.
@@ -491,7 +499,11 @@ mod tests {
         let mut w = [0.0f32; 16];
         remaining_horizon_weights(&mut w);
         assert_eq!(w[0], 1.0);
-        assert_eq!(w[15].to_bits(), 0.0f32.to_bits(), "terminal weight is exact +0.0");
+        assert_eq!(
+            w[15].to_bits(),
+            0.0f32.to_bits(),
+            "terminal weight is exact +0.0"
+        );
         for i in 1..16 {
             assert!(
                 w[i] <= w[i - 1],
@@ -687,8 +699,14 @@ mod tests {
     fn t_sample_endpoints_and_monotone() {
         let lo = remaining_horizon_t_sample(0.0, T_SAMPLE_MIN, T_SAMPLE_MAX, T);
         let hi = remaining_horizon_t_sample(1.0, T_SAMPLE_MIN, T_SAMPLE_MAX, T);
-        assert!((lo - T_SAMPLE_MIN).abs() < 1e-4 * T, "u=0 -> t_min, got {lo}");
-        assert!((hi - T_SAMPLE_MAX).abs() < 1e-4 * T, "u=1 -> t_max, got {hi}");
+        assert!(
+            (lo - T_SAMPLE_MIN).abs() < 1e-4 * T,
+            "u=0 -> t_min, got {lo}"
+        );
+        assert!(
+            (hi - T_SAMPLE_MAX).abs() < 1e-4 * T,
+            "u=1 -> t_max, got {hi}"
+        );
         // Monotone in u across a dense sweep (non-decreasing).
         let mut prev = f32::NEG_INFINITY;
         for i in 0..=256 {
@@ -701,7 +719,10 @@ mod tests {
         for i in 0..=64 {
             let u = i as f32 / 64.0;
             let t = remaining_horizon_t_sample(u, T_SAMPLE_MIN, T_SAMPLE_MAX, T);
-            assert!((T_SAMPLE_MIN..=T_SAMPLE_MAX).contains(&t), "out of range: {t}");
+            assert!(
+                (T_SAMPLE_MIN..=T_SAMPLE_MAX).contains(&t),
+                "out of range: {t}"
+            );
         }
     }
 
@@ -727,7 +748,11 @@ mod tests {
         let expected = n / buckets;
         for (b, &c) in counts.iter().enumerate() {
             let dev = (c as isize - expected as isize).abs() as f32 / expected as f32;
-            assert!(dev < 0.20, "bucket {b}: {c} vs expected {expected} (dev {:.3})", dev);
+            assert!(
+                dev < 0.20,
+                "bucket {b}: {c} vs expected {expected} (dev {:.3})",
+                dev
+            );
         }
         // And the law's shape: the bottom decile of the RANGE (low noise)
         // must hold more mass than the top decile.
@@ -790,7 +815,10 @@ mod tests {
             }
         }
         // Endpoints: eps=0 -> skip nothing (exactly T; x - 0.0 == x).
-        assert_eq!(terminal_truncation_ceiling(0.0, 0.02 * T, T).to_bits(), T.to_bits());
+        assert_eq!(
+            terminal_truncation_ceiling(0.0, 0.02 * T, T).to_bits(),
+            T.to_bits()
+        );
         // eps=1 -> t_min (subtraction rounding; tolerance, not bits).
         let cut_min = terminal_truncation_ceiling(1.0, 0.02 * T, T);
         assert!((cut_min - 0.02 * T).abs() < 1e-4);
@@ -799,7 +827,10 @@ mod tests {
         for i in 0..=64 {
             let eps = i as f32 / 64.0;
             let cut = terminal_truncation_ceiling(eps, 0.02 * T, T);
-            assert!(cut <= prev, "ceiling must be non-increasing in eps: {cut} > {prev}");
+            assert!(
+                cut <= prev,
+                "ceiling must be non-increasing in eps: {cut} > {prev}"
+            );
             prev = cut;
         }
         // Mass form endpoints + NaN/degenerate policy (conservative 1.0).
@@ -810,7 +841,11 @@ mod tests {
         );
         assert_eq!(truncated_w_mass_fraction(0.0, 0.02 * T, T), 1.0);
         assert_eq!(truncated_w_mass_fraction(f32::NAN, 0.02 * T, T), 1.0);
-        assert_eq!(truncated_w_mass_fraction(0.5 * T, T, T), 1.0, "T <= t_min degenerate");
+        assert_eq!(
+            truncated_w_mass_fraction(0.5 * T, T, T),
+            1.0,
+            "T <= t_min degenerate"
+        );
         assert_eq!(terminal_truncation_ceiling(f32::NAN, 0.02 * T, T), T);
         assert_eq!(terminal_truncation_ceiling(-1.0, 0.02 * T, T), T);
     }
@@ -846,8 +881,15 @@ mod tests {
         let mut prev_hi = f32::INFINITY;
         for iter in 0..total {
             let (lo, hi) = sch.range_at(iter, total);
-            assert_eq!(lo.to_bits(), 0.02f32.to_bits(), "floor moves at iter={iter}");
-            assert!(hi <= prev_hi, "ceiling rises at iter={iter}: {hi} > {prev_hi}");
+            assert_eq!(
+                lo.to_bits(),
+                0.02f32.to_bits(),
+                "floor moves at iter={iter}"
+            );
+            assert!(
+                hi <= prev_hi,
+                "ceiling rises at iter={iter}: {hi} > {prev_hi}"
+            );
             assert!(hi >= lo, "range inverts at iter={iter}");
             prev_hi = hi;
         }
@@ -938,11 +980,18 @@ mod tests {
         for i in 0..1024usize {
             let (lo, hi) = sch.range_at(black_box(i), black_box(1024));
             sink += black_box(lo) + black_box(hi);
-            sink += black_box(terminal_truncation_ceiling(black_box(i as f32) * 0.001, 0.02, 1.0));
+            sink += black_box(terminal_truncation_ceiling(
+                black_box(i as f32) * 0.001,
+                0.02,
+                1.0,
+            ));
             sink += black_box(truncated_w_mass_fraction(black_box(hi), 0.02, 1.0));
         }
         let (count, _bytes) = crate::alloc::get_alloc_stats();
-        assert_eq!(count, 0, "G4: 3x1024 schedule calls allocated {count} times");
+        assert_eq!(
+            count, 0,
+            "G4: 3x1024 schedule calls allocated {count} times"
+        );
         assert!(sink.is_finite(), "sink must be consumed: {sink}");
     }
 
@@ -954,9 +1003,11 @@ mod tests {
             let got = remaining_horizon_t_sample(u, T_SAMPLE_MIN, T_SAMPLE_MAX, T) as f64;
             let lo = (T as f64) - T_SAMPLE_MIN as f64;
             let hi = (T as f64) - T_SAMPLE_MAX as f64;
-            let want = (T as f64)
-                - ((1.0 - u as f64) * lo * lo + u as f64 * hi * hi).sqrt();
-            assert!((got - want).abs() < 1e-5 * T as f64, "u={u}: {got} vs {want}");
+            let want = (T as f64) - ((1.0 - u as f64) * lo * lo + u as f64 * hi * hi).sqrt();
+            assert!(
+                (got - want).abs() < 1e-5 * T as f64,
+                "u={u}: {got} vs {want}"
+            );
         }
     }
 }

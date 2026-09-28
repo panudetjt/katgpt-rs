@@ -53,7 +53,7 @@ fn estimator_matches_direct_arithmetic() {
     let e = est.estimate(0.05);
     let n = pairs.len() as f64;
     let mean_a: f64 = pairs.iter().map(|&(a, _)| a as f64).sum::<f64>() / n;
-    let mean_b: f64 = pairs.iter().map(|&( _, b)| b as f64).sum::<f64>() / n;
+    let mean_b: f64 = pairs.iter().map(|&(_, b)| b as f64).sum::<f64>() / n;
     let mean_d: f64 = pairs.iter().map(|&(a, b)| (a - b) as f64).sum::<f64>() / n;
     // Outputs are f32 (cast from the f64 accumulators) — f32 tolerance.
     assert!((e.arm_means.0 as f64 - mean_a).abs() < 1e-6);
@@ -64,7 +64,10 @@ fn estimator_matches_direct_arithmetic() {
     // Unbiased sample variance of the differences.
     let var_d: f64 = pairs
         .iter()
-        .map(|&(a, b)| { let d = (a - b) as f64 - mean_d; d * d })
+        .map(|&(a, b)| {
+            let d = (a - b) as f64 - mean_d;
+            d * d
+        })
         .sum::<f64>()
         / (n - 1.0);
     assert!((est.diff_sample_variance() as f64 - var_d).abs() < 1e-6);
@@ -115,7 +118,11 @@ fn should_stop_fires_exactly_at_the_schedule() {
     for i in 0..k {
         est.record_pair(0.5 + (i % 7) as f32 * 0.01, 0.4);
         let e = est.estimate(delta);
-        assert_eq!(e.should_stop(eps), (i + 1) >= k, "stop must fire exactly at K");
+        assert_eq!(
+            e.should_stop(eps),
+            (i + 1) >= k,
+            "stop must fire exactly at K"
+        );
     }
 }
 

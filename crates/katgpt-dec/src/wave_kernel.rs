@@ -62,7 +62,7 @@
 //! [`exterior_derivative_into`]: crate::operators::exterior_derivative_into
 //! [`codifferential_into`]: crate::operators::codifferential_into
 
-use crate::hodge::{hodge_decompose, HodgeComponents};
+use crate::hodge::{HodgeComponents, hodge_decompose};
 use crate::operators::{codifferential_into, exterior_derivative_into};
 use crate::types::{CellComplex, CochainField};
 
@@ -134,7 +134,10 @@ pub fn wave_step_into(
     scratch: &mut WaveScratch,
 ) {
     let k = h.rank;
-    debug_assert!(k < crate::types::MAX_RANK, "wave_step_into: rank {k} has no dual surface");
+    debug_assert!(
+        k < crate::types::MAX_RANK,
+        "wave_step_into: rank {k} has no dual surface"
+    );
     debug_assert_eq!(lambda.rank, k + 1, "dual rank must be primal rank + 1");
     debug_assert_eq!(lambda.dim, h.dim, "dual dim must match primal dim");
     debug_assert_eq!(lambda.n_cells(), cx.n_cells(k + 1), "dual n_cells mismatch");
@@ -240,10 +243,7 @@ pub fn hodge_triage(cx: &CellComplex, residual: &CochainField) -> HodgeTriage {
     // Energy-dominant class; ties resolve to the more actionable (lower
     // enum value) — Exact before Harmonic before Coexact.
     let (class, verdict) = if exact_energy >= harmonic_energy && exact_energy >= coexact_energy {
-        (
-            ResidualClass::Exact,
-            TriageVerdict::KeepIterating,
-        )
+        (ResidualClass::Exact, TriageVerdict::KeepIterating)
     } else if harmonic_energy >= coexact_energy {
         (ResidualClass::Harmonic, TriageVerdict::Escalate)
     } else {
@@ -377,12 +377,7 @@ mod tests {
             let params = WaveParams { eta, rho, alpha };
 
             let mode_energy = |h: &CochainField, lambda: &CochainField| -> f32 {
-                let x: f32 = h
-                    .data
-                    .iter()
-                    .zip(&v_mode.data)
-                    .map(|(&a, &b)| a * b)
-                    .sum();
+                let x: f32 = h.data.iter().zip(&v_mode.data).map(|(&a, &b)| a * b).sum();
                 let l: f32 = lambda
                     .data
                     .iter()

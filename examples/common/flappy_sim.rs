@@ -424,7 +424,12 @@ mod tests {
         // FLAP_V = +2; coast's is strictly lower), so the band-tie exclusion
         // is no longer what keeps the two options' sentences apart — v3
         // would separate them even for the excluded same-band states.
-        let s = FlappyState { y: 6, v: 1, g: 6, h: 3 };
+        let s = FlappyState {
+            y: 6,
+            v: 1,
+            g: 6,
+            h: 3,
+        };
         let (fy, _) = result(&s, Action::Flap);
         let (cy, _) = result(&s, Action::Coast);
         assert_eq!(
@@ -445,7 +450,12 @@ mod tests {
         // The committed v2 fixture drift-checks against THIS render — any
         // wording change here breaks the Bench 880/881 provenance, so it is
         // pinned literally.
-        let s = FlappyState { y: 4, v: 0, g: 6, h: 2 };
+        let s = FlappyState {
+            y: 4,
+            v: 0,
+            g: 6,
+            h: 2,
+        };
         assert_eq!(
             render_option_sentence_v2(&s, Action::Coast),
             "The bird squeezes through the bottom of the gap."

@@ -114,7 +114,9 @@ impl AcceptanceForecastH2 {
         // path by ≤1 ULP per element (Cephes accuracy floor); the downstream
         // β = Σp² and H_2 = −log β computations absorb this (both are monotone
         // transforms of a probability distribution that softmax-normalizes).
-        use crate::simd::{simd_add_scalar_inplace, simd_exp_sum_inplace, simd_max_f32, simd_scale_inplace};
+        use crate::simd::{
+            simd_add_scalar_inplace, simd_exp_sum_inplace, simd_max_f32, simd_scale_inplace,
+        };
         let max_l = simd_max_f32(next_token_logits);
         prob_scratch[..n].copy_from_slice(&next_token_logits[..n]);
         simd_add_scalar_inplace(&mut prob_scratch[..n], -max_l);

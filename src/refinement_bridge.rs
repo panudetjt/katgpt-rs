@@ -72,10 +72,7 @@ pub struct TokenizerGeometry {
 
 /// Compute the geometry profile over a table (+ optional vocab probs for
 /// `dead_prefix_mass`; pass `None` to skip that row).
-pub fn tokenizer_geometry(
-    table: &RefinementTable,
-    probs: Option<&[f32]>,
-) -> TokenizerGeometry {
+pub fn tokenizer_geometry(table: &RefinementTable, probs: Option<&[f32]>) -> TokenizerGeometry {
     let n = table.n_symbols();
     let mut total_len = 0usize;
     let mut max_len = 0usize;
@@ -145,9 +142,7 @@ pub fn decode_argmax(record: &CoarseRecord) -> Option<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use katgpt_core::refinement_marginal::{
-        coarse_grain_first, CoarseGrainScratch,
-    };
+    use katgpt_core::refinement_marginal::{CoarseGrainScratch, coarse_grain_first};
 
     /// The bridge produces the same table as the raw byte sequences.
     #[test]

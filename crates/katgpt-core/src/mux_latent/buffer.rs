@@ -543,7 +543,10 @@ mod tests {
             preserve_instructions: false,
             ..Default::default()
         };
-        assert_eq!(config.window_size, 0, "the default must keep carrying 0 for this regression to stay live");
+        assert_eq!(
+            config.window_size, 0,
+            "the default must keep carrying 0 for this regression to stay live"
+        );
 
         let tokens = make_tokens(32);
         let buf = LatentContextBuffer::new_adaptive(&tokens, config, SpectralLOD::default());

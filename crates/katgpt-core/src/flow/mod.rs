@@ -86,9 +86,11 @@ impl FlowField {
     #[inline]
     pub fn is_blocked(&self, x: u16, y: u16) -> bool {
         if x < self.w && y < self.h {
-                let idx = (y as usize) * self.stride + (x as usize) * 2;
-                self.flow[idx] == 0.0 && self.flow[idx + 1] == 0.0
-            } else { true }
+            let idx = (y as usize) * self.stride + (x as usize) * 2;
+            self.flow[idx] == 0.0 && self.flow[idx + 1] == 0.0
+        } else {
+            true
+        }
     }
 
     #[inline]

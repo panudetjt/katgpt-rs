@@ -352,15 +352,16 @@ mod tests {
             &[42; 100],
             &[1, 1, 2, 2, 3],
             &[1, 2, 3, 4, 5],
-            &[0; 256],   // 255 + 1 → one full run + a 1-byte tail run
-            &[0; 510],   // 255 + 255 → two full runs
-            &[0; 255],   // exactly one full run
+            &[0; 256], // 255 + 1 → one full run + a 1-byte tail run
+            &[0; 510], // 255 + 255 → two full runs
+            &[0; 255], // exactly one full run
         ];
         for (i, data) in cases.iter().enumerate() {
             let expected = rle_compress(data).len();
             let got = rle_compressed_len(data);
             assert_eq!(
-                got, expected,
+                got,
+                expected,
                 "case {i} (len={}): rle_compressed_len={} vs rle_compress.len()={}",
                 data.len(),
                 got,
@@ -389,7 +390,8 @@ mod tests {
             let expected = rle_compress(&data).len();
             let got = rle_compressed_len(&data);
             assert_eq!(
-                got, expected,
+                got,
+                expected,
                 "random case (len={}): rle_compressed_len={} vs rle_compress.len()={}",
                 data.len(),
                 got,

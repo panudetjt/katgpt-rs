@@ -594,31 +594,31 @@ impl BomberPlayer for Sr2amPlayer {
             PlanningDecision::PlanExtend => {
                 // Reuse last_template, recompute hint with current state
                 if let Some(template) = self.last_template {
-                        let tid = self.last_template_id.unwrap_or(0);
-                        self.round_template_ids.push(tid);
-                        let hinted = Self::apply_template_hints(
-                            template,
-                            &query_scores,
-                            pos,
-                            &bomb_positions,
-                            &opponent_positions,
-                        );
-                        (hinted, Some(tid))
-                    } else {
-                        // No previous template — fall back to PlanNew
-                        let (template, tid) = self.template_proposer.select();
-                        self.last_template = Some(template);
-                        self.last_template_id = Some(tid);
-                        self.round_template_ids.push(tid);
-                        let hinted = Self::apply_template_hints(
-                            template,
-                            &query_scores,
-                            pos,
-                            &bomb_positions,
-                            &opponent_positions,
-                        );
-                        (hinted, Some(tid))
-                    }
+                    let tid = self.last_template_id.unwrap_or(0);
+                    self.round_template_ids.push(tid);
+                    let hinted = Self::apply_template_hints(
+                        template,
+                        &query_scores,
+                        pos,
+                        &bomb_positions,
+                        &opponent_positions,
+                    );
+                    (hinted, Some(tid))
+                } else {
+                    // No previous template — fall back to PlanNew
+                    let (template, tid) = self.template_proposer.select();
+                    self.last_template = Some(template);
+                    self.last_template_id = Some(tid);
+                    self.round_template_ids.push(tid);
+                    let hinted = Self::apply_template_hints(
+                        template,
+                        &query_scores,
+                        pos,
+                        &bomb_positions,
+                        &opponent_positions,
+                    );
+                    (hinted, Some(tid))
+                }
             }
             PlanningDecision::PlanSkip => {
                 // Skip template entirely — use only heuristic query_scores + Q-values
@@ -776,7 +776,8 @@ impl BomberPlayer for Sr2amPlayer {
             final_scores
                 .iter()
                 .enumerate()
-                .max_by(|a, b| katgpt_core::float_order::cmp_for_max(*a.1, *b.1)).map_or(BomberAction::Wait, |(i, _)| ALL_ACTIONS[i])
+                .max_by(|a, b| katgpt_core::float_order::cmp_for_max(*a.1, *b.1))
+                .map_or(BomberAction::Wait, |(i, _)| ALL_ACTIONS[i])
         };
 
         // Track bomb placement (prevents walking back into own bomb)

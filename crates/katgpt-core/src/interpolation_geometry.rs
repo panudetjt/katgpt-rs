@@ -1367,7 +1367,10 @@ mod tests {
         // stream — same seed + length → bit-identical outputs (even + odd
         // lengths, covering the tail-element path).
         for (anchor, seed) in [
-            (&[1.5_f32, -2.0, 3.0, -0.5, 4.0, 0.25, -1.0, 0.75][..], 0xC0FFEE_u64),
+            (
+                &[1.5_f32, -2.0, 3.0, -0.5, 4.0, 0.25, -1.0, 0.75][..],
+                0xC0FFEE_u64,
+            ),
             (&[0.3_f32, -1.7, 2.2][..], 42_u64),
             (&[9.9_f32][..], 1_u64),
             (&[][..], 5_u64),
@@ -1413,10 +1416,7 @@ mod tests {
             "L2 norm preserved: got {got}, want {target}"
         );
         // Zero-norm Vec stays zero.
-        assert_eq!(
-            norm_matched_noise_slice(&[0.0f32; 6], 9),
-            [0.0f32; 6]
-        );
+        assert_eq!(norm_matched_noise_slice(&[0.0f32; 6], 9), [0.0f32; 6]);
     }
 
     #[test]
@@ -1435,7 +1435,15 @@ mod tests {
         let mut z = [0.0f32; 2];
         let mut m = [0.0f32; 2];
         let mut n = [0.0f32; 2];
-        let report = intervention_battery(&space, &anchors[0], &anchors[1..], 42, &mut z, &mut m, &mut n);
+        let report = intervention_battery(
+            &space,
+            &anchors[0],
+            &anchors[1..],
+            42,
+            &mut z,
+            &mut m,
+            &mut n,
+        );
         assert!(
             report.norm_matched.is_finite() && report.norm_matched >= 0.0,
             "norm-matched arm populated: {report:?}"

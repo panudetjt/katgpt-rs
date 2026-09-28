@@ -604,7 +604,8 @@ impl BomberPlayer for RmsdPlayer {
             final_scores
                 .iter()
                 .enumerate()
-                .max_by(|a, b| katgpt_core::float_order::cmp_for_max(*a.1, *b.1)).map_or(BomberAction::Wait, |(i, _)| ALL_ACTIONS[i])
+                .max_by(|a, b| katgpt_core::float_order::cmp_for_max(*a.1, *b.1))
+                .map_or(BomberAction::Wait, |(i, _)| ALL_ACTIONS[i])
         };
 
         // Track bomb placement

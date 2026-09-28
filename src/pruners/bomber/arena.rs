@@ -62,13 +62,15 @@ impl ArenaGrid {
     /// Pick `DestructibleWall` or `PowerUpHidden` (20% power-up chance).
     fn random_destructible(rng: &mut fastrand::Rng) -> Cell {
         if rng.f32() < 0.2 {
-                let kind = match rng.u8(0..3) {
-                    0 => PowerUpKind::BombUp,
-                    1 => PowerUpKind::FireUp,
-                    _ => PowerUpKind::SpeedUp,
-                };
-                Cell::PowerUpHidden(kind)
-            } else { Cell::DestructibleWall }
+            let kind = match rng.u8(0..3) {
+                0 => PowerUpKind::BombUp,
+                1 => PowerUpKind::FireUp,
+                _ => PowerUpKind::SpeedUp,
+            };
+            Cell::PowerUpHidden(kind)
+        } else {
+            Cell::DestructibleWall
+        }
     }
 
     /// Check if (x, y) is within any player's 3×3 spawn safe zone.
@@ -80,7 +82,11 @@ impl ArenaGrid {
 
     /// Safe cell access. Returns `FixedWall` for out-of-bounds.
     pub fn get(&self, x: i32, y: i32) -> Cell {
-        if self.is_in_bounds(x, y) { self.cells[y as usize][x as usize] } else { Cell::FixedWall }
+        if self.is_in_bounds(x, y) {
+            self.cells[y as usize][x as usize]
+        } else {
+            Cell::FixedWall
+        }
     }
 
     /// Set cell at (x, y). No-op for out-of-bounds.
@@ -113,8 +119,8 @@ impl ArenaGrid {
                 for dx in -1_i32..=1 {
                     let (x, y) = (sx + dx, sy + dy);
                     if let Cell::DestructibleWall | Cell::PowerUpHidden(_) = self.get(x, y) {
-                            self.set(x, y, Cell::Floor);
-                        }
+                        self.set(x, y, Cell::Floor);
+                    }
                 }
             }
         }

@@ -72,7 +72,10 @@ impl fmt::Display for TprError {
             }
             TprError::BadEncoding(why) => write!(f, "tpr: bad artifact encoding: {why}"),
             TprError::CommitmentMismatch => {
-                write!(f, "tpr: BLAKE3 commitment mismatch — artifact tampered or foreign schema")
+                write!(
+                    f,
+                    "tpr: BLAKE3 commitment mismatch — artifact tampered or foreign schema"
+                )
             }
             TprError::Disabled => write!(f, "tpr: disabled via RIIR_TPR=0 kill-switch"),
             TprError::NonFinite(what) => write!(f, "tpr: non-finite value in {what}"),
@@ -293,7 +296,6 @@ impl TprArtifact {
     pub(crate) fn block_offset(&self, i: usize) -> usize {
         i * self.dim * self.d
     }
-
 
     /// Recompute the BLAKE3 commitment over the canonical bytes (excluding
     /// the stored commitment itself).

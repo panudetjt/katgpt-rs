@@ -78,7 +78,12 @@ fn g4_fill_round_loop_is_allocation_free() {
     for &budget in &[4usize, 8] {
         let mut rng = Rng::new(7);
         let r = anchor_fill_with_prefilled(
-            &mut dctx, &weights, &config, &probe_config(budget), &anchors, &mut rng,
+            &mut dctx,
+            &weights,
+            &config,
+            &probe_config(budget),
+            &anchors,
+            &mut rng,
             Some(budget),
         );
         assert_eq!(
@@ -91,19 +96,37 @@ fn g4_fill_round_loop_is_allocation_free() {
     let mut rng4 = Rng::new(7);
     let before4 = ALLOC_COUNT.load(Ordering::Relaxed);
     let r4 = anchor_fill_with_prefilled(
-        &mut dctx, &weights, &config, &probe_config(4), &anchors, &mut rng4, Some(4),
+        &mut dctx,
+        &weights,
+        &config,
+        &probe_config(4),
+        &anchors,
+        &mut rng4,
+        Some(4),
     );
     let allocs4 = ALLOC_COUNT.load(Ordering::Relaxed) - before4;
 
     let mut rng8 = Rng::new(7);
     let before8 = ALLOC_COUNT.load(Ordering::Relaxed);
     let r8 = anchor_fill_with_prefilled(
-        &mut dctx, &weights, &config, &probe_config(8), &anchors, &mut rng8, Some(8),
+        &mut dctx,
+        &weights,
+        &config,
+        &probe_config(8),
+        &anchors,
+        &mut rng8,
+        Some(8),
     );
     let allocs8 = ALLOC_COUNT.load(Ordering::Relaxed) - before8;
 
-    assert_eq!(r4.steps_used, 4, "budget-4 window must run exactly 4 rounds");
-    assert_eq!(r8.steps_used, 8, "budget-8 window must run exactly 8 rounds");
+    assert_eq!(
+        r4.steps_used, 4,
+        "budget-4 window must run exactly 4 rounds"
+    );
+    assert_eq!(
+        r8.steps_used, 8,
+        "budget-8 window must run exactly 8 rounds"
+    );
     println!(
         "G4: budget=4 ({} rounds) → {allocs4} allocs | budget=8 ({} rounds) → {allocs8} allocs",
         r4.steps_used, r8.steps_used
@@ -123,7 +146,13 @@ fn g4_fill_round_loop_is_allocation_free() {
     let mut rng = Rng::new(7);
     let before = ALLOC_COUNT.load(Ordering::Relaxed);
     let r = anchor_fill_with_prefilled(
-        &mut dctx, &weights, &config, &prod, &anchors, &mut rng, Some(8),
+        &mut dctx,
+        &weights,
+        &config,
+        &prod,
+        &anchors,
+        &mut rng,
+        Some(8),
     );
     let allocs = ALLOC_COUNT.load(Ordering::Relaxed) - before;
     println!(

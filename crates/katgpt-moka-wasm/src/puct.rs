@@ -191,7 +191,13 @@ impl PuctPlayer {
         Self::with_options(budget, c_puct, top_k, 1, true)
     }
 
-    fn with_options(budget: usize, c_puct: f32, top_k: usize, batch_k: usize, use_int8: bool) -> Self {
+    fn with_options(
+        budget: usize,
+        c_puct: f32,
+        top_k: usize,
+        batch_k: usize,
+        use_int8: bool,
+    ) -> Self {
         let k = batch_k.max(1);
         let enable_int8 = use_int8 && k == 1;
         Self {
@@ -477,9 +483,15 @@ impl PuctPlayer {
         // Issue 868: the paired arms below are cfg-TWINS — identical modulo
         // the γ multiply. The γ-free arm must stay the exact pre-fusion
         // expression (the T2.1 byte-identity claim rests on it).
-        let max_logit = scored.iter().map(|(l, _)| *l).fold(f32::NEG_INFINITY, f32::max);
+        let max_logit = scored
+            .iter()
+            .map(|(l, _)| *l)
+            .fold(f32::NEG_INFINITY, f32::max);
         #[cfg(all(feature = "engram_puct", not(target_arch = "wasm32")))]
-        let exp_sum: f32 = scored.iter().map(|(l, _)| (gamma * (l - max_logit)).exp()).sum();
+        let exp_sum: f32 = scored
+            .iter()
+            .map(|(l, _)| (gamma * (l - max_logit)).exp())
+            .sum();
         #[cfg(not(all(feature = "engram_puct", not(target_arch = "wasm32"))))]
         let exp_sum: f32 = scored.iter().map(|(l, _)| (l - max_logit).exp()).sum();
         let inv_exp_sum = if exp_sum > 0.0 { 1.0 / exp_sum } else { 1.0 };
@@ -509,7 +521,9 @@ impl PuctPlayer {
             });
         }
         let children_end = self.arena.len();
-        self.arena[node_idx].children.extend(children_start..children_end);
+        self.arena[node_idx]
+            .children
+            .extend(children_start..children_end);
     }
 
     /// Selection: traverse from root to first unexpanded leaf using PUCT.
@@ -696,7 +710,10 @@ impl PuctPlayer {
             //    ignored — only the non-terminal samples' policy/value are
             //    used. This wastes some FLOPs on terminal samples but keeps
             //    the code simple; compaction is a deferred optimization.
-            let bs = self.batch_scratch.as_mut().expect("batch_scratch allocated when batch_k > 1");
+            let bs = self
+                .batch_scratch
+                .as_mut()
+                .expect("batch_scratch allocated when batch_k > 1");
             moka::forward_batch_with_scratch(
                 &self.weights,
                 &self.features_buf,
@@ -738,7 +755,10 @@ impl PuctPlayer {
                             // arms shape-identical.
                             #[cfg(all(feature = "engram_puct", not(target_arch = "wasm32")))]
                             self.expand_with_policy_value(leaf_idx, &policy_buf, v, 1.0);
-                            #[cfg(not(all(feature = "engram_puct", not(target_arch = "wasm32"))))]
+                            #[cfg(not(all(
+                                feature = "engram_puct",
+                                not(target_arch = "wasm32")
+                            )))]
                             self.expand_with_policy_value(leaf_idx, &policy_buf, v);
                         }
                         v
@@ -791,7 +811,10 @@ mod tests {
         let first = player.select_move(&board);
         // Re-run from identical state — arena was cleared by the second call.
         let second = player.select_move(&board);
-        assert_eq!(first, second, "PUCT must be deterministic given fixed input");
+        assert_eq!(
+            first, second,
+            "PUCT must be deterministic given fixed input"
+        );
     }
 
     #[test]
@@ -811,9 +834,15 @@ mod tests {
         let _ = p100.select_move(&board);
         let n100 = p100.nodes_evaluated();
 
-        assert!(n100 > n50, "budget=100 ({n100}) must exceed budget=50 ({n50})");
+        assert!(
+            n100 > n50,
+            "budget=100 ({n100}) must exceed budget=50 ({n50})"
+        );
         // Allow generous slack for terminal short-circuits in late positions.
-        assert!(n100 >= 2 * n50 - 30, "budget scaling off: 100→{n100}, 50→{n50}");
+        assert!(
+            n100 >= 2 * n50 - 30,
+            "budget scaling off: 100→{n100}, 50→{n50}"
+        );
     }
 
     #[test]
@@ -837,8 +866,16 @@ mod tests {
         // 0 stones and 0 territory, so White (7.5) is ahead → reward(White)=1,
         // reward(Black)=0.
         let board = Board::new();
-        assert_eq!(board.reward(Cell::White), 1.0, "empty board: White wins on komi");
-        assert_eq!(board.reward(Cell::Black), 0.0, "empty board: Black loses on komi");
+        assert_eq!(
+            board.reward(Cell::White),
+            1.0,
+            "empty board: White wins on komi"
+        );
+        assert_eq!(
+            board.reward(Cell::Black),
+            0.0,
+            "empty board: Black loses on komi"
+        );
     }
 
     // ── Batched MCTS tests (Issue 205) ─────────────────────────────
@@ -868,7 +905,10 @@ mod tests {
         board.play(50);
         let first = player.select_move(&board);
         let second = player.select_move(&board);
-        assert_eq!(first, second, "batched PUCT must be deterministic given fixed input");
+        assert_eq!(
+            first, second,
+            "batched PUCT must be deterministic given fixed input"
+        );
     }
 
     #[test]
@@ -887,8 +927,14 @@ mod tests {
         let _ = p100.select_move(&board);
         let n100 = p100.nodes_evaluated();
 
-        assert!(n100 > n50, "batched budget=100 ({n100}) must exceed budget=50 ({n50})");
-        assert!(n100 >= 2 * n50 - 30, "batched budget scaling off: 100→{n100}, 50→{n50}");
+        assert!(
+            n100 > n50,
+            "batched budget=100 ({n100}) must exceed budget=50 ({n50})"
+        );
+        assert!(
+            n100 >= 2 * n50 - 30,
+            "batched budget scaling off: 100→{n100}, 50→{n50}"
+        );
     }
 
     #[test]
@@ -900,8 +946,10 @@ mod tests {
         board.play(40);
         board.play(41);
         let mv = player.select_move(&board);
-        assert!(mv.is_some() || board.is_game_over(),
-            "batched PUCT should return a move (or game is over)");
+        assert!(
+            mv.is_some() || board.is_game_over(),
+            "batched PUCT should return a move (or game is over)"
+        );
     }
 
     #[test]
@@ -940,11 +988,15 @@ mod tests {
         let _ = player.select_move(&board);
 
         let root = &player.arena[0];
-        let visited_children = root.children.iter()
+        let visited_children = root
+            .children
+            .iter()
             .filter(|&&idx| player.arena[idx].visits > 0)
             .count();
-        assert!(visited_children >= 2,
-            "virtual loss must cause diverse exploration: only {visited_children} root child(ren) visited (expected ≥2)");
+        assert!(
+            visited_children >= 2,
+            "virtual loss must cause diverse exploration: only {visited_children} root child(ren) visited (expected ≥2)"
+        );
     }
 
     // ── int8 PUCT tests (Issue 206 T5) ───────────────────────────────
@@ -983,11 +1035,7 @@ mod tests {
     /// MCTS search (not just the raw argmax).
     #[test]
     fn g1_int8_puct_matches_f32_move_selection() {
-        let positions: &[&[usize]] = &[
-            &[40, 41, 31, 50],
-            &[0, 1, 9, 10, 18],
-            &[80, 79, 71, 70],
-        ];
+        let positions: &[&[usize]] = &[&[40, 41, 31, 50], &[0, 1, 9, 10, 18], &[80, 79, 71, 70]];
 
         for &moves in positions {
             let mut board = Board::new();

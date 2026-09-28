@@ -1297,8 +1297,14 @@ mod commit_dual_leo_oracle {
             // G1 regression: β=0 → gate=σ(0)=0.5 → 0.5·leo + 0.5·uvfa.
             // This must bit-match DualLeoOracle at α=0.5 on the same heads.
             let oracle = CommitDualLeoOracle::new(
-                MockLeo { goals: 2, actions: 4 },
-                MockUvfa { goals: 2, actions: 4 },
+                MockLeo {
+                    goals: 2,
+                    actions: 4,
+                },
+                MockUvfa {
+                    goals: 2,
+                    actions: 4,
+                },
                 0.0, // β=0
                 0,
             );
@@ -1316,8 +1322,14 @@ mod commit_dual_leo_oracle {
             // → gate = σ(β·(−396)) → 0 as β grows → blend → uvfa-only.
             // At β=1: gate = σ(−396) ≈ 0 (underflows to exactly 0.0 in f32).
             let oracle = CommitDualLeoOracle::new(
-                MockLeo { goals: 2, actions: 4 },
-                MockUvfa { goals: 2, actions: 4 },
+                MockLeo {
+                    goals: 2,
+                    actions: 4,
+                },
+                MockUvfa {
+                    goals: 2,
+                    actions: 4,
+                },
                 1.0,
                 0,
             );
@@ -1342,14 +1354,26 @@ mod commit_dual_leo_oracle {
             }
 
             let commit = CommitDualLeoOracle::new(
-                MockLeo { goals: 2, actions: 4 },
-                MockUvfa { goals: 2, actions: 4 },
+                MockLeo {
+                    goals: 2,
+                    actions: 4,
+                },
+                MockUvfa {
+                    goals: 2,
+                    actions: 4,
+                },
                 0.0,
                 1,
             );
             let blend = DualLeoOracle::new(
-                MockLeo { goals: 2, actions: 4 },
-                MockUvfa { goals: 2, actions: 4 },
+                MockLeo {
+                    goals: 2,
+                    actions: 4,
+                },
+                MockUvfa {
+                    goals: 2,
+                    actions: 4,
+                },
                 LcMixer,
                 0.5,
                 1,
@@ -1367,8 +1391,14 @@ mod commit_dual_leo_oracle {
         fn test_commit_dual_leo_into_matches_at() {
             // `q_gradient_into` and `q_gradient_at` must agree.
             let oracle = CommitDualLeoOracle::new(
-                MockLeo { goals: 2, actions: 4 },
-                MockUvfa { goals: 2, actions: 4 },
+                MockLeo {
+                    goals: 2,
+                    actions: 4,
+                },
+                MockUvfa {
+                    goals: 2,
+                    actions: 4,
+                },
                 2.0,
                 1,
             );
@@ -1383,8 +1413,14 @@ mod commit_dual_leo_oracle {
         fn test_commit_dual_leo_out_of_range_goal_zeros() {
             // Out-of-range goal → empty gradient (mirrors DualLeoOracle edge).
             let oracle = CommitDualLeoOracle::new(
-                MockLeo { goals: 2, actions: 4 },
-                MockUvfa { goals: 2, actions: 4 },
+                MockLeo {
+                    goals: 2,
+                    actions: 4,
+                },
+                MockUvfa {
+                    goals: 2,
+                    actions: 4,
+                },
                 4.0,
                 99,
             );
@@ -1398,8 +1434,14 @@ mod commit_dual_leo_oracle {
             // G1 stretch: β=64 → sigmoid saturates → grad ≈ pure higher-conf
             // head. UVFA has higher max on every goal → grad ≈ uvfa.
             let oracle = CommitDualLeoOracle::new(
-                MockLeo { goals: 2, actions: 4 },
-                MockUvfa { goals: 2, actions: 4 },
+                MockLeo {
+                    goals: 2,
+                    actions: 4,
+                },
+                MockUvfa {
+                    goals: 2,
+                    actions: 4,
+                },
                 64.0,
                 0,
             );
@@ -1416,8 +1458,14 @@ mod commit_dual_leo_oracle {
             // Use MockUvfa as "teacher" (higher values) and MockLeo as
             // "student" — gate should → 1 → return teacher (= MockUvfa).
             let oracle = CommitDualLeoOracle::new(
-                MockUvfa { goals: 2, actions: 4 }, // as "leo" slot
-                MockLeo { goals: 2, actions: 4 }, // as "uvfa" slot
+                MockUvfa {
+                    goals: 2,
+                    actions: 4,
+                }, // as "leo" slot
+                MockLeo {
+                    goals: 2,
+                    actions: 4,
+                }, // as "uvfa" slot
                 8.0,
                 0,
             );

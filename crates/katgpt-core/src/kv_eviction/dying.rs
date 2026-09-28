@@ -171,7 +171,13 @@ pub fn verdict(row: &DeathRow, now: u64, config: &DeathConfig) -> Verdict {
 /// [`super::UsageScoreTable::scores`] shape). Also returns the Dead count
 /// (the prune-candidate population) — the one number every consumer's
 /// delete pass starts from.
-pub fn verdicts_into(rows: &[DeathRow], live: usize, now: u64, config: &DeathConfig, out: &mut Vec<Verdict>) -> usize {
+pub fn verdicts_into(
+    rows: &[DeathRow],
+    live: usize,
+    now: u64,
+    config: &DeathConfig,
+    out: &mut Vec<Verdict>,
+) -> usize {
     out.clear();
     let mut dead = 0usize;
     for row in &rows[..live.min(rows.len())] {
@@ -220,7 +226,10 @@ mod tests {
     fn thresholds_read_one_definition() {
         // window 100: brake at ≥75 ticks unaddressed, dead at ≥100.
         let born = 0u64;
-        let row = DeathRow { admission_tick: born, last_addressed: 0 };
+        let row = DeathRow {
+            admission_tick: born,
+            last_addressed: 0,
+        };
         let cfg = config(100, 0);
         assert_eq!(verdict(&row, 74, &cfg), Verdict::Alive);
         assert_eq!(verdict(&row, 75, &cfg), Verdict::Braking); // exactly at brake
@@ -249,7 +258,10 @@ mod tests {
         // The own-age clamp: the never-addressed default (last_addressed=0)
         // must not read (now − 0)/window — dead from birth. It reads
         // own_age/window.
-        let row = DeathRow { admission_tick: 5_000, last_addressed: 0 };
+        let row = DeathRow {
+            admission_tick: 5_000,
+            last_addressed: 0,
+        };
         let cfg = config(100, 0);
         assert_eq!(death_score(&row, 5_074, &cfg), 0.74); // by AGE (74/100), alive
         assert_eq!(verdict(&row, 5_074, &cfg), Verdict::Alive);
@@ -262,7 +274,10 @@ mod tests {
         // Even fully stale (never addressed) and past the window, a newborn
         // on trial reads 0 until trial end — then the metric applies at
         // once (no second ramp: the clamped staleness is already ≥ window).
-        let row = DeathRow { admission_tick: 1_000, last_addressed: 1_000 };
+        let row = DeathRow {
+            admission_tick: 1_000,
+            last_addressed: 1_000,
+        };
         let cfg = config(100, 500);
         assert_eq!(death_score(&row, 1_499, &cfg), 0.0); // on trial, though stale
         assert_eq!(verdict(&row, 1_499, &cfg), Verdict::Alive);
@@ -271,7 +286,10 @@ mod tests {
         assert_eq!(verdict(&row, 1_500, &cfg), Verdict::Dead);
         // A trial LONGER than the staleness: touch during the trial, then
         // the post-trial score resumes from the touch, not from birth.
-        let mut row2 = DeathRow { admission_tick: 1_000, last_addressed: 1_000 };
+        let mut row2 = DeathRow {
+            admission_tick: 1_000,
+            last_addressed: 1_000,
+        };
         let cfg2 = config(100, 500);
         row2.addressed(1_450);
         assert_eq!(verdict(&row2, 1_500, &cfg2), Verdict::Alive); // 50 since touch
@@ -319,9 +337,15 @@ mod tests {
     #[test]
     fn batch_scan_counts_dead_into_caller_buffer() {
         let rows = vec![
-            DeathRow::born_at(0),           // stale forever → Dead
-            DeathRow { admission_tick: 0, last_addressed: 999 }, // current → Alive
-            DeathRow { admission_tick: 500, last_addressed: 500 }, // braking (age 500/window? no — see config)
+            DeathRow::born_at(0), // stale forever → Dead
+            DeathRow {
+                admission_tick: 0,
+                last_addressed: 999,
+            }, // current → Alive
+            DeathRow {
+                admission_tick: 500,
+                last_addressed: 500,
+            }, // braking (age 500/window? no — see config)
         ];
         // window 1000, no trial: row0 unaddressed 1000 ≥ 1000 → Dead;
         // row1 unaddressed 1 → Alive; row2 unaddressed 500, age 500 → 0.5 → Alive.

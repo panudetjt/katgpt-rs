@@ -99,7 +99,7 @@ fn gate_q_equals_k_near_one() {
     let cfg = SigmoidFusionConfig {
         tau: (d as f32).sqrt(),
         rmsnorm_eps: 1e-6,
-            logit_bias: 0.0,
+        logit_bias: 0.0,
     };
     let q: Vec<f32> = (1..=d).map(|i| i as f32).collect();
     let v: Vec<f32> = q.iter().map(|x| x * 0.1).collect();
@@ -118,7 +118,7 @@ fn gate_q_opposite_k_near_zero() {
     let cfg = SigmoidFusionConfig {
         tau: (d as f32).sqrt(),
         rmsnorm_eps: 1e-6,
-            logit_bias: 0.0,
+        logit_bias: 0.0,
     };
     let q: Vec<f32> = (1..=d).map(|i| i as f32).collect();
     let k: Vec<f32> = q.iter().map(|x| -x).collect();
@@ -135,7 +135,7 @@ fn gate_q_orthogonal_k_near_half() {
     let cfg = SigmoidFusionConfig {
         tau: (d as f32).sqrt(),
         rmsnorm_eps: 1e-6,
-            logit_bias: 0.0,
+        logit_bias: 0.0,
     };
     let mut q = vec![0.0f32; d];
     let mut k = vec![0.0f32; d];

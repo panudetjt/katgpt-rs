@@ -72,6 +72,7 @@ the delegated ones, which is what proved the move behaviour-preserving.
 
 - Cross-repo dep direction: `../riir-ai/BOUNDARY.md`
 - Chain admission (three-test): `../riir-chain/BOUNDARY.md`
+- Public/private split doctrine (what may be public at all): `../riir-ai/.research/003_Commercial_Open_Source_Strategy_Verdict.md` — Research 003 §"Decision Rules for AI": what = public, how = private; private-workspace governance/ops content never lands here; when unsure, keep it private.
 
 ## Drift ledger (target vs actual)
 

@@ -128,7 +128,15 @@ fn train_text_model() -> (Config, TransformerWeights, Vec<Vec<usize>>) {
     let tokens = encode_text(TEXT_CORPUS);
     let train = slice_blocks(&tokens, 0, TRAIN_BLOCKS, BLOCK + 1);
     let eval = slice_blocks(&tokens, EVAL_WINDOW_START, N_EVAL, BLOCK + 1);
-    let (weights, _) = train_mini_dllm(&config, &train, &eval, train_epochs(), 0.01, 0.3, SEED_TRAIN);
+    let (weights, _) = train_mini_dllm(
+        &config,
+        &train,
+        &eval,
+        train_epochs(),
+        0.01,
+        0.3,
+        SEED_TRAIN,
+    );
     (config, weights, eval)
 }
 
@@ -228,7 +236,11 @@ fn auroc_midrank(values: &[f32], correct: &[bool]) -> f64 {
     let n = values.len();
     debug_assert_eq!(n, correct.len());
     let mut idx: Vec<usize> = (0..n).collect();
-    idx.sort_by(|&a, &b| values[a].partial_cmp(&values[b]).unwrap_or(std::cmp::Ordering::Equal));
+    idx.sort_by(|&a, &b| {
+        values[a]
+            .partial_cmp(&values[b])
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     let mut ranks = vec![0.0f64; n];
     let mut i = 0;
     while i < n {
@@ -256,7 +268,11 @@ fn selective_accuracy(conf: &[f32], correct: &[bool], coverage: f64) -> f64 {
     let n = conf.len();
     let k = ((coverage * n as f64).ceil() as usize).clamp(1, n);
     let mut idx: Vec<usize> = (0..n).collect();
-    idx.sort_by(|&a, &b| conf[b].partial_cmp(&conf[a]).unwrap_or(std::cmp::Ordering::Equal));
+    idx.sort_by(|&a, &b| {
+        conf[b]
+            .partial_cmp(&conf[a])
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     let hits = idx[..k].iter().filter(|&&i| correct[i]).count();
     hits as f64 / k as f64
 }
@@ -323,8 +339,14 @@ fn bootstrap_deltas(rows: &ArmRows) -> (usize, [f64; 2], [f64; 2], [f64; 2]) {
     }
     (
         n_valid,
-        [percentile(&d_agree_h1, 0.025), percentile(&d_agree_h1, 0.975)],
-        [percentile(&d_agree_maxp, 0.025), percentile(&d_agree_maxp, 0.975)],
+        [
+            percentile(&d_agree_h1, 0.025),
+            percentile(&d_agree_h1, 0.975),
+        ],
+        [
+            percentile(&d_agree_maxp, 0.025),
+            percentile(&d_agree_maxp, 0.975),
+        ],
         [percentile(&d_maxp_h1, 0.025), percentile(&d_maxp_h1, 0.975)],
     )
 }
@@ -383,7 +405,15 @@ fn t5_policy_arm_measurement() {
             canvas[p] = mask;
             let a_labels = option_set(block[p], &mut distract_rng);
             for (rows, labels) in [(&mut arm_a, &a_labels), (&mut arm_b, &alphabet_labels())] {
-                let got = measure_canvas(&weights, &config, &canvas, block, labels, &mut scratch, &mut sample_rng);
+                let got = measure_canvas(
+                    &weights,
+                    &config,
+                    &canvas,
+                    block,
+                    labels,
+                    &mut scratch,
+                    &mut sample_rng,
+                );
                 rows.s1_rows.0 += got.len();
                 rows.s1_rows.1 += got.iter().filter(|it| it.correct).count();
                 rows.items.extend(got);
@@ -399,7 +429,15 @@ fn t5_policy_arm_measurement() {
             let truths: Vec<usize> = (s..s + 3).map(|q| block[q]).collect();
             let a_labels = union_option_set(&truths, &mut distract_rng);
             for (rows, labels) in [(&mut arm_a, &a_labels), (&mut arm_b, &alphabet_labels())] {
-                let got = measure_canvas(&weights, &config, &canvas, block, labels, &mut scratch, &mut sample_rng);
+                let got = measure_canvas(
+                    &weights,
+                    &config,
+                    &canvas,
+                    block,
+                    labels,
+                    &mut scratch,
+                    &mut sample_rng,
+                );
                 rows.s3_rows.0 += got.len();
                 rows.s3_rows.1 += got.iter().filter(|it| it.correct).count();
                 rows.items.extend(got);
@@ -416,7 +454,11 @@ fn t5_policy_arm_measurement() {
     let expected = N_EVAL * ((BLOCK + 1) + S3_STARTS.len() * 3);
     for rows in [&arm_a, &arm_b] {
         assert_eq!(rows.items.len(), expected, "item count in {}", rows.name);
-        assert!(rows.items.iter().any(|it| it.correct), "no correct item in {}", rows.name);
+        assert!(
+            rows.items.iter().any(|it| it.correct),
+            "no correct item in {}",
+            rows.name
+        );
         assert!(
             !rows.items.iter().all(|it| it.correct),
             "no incorrect item in {} — no discriminability question",
@@ -444,7 +486,12 @@ fn report_arm(rows: &ArmRows) {
     let au_maxp = auroc_midrank(&maxp, &correct);
     let au_agree = auroc_midrank(&agree, &correct);
     let mean_h1: f64 = rows.items.iter().map(|it| f64::from(it.h1)).sum::<f64>() / n as f64;
-    let sampled_acc: f64 = rows.items.iter().map(|it| f64::from(it.sampled_correct_mean)).sum::<f64>() / n as f64;
+    let sampled_acc: f64 = rows
+        .items
+        .iter()
+        .map(|it| f64::from(it.sampled_correct_mean))
+        .sum::<f64>()
+        / n as f64;
 
     println!("\n== arm {} — {n} items ==", rows.name);
     println!(
@@ -468,8 +515,7 @@ fn report_arm(rows: &ArmRows) {
     let (n_valid, d_ah, d_am, d_mh) = bootstrap_deltas(rows);
     println!(
         "  bootstrap {n_valid}/{} valid · Δ(agree−(−H1)) [{:+.4}, {:+.4}] · Δ(agree−maxp) [{:+.4}, {:+.4}] · Δ(maxp−(−H1)) [{:+.4}, {:+.4}] (95%)",
-        BOOTSTRAP_REPS,
-        d_ah[0], d_ah[1], d_am[0], d_am[1], d_mh[0], d_mh[1],
+        BOOTSTRAP_REPS, d_ah[0], d_ah[1], d_am[0], d_am[1], d_mh[0], d_mh[1],
     );
 
     for &cov in &COVERAGES {
@@ -483,7 +529,10 @@ fn report_arm(rows: &ArmRows) {
     }
 
     // The M3 gate table: τ | gate rate | mean reads | on-gate-subset AUROCs.
-    println!("  M3 gate (re-reads fire where H1 > τ; cost 1 + {} × gate rate):", N_REREADS - 1);
+    println!(
+        "  M3 gate (re-reads fire where H1 > τ; cost 1 + {} × gate rate):",
+        N_REREADS - 1
+    );
     for &tau in &TAUS {
         let gated: Vec<usize> = (0..n).filter(|&i| rows.items[i].h1 > tau).collect();
         if gated.is_empty() {

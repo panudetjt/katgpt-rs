@@ -76,8 +76,17 @@
 /// # Panics
 /// Panics (debug) if slices have mismatched lengths.
 #[inline]
-pub fn relu_gated_suppression_into(logits: &[f32], alignment: &[f32], strength: f32, out: &mut [f32]) {
-    debug_assert_eq!(logits.len(), alignment.len(), "alignment must be |V|-matched");
+pub fn relu_gated_suppression_into(
+    logits: &[f32],
+    alignment: &[f32],
+    strength: f32,
+    out: &mut [f32],
+) {
+    debug_assert_eq!(
+        logits.len(),
+        alignment.len(),
+        "alignment must be |V|-matched"
+    );
     debug_assert_eq!(logits.len(), out.len(), "out must be |V|-matched");
     for i in 0..logits.len() {
         // ReLU gate: only positive alignments are suppressed.
@@ -95,9 +104,18 @@ pub fn relu_gated_suppression_into(logits: &[f32], alignment: &[f32], strength: 
 /// (degenerate direction — caller should skip injection rather than divide).
 #[inline]
 #[must_use]
-pub fn tau_over_peak_calibration(head_rows: &[f32], direction: &[f32], n_out: usize, tau: f32) -> Option<f32> {
+pub fn tau_over_peak_calibration(
+    head_rows: &[f32],
+    direction: &[f32],
+    n_out: usize,
+    tau: f32,
+) -> Option<f32> {
     let d = direction.len();
-    debug_assert_eq!(head_rows.len(), n_out * d, "head_rows must be n_out × d row-major");
+    debug_assert_eq!(
+        head_rows.len(),
+        n_out * d,
+        "head_rows must be n_out × d row-major"
+    );
     let mut peak = f32::NEG_INFINITY;
     for v in 0..n_out {
         let row = &head_rows[v * d..(v + 1) * d];
@@ -278,7 +296,10 @@ impl LiftTableBuilder {
     /// New builder over a `vocab`-sized dictionary with smoothing `alpha > 0`.
     #[must_use]
     pub fn new(vocab: usize, alpha: f32) -> Self {
-        assert!(alpha > 0.0, "alpha=0 makes lift(never-seen) 0/0; use the raw limit via tiny alpha");
+        assert!(
+            alpha > 0.0,
+            "alpha=0 makes lift(never-seen) 0/0; use the raw limit via tiny alpha"
+        );
         Self {
             vocab,
             alpha,
@@ -330,12 +351,10 @@ impl LiftTableBuilder {
                 entries: Vec::new(),
             };
         }
-        let mut idx: Vec<u32> = (0..self.vocab as u32).filter(|&w| self.tagged_counts[w as usize] > 0).collect();
-        idx.sort_by(|&a, &b| {
-            self.lift(b)
-                .total_cmp(&self.lift(a))
-                .then(a.cmp(&b))
-        });
+        let mut idx: Vec<u32> = (0..self.vocab as u32)
+            .filter(|&w| self.tagged_counts[w as usize] > 0)
+            .collect();
+        idx.sort_by(|&a, &b| self.lift(b).total_cmp(&self.lift(a)).then(a.cmp(&b)));
         idx.truncate(top_k);
         let entries = idx
             .into_iter()
@@ -467,13 +486,24 @@ mod tests {
         for i in 0..4 {
             naive[i] = logits[i] - s * alignment[i];
         }
-        assert!(naive[1] > logits[1], "naive subtraction promotes anti-aligned tokens");
+        assert!(
+            naive[1] > logits[1],
+            "naive subtraction promotes anti-aligned tokens"
+        );
 
         // Gated arm: v1 and v3 bit-unchanged (delta exactly 0.0).
         let mut gated = [0f32; 4];
         relu_gated_suppression_into(&logits, &alignment, s, &mut gated);
-        assert_eq!(gated[1].to_bits(), logits[1].to_bits(), "anti-aligned bit-unchanged");
-        assert_eq!(gated[3].to_bits(), logits[3].to_bits(), "zero-alignment bit-unchanged");
+        assert_eq!(
+            gated[1].to_bits(),
+            logits[1].to_bits(),
+            "anti-aligned bit-unchanged"
+        );
+        assert_eq!(
+            gated[3].to_bits(),
+            logits[3].to_bits(),
+            "zero-alignment bit-unchanged"
+        );
         // Positively aligned ARE suppressed, by exactly s·a.
         assert_eq!(gated[0], logits[0] - s * 2.0);
         assert_eq!(gated[2], logits[2] - s * 0.5);
@@ -562,11 +592,19 @@ mod tests {
             seed ^= seed << 5;
             seed
         };
-        let w: Vec<f32> = (0..d).map(|_| (next() % 2000) as f32 / 1000.0 - 1.0).collect();
-        let k: Vec<Vec<f32>> = (0..2)
-            .map(|_| (0..d).map(|_| (next() % 2000) as f32 / 1000.0 - 1.0).collect())
+        let w: Vec<f32> = (0..d)
+            .map(|_| (next() % 2000) as f32 / 1000.0 - 1.0)
             .collect();
-        let eps: Vec<f32> = (0..d).map(|_| (next() % 200) as f32 / 10000.0 - 0.01).collect();
+        let k: Vec<Vec<f32>> = (0..2)
+            .map(|_| {
+                (0..d)
+                    .map(|_| (next() % 2000) as f32 / 1000.0 - 1.0)
+                    .collect()
+            })
+            .collect();
+        let eps: Vec<f32> = (0..d)
+            .map(|_| (next() % 200) as f32 / 10000.0 - 0.01)
+            .collect();
 
         // Fused = w · (k1 + k2 + eps), summed in fixed vector order.
         let mut presum = vec![0f32; d];
@@ -586,9 +624,15 @@ mod tests {
     fn t2_gemv_column_bit_identity_and_scalar_agreement() {
         let d = 8usize;
         let n_out = 5usize;
-        let head: Vec<f32> = (0..n_out * d).map(|i| ((i * 37) % 23) as f32 / 23.0 - 0.5).collect();
-        let k1: Vec<f32> = (0..d).map(|i| ((i * 11) % 17) as f32 / 17.0 - 0.5).collect();
-        let k2: Vec<f32> = (0..d).map(|i| ((i * 13) % 19) as f32 / 19.0 - 0.5).collect();
+        let head: Vec<f32> = (0..n_out * d)
+            .map(|i| ((i * 37) % 23) as f32 / 23.0 - 0.5)
+            .collect();
+        let k1: Vec<f32> = (0..d)
+            .map(|i| ((i * 11) % 17) as f32 / 17.0 - 0.5)
+            .collect();
+        let k2: Vec<f32> = (0..d)
+            .map(|i| ((i * 13) % 19) as f32 / 19.0 - 0.5)
+            .collect();
         let eps: Vec<f32> = vec![0.01; d];
         let mut out = vec![0f32; (2 + 2) * n_out];
         let stride = decomposed_readout_gemv_into(&head, d, &[&k1, &k2], &eps, &mut out);
@@ -605,7 +649,10 @@ mod tests {
             let s = decomposed_readout(row, &[&k1, &k2], &eps);
             assert_eq!(s.contributions[0].to_bits(), out[v].to_bits());
             assert_eq!(s.contributions[1].to_bits(), out[n_out + v].to_bits());
-            assert_eq!(s.residual_contribution.to_bits(), out[2 * n_out + v].to_bits());
+            assert_eq!(
+                s.residual_contribution.to_bits(),
+                out[2 * n_out + v].to_bits()
+            );
             assert_eq!(s.fused.to_bits(), out[3 * n_out + v].to_bits());
         }
     }
@@ -653,7 +700,10 @@ mod tests {
         let mut b3 = LiftTableBuilder::new(3, 1e-7);
         b3.observe_global(&[0, 0, 1, 1, 2, 2]);
         b3.observe_tagged(&[2, 2, 2, 2]);
-        assert!(b3.lift(0) < 1e-3, "α→0 raw-limit: zero tagged mass → ~0 lift");
+        assert!(
+            b3.lift(0) < 1e-3,
+            "α→0 raw-limit: zero tagged mass → ~0 lift"
+        );
     }
 
     /// finish(): deterministic top-K ordering (lift DESC, word ASC ties) and
@@ -739,6 +789,9 @@ mod tests {
         let g_mix = hsic_cross_covariance_gauge(&psi, &mixed, m, d, &mut sp, &mut sp2);
         assert!(g_orth < g_mix && g_mix < g_self);
         // Degenerate: m <= 1 → 0.
-        assert_eq!(hsic_cross_covariance_gauge(&[1.0], &[1.0], 1, 1, &mut sp, &mut sp2), 0.0);
+        assert_eq!(
+            hsic_cross_covariance_gauge(&[1.0], &[1.0], 1, 1, &mut sp, &mut sp2),
+            0.0
+        );
     }
 }

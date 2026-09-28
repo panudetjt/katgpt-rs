@@ -404,30 +404,30 @@ impl<A: Clone + Eq + Hash> ParallelProbeController<A> {
     /// Returns `Some(consensus_answer)` if we should stop, `None` otherwise.
     fn should_stop(&mut self, majority: &Option<A>) -> Option<A> {
         if let Some(consensus) = majority {
-                // Check if consensus matches previous (or is first).
-                let is_same = self
-                    .last_consensus
-                    .as_ref()
-                    .is_none_or(|prev| prev == consensus);
+            // Check if consensus matches previous (or is first).
+            let is_same = self
+                .last_consensus
+                .as_ref()
+                .is_none_or(|prev| prev == consensus);
 
-                if is_same {
-                    self.consensus_streak += 1;
-                } else {
-                    self.consensus_streak = 1;
-                }
-                self.last_consensus = Some(consensus.clone());
-
-                if self.consensus_streak >= self.config.stability_patience {
-                    Some(consensus.clone())
-                } else {
-                    None
-                }
+            if is_same {
+                self.consensus_streak += 1;
             } else {
-                // No consensus — reset streak.
-                self.consensus_streak = 0;
-                self.last_consensus = None;
+                self.consensus_streak = 1;
+            }
+            self.last_consensus = Some(consensus.clone());
+
+            if self.consensus_streak >= self.config.stability_patience {
+                Some(consensus.clone())
+            } else {
                 None
             }
+        } else {
+            // No consensus — reset streak.
+            self.consensus_streak = 0;
+            self.last_consensus = None;
+            None
+        }
     }
 
     /// Determine which branches to prune based on deviation from majority.

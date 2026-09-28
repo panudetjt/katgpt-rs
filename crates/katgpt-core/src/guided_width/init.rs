@@ -56,7 +56,11 @@ pub fn sobol_init_into(
         return;
     }
     let dd = d.min(SOBOL_MAX_DIM);
-    assert_eq!(sobol.dim(), dd, "sobol_init_into: Sobol source dim mismatch");
+    assert_eq!(
+        sobol.dim(),
+        dd,
+        "sobol_init_into: Sobol source dim mismatch"
+    );
     sobol.reseed(seed);
     let pts = &mut sobol_buf[..(n - 1) * dd];
     sobol.draw_nd(n - 1, pts);

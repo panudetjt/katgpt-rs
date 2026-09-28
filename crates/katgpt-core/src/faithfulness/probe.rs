@@ -269,16 +269,14 @@ where
     where
         C::Delta: PartialOrd,
     {
-        let empty_delta =
-            self.probe_intervention_into(memory, scratch, Intervention::Empty, rng);
+        let empty_delta = self.probe_intervention_into(memory, scratch, Intervention::Empty, rng);
         let shuffle_delta =
             self.probe_intervention_into(memory, scratch, Intervention::Shuffle, rng);
         let corrupt_delta =
             self.probe_intervention_into(memory, scratch, Intervention::Corrupt, rng);
         let irrelevant_delta =
             self.probe_intervention_into(memory, scratch, Intervention::Irrelevant, rng);
-        let filler_delta =
-            self.probe_intervention_into(memory, scratch, Intervention::Filler, rng);
+        let filler_delta = self.probe_intervention_into(memory, scratch, Intervention::Filler, rng);
 
         let shuffle_or_corrupt_delta = if shuffle_delta >= corrupt_delta {
             shuffle_delta
@@ -737,8 +735,7 @@ mod tests {
         let profile_clone = probe_clone.faithfulness_profile(&memory, &mut rng_clone);
 
         // Scratch-based API — same consumer, pool, filler, seed.
-        let mut probe_scratch =
-            DefaultFaithfulnessProbe::new(consumer, irrelevant_pool, filler);
+        let mut probe_scratch = DefaultFaithfulnessProbe::new(consumer, irrelevant_pool, filler);
         let mut rng_scratch = Rng::with_seed(42);
         let mut scratch = vec![0.0_f32; memory.len()];
         let profile_scratch =
@@ -806,11 +803,8 @@ mod tests {
         // counterfactual swap MUST move its behavior (CVRR §5.3 — a contrastive
         // donor is more disruptive than content removal for content readers).
         let weights = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
-        let mut probe = DefaultFaithfulnessProbe::new(
-            FaithfulConsumer { weights },
-            vec![0.1_f32],
-            1.0_f32,
-        );
+        let mut probe =
+            DefaultFaithfulnessProbe::new(FaithfulConsumer { weights }, vec![0.1_f32], 1.0_f32);
         let memory = vec![1.0_f32, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
         let donor = vec![-8.0_f32, -7.0, -6.0, -5.0, -4.0, -3.0, -2.0, -1.0];
 
@@ -832,11 +826,8 @@ mod tests {
     fn test_issue776_norm_noise_separating_canary() {
         // Structure reader: norm-matched noise destroys structure → diverges.
         let weights = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
-        let mut probe = DefaultFaithfulnessProbe::new(
-            FaithfulConsumer { weights },
-            vec![0.1_f32],
-            1.0_f32,
-        );
+        let mut probe =
+            DefaultFaithfulnessProbe::new(FaithfulConsumer { weights }, vec![0.1_f32], 1.0_f32);
         let memory = vec![1.0_f32, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
         let mut rng = Rng::with_seed(7);
         let structure_delta = probe.probe_norm_noise(&memory, &mut rng);

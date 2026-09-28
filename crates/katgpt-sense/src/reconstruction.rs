@@ -374,7 +374,7 @@ impl BatchProjectionWeights {
     #[cfg(feature = "sense_composition")]
     pub fn expand_batch(
         &self,
-        belief_batch: &[f32],           // [N × 8]
+        belief_batch: &[f32],        // [N × 8]
         activations_out: &mut [f32], // [N × 6]
     ) {
         let n = self.n_entities;
@@ -1746,14 +1746,10 @@ mod tests {
         //   (b) the surprise global peak IS near an event (within WINDOW of
         //       some event), proving the two signals peak at different places.
         let raw_argmax = (0..TRACE_LEN)
-            .max_by(|&a, &b| {
-                raw_norm_trace[a].total_cmp(&raw_norm_trace[b])
-            })
+            .max_by(|&a, &b| raw_norm_trace[a].total_cmp(&raw_norm_trace[b]))
             .expect("non-empty trace");
         let surprise_argmax = (0..TRACE_LEN)
-            .max_by(|&a, &b| {
-                surprise_trace[a].total_cmp(&surprise_trace[b])
-            })
+            .max_by(|&a, &b| surprise_trace[a].total_cmp(&surprise_trace[b]))
             .expect("non-empty trace");
 
         // Raw norm peaks at (or near) the last tick — never at an event.

@@ -225,11 +225,15 @@ impl<'tok> FastBpeEncoder<'tok> {
             // so the slice index is safe.
             let merged = tokenizer.merge_target_id[rank];
             merges.insert(
-                (crate::fast_bpe::TokenId(l as u32), crate::fast_bpe::TokenId(r as u32)),
+                (
+                    crate::fast_bpe::TokenId(l as u32),
+                    crate::fast_bpe::TokenId(r as u32),
+                ),
                 crate::fast_bpe::TokenId(merged as u32),
             );
         }
-        let pair_ranks = crate::fast_bpe::PairRankTable::build(&merges, tokenizer.id_to_vocab.len()).ok();
+        let pair_ranks =
+            crate::fast_bpe::PairRankTable::build(&merges, tokenizer.id_to_vocab.len()).ok();
         FastBpeEncoder {
             tokenizer,
             pair_ranks,
@@ -294,14 +298,14 @@ impl<'tok> FastBpeEncoder<'tok> {
         }
 
         if let Some(table) = &self.pair_ranks {
-                crate::fast_bpe::bpe_merge_symbols_by_rank(table, &mut self.symbols, &mut self.scratch);
-            } else {
-                crate::fast_bpe::bpe_merge_symbols_by_rank_with_lookup(
-                    &|a, b| self.merges.get(&(a, b)).map_or(u32::MAX, |m| m.0),
-                    &mut self.symbols,
-                    &mut self.scratch,
-                );
-            }
+            crate::fast_bpe::bpe_merge_symbols_by_rank(table, &mut self.symbols, &mut self.scratch);
+        } else {
+            crate::fast_bpe::bpe_merge_symbols_by_rank_with_lookup(
+                &|a, b| self.merges.get(&(a, b)).map_or(u32::MAX, |m| m.0),
+                &mut self.symbols,
+                &mut self.scratch,
+            );
+        }
 
         out.extend(self.symbols.iter().map(|t| t.0 as usize));
     }
@@ -481,16 +485,11 @@ impl<'tok> FastBpeEncoder<'tok> {
     /// accumulation loop builds it from `char::encode_utf8` outputs, so it's
     /// always valid UTF-8 in practice.
     #[inline]
-    fn encode_pretoken_tokens(
-        &mut self,
-        pretoken_bytes: &[u8],
-        buf: &mut [u8; 4],
-        unk: usize,
-    ) {
+    fn encode_pretoken_tokens(&mut self, pretoken_bytes: &[u8], buf: &mut [u8; 4], unk: usize) {
         // SAFETY: `pretoken_bytes` is built from `char`s' UTF-8 encodings
         // in the caller's accumulation loop; qed.
-        let s = std::str::from_utf8(pretoken_bytes)
-            .expect("pretoken_bytes is built from chars; qed");
+        let s =
+            std::str::from_utf8(pretoken_bytes).expect("pretoken_bytes is built from chars; qed");
         self.symbols.clear();
         for c in s.chars() {
             let cs = c.encode_utf8(buf);
@@ -498,18 +497,14 @@ impl<'tok> FastBpeEncoder<'tok> {
             self.symbols.push(crate::fast_bpe::TokenId(id as u32));
         }
         if let Some(table) = &self.pair_ranks {
-                crate::fast_bpe::bpe_merge_symbols_by_rank(
-                    table,
-                    &mut self.symbols,
-                    &mut self.scratch,
-                );
-            } else {
-                crate::fast_bpe::bpe_merge_symbols_by_rank_with_lookup(
-                    &|a, b| self.merges.get(&(a, b)).map_or(u32::MAX, |m| m.0),
-                    &mut self.symbols,
-                    &mut self.scratch,
-                );
-            }
+            crate::fast_bpe::bpe_merge_symbols_by_rank(table, &mut self.symbols, &mut self.scratch);
+        } else {
+            crate::fast_bpe::bpe_merge_symbols_by_rank_with_lookup(
+                &|a, b| self.merges.get(&(a, b)).map_or(u32::MAX, |m| m.0),
+                &mut self.symbols,
+                &mut self.scratch,
+            );
+        }
         // Same element order as the previous `.collect()`; writes into the
         // reused scratch instead of a fresh allocation.
         self.pretok_tokens.clear();

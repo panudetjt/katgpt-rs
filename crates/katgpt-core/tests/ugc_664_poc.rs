@@ -20,8 +20,8 @@
 //!   cargo test -p katgpt-core --test ugc_664_poc -- --nocapture
 //!   (d=128 exact cells + mixture d=64 run in seconds; no release gate needed)
 
-use katgpt_core::ugc_schedule::*;
 use katgpt_core::types::Rng;
+use katgpt_core::ugc_schedule::*;
 
 // ---------------------------------------------------------------------------
 // Toy ensembles (exact posteriors)
@@ -98,7 +98,11 @@ impl Mixture {
             let want = vals[k] as u8;
             let col = &self.centers[idx..];
             for (c, w) in logw.iter_mut().enumerate() {
-                *w += if col[c * self.d] == want { log_q } else { log_p };
+                *w += if col[c * self.d] == want {
+                    log_q
+                } else {
+                    log_p
+                };
             }
         }
     }
@@ -158,9 +162,7 @@ fn noisy_bit_g(d: usize, eta: f64, j: usize) -> f64 {
     // P(m0) = C(j, m0)·(1−η)^m0·η^{j−m0}  — Bin(j, 1−η).
     let mut sum = 0.0f64;
     for m0 in 0..=j {
-        let pm = n_choose(j, m0)
-            * (1.0 - eta).powi(m0 as i32)
-            * eta.powi((j - m0) as i32);
+        let pm = n_choose(j, m0) * (1.0 - eta).powi(m0 as i32) * eta.powi((j - m0) as i32);
         let p0 = dz.post_u0(m0, j);
         let p1_0 = (1.0 - eta) * p0 + eta * (1.0 - p0); // P(Z_i = 0 | x)
         // Bernoulli entropy (nats), 0·ln0 := 0.
@@ -275,7 +277,10 @@ fn g1_closed_form_q_rep_matches_bernstein_path() {
         let closed = d as f64 * (d as f64 - 1.0) * (2.0f64).ln() * r * r * (1.0 - r).powi(d as i32);
         let via_hp = r * r * (1.0 - r) * (1.0 - r) * noisy_bit_h_prime(d, 0.0, r);
         let rel = ((closed - via_hp) / closed).abs();
-        assert!(rel < 1e-9, "λ={lam}: closed={closed:.6e} bernstein={via_hp:.6e}");
+        assert!(
+            rel < 1e-9,
+            "λ={lam}: closed={closed:.6e} bernstein={via_hp:.6e}"
+        );
     }
 }
 
@@ -285,9 +290,15 @@ fn g1_closed_form_q_par_reflection_identity() {
     let d = 24usize;
     for &lam in &[-2.5f64, 0.0, 2.5] {
         let r = 1.0 / (1.0 + (-lam).exp());
-        let q_par = d as f64 * (d as f64 - 1.0) * (2.0f64).ln() * (1.0 - r) * (1.0 - r) * r.powi(d as i32);
+        let q_par =
+            d as f64 * (d as f64 - 1.0) * (2.0f64).ln() * (1.0 - r) * (1.0 - r) * r.powi(d as i32);
         let r_mirror = 1.0 - r; // σ(−λ) = 1 − σ(λ)
-        let q_rep_mirror = d as f64 * (d as f64 - 1.0) * (2.0f64).ln() * r_mirror * r_mirror * (1.0 - r_mirror).powi(d as i32);
+        let q_rep_mirror = d as f64
+            * (d as f64 - 1.0)
+            * (2.0f64).ln()
+            * r_mirror
+            * r_mirror
+            * (1.0 - r_mirror).powi(d as i32);
         assert!(
             ((q_par - q_rep_mirror) / q_par).abs() < 1e-12,
             "λ={lam}: q_par={q_par:.6e} q_rep(−λ)={q_rep_mirror:.6e}"
@@ -303,7 +314,9 @@ fn g1_h01_identity_both_models() {
     for &d in &[8usize, 16, 40] {
         let target = ((d as f64 - 1.0) / (d as f64 + 1.0)) * (2.0f64).ln();
         // Direct: H(0,1) = ∫ t(1−t) h′(t) dt over [0,1].
-        let direct = integrate(0.0, 1.0, 64, |t| t * (1.0 - t) * noisy_bit_h_prime(d, 0.0, t));
+        let direct = integrate(0.0, 1.0, 64, |t| {
+            t * (1.0 - t) * noisy_bit_h_prime(d, 0.0, t)
+        });
         assert!(
             (direct - target).abs() < 1e-6,
             "d={d}: direct {direct:.8} vs ((d−1)/(d+1))ln2 {target:.8}"
@@ -311,11 +324,16 @@ fn g1_h01_identity_both_models() {
         // TSE side: TSE = ln2·(d−1)/2 → H = 2/(d+1)·TSE.
         let tse = (2.0f64).ln() * (d as f64 - 1.0) / 2.0;
         let via_tse = 2.0 / (d as f64 + 1.0) * tse;
-        assert!((via_tse - target).abs() < 1e-12, "d={d}: TSE path {via_tse}");
+        assert!(
+            (via_tse - target).abs() < 1e-12,
+            "d={d}: TSE path {via_tse}"
+        );
         // Parity has the same aggregate mass (paper §3.4): verify by
         // reflection symmetry of the density — ∫ q_par = ∫ q_rep.
         let d_us = d;
-        let mass_rep = integrate(0.02, 0.98, 64, |t| t * (1.0 - t) * noisy_bit_h_prime(d_us, 0.0, t));
+        let mass_rep = integrate(0.02, 0.98, 64, |t| {
+            t * (1.0 - t) * noisy_bit_h_prime(d_us, 0.0, t)
+        });
         // Parity h′(t) = rep h′(1−t) (reflection), so its weighted mass over
         // [0,1] matches by substitution u = 1 − t.
         let mass_par = integrate(0.02, 0.98, 64, |t| {
@@ -333,15 +351,14 @@ fn g1_h01_identity_both_models() {
 fn g1_noisy_bit_ratios_match_paper() {
     // Paper Fig 1 (d=128): Ratio ∈ {4.51, 2.16, 1.65} for η ∈ {0.01, 0.30, 0.45}.
     let d = 128usize;
-    for (eta, target) in [
-        (0.01f64, 4.51f64),
-        (0.30, 2.16),
-        (0.45, 1.65),
-    ] {
+    for (eta, target) in [(0.01f64, 4.51f64), (0.30, 2.16), (0.45, 1.65)] {
         let (_, _, ratio) = noisy_bit_exact_ratio(d, eta);
         let rel = ((ratio - target) / target).abs();
         eprintln!("noisy-bit d={d} η={eta}: Ratio={ratio:.3} (paper {target})");
-        assert!(rel < 0.05, "η={eta}: ratio {ratio:.4} vs paper {target} (rel {rel:.3})");
+        assert!(
+            rel < 0.05,
+            "η={eta}: ratio {ratio:.4} vs paper {target} (rel {rel:.3})"
+        );
     }
 }
 
@@ -354,7 +371,15 @@ fn g1_mc_profile_matches_exact_h_curve() {
     let mut rng = Rng::new(11);
     let dz = NoisyRepeatedBit { d, eta };
     let mut s = UgcScratch::new(d, 2, 24, 64);
-    let prof = estimate_profile(&dz, 1.0 / d as f32, 1.0 - 1.0 / d as f32, 16, 24, &mut rng, &mut s);
+    let prof = estimate_profile(
+        &dz,
+        1.0 / d as f32,
+        1.0 - 1.0 / d as f32,
+        16,
+        24,
+        &mut rng,
+        &mut s,
+    );
     // h(t) exact = Σ_j C(d−1,j) t^j (1−t)^{d−1−j} h^card_j (Eq 65a).
     let h_exact = |t: f64| -> f64 {
         let mut sum = 0.0;
@@ -419,7 +444,8 @@ fn g1_profile_ratio_matches_exact_ratio_noisy_bit() {
         let mut cum_exact = 0.0f64;
         for gi in 0..prof.t_grid.len() - 1 {
             let (ta, tb) = (prof.t_grid[gi], prof.t_grid[gi + 1]);
-            let dh_est = prof.increments[gi] as f64 / (0.5 * (ta + tb) * (1.0 - 0.5 * (ta + tb))) as f64;
+            let dh_est =
+                prof.increments[gi] as f64 / (0.5 * (ta + tb) * (1.0 - 0.5 * (ta + tb))) as f64;
             let dh_ex = h_exact(tb as f64) - h_exact(ta as f64);
             let dl = prof.lambda_grid[gi + 1] - prof.lambda_grid[gi];
             cum_est += prof.increments[gi] as f64;
@@ -433,7 +459,8 @@ fn g1_profile_ratio_matches_exact_ratio_noisy_bit() {
                 );
             }
         }
-        eprintln!("  h[last]-h[first] est: {:.4} vs exact {:.4}",
+        eprintln!(
+            "  h[last]-h[first] est: {:.4} vs exact {:.4}",
             prof.h.last().unwrap() - prof.h.first().unwrap(),
             h_exact(1.0 - 1.0 / d as f64) - h_exact(1.0 / d as f64)
         );
@@ -460,8 +487,14 @@ fn probe_h_bias_single_point() {
         let mut s = UgcScratch::new(d, 2, m, 8);
         let prof2 = estimate_profile(&dz, 0.02, t as f32, 1, m, &mut rng, &mut s);
         let h_end = prof2.h[1] as f64;
-        eprintln!("m={m}: h({t}) est={h_end:.4} exact={exact_end:.4} diff={:+.4}", h_end - exact_end);
-        assert!((h_end - exact_end).abs() < 0.25, "h bias at m={m}: {h_end} vs {exact_end}");
+        eprintln!(
+            "m={m}: h({t}) est={h_end:.4} exact={exact_end:.4} diff={:+.4}",
+            h_end - exact_end
+        );
+        assert!(
+            (h_end - exact_end).abs() < 0.25,
+            "h bias at m={m}: {h_end} vs {exact_end}"
+        );
     }
 }
 
@@ -485,7 +518,15 @@ fn g1_mixture_ratios_match_paper() {
         let dz = Mixture::new(d, 0.02, &mut rng);
         let m = 128usize;
         let mut s = UgcScratch::new(d, 2, m, 64);
-        let prof = estimate_profile(&dz, 1.0 / d as f32, 1.0 - 1.0 / d as f32, 48, m, &mut rng, &mut s);
+        let prof = estimate_profile(
+            &dz,
+            1.0 / d as f32,
+            1.0 - 1.0 / d as f32,
+            48,
+            m,
+            &mut rng,
+            &mut s,
+        );
         let ratio = prof.ratio() as f64;
         let rel = ((ratio - target) / target).abs();
         eprintln!("mixture d=32 M=256 m={m}: Ratio={ratio:.3} (paper {target}, rel {rel:.3})");
@@ -500,12 +541,22 @@ fn g1_mixture_ratios_match_paper() {
             let mut rng = Rng::new(seed);
             let dz = Mixture::new(d, 0.02, &mut rng);
             let mut s = UgcScratch::new(d, 2, m, 64);
-            let prof = estimate_profile(&dz, 1.0 / d as f32, 1.0 - 1.0 / d as f32, 48, m, &mut rng, &mut s);
+            let prof = estimate_profile(
+                &dz,
+                1.0 / d as f32,
+                1.0 - 1.0 / d as f32,
+                48,
+                m,
+                &mut rng,
+                &mut s,
+            );
             acc += prof.ratio() as f64;
         }
         let ratio = acc / 2.0;
         let rel = ((ratio - target) / target).abs();
-        eprintln!("mixture d=48 M=4096 m={m}×2 seeds: Ratio={ratio:.3} (paper {target}, rel {rel:.3})");
+        eprintln!(
+            "mixture d=48 M=4096 m={m}×2 seeds: Ratio={ratio:.3} (paper {target}, rel {rel:.3})"
+        );
         assert!(rel < 0.10, "d=48: ratio {ratio:.4} vs {target}");
     }
 }
@@ -555,13 +606,19 @@ fn g1_interval_estimator_brackets_exact_h() {
     let mut rng = Rng::new(5);
     let mut s = UgcScratch::new(d, 2, 64, 64);
     // Exact H over [0.2, 0.8].
-    let exact = integrate(0.2, 0.8, 64, |t| t * (1.0 - t) * noisy_bit_h_prime(d, eta, t));
+    let exact = integrate(0.2, 0.8, 64, |t| {
+        t * (1.0 - t) * noisy_bit_h_prime(d, eta, t)
+    });
     let est = estimate_interval(&dz, 0.2, 0.8, 64, 0.1, &mut rng, &mut s);
     eprintln!(
         "interval [0.2,0.8] d={d}: exact H={exact:.5}, Ĥ={:.5} r̂={:.5} upper={:.5}",
         est.hat_h, est.r_hat, est.upper
     );
-    assert!(est.upper as f64 >= exact, "upper {} < exact {exact}", est.upper);
+    assert!(
+        est.upper as f64 >= exact,
+        "upper {} < exact {exact}",
+        est.upper
+    );
     // And the lower sandwich: Ĥ_m/2 − r̂ ≤ H (equivalent form of 34a-B).
     assert!(
         est.hat_h as f64 / 2.0 - est.r_hat as f64 <= exact * 1.05,
@@ -666,11 +723,12 @@ fn enumerate_output_law(dz: &dyn UgcDenoiser, d: usize, grid: &[f32]) -> Vec<f64
                     let v = state_get(s, i);
                     *o = if v == 0 { UGC_MASK } else { (v - 1) as usize };
                 }
-                let p_subset =
-                    p * beta.powi(chosen.len() as i32) * (1.0 - beta).powi((n - chosen.len()) as i32);
+                let p_subset = p
+                    * beta.powi(chosen.len() as i32)
+                    * (1.0 - beta).powi((n - chosen.len()) as i32);
                 // Sequential fill of chosen coords (fixed order).
                 #[allow(clippy::too_many_arguments)]
-    fn fill_rec(
+                fn fill_rec(
                     dz: &dyn UgcDenoiser,
                     _d: usize,
                     chosen: &[usize],
@@ -691,7 +749,17 @@ fn enumerate_output_law(dz: &dyn UgcDenoiser, d: usize, grid: &[f32]) -> Vec<f64
                         if post[a] > 0.0 {
                             obs[i] = a;
                             state_set(s2, i, 1 + a as u8);
-                            fill_rec(dz, _d, chosen, k + 1, s2, obs, post, p * post[a] as f64, out);
+                            fill_rec(
+                                dz,
+                                _d,
+                                chosen,
+                                k + 1,
+                                s2,
+                                obs,
+                                post,
+                                p * post[a] as f64,
+                                out,
+                            );
                             state_set(s2, i, 0);
                             obs[i] = UGC_MASK;
                         }
@@ -703,15 +771,7 @@ fn enumerate_output_law(dz: &dyn UgcDenoiser, d: usize, grid: &[f32]) -> Vec<f64
                 // Pre-set chosen coords as masked in s2 (they're revealed
                 // during fill).
                 fill_rec(
-                    dz,
-                    d,
-                    &chosen,
-                    0,
-                    &mut s2,
-                    &mut obs,
-                    &mut post2,
-                    p_subset,
-                    &mut outs,
+                    dz, d, &chosen, 0, &mut s2, &mut obs, &mut post2, p_subset, &mut outs,
                 );
                 for (st, pp) in outs {
                     *next.entry(st).or_insert(0.0) += pp;
@@ -725,7 +785,7 @@ fn enumerate_output_law(dz: &dyn UgcDenoiser, d: usize, grid: &[f32]) -> Vec<f64
     let mut full: HashMap<State, f64> = HashMap::new();
     for (&s, &p) in dist.iter() {
         #[allow(clippy::too_many_arguments)]
-    fn comp_rec(
+        fn comp_rec(
             dz: &dyn UgcDenoiser,
             masked: &[usize],
             k: usize,
@@ -754,7 +814,7 @@ fn enumerate_output_law(dz: &dyn UgcDenoiser, d: usize, grid: &[f32]) -> Vec<f64
             }
         }
 
-let masked: Vec<usize> = (0..d).filter(|&i| state_get(s, i) == 0).collect();
+        let masked: Vec<usize> = (0..d).filter(|&i| state_get(s, i) == 0).collect();
         let mut obs: Vec<usize> = (0..d)
             .map(|i| match state_get(s, i) {
                 0 => UGC_MASK,
@@ -974,7 +1034,10 @@ fn t3_equal_sqrt_mass_grid_properties() {
         })
         .sum();
     eprintln!("T3: DP cost {cost_dp:.4} ≤ uniform {cost_unif:.4}");
-    assert!(cost_dp <= cost_unif + 1e-9, "DP {cost_dp} > uniform {cost_unif}");
+    assert!(
+        cost_dp <= cost_unif + 1e-9,
+        "DP {cost_dp} > uniform {cost_unif}"
+    );
 }
 
 // ---------------------------------------------------------------------------

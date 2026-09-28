@@ -83,7 +83,15 @@ fn g4_zero_alloc_steady_state() {
     // first-call code paths) must have done so before a counted window opens.
     for _ in 0..16 {
         fuse_into_hidden_state_privileged(
-            &mut hidden, &query, &table, &ks, &cfg, &ledger, &mut trace, &mut lookup, &mut out,
+            &mut hidden,
+            &query,
+            &table,
+            &ks,
+            &cfg,
+            &ledger,
+            &mut trace,
+            &mut lookup,
+            &mut out,
         );
         hidden.iter_mut().for_each(|h| *h = 0.0);
     }

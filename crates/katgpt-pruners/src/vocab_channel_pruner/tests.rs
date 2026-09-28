@@ -313,8 +313,16 @@ fn test_decompose_neuron_is_deterministic() {
             y.direction.iter().map(|f| f.to_bits()).collect::<Vec<_>>(),
             "channel {i}: direction is not bit-identical"
         );
-        assert_eq!(x.kurtosis.to_bits(), y.kurtosis.to_bits(), "channel {i}: kurtosis");
-        assert_eq!(x.skewness.to_bits(), y.skewness.to_bits(), "channel {i}: skewness");
+        assert_eq!(
+            x.kurtosis.to_bits(),
+            y.kurtosis.to_bits(),
+            "channel {i}: kurtosis"
+        );
+        assert_eq!(
+            x.skewness.to_bits(),
+            y.skewness.to_bits(),
+            "channel {i}: skewness"
+        );
     }
 
     // A DIFFERENT neuron must not collapse onto the same stream — otherwise a
@@ -322,8 +330,13 @@ fn test_decompose_neuron_is_deterministic() {
     let other = [0.02f32, 0.31, 7.5, 0.03];
     let c = decomposer.decompose_neuron(&other, &lm_head, 4, 4);
     let same_stream = a.len() == c.len()
-        && a.iter().zip(c.iter()).all(|(x, y)| x.direction == y.direction);
-    assert!(!same_stream, "a different neuron produced an identical decomposition");
+        && a.iter()
+            .zip(c.iter())
+            .all(|(x, y)| x.direction == y.direction);
+    assert!(
+        !same_stream,
+        "a different neuron produced an identical decomposition"
+    );
 }
 
 #[test]

@@ -49,8 +49,8 @@
 #![cfg(feature = "linking_fold")]
 
 use katgpt_core::linking_fold::{
-    LinkingDetectorConfig, LinkingVerdict, detect_linking, detect_linking_into,
-    fold_gelu_into, fold_projection_into,
+    LinkingDetectorConfig, LinkingVerdict, detect_linking, detect_linking_into, fold_gelu_into,
+    fold_projection_into,
 };
 use std::hint::black_box;
 use std::time::Instant;
@@ -427,7 +427,10 @@ fn gate_g2b_detector_orig_budget() -> DetectorResult {
         *samples_ms.last().unwrap(),
         DETECTOR_ORIG_BUDGET_MS
     );
-    DetectorResult { pass_audit, ms: median_ms }
+    DetectorResult {
+        pass_audit,
+        ms: median_ms,
+    }
 }
 
 // ── G2: fold hot-path latency ──────────────────────────────────────────────

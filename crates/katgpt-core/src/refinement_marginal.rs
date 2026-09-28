@@ -244,7 +244,10 @@ pub fn coarse_grain_step(
     record: &mut CoarseRecord,
     scratch: &mut CoarseGrainScratch,
 ) {
-    assert!(scratch.depth >= 1, "coarse_grain_first must run before step");
+    assert!(
+        scratch.depth >= 1,
+        "coarse_grain_first must run before step"
+    );
     assert_eq!(probs.len(), table.n_symbols(), "probs/table vocab mismatch");
     record.clear();
     let k = scratch.depth;
@@ -439,7 +442,11 @@ mod tests {
         let mut brute = vec![0.0_f32; SYMBOL_BINS + 1];
         for (s, &p) in probs.iter().enumerate().take(table.n_symbols()) {
             let len = table.symbol_len(s);
-            let b = if len == 0 { TERMINAL_BIN } else { table.byte_at(s, 0) as usize };
+            let b = if len == 0 {
+                TERMINAL_BIN
+            } else {
+                table.byte_at(s, 0) as usize
+            };
             brute[b] += p;
         }
         for (i, (rec_bin, brute_bin)) in rec.bins.iter().zip(brute.iter()).enumerate() {
@@ -502,7 +509,12 @@ mod tests {
     fn certificate_never_underreports_on_adversarial_fixtures() {
         // Terminal-heavy vocab: six len-1 tokens + two len-3 long tail.
         let table = RefinementTable::from_sequences(&[
-            &[0x10], &[0x11], &[0x12], &[0x13], &[0x14], &[0x15],
+            &[0x10],
+            &[0x11],
+            &[0x12],
+            &[0x13],
+            &[0x14],
+            &[0x15],
             &[0x10, 0x20, 0x30],
             &[0x10, 0x20, 0x31],
         ]);
@@ -583,8 +595,14 @@ mod tests {
     #[test]
     fn escalation_cost_and_sigmoid_gate() {
         let r = [
-            CoarseRecord { terminal_mass: 0.1, ..CoarseRecord::zeroed() },
-            CoarseRecord { terminal_mass: 0.2, ..CoarseRecord::zeroed() },
+            CoarseRecord {
+                terminal_mass: 0.1,
+                ..CoarseRecord::zeroed()
+            },
+            CoarseRecord {
+                terminal_mass: 0.2,
+                ..CoarseRecord::zeroed()
+            },
         ];
         assert!((expected_escalation_cost(&r) - 0.3).abs() < 1e-6);
         assert!((escalation_sigmoid(0.5, 0.5, 1.0) - 0.5).abs() < 1e-6);

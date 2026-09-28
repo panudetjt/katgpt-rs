@@ -50,15 +50,15 @@ use katgpt_rs::kimi_k3::model::{
     ForwardTiming, KimiK3ModelConfig, KimiK3Runtime, kimi_k3_forward_token,
     kimi_k3_forward_token_timed,
 };
-use katgpt_rs::kimi_k3::tiktoken::{load_tiktoken_bpe, TiktokenTokenizer};
+use katgpt_rs::kimi_k3::tiktoken::{TiktokenTokenizer, load_tiktoken_bpe};
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 /// Reuse the 0.40B tiktoken.model (same Kimi-K3 vocab=163840).
 fn tiktoken_path() -> String {
-    std::env::var("KIMI_K3_MODEL_DIR").unwrap_or_else(|_| {
-        format!("{}/data/kimi-k3-0.40b", env!("CARGO_MANIFEST_DIR"))
-    }) + "/tiktoken.model"
+    std::env::var("KIMI_K3_MODEL_DIR")
+        .unwrap_or_else(|_| format!("{}/data/kimi-k3-0.40b", env!("CARGO_MANIFEST_DIR")))
+        + "/tiktoken.model"
 }
 
 fn bar() {
@@ -98,10 +98,7 @@ fn print_phase_breakdown(timing: &ForwardTiming, n_tokens: u64, num_layers: usiz
     print_row("Final RMSNorm", timing.final_norm_us, n, total_us);
     print_row("LM head (163840×hidden)", timing.lm_head_us, n, total_us);
     println!("   {}", "·".repeat(50));
-    println!(
-        "   {:<26} {:>8.2} ms {:>8}",
-        "TOTAL", total_ms, "100.0%",
-    );
+    println!("   {:<26} {:>8.2} ms {:>8}", "TOTAL", total_ms, "100.0%",);
 }
 
 fn print_row(label: &str, us_sum: u128, n: f64, total_us: u128) {
@@ -126,7 +123,7 @@ fn print_row(label: &str, us_sum: u128, n: f64, total_us: u128) {
 fn main() {
     use std::io::Write;
 
-if std::env::var("KIMI_K3_4B_SKIP").ok().as_deref() == Some("1") {
+    if std::env::var("KIMI_K3_4B_SKIP").ok().as_deref() == Some("1") {
         eprintln!("skipping: KIMI_K3_4B_SKIP=1");
         return;
     }
@@ -197,8 +194,7 @@ if std::env::var("KIMI_K3_4B_SKIP").ok().as_deref() == Some("1") {
         eprintln!("\n❌ tiktoken parse failed: {e:?}");
         std::process::exit(1);
     });
-    let tokenizer = TiktokenTokenizer::from_ranks(&ranks)
-        .with_special_tokens(1, 2, 0); // BOS=1, EOS=2, PAD=0 (Kimi-K3 convention)
+    let tokenizer = TiktokenTokenizer::from_ranks(&ranks).with_special_tokens(1, 2, 0); // BOS=1, EOS=2, PAD=0 (Kimi-K3 convention)
     let tok_load_ms = t_tok.elapsed().as_secs_f64() * 1000.0;
     println!("{tok_load_ms:.0} ms  (vocab={})", tokenizer.vocab_size());
 
@@ -208,11 +204,7 @@ if std::env::var("KIMI_K3_4B_SKIP").ok().as_deref() == Some("1") {
     let t_weights = Instant::now();
     let weights = KimiK3ModelWeights::random(&config, seed);
     let weights_s = t_weights.elapsed().as_secs_f64();
-    println!(
-        "{:.2}s  ({} layers)",
-        weights_s,
-        weights.layers.len(),
-    );
+    println!("{:.2}s  ({} layers)", weights_s, weights.layers.len(),);
 
     // ── 4. Runtime (KV caches + scratch + block state) ────────────────────
     // max_seq_len=64 keeps the MLA KV cache tiny — this is a smoke test, not
@@ -224,13 +216,18 @@ if std::env::var("KIMI_K3_4B_SKIP").ok().as_deref() == Some("1") {
     let prompt_tokens = tokenizer.encode(&prompt);
     println!(
         "   tokenized : {:?} → {} tokens: {:?}",
-        prompt, prompt_tokens.len(), prompt_tokens
+        prompt,
+        prompt_tokens.len(),
+        prompt_tokens
     );
     bar();
 
     // ── 6. Prefill (process prompt tokens, no timing — just seed state) ───
     if !prompt_tokens.is_empty() {
-        println!("   ⚙️  PREFILL (processing {} prompt tokens)", prompt_tokens.len());
+        println!(
+            "   ⚙️  PREFILL (processing {} prompt tokens)",
+            prompt_tokens.len()
+        );
         let t_prefill = Instant::now();
         for &tok in &prompt_tokens {
             let _ = kimi_k3_forward_token(&config, &weights, &mut runtime, tok as u32);
@@ -295,7 +292,10 @@ if std::env::var("KIMI_K3_4B_SKIP").ok().as_deref() == Some("1") {
 
     // ── 8. Summary ────────────────────────────────────────────────────────
     let full_text = tokenizer.decode(
-        &generated_tokens.iter().map(|&t| t as usize).collect::<Vec<_>>(),
+        &generated_tokens
+            .iter()
+            .map(|&t| t as usize)
+            .collect::<Vec<_>>(),
     );
     let total_decode_ms: f64 = decode_latencies_ms.iter().sum();
     let n = decode_latencies_ms.len().max(1);
@@ -317,7 +317,10 @@ if std::env::var("KIMI_K3_4B_SKIP").ok().as_deref() == Some("1") {
     let p99_support = n - p99_idx;
 
     println!("   📊 SUMMARY");
-    println!("   generated : {} tokens (random-init — gibberish, not real text)", generated_tokens.len());
+    println!(
+        "   generated : {} tokens (random-init — gibberish, not real text)",
+        generated_tokens.len()
+    );
     println!("   output    : {full_text:?}");
     println!();
     println!("   Throughput (decode-only, excluding prefill):");

@@ -101,9 +101,8 @@ fn select_only(src: &[f32], k: usize, scratch: &mut [f32]) -> f32 {
     for (i, s) in scratch[..n].iter_mut().enumerate() {
         *s = i as f32;
     }
-    scratch[..n].select_nth_unstable_by(k - 1, |a, b| {
-        src[*b as usize].total_cmp(&src[*a as usize])
-    });
+    scratch[..n]
+        .select_nth_unstable_by(k - 1, |a, b| src[*b as usize].total_cmp(&src[*a as usize]));
     let head = &mut scratch[..k];
     head.sort_unstable_by(|a, b| a.total_cmp(b));
     head.iter().map(|e| src[*e as usize]).sum()
@@ -128,9 +127,7 @@ fn median_ns(warmup: usize, samples: usize, iters: usize, mut op: impl FnMut()) 
 fn main() {
     let t_start = Instant::now();
     println!("== bench_802_jsd_topk — Issue 802 item 2 (Research 561 / arXiv:2609.15177) ==");
-    println!(
-        "LEN={LEN} seeded spiky pair · harness=false · Instant medians ({SAMPLES} samples)"
-    );
+    println!("LEN={LEN} seeded spiky pair · harness=false · Instant medians ({SAMPLES} samples)");
 
     let p = spiky_dist(802);
     let q = spiky_dist(0x802_9e37);
@@ -144,7 +141,10 @@ fn main() {
     let full = jsd_full_support(&p, &q);
     let delta = (klen - full).abs();
     println!("consistency gate: kernel(k=LEN)={klen:.7} full={full:.7} |Δ|={delta:.2e}");
-    assert!(delta < 1e-6, "kernel(k=LEN) diverges from full-support reference");
+    assert!(
+        delta < 1e-6,
+        "kernel(k=LEN) diverges from full-support reference"
+    );
     assert!(klen.is_finite() && klen >= 0.0 && klen <= f32::ln(2.0) + 1e-6);
     let full_bw = jsd_full_support(&q, &p);
     assert!(
@@ -209,7 +209,9 @@ fn main() {
     );
     println!("result checksum: {sink:016x} (observed — defeats dead-store elimination)");
 
-    println!("breakdown note: kernel = O(n) iota+select per side (dominates at vocab scale) + union walk ≤ 2k entries × ≤ 3 f32::ln (the bounded sum phase); no explicit SIMD — f32::ln is scalar libm, the iota fill is the only auto-vectorizable lane.");
+    println!(
+        "breakdown note: kernel = O(n) iota+select per side (dominates at vocab scale) + union walk ≤ 2k entries × ≤ 3 f32::ln (the bounded sum phase); no explicit SIMD — f32::ln is scalar libm, the iota fill is the only auto-vectorizable lane."
+    );
     println!(
         "G4 zero-alloc witness: the INTO hot path allocates nothing — scratch is caller-owned and reused across every timed iteration above; the module's #[cfg(test)] g4_into_form_caller_buffers pins the stack-buffer shape at K=64/len=1024. The convenience form allocates two Vecs per call by design (its row shows the honest cost)."
     );

@@ -102,7 +102,9 @@ mod tests;
 
 pub use als::{fit_slice_into, fit_with_ranks_into, reallocate_class, relative_loss};
 pub use rank::{select_ranks_blocked_cv, select_ranks_knee};
-pub use svd::{covariability_shares, covariability_shares_into, fit_single_class_into, route, route_default};
+pub use svd::{
+    covariability_shares, covariability_shares_into, fit_single_class_into, route, route_default,
+};
 pub use types::{
     CHUNK, DEFAULT_ALS_SWEEPS, ENERGY_FLOOR_TAU, InitMode, MAX_COMPONENTS, MAX_RANK_PER_CLASS,
     NORM_EPS, ROUTE_ALPHA, ROUTE_THETA, SliceClass, SliceComponent, SliceDecomposition,

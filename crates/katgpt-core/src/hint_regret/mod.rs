@@ -69,8 +69,8 @@ mod tests;
 
 pub use gate::{Regime, learnable_band_gate, triage, wilson_score_ci};
 pub use memory::{
-    FRONTIER_EPSILON, ObserveOutcome, RegretMemory, RegretMemoryEntry, beta_lcb,
-    beta_lcb_order, beta_lcb_order_into, salience,
+    FRONTIER_EPSILON, ObserveOutcome, RegretMemory, RegretMemoryEntry, beta_lcb, beta_lcb_order,
+    beta_lcb_order_into, salience,
 };
 
 /// Per-arm return bounds used by the range-based (Hoeffding) machinery.

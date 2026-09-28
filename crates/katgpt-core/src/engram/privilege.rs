@@ -93,9 +93,7 @@
 //! [`sigmoid_fuse_into`]: super::sigmoid_fuse_into
 //! [`fast_sigmoid`]: crate::simd::fast_sigmoid
 
-use super::{
-    EngramConfig, EngramHash, EngramTable, K_MAX, sigmoid_fuse_scaled_into,
-};
+use super::{EngramConfig, EngramHash, EngramTable, K_MAX, sigmoid_fuse_scaled_into};
 use crate::simd::{fast_sigmoid, simd_add_inplace, simd_sum_abs_f32};
 
 /// Tuning for the privilege gate.
@@ -158,7 +156,11 @@ impl PrivilegeConfig {
     /// it also makes the gate react violently to a single noisy observation.
     #[inline]
     pub fn for_delta_scale(typical_abs_delta: f32) -> Self {
-        let s = if typical_abs_delta.is_finite() && typical_abs_delta > 0.0 { typical_abs_delta } else { 1.0 };
+        let s = if typical_abs_delta.is_finite() && typical_abs_delta > 0.0 {
+            typical_abs_delta
+        } else {
+            1.0
+        };
         Self {
             alpha: 0.15,
             margin: 0.25 * s,
@@ -392,15 +394,17 @@ impl PrivilegeLedger {
     /// failure in debug builds.
     #[inline]
     pub fn privilege(&self, slot: usize) -> f32 {
-        if let Some(&p) = self.factor.get(slot) { p } else {
-                debug_assert!(
-                    false,
-                    "PrivilegeLedger::privilege: slot {slot} out of range (n_slots = {}) — \
+        if let Some(&p) = self.factor.get(slot) {
+            p
+        } else {
+            debug_assert!(
+                false,
+                "PrivilegeLedger::privilege: slot {slot} out of range (n_slots = {}) — \
                      ledger and table sizes must match",
-                    self.factor.len()
-                );
-                1.0
-            }
+                self.factor.len()
+            );
+            1.0
+        }
     }
 
     /// Record one **exact per-slot** counterfactual outcome.
@@ -422,16 +426,16 @@ impl PrivilegeLedger {
         }
         let alpha = self.config.alpha;
         let updated = if let Some(d) = self.delta.get_mut(slot) {
-                *d = (1.0 - alpha) * *d + alpha * credit;
-                *d
-            } else {
-                debug_assert!(
-                    false,
-                    "PrivilegeLedger::observe: slot {slot} out of range (n_slots = {})",
-                    self.delta.len()
-                );
-                return;
-            };
+            *d = (1.0 - alpha) * *d + alpha * credit;
+            *d
+        } else {
+            debug_assert!(
+                false,
+                "PrivilegeLedger::observe: slot {slot} out of range (n_slots = {})",
+                self.delta.len()
+            );
+            return;
+        };
         // Keep the cached factor in lockstep — this is the one place the
         // sigmoid is paid, and it is off the fusion hot path by construction.
         self.factor[slot] = privilege_of(updated, &self.config);
@@ -465,7 +469,11 @@ impl PrivilegeLedger {
             CreditAssignment::Uniform => false,
         };
         for (&slot, &w) in trace.slots().iter().zip(trace.weights().iter()) {
-            let share = if use_weighted { w / weight_sum } else { 1.0 / n };
+            let share = if use_weighted {
+                w / weight_sum
+            } else {
+                1.0 / n
+            };
             // `observe` re-multiplies by `advantage`, so pass the already-split
             // delta and a unit advantage to avoid squaring the outcome weight.
             self.observe(slot as usize, 1.0, credit * share);
@@ -771,11 +779,7 @@ mod tests {
         }
         assert!(ledger.advantage(0) < 0.0, "A=-1 must produce Δ<0");
         // Δ → −(1 − 0.85³²) ≈ −0.995 → σ(−1.245) ≈ 0.224.
-        assert!(
-            ledger.privilege(0) < 0.25,
-            "got {}",
-            ledger.privilege(0)
-        );
+        assert!(ledger.privilege(0) < 0.25, "got {}", ledger.privilege(0));
     }
 
     #[test]
@@ -827,7 +831,9 @@ mod tests {
 
         let mut state = 0x2545_F491_4F6C_DD1Du64;
         for i in 0..200usize {
-            state = state.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1);
             let d = ((state >> 40) as f32 / 8_388_608.0) - 1.0;
             ledger.observe(i % 8, 1.0, d);
         }
@@ -875,7 +881,10 @@ mod tests {
             ledger.tick_dual();
         }
         let ramped = ledger.beta();
-        assert!(ramped > 0.0, "β must ramp under sustained decay, got {ramped}");
+        assert!(
+            ramped > 0.0,
+            "β must ramp under sustained decay, got {ramped}"
+        );
 
         // Recovery phase: strongly useful observations pull Δ_table above m.
         for _ in 0..200 {
@@ -980,7 +989,15 @@ mod tests {
         let mut sl = vec![0.0f32; K_MAX * d];
         let mut so = vec![0.0f32; d];
         fuse_into_hidden_state_privileged(
-            &mut hidden, query, table, keys, &cfg, ledger, &mut trace, &mut sl, &mut so,
+            &mut hidden,
+            query,
+            table,
+            keys,
+            &cfg,
+            ledger,
+            &mut trace,
+            &mut sl,
+            &mut so,
         );
         (hidden, trace)
     }

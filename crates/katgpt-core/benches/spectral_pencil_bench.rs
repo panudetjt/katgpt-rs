@@ -30,21 +30,30 @@ fn bench_dense_eval(c: &mut Criterion) {
         group.bench_with_input(id, &(d, n), |b, &(d, n)| match (d, n) {
             (8, 8) => {
                 let init = seeded_dense::<8, 8>(b"bench", 4);
-                let p = DensePencil::<8, 8> { a0: init.a0, a: init.a };
+                let p = DensePencil::<8, 8> {
+                    a0: init.a0,
+                    a: init.a,
+                };
                 let mut s = DenseScratch::<8>::new();
                 let x = [0.5_f32; 8];
                 b.iter(|| black_box(p.eval(black_box(&x), 4, &mut s)));
             }
             (16, 16) => {
                 let init = seeded_dense::<16, 16>(b"bench", 8);
-                let p = DensePencil::<16, 16> { a0: init.a0, a: init.a };
+                let p = DensePencil::<16, 16> {
+                    a0: init.a0,
+                    a: init.a,
+                };
                 let mut s = DenseScratch::<16>::new();
                 let x = [0.5_f32; 16];
                 b.iter(|| black_box(p.eval(black_box(&x), 8, &mut s)));
             }
             (32, 8) => {
                 let init = seeded_dense::<32, 8>(b"bench", 16);
-                let p = DensePencil::<32, 8> { a0: init.a0, a: init.a };
+                let p = DensePencil::<32, 8> {
+                    a0: init.a0,
+                    a: init.a,
+                };
                 let mut s = DenseScratch::<32>::new();
                 let x = [0.5_f32; 8];
                 b.iter(|| black_box(p.eval(black_box(&x), 16, &mut s)));
@@ -63,21 +72,30 @@ fn bench_tridiag_eval(c: &mut Criterion) {
         group.bench_with_input(id, &(d, n), |b, &(d, n)| match (d, n) {
             (8, 8) => {
                 let init = seeded_tridiag::<8, 8>(b"bench", 4);
-                let p = TridiagPencil::<8, 8> { a0: init.a0, a: init.a };
+                let p = TridiagPencil::<8, 8> {
+                    a0: init.a0,
+                    a: init.a,
+                };
                 let mut s = TriScratch::<8>::new();
                 let x = [0.5_f32; 8];
                 b.iter(|| black_box(p.eval(black_box(&x), 4, &mut s)));
             }
             (16, 16) => {
                 let init = seeded_tridiag::<16, 16>(b"bench", 8);
-                let p = TridiagPencil::<16, 16> { a0: init.a0, a: init.a };
+                let p = TridiagPencil::<16, 16> {
+                    a0: init.a0,
+                    a: init.a,
+                };
                 let mut s = TriScratch::<16>::new();
                 let x = [0.5_f32; 16];
                 b.iter(|| black_box(p.eval(black_box(&x), 8, &mut s)));
             }
             (32, 8) => {
                 let init = seeded_tridiag::<32, 8>(b"bench", 16);
-                let p = TridiagPencil::<32, 8> { a0: init.a0, a: init.a };
+                let p = TridiagPencil::<32, 8> {
+                    a0: init.a0,
+                    a: init.a,
+                };
                 let mut s = TriScratch::<32>::new();
                 let x = [0.5_f32; 8];
                 b.iter(|| black_box(p.eval(black_box(&x), 16, &mut s)));
@@ -90,7 +108,10 @@ fn bench_tridiag_eval(c: &mut Criterion) {
 
 fn bench_sturm_count(c: &mut Criterion) {
     let init = seeded_tridiag::<16, 8>(b"bench-count", 8);
-    let p = TridiagPencil::<16, 8> { a0: init.a0, a: init.a };
+    let p = TridiagPencil::<16, 8> {
+        a0: init.a0,
+        a: init.a,
+    };
     let mut s = TriScratch::<16>::new();
     let x = [0.5_f32; 8];
     c.bench_function("spectral_pencil_sturm_count_d16", |b| {
@@ -98,5 +119,10 @@ fn bench_sturm_count(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, bench_dense_eval, bench_tridiag_eval, bench_sturm_count);
+criterion_group!(
+    benches,
+    bench_dense_eval,
+    bench_tridiag_eval,
+    bench_sturm_count
+);
 criterion_main!(benches);

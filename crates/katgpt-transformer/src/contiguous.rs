@@ -635,7 +635,10 @@ mod tests {
         let full = encode_tgplsma1(&w);
         let p2 = dir.join("trunc.tgbits");
         std::fs::write(&p2, &full[..full.len() - 16]).expect("write");
-        assert!(load_ternary_group_bits(&p2).is_err(), "truncation must fail");
+        assert!(
+            load_ternary_group_bits(&p2).is_err(),
+            "truncation must fail"
+        );
 
         // Representation-invariant violation: same bit set in both planes.
         let mut overlap = w.clone();

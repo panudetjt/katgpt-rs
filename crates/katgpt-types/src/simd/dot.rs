@@ -682,7 +682,13 @@ pub fn simd_matvec(acc: &mut [f32], mat: &[f32], vec: &[f32], rows: usize, cols:
 /// Zeroes `out` first. Use [`simd_transpose_matvec_acc`] to accumulate into
 /// an existing buffer.
 #[inline(always)]
-pub fn simd_transpose_matvec_into(out: &mut [f32], mat: &[f32], v: &[f32], rows: usize, cols: usize) {
+pub fn simd_transpose_matvec_into(
+    out: &mut [f32],
+    mat: &[f32],
+    v: &[f32],
+    rows: usize,
+    cols: usize,
+) {
     out[..cols].fill(0.0);
     simd_transpose_matvec_acc(out, mat, v, rows, cols);
 }
@@ -690,7 +696,13 @@ pub fn simd_transpose_matvec_into(out: &mut [f32], mat: &[f32], v: &[f32], rows:
 /// Accumulating variant of [`simd_transpose_matvec_into`]:
 /// `out[j] += Σ_i mat[i*cols + j] * v[i]`.
 #[inline(always)]
-pub fn simd_transpose_matvec_acc(out: &mut [f32], mat: &[f32], v: &[f32], rows: usize, cols: usize) {
+pub fn simd_transpose_matvec_acc(
+    out: &mut [f32],
+    mat: &[f32],
+    v: &[f32],
+    rows: usize,
+    cols: usize,
+) {
     #[cfg(target_arch = "aarch64")]
     {
         unsafe { neon_transpose_matvec_acc(out, mat, v, rows, cols) }
@@ -741,7 +753,13 @@ pub(super) fn scalar_transpose_matvec_acc(
 
 #[cfg(target_arch = "aarch64")]
 #[inline]
-unsafe fn neon_transpose_matvec_acc(out: &mut [f32], mat: &[f32], v: &[f32], rows: usize, cols: usize) {
+unsafe fn neon_transpose_matvec_acc(
+    out: &mut [f32],
+    mat: &[f32],
+    v: &[f32],
+    rows: usize,
+    cols: usize,
+) {
     use core::arch::aarch64::{vfmaq_f32, vld1q_dup_f32, vld1q_f32, vst1q_f32};
 
     unsafe {
@@ -772,7 +790,13 @@ unsafe fn neon_transpose_matvec_acc(out: &mut [f32], mat: &[f32], v: &[f32], row
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2,fma")]
 #[inline]
-unsafe fn avx2_transpose_matvec_acc(out: &mut [f32], mat: &[f32], v: &[f32], rows: usize, cols: usize) {
+unsafe fn avx2_transpose_matvec_acc(
+    out: &mut [f32],
+    mat: &[f32],
+    v: &[f32],
+    rows: usize,
+    cols: usize,
+) {
     use core::arch::x86_64::{
         _mm256_broadcast_ss, _mm256_fmadd_ps, _mm256_loadu_ps, _mm256_storeu_ps,
     };
@@ -997,8 +1021,8 @@ pub fn simd_matmul_relu_rows(
 #[inline]
 unsafe fn avx2_dot_f16_f32(w_f16: &[half::f16], x_f32: &[f32], len: usize) -> f32 {
     use core::arch::x86_64::{
-        __m128i, _mm256_add_ps, _mm256_cvtph_ps, _mm256_fmadd_ps, _mm256_loadu_ps, _mm256_setzero_ps,
-        _mm_loadu_si128,
+        __m128i, _mm_loadu_si128, _mm256_add_ps, _mm256_cvtph_ps, _mm256_fmadd_ps, _mm256_loadu_ps,
+        _mm256_setzero_ps,
     };
     unsafe {
         let mut acc0 = _mm256_setzero_ps();
@@ -1300,15 +1324,15 @@ unsafe fn fmlal_lo_inline(
     let mut acc = acc;
     unsafe {
         core::arch::asm!
-            (
-                "fmlal v0.4s, v1.4h, v2.4h",
-                inout("v0") acc,
-                in("v1") a,
-                in("v2") b,
-                lateout("v1") _,
-                lateout("v2") _,
-                options(pure, nomem, nostack, preserves_flags),
-            );
+        (
+            "fmlal v0.4s, v1.4h, v2.4h",
+            inout("v0") acc,
+            in("v1") a,
+            in("v2") b,
+            lateout("v1") _,
+            lateout("v2") _,
+            options(pure, nomem, nostack, preserves_flags),
+        );
         acc
     }
 }
@@ -1330,15 +1354,15 @@ unsafe fn fmlal_hi_inline(
     let mut acc = acc;
     unsafe {
         core::arch::asm!
-            (
-                "fmlal2 v0.4s, v1.4h, v2.4h",
-                inout("v0") acc,
-                in("v1") a,
-                in("v2") b,
-                lateout("v1") _,
-                lateout("v2") _,
-                options(pure, nomem, nostack, preserves_flags),
-            );
+        (
+            "fmlal2 v0.4s, v1.4h, v2.4h",
+            inout("v0") acc,
+            in("v1") a,
+            in("v2") b,
+            lateout("v1") _,
+            lateout("v2") _,
+            options(pure, nomem, nostack, preserves_flags),
+        );
         acc
     }
 }
@@ -1658,7 +1682,11 @@ mod ordered_dot_tests {
         let b = [1.0f32; 16];
         assert_eq!(dot_f32_ordered(&a, &b), 3.0, "pin the reference fold");
         let simd = simd_dot_f32(&a, &b, 16);
-        assert_ne!(dot_f32_ordered(&a, &b), simd, "ordered == simd on the crafted pin input");
+        assert_ne!(
+            dot_f32_ordered(&a, &b),
+            simd,
+            "ordered == simd on the crafted pin input"
+        );
     }
 
     #[test]

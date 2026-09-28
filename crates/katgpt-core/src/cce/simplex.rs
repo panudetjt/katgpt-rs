@@ -216,7 +216,7 @@ pub(crate) fn solve_simplex(
     // artificial columns (j ≥ n_vars) by passing `n_vars` as the column cap.
     if !pivot_loop(&mut tab, &mut basis, n_total, n_vars) {
         return None; // unbounded — CCE LPs are bounded (ρ is on the simplex),
-                     // so this is a numerical failure.
+        // so this is a numerical failure.
     }
 
     // Extract the solution: non-basic variables are 0; basic variable i has
@@ -253,12 +253,7 @@ pub(crate) fn solve_simplex(
 /// `n_total` is the total column count (including RHS at index `n_total`).
 /// `col_cap` is the exclusive upper bound on entering-variable candidates
 /// (Phase II forbids artificial columns; `col_cap = n_vars`).
-fn pivot_loop(
-    tab: &mut [Vec<f64>],
-    basis: &mut [usize],
-    n_total: usize,
-    col_cap: usize,
-) -> bool {
+fn pivot_loop(tab: &mut [Vec<f64>], basis: &mut [usize], n_total: usize, col_cap: usize) -> bool {
     let n_cons = basis.len();
     loop {
         // Bland's rule: entering variable = smallest index j < col_cap with

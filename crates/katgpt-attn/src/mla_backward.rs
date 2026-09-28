@@ -177,7 +177,14 @@ pub fn mla_forward_token_with_saved(
     for i in 0..d_c {
         let expected = c_kv_raw[i] * weights.kv_a_norm_weight[i] * c_kv_inv_rms;
         let re = (c_kv_normed[i] - expected).abs() / expected.abs().max(1e-6);
-        debug_assert!(re < 1e-4, "c_kv_normed mismatch at {}: cached={:.6e} expected={:.6e} re={:.6}", i, c_kv_normed[i], expected, re);
+        debug_assert!(
+            re < 1e-4,
+            "c_kv_normed mismatch at {}: cached={:.6e} expected={:.6e} re={:.6}",
+            i,
+            c_kv_normed[i],
+            expected,
+            re
+        );
     }
     let c_q_normed = scratch.c_q.clone(); // post-norm (forward overwrote it)
 
@@ -400,7 +407,13 @@ pub fn mla_backward_token(
     // dL/d(W_O) += outer(d_output, gated_attn_out)
     let mut d_gated_attn = vec![0.0f32; proj_size];
     simd_transpose_matvec_into(&mut d_gated_attn, &weights.w_o, d_output, d, proj_size);
-    simd_outer_product_acc(&mut grads.w_o, d_output, &saved.attn_out_gated, d, proj_size);
+    simd_outer_product_acc(
+        &mut grads.w_o,
+        d_output,
+        &saved.attn_out_gated,
+        d,
+        proj_size,
+    );
 
     // ── Step 11 backward: output gate ──
     // gated_attn = attn_out * sigmoid(g_proj · h)
@@ -615,8 +628,20 @@ pub fn mla_backward_token(
     // ── Step 5b backward: q_r_raw = W_QR · c_q_normed ──
     // dL/d(c_q_normed) += W_QR^T · dL/d(q_r_raw)
     // dL/d(W_QR) += outer(d_q_r_raw, c_q_normed)
-    simd_transpose_matvec_acc(&mut d_c_q_normed, &weights.w_qr, &d_q_r_raw, d_r * n_h, d_qc);
-    simd_outer_product_acc(&mut grads.w_qr, &d_q_r_raw, &saved.c_q_normed, d_r * n_h, d_qc);
+    simd_transpose_matvec_acc(
+        &mut d_c_q_normed,
+        &weights.w_qr,
+        &d_q_r_raw,
+        d_r * n_h,
+        d_qc,
+    );
+    simd_outer_product_acc(
+        &mut grads.w_qr,
+        &d_q_r_raw,
+        &saved.c_q_normed,
+        d_r * n_h,
+        d_qc,
+    );
 
     // ── Step 3 backward: c_q_normed = rmsnorm(c_q_raw, q_a_norm_weight) ──
     // dL/d(c_q_raw), dL/d(q_a_norm_weight)
@@ -723,4 +748,3 @@ pub fn rmsnorm_backward(
     let _ = eps;
     dx
 }
-

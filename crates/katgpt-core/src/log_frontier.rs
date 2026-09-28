@@ -68,7 +68,10 @@ impl LogFrontier {
     /// - `floor` — lower budget bound, clamped into `[1, total]`.
     pub fn new(total: usize, target: f32, lr: f32, probe_frac: f32, floor: usize) -> Self {
         debug_assert!(total >= 2, "total must be >= 2 for a log frontier");
-        debug_assert!(lr.is_finite() && lr > 0.0, "lr must be a positive finite step");
+        debug_assert!(
+            lr.is_finite() && lr > 0.0,
+            "lr must be a positive finite step"
+        );
         debug_assert!(target.is_finite(), "target must be finite");
         let floor = floor.clamp(1, total);
         let ceil_log = (total as f32).ln();

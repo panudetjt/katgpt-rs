@@ -24,7 +24,10 @@ counting_allocator!();
 /// harness noise, not module allocation). Run recorded with `--release`
 /// (allocation behavior is build-independent).
 #[test]
-#[cfg_attr(debug_assertions, ignore = "debug run >60s trips libtest slow-warning alloc; run --release (Bench 682)")]
+#[cfg_attr(
+    debug_assertions,
+    ignore = "debug run >60s trips libtest slow-warning alloc; run --release (Bench 682)"
+)]
 fn g4_zero_alloc_steady_state_fk_path() {
     let n = 1000usize;
     let dim = 1usize;
@@ -43,7 +46,12 @@ fn g4_zero_alloc_steady_state_fk_path() {
     }
     let target: Vec<f32> = (0..256 * dim).map(|_| next_uniform() as f32).collect();
     let reward = MmdReward::new(0.1, target, dim);
-    let stepper = FkStepper { steer_scale: 5.0, k_fp: 3, damping: 0.4, clip_log_delta: 1.0 };
+    let stepper = FkStepper {
+        steer_scale: 5.0,
+        k_fp: 3,
+        damping: 0.4,
+        clip_log_delta: 1.0,
+    };
     let mut scratch = SteeringScratch::new(n, dim);
     let mut log_w = vec![0.0f32; n];
     let b: Vec<f32> = vec![0.05; n * dim];
@@ -62,7 +70,11 @@ fn g4_zero_alloc_steady_state_fk_path() {
             stepper.finish_step(&reward, &states, &b, dt, &mut log_w, &mut scratch);
             let after = ALLOC_COUNT.load(std::sync::atomic::Ordering::Relaxed);
             if after > before {
-                println!("alloc at step {local_count}: begin +{}, finish +{}", mid - before, after - mid);
+                println!(
+                    "alloc at step {local_count}: begin +{}, finish +{}",
+                    mid - before,
+                    after - mid
+                );
             }
             local_count += 1;
         }

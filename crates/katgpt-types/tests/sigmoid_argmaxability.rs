@@ -61,7 +61,10 @@ fn affect_bridge_5_of_8_all_combinations_argmaxable() {
     for seed in 0..16u64 {
         let w = random_matrix(L, D, 0x00AF_FEC7 ^ seed);
         let audit = audit_argmaxable(&w, L, D);
-        assert_eq!(audit.total, 32, "L=5 must enumerate exactly 32 combinations");
+        assert_eq!(
+            audit.total, 32,
+            "L=5 must enumerate exactly 32 combinations"
+        );
         assert_eq!(
             audit.rank, L,
             "seed {seed}: expected full row rank {L}, got {}",
@@ -99,11 +102,12 @@ fn affect_bridge_6_of_8_all_combinations_argmaxable() {
         let audit = audit_argmaxable(&w, L, D);
         assert_eq!(audit.total, 64);
         assert_eq!(audit.rank, L, "seed {seed}: expected full row rank");
-        assert_eq!(audit.unresolved, 0, "seed {seed}: unreachable combinations found");
+        assert_eq!(
+            audit.unresolved, 0,
+            "seed {seed}: unreachable combinations found"
+        );
     }
-    println!(
-        "L=6 (with anger) from d=8: rank 6 = L, all 64 combinations argmaxable.\n"
-    );
+    println!("L=6 (with anger) from d=8: rank 6 = L, all 64 combinations argmaxable.\n");
 }
 
 /// The condition that actually protects us, stated as a test: exposure requires
@@ -115,7 +119,11 @@ fn exposure_requires_rank_deficiency() {
     // Every L up to d is safe with generic directions.
     for l in 1..=D {
         let w = random_matrix(l, D, 0x005A_FE00 ^ l as u64);
-        assert_eq!(matrix_rank(&w, l, D, 1e-6), l, "L={l} should be full rank at d={D}");
+        assert_eq!(
+            matrix_rank(&w, l, D, 1e-6),
+            l,
+            "L={l} should be full rank at d={D}"
+        );
     }
     // Past d, rank saturates at d and the bottleneck becomes unavoidable.
     let w = random_matrix(12, D, 0xDEAD);

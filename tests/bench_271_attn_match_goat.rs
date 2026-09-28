@@ -625,9 +625,7 @@ fn g8_throughput_floor() {
         t0.elapsed()
     });
     let ns_per_call = us_per_call * 1000.0;
-    println!(
-        "  G8b: {ns_per_call:.0} ns/call at n={n},t={t},d={d} (ceiling 5_000_000 ns = 5 ms)"
-    );
+    println!("  G8b: {ns_per_call:.0} ns/call at n={n},t={t},d={d} (ceiling 5_000_000 ns = 5 ms)");
     assert!(
         ns_per_call < 5_000_000.0,
         "G8b FAIL: throughput regression — {ns_per_call:.0} ns/call > 5 ms ceiling at \

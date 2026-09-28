@@ -428,7 +428,11 @@ mod tests {
             sched.blocks.len(),
             raw.blocks.len()
         );
-        assert!(sched.blocks.len() >= 4, "scheduled support {} too small", sched.blocks.len());
+        assert!(
+            sched.blocks.len() >= 4,
+            "scheduled support {} too small",
+            sched.blocks.len()
+        );
         // Decision weights are the selected blocks' probabilities — a full
         // support selection sums to the simplex total.
         let w_sum: f32 = sched.weights.iter().sum();

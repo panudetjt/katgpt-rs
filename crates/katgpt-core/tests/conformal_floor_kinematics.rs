@@ -43,14 +43,17 @@
 //!   --features kinematic_rollout,conformal_predictive_intervals -- --nocapture
 //! ```
 
-#![cfg(all(feature = "kinematic_rollout", feature = "conformal_predictive_intervals"))]
+#![cfg(all(
+    feature = "kinematic_rollout",
+    feature = "conformal_predictive_intervals"
+))]
 
 use katgpt_core::conformal::{
     PredictiveInterval, PredictiveOutput, UqPrimitiveUnderTest, run_floor_comparison,
 };
 use katgpt_core::kinematics::perception::normal_two_sided_z;
 use katgpt_core::kinematics::{
-    KinState, SQRT2, SQRT20, SQRT6, Sched, extrapolation_weight_ss,
+    KinState, SQRT2, SQRT6, SQRT20, Sched, extrapolation_weight_ss,
     kinematic_extrapolate_capped_into,
 };
 
@@ -213,9 +216,7 @@ impl SplitMix64 {
 
 fn noisy_uniform(n: usize, seed: u64) -> Vec<f32> {
     let mut rng = SplitMix64::new(seed);
-    (0..n)
-        .map(|t| 0.7 * t as f32 + rng.gaussian(0.1))
-        .collect()
+    (0..n).map(|t| 0.7 * t as f32 + rng.gaussian(0.1)).collect()
 }
 
 fn noisy_parabola(n: usize, seed: u64) -> Vec<f32> {
@@ -285,7 +286,10 @@ fn kinematics_floor_comparison() {
         .map(|(_, v)| v)
         .expect("uniform corpus present");
     assert!(
-        matches!(uniform, katgpt_core::conformal::OverallVerdict::LosesToFloor),
+        matches!(
+            uniform,
+            katgpt_core::conformal::OverallVerdict::LosesToFloor
+        ),
         "the uniform corpus is expected to lose at h=1 (√2σ shared floor) — \
          if it wins, update the rank-only verdict in .benchmarks/680"
     );

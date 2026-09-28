@@ -30,9 +30,9 @@ mod dequant;
 #[cfg(test)]
 mod dequant_oracle_tests;
 pub mod eval;
+pub mod hadamard;
 #[cfg(test)]
 mod issue_896_tests;
-pub mod hadamard;
 pub mod kv_cache;
 pub mod var_norm;
 

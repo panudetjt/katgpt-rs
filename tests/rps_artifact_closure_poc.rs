@@ -137,11 +137,7 @@ impl HeterogeneousPayoff<9, 9> for RpsTwoPlayer {
         // action = joint (a_1, a_2). a_1 = action / 3, a_2 = action % 3.
         let a1 = action / 3;
         let a2 = action % 3;
-        if player == 0 {
-            -R[a1][a2]
-        } else {
-            R[a1][a2]
-        }
+        if player == 0 { -R[a1][a2] } else { R[a1][a2] }
     }
 }
 
@@ -205,10 +201,7 @@ fn t1_artifact_with_constant_deviations() {
     // ρ(Rock, Paper) = 1.0 → γ₀ = -1.0.
     let g0 = p.gamma0(&rho);
     println!("[T1] artifact γ₀ = {g0:.6}");
-    assert!(
-        g0 < -0.9,
-        "artifact γ₀ should be ≈ -1.0, got {g0:.6}"
-    );
+    assert!(g0 < -0.9, "artifact γ₀ should be ≈ -1.0, got {g0:.6}");
 
     // Cross-check with shipped CceLp::is_cce.
     assert!(
@@ -254,7 +247,9 @@ fn t2_full_deviation_class_artifact_persists() {
             best_dev_id = kappa.id;
         }
     }
-    println!("[T2] artifact γ₀ = {g0:.6}, max ER over 27 deviations = {max_er:.6} (dev #{best_dev_id})");
+    println!(
+        "[T2] artifact γ₀ = {g0:.6}, max ER over 27 deviations = {max_er:.6} (dev #{best_dev_id})"
+    );
 
     // The best any deviation achieves is ER = 0 (ties with best-response).
     assert!(
@@ -272,7 +267,9 @@ fn t2_full_deviation_class_artifact_persists() {
         "artifact should be a valid CCE under the full 27-deviation class"
     );
 
-    println!("[T2] PASS: option 1 FAILS — artifact is an unconquerable CCE for ANY deviation class.");
+    println!(
+        "[T2] PASS: option 1 FAILS — artifact is an unconquerable CCE for ANY deviation class."
+    );
     println!("       Max ER = {max_er:.6} (best-response deviation ties). The artifact is a fixed");
     println!("       point of best-response play — no deviation class can make ER > 0.");
 }
@@ -320,7 +317,10 @@ fn t3_t4_two_player_rps_cost_structure() {
 
     // P1's cost at (P, R) play: -R[P][R] = -R[1][0] = -1.0 (P1 wins).
     let c1 = game.reward_follow(0, 0, joint(1, 0));
-    assert!((c1 - (-1.0)).abs() < 1e-6, "P1 cost at (P,R) = {c1}, want -1.0");
+    assert!(
+        (c1 - (-1.0)).abs() < 1e-6,
+        "P1 cost at (P,R) = {c1}, want -1.0"
+    );
 
     // P2's cost at (P, R) play: R[P][R] = R[1][0] = 1.0 (P2 loses).
     let c2 = game.reward_follow(1, 0, joint(1, 0));
@@ -331,7 +331,10 @@ fn t3_t4_two_player_rps_cost_structure() {
         for a2 in 0..3 {
             let a = joint(a1, a2);
             let sum = game.reward_follow(0, 0, a) + game.reward_follow(1, 0, a);
-            assert!(sum.abs() < 1e-6, "zero-sum violated at ({a1},{a2}): sum = {sum}");
+            assert!(
+                sum.abs() < 1e-6,
+                "zero-sum violated at ({a1},{a2}): sum = {sum}"
+            );
         }
     }
 
@@ -347,7 +350,10 @@ fn t5_artifact_rejected_by_two_player_cce() {
     // P1's cost: γ₁ = -1.0 (P1 wins — Paper beats Rock).
     let g1 = game.gamma_player(0, &rho);
     println!("[T5] P1 γ = {g1:.6}");
-    assert!((g1 - (-1.0)).abs() < 1e-4, "P1 γ should be -1.0, got {g1:.6}");
+    assert!(
+        (g1 - (-1.0)).abs() < 1e-4,
+        "P1 γ should be -1.0, got {g1:.6}"
+    );
 
     // P2's cost: γ₂ = 1.0 (P2 loses — Rock loses to Paper).
     let g2 = game.gamma_player(1, &rho);

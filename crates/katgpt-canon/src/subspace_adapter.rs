@@ -51,9 +51,7 @@
 //! subspace basis we want.
 
 use katgpt_core::{SvdResultScratch, SvdScratch, thin_svd_into};
-use katgpt_spectral::procrustes::{
-    ProcrustesConfig, ProcrustesScratch, orthogonal_procrustes,
-};
+use katgpt_spectral::procrustes::{ProcrustesConfig, ProcrustesScratch, orthogonal_procrustes};
 
 use crate::{CanonicalIntent, ModelAdapter};
 
@@ -108,11 +106,7 @@ impl SubspaceFit {
         let v_b_col = &self.v_b[j * self.d_b..(j + 1) * self.d_b];
         let na: f32 = v_a_col.iter().map(|x| x * x).sum::<f32>().sqrt();
         let nb: f32 = v_b_col.iter().map(|x| x * x).sum::<f32>().sqrt();
-        if nb > 1e-12 {
-            na / nb
-        } else {
-            f32::INFINITY
-        }
+        if nb > 1e-12 { na / nb } else { f32::INFINITY }
     }
 
     /// Total energy across the top-k singular values: sum(σ²). Useful as the
@@ -214,7 +208,13 @@ pub fn fit_joint_svd_pair(
     // 2. SVD M^T → left singular vectors (length total_d).
     scratch.svd_result = SvdResultScratch::with_capacity(total_d, n);
     scratch.svd_work = SvdScratch::with_capacity(n, total_d);
-    thin_svd_into(&scratch.mt_buf, total_d, n, &mut scratch.svd_result, &mut scratch.svd_work);
+    thin_svd_into(
+        &scratch.mt_buf,
+        total_d,
+        n,
+        &mut scratch.svd_result,
+        &mut scratch.svd_work,
+    );
 
     // 3. Extract top-k left singular vectors, partition into V_A + V_B.
     //    Column-major: v_a[j * d_a + r] is row r of basis vector j.
@@ -368,7 +368,13 @@ pub fn fit_joint_svd_pair_with_cfg(
     // 2. SVD M^T → left singular vectors (length total_d).
     scratch.svd_result = SvdResultScratch::with_capacity(total_d, n);
     scratch.svd_work = SvdScratch::with_capacity(n, total_d);
-    thin_svd_into(&scratch.mt_buf, total_d, n, &mut scratch.svd_result, &mut scratch.svd_work);
+    thin_svd_into(
+        &scratch.mt_buf,
+        total_d,
+        n,
+        &mut scratch.svd_result,
+        &mut scratch.svd_work,
+    );
 
     // 3. Extract top-k left singular vectors, partition into V_A + V_B.
     let mut v_a = vec![0.0f32; k * d_a];
@@ -612,12 +618,13 @@ mod tests {
         let k = 2;
         // A activations: [a0, a1, 0, 0] for varying a0, a1.
         let a: Vec<f32> = vec![
-            1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 2.0, 1.0, 0.0, 0.0, 1.0, 2.0,
-            0.0, 0.0, 3.0, 0.0, 0.0, 0.0,
+            1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 2.0, 1.0, 0.0, 0.0, 1.0,
+            2.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0,
         ];
         // B activations: [b0, b1, 0] — same coordinates in the shared subspace.
         let b: Vec<f32> = vec![
-            1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 2.0, 1.0, 0.0, 1.0, 2.0, 0.0, 3.0, 0.0, 0.0,
+            1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 2.0, 1.0, 0.0, 1.0, 2.0, 0.0, 3.0, 0.0,
+            0.0,
         ];
         assert_eq!(a.len(), n * d_a);
         assert_eq!(b.len(), n * d_b);
@@ -644,8 +651,14 @@ mod tests {
         // should produce non-zero output.
         let mag_a: f32 = out_a.iter().map(|x| x * x).sum::<f32>().sqrt();
         let mag_b: f32 = out_b.iter().map(|x| x * x).sum::<f32>().sqrt();
-        assert!(mag_a > 1e-6, "adapter_a output magnitude {mag_a} should be > 0");
-        assert!(mag_b > 1e-6, "adapter_b output magnitude {mag_b} should be > 0");
+        assert!(
+            mag_a > 1e-6,
+            "adapter_a output magnitude {mag_a} should be > 0"
+        );
+        assert!(
+            mag_b > 1e-6,
+            "adapter_b output magnitude {mag_b} should be > 0"
+        );
 
         // Round-trip: extract_from(project(canonical)) should preserve the
         // SIGN of each canonical coordinate (joint-SVD basis vectors are
@@ -805,10 +818,20 @@ mod tests {
         // The V_A/V_B/singular_values are IDENTICAL (SVD doesn't care about
         // Procrustes config). Only the rotation may differ.
         for (x, y) in fit_no_center.v_a.iter().zip(fit_center.v_a.iter()) {
-            assert!((x - y).abs() < 1e-6, "V_A must not depend on Procrustes cfg");
+            assert!(
+                (x - y).abs() < 1e-6,
+                "V_A must not depend on Procrustes cfg"
+            );
         }
-        for (x, y) in fit_no_center.singular_values.iter().zip(fit_center.singular_values.iter()) {
-            assert!((x - y).abs() < 1e-6, "singular values must not depend on Procrustes cfg");
+        for (x, y) in fit_no_center
+            .singular_values
+            .iter()
+            .zip(fit_center.singular_values.iter())
+        {
+            assert!(
+                (x - y).abs() < 1e-6,
+                "singular values must not depend on Procrustes cfg"
+            );
         }
 
         // With the non-zero offset, centering SHOULD change the rotation.
@@ -846,13 +869,7 @@ mod tests {
     /// Planted shared-subspace pair (deterministic, low noise).
     /// Used by multiple tests above for the singular_values / sharedness /
     /// total_energy / with_cfg diagnostics.
-    fn planted_pair(
-        n: usize,
-        d_a: usize,
-        d_b: usize,
-        k: usize,
-        seed: u32,
-    ) -> (Vec<f32>, Vec<f32>) {
+    fn planted_pair(n: usize, d_a: usize, d_b: usize, k: usize, seed: u32) -> (Vec<f32>, Vec<f32>) {
         // Minimal xorshift32 PRNG.
         let mut state = if seed == 0 { 0xDEAD_BEEF } else { seed };
         let mut next_f32 = || {

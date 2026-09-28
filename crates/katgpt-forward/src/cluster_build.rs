@@ -100,10 +100,7 @@ fn project_rows(rows: &[f32], count: usize, n_embd: usize, proj_dim: usize) -> V
 /// Squared L2 distance between two equal-length slices.
 #[inline]
 fn sq_dist(a: &[f32], b: &[f32]) -> f32 {
-    a.iter()
-        .zip(b)
-        .map(|(x, y)| (x - y) * (x - y))
-        .sum::<f32>()
+    a.iter().zip(b).map(|(x, y)| (x - y) * (x - y)).sum::<f32>()
 }
 
 /// Deterministic k-means++ (D²) seeding in projected space.
@@ -150,18 +147,20 @@ fn kmeanspp_init(data: &[f32], count: usize, k: usize, dim: usize) -> Vec<f32> {
         // separate, so fall back to a deterministic index rather than sampling
         // from an all-zero distribution.
         let chosen = if total > 0.0 {
-                let target = total * (next_u64(&mut stream) >> 11) as f64 / (1u64 << 53) as f64;
-                let mut acc = 0.0f64;
-                let mut pick = count - 1;
-                for (t, &d) in closest.iter().enumerate() {
-                    acc += d as f64;
-                    if acc >= target {
-                        pick = t;
-                        break;
-                    }
+            let target = total * (next_u64(&mut stream) >> 11) as f64 / (1u64 << 53) as f64;
+            let mut acc = 0.0f64;
+            let mut pick = count - 1;
+            for (t, &d) in closest.iter().enumerate() {
+                acc += d as f64;
+                if acc >= target {
+                    pick = t;
+                    break;
                 }
-                pick
-            } else { c % count };
+            }
+            pick
+        } else {
+            c % count
+        };
         centers[c * dim..(c + 1) * dim].copy_from_slice(&data[chosen * dim..(chosen + 1) * dim]);
     }
     centers
@@ -536,8 +535,10 @@ pub fn cluster_layout_from_map(
         return Err(LayoutRefusal::DegenerateShape);
     }
 
-    let total_rows: usize =
-        cluster_map.iter().map(|c| c.iter().filter(|&&t| t < vocab_size).count()).sum();
+    let total_rows: usize = cluster_map
+        .iter()
+        .map(|c| c.iter().filter(|&&t| t < vocab_size).count())
+        .sum();
 
     if let TiedPolicy::Refuse { wte } = tied {
         // Storage identity, not content equality: same base pointer and same
@@ -558,15 +559,18 @@ pub fn cluster_layout_from_map(
         let start = row;
         for &t in tokens.iter().filter(|&&t| t < vocab_size) {
             let src = t * n_embd;
-            permuted[row * n_embd..(row + 1) * n_embd]
-                .copy_from_slice(&lm_head[src..src + n_embd]);
+            permuted[row * n_embd..(row + 1) * n_embd].copy_from_slice(&lm_head[src..src + n_embd]);
             token_of_row[row] = t;
             row += 1;
         }
         offsets.push((start, row - start));
     }
 
-    Ok(ClusterLayout { permuted, token_of_row, offsets })
+    Ok(ClusterLayout {
+        permuted,
+        token_of_row,
+        offsets,
+    })
 }
 
 #[cfg(test)]
@@ -703,7 +707,10 @@ mod tests {
 
     #[test]
     fn degenerate_shapes_fall_back_to_round_robin() {
-        assert_eq!(cluster_map_from_embeddings(&[], 0, 16, 4), Vec::<Vec<usize>>::new());
+        assert_eq!(
+            cluster_map_from_embeddings(&[], 0, 16, 4),
+            Vec::<Vec<usize>>::new()
+        );
         assert!(cluster_map_from_embeddings(&[], 10, 16, 0).is_empty());
         // Short weight buffer must not panic — falls back.
         let short = vec![0.0f32; 4];

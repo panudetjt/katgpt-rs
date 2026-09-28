@@ -285,8 +285,16 @@ fn run_ill_conditioned() {
             let truth = dot_strict_f64(&a, &b);
             let s = dot_strict(&a, &b);
             let g = dot_algebraic(&a, &b);
-            let na: f64 = a.iter().map(|&x| f64::from(x) * f64::from(x)).sum::<f64>().sqrt();
-            let nb: f64 = b.iter().map(|&x| f64::from(x) * f64::from(x)).sum::<f64>().sqrt();
+            let na: f64 = a
+                .iter()
+                .map(|&x| f64::from(x) * f64::from(x))
+                .sum::<f64>()
+                .sqrt();
+            let nb: f64 = b
+                .iter()
+                .map(|&x| f64::from(x) * f64::from(x))
+                .sum::<f64>()
+                .sqrt();
             let scale = (na * nb).max(1e-30);
             let es = (f64::from(s) - truth).abs() / scale;
             let eg = (f64::from(g) - truth).abs() / scale;
@@ -314,7 +322,9 @@ fn run_ill_conditioned() {
         );
     };
 
-    println!("\nG1 ill-conditioned arm (d={D}, {TRIALS} trials/class; recorded either way, no bar):");
+    println!(
+        "\nG1 ill-conditioned arm (d={D}, {TRIALS} trials/class; recorded either way, no bar):"
+    );
     worst("ortho (near-zero dot)", &|rng, d| {
         let a: Vec<f32> = (0..d).map(|_| rng.next_f32()).collect();
         let y: Vec<f32> = (0..d).map(|_| rng.next_f32()).collect();
@@ -332,7 +342,13 @@ fn run_ill_conditioned() {
         let v: Vec<f32> = (0..8).map(|_| rng.next_f32()).collect();
         let a: Vec<f32> = (0..d).map(|i| block[i % 8]).collect();
         let b: Vec<f32> = (0..d)
-            .map(|i| if (i / 8) % 2 == 0 { v[i % 8] } else { -v[i % 8] })
+            .map(|i| {
+                if (i / 8) % 2 == 0 {
+                    v[i % 8]
+                } else {
+                    -v[i % 8]
+                }
+            })
             .collect();
         (a, b)
     });
@@ -367,9 +383,13 @@ fn main() {
     // The 0.9/1.1 band reading, printed not asserted — the Issue 871 record
     // carries the verdict; a promotion bar is a separate act.
     if faster > 0 {
-        println!("VERDICT HINT: algebraic clears ≥1.10× on {faster} dim(s) — promotion candidate (needs retention walk + owner call)");
+        println!(
+            "VERDICT HINT: algebraic clears ≥1.10× on {faster} dim(s) — promotion candidate (needs retention walk + owner call)"
+        );
     } else {
-        println!("VERDICT HINT: no dim clears ≥1.10× — negative-leaning; strict bit-identity stays");
+        println!(
+            "VERDICT HINT: no dim clears ≥1.10× — negative-leaning; strict bit-identity stays"
+        );
     }
 
     let (trials, near, flips, flips_near) = run_argmax_retention();
@@ -379,11 +399,17 @@ fn main() {
         near_ = near,
     );
     if flips_near > 0 {
-        println!("  ⚠ reassociation flips near-tie argmax — the Issue-750-T3 retention walk is MANDATORY before any logits-lane adoption");
+        println!(
+            "  ⚠ reassociation flips near-tie argmax — the Issue-750-T3 retention walk is MANDATORY before any logits-lane adoption"
+        );
     } else if flips > 0 {
-        println!("  flips occurred only outside near-ties (data-scale divergences — check ulp table)");
+        println!(
+            "  flips occurred only outside near-ties (data-scale divergences — check ulp table)"
+        );
     } else {
-        println!("  zero flips on this fixture (64-key, forced near-ties) — retention clean at this scale");
+        println!(
+            "  zero flips on this fixture (64-key, forced near-ties) — retention clean at this scale"
+        );
     }
 
     run_ill_conditioned();

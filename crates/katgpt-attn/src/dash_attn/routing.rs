@@ -120,7 +120,13 @@ pub fn score_blocks_entmax_with_entropy_into(
 ) -> RoutingResult {
     let n = summaries.len();
     grow_routing_scratch(scratch, n);
-    compute_chunk_logits_into(query, summaries, entropy_biases, config, &mut scratch.logits);
+    compute_chunk_logits_into(
+        query,
+        summaries,
+        entropy_biases,
+        config,
+        &mut scratch.logits,
+    );
     route_from_logits(n, scratch)
 }
 
@@ -262,7 +268,13 @@ pub fn score_blocks_entmax_with_schedule_into(
 ) -> RoutingResult {
     let n = summaries.len();
     grow_routing_scratch(scratch, n);
-    compute_chunk_logits_into(query, summaries, entropy_biases, config, &mut scratch.logits);
+    compute_chunk_logits_into(
+        query,
+        summaries,
+        entropy_biases,
+        config,
+        &mut scratch.logits,
+    );
     if let Some(est) = estimator {
         est.observe_row(&scratch.logits[..n]);
     }
@@ -717,7 +729,8 @@ mod tests {
         let entropy = vec![0.3_f32; 16];
 
         let mut s1 = RoutingScratch::new(16, 4);
-        let plain = score_blocks_entmax_with_entropy_into(&query, &summaries, &entropy, &config, &mut s1);
+        let plain =
+            score_blocks_entmax_with_entropy_into(&query, &summaries, &entropy, &config, &mut s1);
         let mut s2 = RoutingScratch::new(16, 4);
         let scheduled = score_blocks_entmax_with_schedule_into(
             &query,

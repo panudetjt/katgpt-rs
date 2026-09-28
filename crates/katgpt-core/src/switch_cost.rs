@@ -472,7 +472,7 @@ mod tests {
     fn record_order_does_not_change_results_bit_identically() {
         use fastrand::Rng;
 
-let mut x = SwitchCostTable::<3>::new(DEFAULT_ALPHA);
+        let mut x = SwitchCostTable::<3>::new(DEFAULT_ALPHA);
         let mut y = SwitchCostTable::<3>::new(DEFAULT_ALPHA);
         let mut rng = Rng::with_seed(42);
         let mut events = Vec::with_capacity(500);
@@ -583,7 +583,11 @@ let mut x = SwitchCostTable::<3>::new(DEFAULT_ALPHA);
         }
         let factor = (0.5 * 0.8 + 0.5 * 0.4 + DEFAULT_ALPHA) / (0.75 + DEFAULT_ALPHA);
         let want = factor * factor;
-        assert!((f.ske(0, 1) - want).abs() < TOL, "{} vs {want}", f.ske(0, 1));
+        assert!(
+            (f.ske(0, 1) - want).abs() < TOL,
+            "{} vs {want}",
+            f.ske(0, 1)
+        );
     }
 
     #[test]

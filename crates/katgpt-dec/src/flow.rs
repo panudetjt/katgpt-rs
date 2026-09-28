@@ -136,7 +136,10 @@ impl DecFlowField {
     /// Panics if `edge_flow` is not a rank-1 single-channel cochain.
     #[must_use]
     pub fn from_exact_flow(cx: &CellComplex, edge_flow: &CochainField) -> Option<Self> {
-        assert_eq!(edge_flow.rank, 1, "from_exact_flow: edge_flow must be rank-1");
+        assert_eq!(
+            edge_flow.rank, 1,
+            "from_exact_flow: edge_flow must be rank-1"
+        );
         assert_eq!(
             edge_flow.dim, 1,
             "from_exact_flow: edge_flow must be single-channel"

@@ -56,7 +56,10 @@ impl ClrScratch {
     pub fn new(k: usize, m: usize, embedding_dim: usize) -> Self {
         assert!(k > 0, "ClrScratch::new: k must be > 0");
         assert!(m > 0, "ClrScratch::new: m must be > 0");
-        assert!(embedding_dim > 0, "ClrScratch::new: embedding_dim must be > 0");
+        assert!(
+            embedding_dim > 0,
+            "ClrScratch::new: embedding_dim must be > 0"
+        );
         assert!(
             k <= 256,
             "ClrScratch::new: k={k} exceeds Vec<u8> cluster_id limit (256)"

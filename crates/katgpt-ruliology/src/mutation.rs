@@ -235,12 +235,12 @@ pub fn delta_gated_co_evolve(
 
         // Accept only if δ meets threshold (positive and meaningful)
         if delta >= config.delta_threshold {
-                current = mutant;
-                current_payoff = mutant_payoff;
-                accepted += 1;
-            } else {
-                rejected += 1;
-            }
+            current = mutant;
+            current_payoff = mutant_payoff;
+            accepted += 1;
+        } else {
+            rejected += 1;
+        }
 
         if generation % 10 == 0 || generation == generations {
             history.push((generation, current_payoff));
@@ -300,8 +300,16 @@ fn evaluate_vs_opponents(
         let mut first_round = true;
 
         for _ in 0..rounds {
-            let hist_o: &[u8] = if first_round { &empty } else { std::slice::from_ref(&last_a_o) };
-            let hist_s: &[u8] = if first_round { &empty } else { std::slice::from_ref(&last_a_s) };
+            let hist_o: &[u8] = if first_round {
+                &empty
+            } else {
+                std::slice::from_ref(&last_a_o)
+            };
+            let hist_s: &[u8] = if first_round {
+                &empty
+            } else {
+                std::slice::from_ref(&last_a_s)
+            };
             let a_s = s.next_action(hist_o);
             let a_o = o.next_action(hist_s);
             payoff += payoff_fn(a_s, a_o);

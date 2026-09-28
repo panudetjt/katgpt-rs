@@ -57,10 +57,7 @@ fn select_arm(stats: &BanditStats, strategy: &BanditStrategy, rng: &mut Rng) -> 
     match strategy {
         BanditStrategy::Ucb1 => (0..NUM_ARMS)
             .max_by(|&a, &b| {
-                katgpt_core::float_order::cmp_for_max(
-                        stats.ucb1_score(a),
-                        stats.ucb1_score(b),
-                    )
+                katgpt_core::float_order::cmp_for_max(stats.ucb1_score(a), stats.ucb1_score(b))
             })
             .unwrap_or(0),
         BanditStrategy::EpsilonGreedy { epsilon, .. } => {
@@ -86,10 +83,7 @@ fn select_arm(stats: &BanditStats, strategy: &BanditStrategy, rng: &mut Rng) -> 
         #[cfg(feature = "tes_loop")]
         BanditStrategy::Rpucg { .. } => (0..NUM_ARMS)
             .max_by(|&a, &b| {
-                katgpt_core::float_order::cmp_for_max(
-                        stats.ucb1_score(a),
-                        stats.ucb1_score(b),
-                    )
+                katgpt_core::float_order::cmp_for_max(stats.ucb1_score(a), stats.ucb1_score(b))
             })
             .unwrap_or(0),
         BanditStrategy::RandOptAdaptive {
@@ -103,10 +97,7 @@ fn select_arm(stats: &BanditStats, strategy: &BanditStrategy, rng: &mut Rng) -> 
         }
         BanditStrategy::CurvatureInfluence { .. } => (0..NUM_ARMS)
             .max_by(|&a, &b| {
-                katgpt_core::float_order::cmp_for_max(
-                        stats.ucb1_score(a),
-                        stats.ucb1_score(b),
-                    )
+                katgpt_core::float_order::cmp_for_max(stats.ucb1_score(a), stats.ucb1_score(b))
             })
             .unwrap_or(0),
         #[cfg(feature = "safe_bandit")]
@@ -114,10 +105,7 @@ fn select_arm(stats: &BanditStats, strategy: &BanditStrategy, rng: &mut Rng) -> 
             // SafePhased uses UCB1 as active arm selector; for demo purposes use UCB1 fallback
             (0..NUM_ARMS)
                 .max_by(|&a, &b| {
-                    katgpt_core::float_order::cmp_for_max(
-                        stats.ucb1_score(a),
-                        stats.ucb1_score(b),
-                    )
+                    katgpt_core::float_order::cmp_for_max(stats.ucb1_score(a), stats.ucb1_score(b))
                 })
                 .unwrap_or(0)
         }

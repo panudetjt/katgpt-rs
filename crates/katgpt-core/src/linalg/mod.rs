@@ -40,8 +40,9 @@ pub mod tucker;
 pub mod kron_tile;
 
 pub use ridge_solve::{
-    chol_solve_f32, chol_solve_f64, cholesky_f32, cholesky_f64, ridge_solve_direct_f32,
-    ridge_solve_direct_f64, ridge_solve_woodbury_f32, spd_inverse_f32,
+    NotPositiveDefinite, chol_solve_f32, chol_solve_f64, cholesky_f32, cholesky_f64,
+    ridge_solve_direct_f32, ridge_solve_direct_f64, ridge_solve_woodbury_f32, spd_inverse_f32,
+    try_cholesky_f32, try_ridge_solve_woodbury_f32,
 };
 
 // Issue 186 (Path B) — symmetric eigendecomposition via Householder + QL.

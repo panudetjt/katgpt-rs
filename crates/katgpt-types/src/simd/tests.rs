@@ -64,8 +64,9 @@ fn argmax_matches_two_pass_at_simd8_tail_boundaries() {
         state
     };
     // Every AVX2 boundary ± 1, the 8-lane tie zone, and one large length.
-    for len in [7, 8, 9, 15, 16, 17, 63, 64, 65, 255, 256, 257, 511, 512, 1023, 4095, 4096]
-    {
+    for len in [
+        7, 8, 9, 15, 16, 17, 63, 64, 65, 255, 256, 257, 511, 512, 1023, 4095, 4096,
+    ] {
         // mod 5 values: frequent duplicates → cross-lane ties are common.
         let v: Vec<f32> = (0..len).map(|_| (rng() % 5) as f32).collect();
         assert_eq!(simd_argmax_f32(&v), naive(&v), "len={len}");
@@ -233,7 +234,10 @@ fn simd_tanh_inplace_handles_boundaries() {
     let mut buf: Vec<f32> = (0..100).map(|_| (rng.f32() * 20.0) - 10.0).collect();
     simd_tanh_inplace(&mut buf);
     for (i, &v) in buf.iter().enumerate() {
-        assert!((-1.0..=1.0).contains(&v), "idx={i}: tanh output {v} out of [-1,1]");
+        assert!(
+            (-1.0..=1.0).contains(&v),
+            "idx={i}: tanh output {v} out of [-1,1]"
+        );
     }
 }
 
@@ -1519,8 +1523,14 @@ mod sigmoid_margin_tests {
         let mut prev = usize::MAX;
         for k in [2usize, 3, 4, 5, 8, 10, 16] {
             let c = dim_capacity_ceiling(8, k, G);
-            assert!(c < prev, "ceiling must shrink as k grows: k={k} gave {c}, prev {prev}");
-            assert!(c > k, "regime check: ceiling {c} must exceed k={k} to be meaningful");
+            assert!(
+                c < prev,
+                "ceiling must shrink as k grows: k={k} gave {c}, prev {prev}"
+            );
+            assert!(
+                c > k,
+                "regime check: ceiling {c} must exceed k={k} to be meaningful"
+            );
             prev = c;
         }
     }
@@ -1546,7 +1556,10 @@ mod sigmoid_margin_tests {
             .map(|k| dim_capacity_ceiling(8, k, G))
             .min()
             .expect("non-empty");
-        assert_eq!(global_min, 30, "d=8 can never represent all top-k subsets of >30 docs");
+        assert_eq!(
+            global_min, 30,
+            "d=8 can never represent all top-k subsets of >30 docs"
+        );
     }
 
     #[test]
@@ -1555,7 +1568,10 @@ mod sigmoid_margin_tests {
         let mut prev = 0usize;
         for d in [1usize, 2, 4, 8, 16, 32] {
             let c = dim_capacity_ceiling(d, 8, G);
-            assert!(c > prev, "ceiling must grow with d: d={d} gave {c}, prev {prev}");
+            assert!(
+                c > prev,
+                "ceiling must grow with d: d={d} gave {c}, prev {prev}"
+            );
             prev = c;
         }
     }
@@ -1604,14 +1620,30 @@ mod sigmoid_margin_tests {
         assert_eq!(dim_capacity_floor(8, G), 27);
         assert_eq!(dim_capacity_floor(64, G), 221);
         assert_eq!(dim_capacity_floor(768, G), 2656);
-        assert_eq!(dim_capacity_floor(8, 0.0), usize::MAX, "gamma=0 -> unbounded");
+        assert_eq!(
+            dim_capacity_floor(8, 0.0),
+            usize::MAX,
+            "gamma=0 -> unbounded"
+        );
     }
 
     #[test]
     fn capacity_ceiling_edge_cases() {
-        assert_eq!(dim_capacity_ceiling(8, 0, 0.1), usize::MAX, "k=0 → unbounded");
-        assert_eq!(dim_capacity_ceiling(8, 4, 0.0), usize::MAX, "γ=0 → unbounded");
-        assert_eq!(dim_capacity_ceiling(8, 4, -1.0), usize::MAX, "γ<0 → unbounded");
+        assert_eq!(
+            dim_capacity_ceiling(8, 0, 0.1),
+            usize::MAX,
+            "k=0 → unbounded"
+        );
+        assert_eq!(
+            dim_capacity_ceiling(8, 4, 0.0),
+            usize::MAX,
+            "γ=0 → unbounded"
+        );
+        assert_eq!(
+            dim_capacity_ceiling(8, 4, -1.0),
+            usize::MAX,
+            "γ<0 → unbounded"
+        );
         // d=0 admits only the single subset C(k,k)=1.
         assert_eq!(dim_capacity_ceiling(0, 4, 0.1), 4, "d=0 → n=k");
         // γ > 1 is infeasible for unit vectors; clamped to the tightest γ=1.
@@ -1634,8 +1666,14 @@ mod sigmoid_margin_tests {
         let loose = dim_capacity_ceiling(8, 4, 0.01);
         let mid = dim_capacity_ceiling(8, 4, 0.1);
         let tight = dim_capacity_ceiling(8, 4, 1.0);
-        assert!(loose > mid, "γ=0.01 should allow more than γ=0.1: {loose} vs {mid}");
-        assert!(mid > tight, "γ=0.1 should allow more than γ=1.0: {mid} vs {tight}");
+        assert!(
+            loose > mid,
+            "γ=0.01 should allow more than γ=0.1: {loose} vs {mid}"
+        );
+        assert!(
+            mid > tight,
+            "γ=0.1 should allow more than γ=1.0: {mid} vs {tight}"
+        );
     }
 
     #[test]
@@ -2528,8 +2566,8 @@ fn simd_exp_sum_extreme_inputs_underflow_not_wrap() {
         // Extremes crossing the 32-wide main loop, the 8-wide remainder
         // loop, AND the scalar tail (three code paths, one contract).
         &[
-            -300.0, -150.0, -90.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, -95.0, 8.0, 9.0,
-            10.0, 11.0, 12.0, -120.0, 13.0,
+            -300.0, -150.0, -90.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, -95.0, 8.0, 9.0, 10.0,
+            11.0, 12.0, -120.0, 13.0,
         ],
         // High side: finite saturation, not exponent-wrap NaN/garbage.
         &[100.0, 0.0],
@@ -2562,10 +2600,7 @@ fn simd_exp_sum_extreme_inputs_underflow_not_wrap() {
                     a > 1e37,
                     "fused exp({xi}) = {a} at {i} — exponent wrap (should saturate positive huge/inf)"
                 );
-                assert!(
-                    b > 1e37,
-                    "separate exp({xi}) = {b} at {i} — exponent wrap"
-                );
+                assert!(b > 1e37, "separate exp({xi}) = {b} at {i} — exponent wrap");
             } else {
                 // In-range: truth-referenced against libm (the Issue 027
                 // contract, ~5e-4 covers range-reduction cancellation).

@@ -576,7 +576,10 @@ mod tests {
         // And post-reset the controller tracks the new level without
         // flagging another jump.
         for _ in 0..30 {
-            assert!(!matches!(c.observe(10.0, 0.0), Some(Note::RegimeJumpConfirmed { .. })));
+            assert!(!matches!(
+                c.observe(10.0, 0.0),
+                Some(Note::RegimeJumpConfirmed { .. })
+            ));
         }
     }
 
@@ -667,7 +670,11 @@ mod tests {
             assert_eq!(c.observe(f32::INFINITY, 0.1), None);
             assert_eq!(c.observe(1.0, -0.1), None);
             assert_eq!(c.observe(1.0, f32::NAN), None);
-            assert_eq!(c.factor(), f, "dropped observations must not move the factor");
+            assert_eq!(
+                c.factor(),
+                f,
+                "dropped observations must not move the factor"
+            );
         }
     }
 

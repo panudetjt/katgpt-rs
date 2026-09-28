@@ -133,13 +133,11 @@ pub use conv::{
 pub use forward::{EngramConfig, fuse_into_hidden_state};
 pub use hash::{HashHead, multi_head_hash};
 pub use hotswap::EngramHotSwap;
+#[cfg(any(feature = "engram_privilege", feature = "engram_tripwire"))]
+pub use kernel::sigmoid_fuse_scaled_into;
 pub use kernel::{
     SigmoidFusionConfig, rmsnorm_into, sigmoid_fuse_into, sigmoid_fuse_multi_branch_into,
 };
-#[cfg(any(feature = "engram_privilege", feature = "engram_tripwire"))]
-pub use kernel::sigmoid_fuse_scaled_into;
-#[cfg(feature = "engram_tripwire")]
-pub use tripwire::{EngramTripwire, EngramTripwireConfig, EngramTripwireVerdict, suspect_gate_source};
 #[cfg(feature = "engram_privilege")]
 pub use privilege::{
     CreditAssignment, PrivilegeConfig, PrivilegeLedger, PrivilegeTrace,
@@ -150,6 +148,10 @@ pub use table::{EngramTableBuilder, InMemoryEngramTable};
 pub use tokenizer::{
     SurjectiveMap, SurjectiveMapLoadError, TokenizerSpec, build_surjective_map, compress_token,
     try_compress_token,
+};
+#[cfg(feature = "engram_tripwire")]
+pub use tripwire::{
+    EngramTripwire, EngramTripwireConfig, EngramTripwireVerdict, suspect_gate_source,
 };
 
 #[cfg(test)]

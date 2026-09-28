@@ -132,7 +132,9 @@ fn bench_817_argmax_dispatch_ab() {
     let shapes = [Shape::Iid, Shape::Early, Shape::Mid, Shape::Late];
     let rounds = 9;
 
-    println!("\n== Issue 817 argmax dispatch A/B (speedup = two_pass/dispatch, >1.00 dispatch wins) ==");
+    println!(
+        "\n== Issue 817 argmax dispatch A/B (speedup = two_pass/dispatch, >1.00 dispatch wins) =="
+    );
     println!(
         "{:<8} {:>6} {:>12} {:>12} {:>9}  {:>17}",
         "shape", "n", "twopass ns", "dispatch ns", "speedup", "round band"

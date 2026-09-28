@@ -199,7 +199,9 @@ fn perceptron_realizes(
 /// True iff cosine top-`k` against `q` returns exactly `targets`.
 /// Documents are unit vectors, so the dot product *is* the cosine.
 fn top_k_matches(docs: &[f32], n: usize, d: usize, q: &[f32], targets: &[usize]) -> bool {
-    let mut scored: Vec<(usize, f32)> = (0..n).map(|i| (i, dot(q, &docs[i * d..(i + 1) * d]))).collect();
+    let mut scored: Vec<(usize, f32)> = (0..n)
+        .map(|i| (i, dot(q, &docs[i * d..(i + 1) * d])))
+        .collect();
     scored.sort_unstable_by(|a, b| b.1.total_cmp(&a.1));
     let got: Vec<usize> = scored[..targets.len()].iter().map(|&(i, _)| i).collect();
     let mut got_sorted = got;
@@ -217,10 +219,12 @@ fn all_pairs_realizable(n: usize, d: usize, mode: QueryMode, seed: u64) -> bool 
     for i in 0..n {
         for j in (i + 1)..n {
             let targets = [i, j];
-            let ok = if let QueryMode::Perceptron = mode { perceptron_realizes(&docs, n, d, &targets, 200) } else {
-                    let q = build_query(&docs, n, d, &targets, mode);
-                    top_k_matches(&docs, n, d, &q, &targets)
-                };
+            let ok = if let QueryMode::Perceptron = mode {
+                perceptron_realizes(&docs, n, d, &targets, 200)
+            } else {
+                let q = build_query(&docs, n, d, &targets, mode);
+                top_k_matches(&docs, n, d, &q, &targets)
+            };
             if !ok {
                 return false;
             }
@@ -354,7 +358,10 @@ fn measured_vs_predicted_break_point_multiplier() {
         );
 
         // 5. The k-free floor must be below the k=2 ceiling by construction.
-        assert!(floor <= predicted, "d={d}: floor {floor} above k=2 ceiling {predicted}");
+        assert!(
+            floor <= predicted,
+            "d={d}: floor {floor} above k=2 ceiling {predicted}"
+        );
     }
 
     // 6. Dimension must help *somewhere*: the perceptron arm at the largest d

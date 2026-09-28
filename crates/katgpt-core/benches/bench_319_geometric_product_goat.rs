@@ -472,9 +472,7 @@ fn run_g2(dim: usize, shifts: &[usize], label: &str) -> f32 {
         &thetas.iter().map(|t| t.cos()).collect::<Vec<_>>(),
     );
     println!("  G2 [{label}, D={dim}]:");
-    println!(
-        "    Pearson(wedge_score, sin θ):  {r:+.4}   (target ≥ 0.90)"
-    );
+    println!("    Pearson(wedge_score, sin θ):  {r:+.4}   (target ≥ 0.90)");
     println!(
         "    Pearson(wedge_score, cos θ):  {r_dot:+.4}   (sanity: should be ≈ 0 — wedge is the sin component)"
     );
@@ -499,9 +497,7 @@ fn run_g3_alloc(dim: usize, shifts: &[usize], label: &str) -> usize {
             geometric_product_into(&u, &v, dim, shifts, &mut dot, &mut wedge, &mut su, &mut sv);
         }
     });
-    println!(
-        "  G3-alloc [{label}, D={dim}]: {allocs} allocs / 1000 calls (target: 0)"
-    );
+    println!("  G3-alloc [{label}, D={dim}]: {allocs} allocs / 1000 calls (target: 0)");
     allocs
 }
 
@@ -748,12 +744,8 @@ fn main() {
         if g4_abs_pass { "PASS" } else { "FAIL" },
         if g4_wedge_pass { "PASS" } else { "FAIL" },
     );
-    println!(
-        "    D=8  full: {ns_d8:.1} ns (<150), wedge: {ns_d8_wedge:.1} ns (<80)"
-    );
-    println!(
-        "    D=64 full: {ns_d64:.1} ns (<600), wedge: {ns_d64_wedge:.1} ns (<250)"
-    );
+    println!("    D=8  full: {ns_d8:.1} ns (<150), wedge: {ns_d8_wedge:.1} ns (<80)");
+    println!("    D=64 full: {ns_d64:.1} ns (<600), wedge: {ns_d64_wedge:.1} ns (<250)");
     if g1_pass && g2_pass && g3_pass && g4_abs_pass {
         println!("  → FULL GOAT PASS. PROMOTE geometric_product to default (Plan 319 Phase 3).");
         println!("  → Create riir-ai + riir-neuron-db fusion guides (Phase 4). ");
@@ -769,18 +761,14 @@ fn main() {
             acc_ab_d8 * 100.0,
             acc_ab_d64 * 100.0
         );
-        println!(
-            "    AND G2 rotational recovery r={r_d8:.3}/{r_d64:.3} PASS."
-        );
+        println!("    AND G2 rotational recovery r={r_d8:.3}/{r_d64:.3} PASS.");
         println!("    AND G4 absolute latency PASS (polynomial SiLU perf unblock). ");
         println!("  → FULL GOAT on non-redundancy criterion + perf unblock.");
         println!("  → PROMOTE geometric_product to default (Phase 3).");
         println!("  → Create riir-ai + riir-neuron-db fusion guides (Phase 4). ");
     } else if g1_nonredundant && g2_pass && g3_pass {
         println!("  → G1 non-redundancy + G2 + G3 all PASS, but G4 absolute latency FAILS:");
-        println!(
-            "    D=8 {ns_d8:.1}ns (target<150), D=64 {ns_d64:.1}ns (target<600)."
-        );
+        println!("    D=8 {ns_d8:.1}ns (target<150), D=64 {ns_d64:.1}ns (target<600).");
         println!("  → Quality GOAT holds. Keep opt-in pending further perf work.");
     } else if g1_pass {
         println!("  → G1 passes but G2 fails: wedge is informative but not specifically");

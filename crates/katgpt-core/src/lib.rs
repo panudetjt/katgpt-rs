@@ -262,8 +262,8 @@ pub use entropic_tilt::{
 pub mod tether;
 #[cfg(feature = "tether")]
 pub use tether::{
-    control_variate_improves, fit_rho, horizon_decay, sse, EvAccumulator, TetherBlend, TetherStats,
-    DEFAULT_EMA_DECAY, DEFAULT_RHO, DEFAULT_WINDOW, DEGENERATE_EPS,
+    DEFAULT_EMA_DECAY, DEFAULT_RHO, DEFAULT_WINDOW, DEGENERATE_EPS, EvAccumulator, TetherBlend,
+    TetherStats, control_variate_improves, fit_rho, horizon_decay, sse,
 };
 // ignition — closed-form logistic ignition (Issue 459 T5, Research 422 §3.5
 // via arXiv:2608.13335): z(t) = K·σ(ζt − ln((K−z₀)/z₀)) per singular mode,
@@ -291,12 +291,12 @@ pub use ignition::{IgnitionSchedule, commit_time_star, ignition_time, order_by_i
 // (riir-engine karc_conformal_width + salience_conformal_width + 4 probes)
 // STAY opt-in — this promotion removes the katgpt-core re-forward friction
 // only; consumers still choose.
+pub mod conformal;
 #[cfg(feature = "conformal_predictive_intervals")]
 // Issue 580: the LIMIT adversarial retrieval fixture (arXiv:2508.21038 §5.2).
 // Opt-in — a cold-path eval fixture, never linked into production builds.
 #[cfg(feature = "limit_fixture")]
 pub mod limit_fixture;
-pub mod conformal;
 // riir-ai Issue 874 T1 / Research 364 — thought × agent incidence-mask
 // algebra (α counts, tier weights, shared/private + retention counter,
 // Hall feasibility, mask audit). Opt-in; zero deps; zero-alloc hot path.
@@ -516,10 +516,10 @@ pub use set_diffusion_schedule::{
 // opens ONLY if the Issue 664 G1b promotion gate passes.
 pub mod ugc_schedule;
 pub use ugc_schedule::{
-    UgcBlockPlan, UgcDenoiser, UgcIntervalEstimate, UgcProfile, UgcScratch, UGC_MASK,
-    bernoulli_unmask_with_grid, certified_block_plan, certified_iteration_count,
-    dp_partition, equal_sqrt_mass_grid, estimate_interval, estimate_profile,
-    inv_log_reveal_odds, log_reveal_odds, reveal_grid_from_plan, reveal_odds,
+    UGC_MASK, UgcBlockPlan, UgcDenoiser, UgcIntervalEstimate, UgcProfile, UgcScratch,
+    bernoulli_unmask_with_grid, certified_block_plan, certified_iteration_count, dp_partition,
+    equal_sqrt_mass_grid, estimate_interval, estimate_profile, inv_log_reveal_odds,
+    log_reveal_odds, reveal_grid_from_plan, reveal_odds,
 };
 // SwitchCostTable — directed pairwise switch-difficulty table (skill-entropy
 // distillation, Research 484 / arXiv:2608.05139, Issue 663). Opt-in per the
@@ -530,8 +530,7 @@ pub use ugc_schedule::{
 pub mod switch_cost;
 #[cfg(feature = "switch_cost")]
 pub use switch_cost::{
-    FactorizedSwitchCost, SwitchCostSnapshot, SwitchCostTable, DEFAULT_ALPHA, NEUTRAL_ACC,
-    cdf_rank,
+    DEFAULT_ALPHA, FactorizedSwitchCost, NEUTRAL_ACC, SwitchCostSnapshot, SwitchCostTable, cdf_rank,
 };
 // Extension-count (freedom-of-function) selection criterion — closed-form
 // near-best selection over a declared finite output partition (Research 486,
@@ -543,7 +542,7 @@ pub use switch_cost::{
 pub mod extension_count;
 #[cfg(feature = "freedom_selection")]
 pub use extension_count::{
-    ExtensionOccupancy, LossGate, FIRST_ACTIVATION_GAIN, freedom_gain, log_freedom,
+    ExtensionOccupancy, FIRST_ACTIVATION_GAIN, LossGate, freedom_gain, log_freedom,
 };
 // Effective Degree — function-space simplicity via polynomial representations
 // along data-anchored interpolation paths (Research 488 / arXiv:2605.29823,
@@ -808,9 +807,9 @@ pub use renoise_ce::renoise_ce_surprise;
 pub mod horizon_weights;
 #[cfg(feature = "horizon_weights")]
 pub use horizon_weights::{
-    HorizonWeightTable, HORIZON_WEIGHT_GRID, pfd_horizon_weight_at, pfd_horizon_weights,
-    remaining_horizon_t_sample, remaining_horizon_weight, remaining_horizon_weights,
-    TimeAnnealRange, terminal_truncation_ceiling, truncated_w_mass_fraction,
+    HORIZON_WEIGHT_GRID, HorizonWeightTable, TimeAnnealRange, pfd_horizon_weight_at,
+    pfd_horizon_weights, remaining_horizon_t_sample, remaining_horizon_weight,
+    remaining_horizon_weights, terminal_truncation_ceiling, truncated_w_mass_fraction,
 };
 
 #[cfg(feature = "dual_leo")]
@@ -833,9 +832,9 @@ pub use types::{
     AttentionMode, AttentionProjection, CacheLayout, CalibrationMode, Config, ConvergenceSelector,
     CopyLateShape, DashAttnConfig, DilationConfig, HlaMode, HybridPattern, InferenceOverrides,
     InferenceResult, LoopMode, LoraAdapter, LoraPair, ModelArchitecture, ResidualGate,
-    RetrievalHeadRole, Rng, RtTurboConfig, SdpaOutputGate, WeightDtype, kv_dim, lora_apply,
-    matmul, matmul_f16, matmul_f16_parallel, matmul_parallel, matmul_relu, rmsnorm,
-    sample_token_into, softmax, softmax_scaled,
+    RetrievalHeadRole, Rng, RtTurboConfig, SdpaOutputGate, WeightDtype, kv_dim, lora_apply, matmul,
+    matmul_f16, matmul_f16_parallel, matmul_parallel, matmul_relu, rmsnorm, sample_token_into,
+    softmax, softmax_scaled,
 };
 
 #[cfg(feature = "domain_latent")]
@@ -900,9 +899,9 @@ pub use types::{CacheStrategy, IterationMode, SubStepStrategy, TrainingFreeLoopC
 
 #[cfg(feature = "plasma_path")]
 pub use simd::{
-    l3_cache_bytes, plasma_prefers_ternary, plasma_prefers_ternary_with_l3,
+    DEFAULT_L3_BYTES, l3_cache_bytes, plasma_prefers_ternary, plasma_prefers_ternary_with_l3,
     simd_matvec_plasma_dispatch, simd_matvec_plasma_dispatch_with_l3, simd_ternary_matmul_batch,
-    simd_ternary_matvec, ternary_matvec_scalar, DEFAULT_L3_BYTES,
+    simd_ternary_matvec, ternary_matvec_scalar,
 };
 #[cfg(feature = "plasma_path")]
 pub use types::TernaryWeights;
@@ -922,9 +921,7 @@ pub use simd::{
     ternary_group_matvec_scalar,
 };
 #[cfg(feature = "ternary_group_scale")]
-pub use types::{
-    TernaryFfnHook, TernaryGroupWeights, TernaryInputProjHook, TernaryMatvecHook,
-};
+pub use types::{TernaryFfnHook, TernaryGroupWeights, TernaryInputProjHook, TernaryMatvecHook};
 
 // Issue 582: the base-3 footprint tier — same alphabet and group scale as the
 // Q2_0_g128 container, 5 trits per byte instead of two bit-planes (1.75 vs
@@ -1033,8 +1030,8 @@ pub mod irrep_pruner;
 pub mod frozen_evidence;
 #[cfg(feature = "frozen_evidence")]
 pub use frozen_evidence::{
-    classify_drift, cosine, deliberate, gate_map_into, transition_into, FrozenEvidence,
-    RecurrenceHealth, DEFAULT_DRIFT_CHAOS, DEFAULT_DRIFT_STUCK,
+    DEFAULT_DRIFT_CHAOS, DEFAULT_DRIFT_STUCK, FrozenEvidence, RecurrenceHealth, classify_drift,
+    cosine, deliberate, gate_map_into, transition_into,
 };
 
 // PC-ALM dual accumulator + closed-form rate laws (Issue 775, Research 554).
@@ -1198,7 +1195,6 @@ pub mod set_admission_freeze;
 #[cfg(feature = "usage_rate_eviction")]
 pub mod kv_eviction;
 
-
 // Canvas Schema Compiler — declared causal topology for attention masks
 // (Plan 419, Research 398, Valdez *Canvas Engineering* July 2026). The
 // modelless half: a typed CanvasSchema compiler that lowers a declared region
@@ -1339,8 +1335,8 @@ pub use latent_trajectory_geometry::{
 
 #[cfg(feature = "swe_trajectory_freeze")]
 pub use swe_trajectory_freeze::{
-    FrozenAttempt, FrozenValueAttempt, GeometrySummaryEncoder, StateMagnitudeEncoder,
-    SweTrajectoryFreezer, SWTF_MAGIC, SWTF_VERSION, TrajectoryFreezeEnvelope, derive_directions,
+    FrozenAttempt, FrozenValueAttempt, GeometrySummaryEncoder, SWTF_MAGIC, SWTF_VERSION,
+    StateMagnitudeEncoder, SweTrajectoryFreezer, TrajectoryFreezeEnvelope, derive_directions,
     derive_directions_and_centroid,
 };
 
@@ -1363,9 +1359,9 @@ pub use viable_manifold_graph::{
 #[cfg(feature = "certified_frontier")]
 pub use certified_frontier::{
     CertifiedFrontier, DilationFeasibility, DualPosteriorBuffer, FrontierCell, FrontierConfig,
-    LinearPosterior, PosteriorBuffer,
-    SIGMOID_LIPSCHITZ, SPHERE_EXCLUSION_MAX_CENTERS, SphereExclusion, advance_horizon,
-    beta_mean_variance, beta_union_bound, confidence_schedule, laurent_massart_radius, linear_information_gain, prefer_dual, should_advance,
+    LinearPosterior, PosteriorBuffer, SIGMOID_LIPSCHITZ, SPHERE_EXCLUSION_MAX_CENTERS,
+    SphereExclusion, advance_horizon, beta_mean_variance, beta_union_bound, confidence_schedule,
+    laurent_massart_radius, linear_information_gain, prefer_dual, should_advance,
     sphere_exclusion_coverage, spherical_cap_bound, vendi_diversity,
 };
 
@@ -2143,7 +2139,7 @@ pub(crate) mod tabular_kernel;
 #[cfg(feature = "mop_path_entropy")]
 pub mod mop;
 #[cfg(feature = "mop_path_entropy")]
-pub use mop::{MopConfig, MopConfigError, MopScratch, MopSolver, MopSolution};
+pub use mop::{MopConfig, MopConfigError, MopScratch, MopSolution, MopSolver};
 
 // HMM homeostatic control (Plan 590 / Research 543, arXiv:2609.07508) —
 // the exact setpoint-reachability drive solver: multiplicative backward
@@ -2167,8 +2163,8 @@ pub use hmm_control::{HmmControlSolver, HmmInputError, HmmSolution};
 pub mod gw_alignment;
 #[cfg(feature = "gw_alignment")]
 pub use gw_alignment::{
-    gw_coupling, score_from_loss, GwError, GwScratch, GW_ITERS, GW_MAX, GW_SCORE_BETA,
-    GW_TAIL_PASSES,
+    GW_ITERS, GW_MAX, GW_SCORE_BETA, GW_TAIL_PASSES, GwError, GwScratch, gw_coupling,
+    score_from_loss,
 };
 // Phase 4 (F4 fusion) — freeze/thaw wrapper around ProductKeyMemory. Gated
 // separately so the leaf-clean retrieval primitive (above) stays usable
@@ -2272,7 +2268,7 @@ pub mod structural_cot_halt;
 #[cfg(feature = "structural_cot_halt")]
 pub use structural_cot_halt::{
     BacktrackRevisitHalt, ClassifiedPattern, HaltPolicy, HaltVote, Pattern, SelfLoopHalt,
-    StructuralHaltDecision, StructuralHaltReason, StructuralTransition, StructuralTraceMonitor,
+    StructuralHaltDecision, StructuralHaltReason, StructuralTraceMonitor, StructuralTransition,
     compose_votes, normalized_answer_hash,
 };
 
@@ -2693,10 +2689,9 @@ pub use branching::{
     BudgetCompiler, CognitiveBranch, CompiledContext, CompiledItem,
     DEFAULT_ASSIGN_MAX_INTERFERENCE, DEFAULT_BUDGET_BYTES, DEFAULT_MAX_BRANCHES,
     DEFAULT_ORTHOGONAL_EPSILON, DEFAULT_PROJECTION_DIM, DEFAULT_QUARANTINE_CENTROID_THRESH,
-    DEFAULT_TAU_CURIOSITY, DEFAULT_TAU_JACCARD, DEFAULT_TAU_SNAP, DEFAULT_TAU_WRITE,
-    EpisodicEntry, FailureEntry, NonInterferenceProjection, PriorityTier, ProceduralRule,
-    RetrievedMaterials, RouteMode, RouteResult, VerifierGate, WriteDecision,
-    max_orthogonal_branches,
+    DEFAULT_TAU_CURIOSITY, DEFAULT_TAU_JACCARD, DEFAULT_TAU_SNAP, DEFAULT_TAU_WRITE, EpisodicEntry,
+    FailureEntry, NonInterferenceProjection, PriorityTier, ProceduralRule, RetrievedMaterials,
+    RouteMode, RouteResult, VerifierGate, WriteDecision, max_orthogonal_branches,
 };
 
 // Post-Candidate Branch Router — distilled from Local Branch Routing
@@ -2959,8 +2954,8 @@ pub use ugc_schedule::CertifiedSpineView;
 // demote silently if the Phase-3 G3 GOAT fails).
 #[cfg(feature = "decode_order_metrics")]
 pub use set_diffusion_schedule::{
-    confidence_threshold_eligible, inverse_lambda_slot_counts, predict_w_from_order_stats,
-    predict_w_residual, ORDER_STATS_TO_W_TABLE,
+    ORDER_STATS_TO_W_TABLE, confidence_threshold_eligible, inverse_lambda_slot_counts,
+    predict_w_from_order_stats, predict_w_residual,
 };
 #[cfg(feature = "modality_pruned_load")]
 pub mod pipeline_pruner; // Pipeline Pruner — modality-aware inference pipeline selection (Plan 227 Phase 3)
@@ -3152,16 +3147,28 @@ pub use signed_coupling::{
 pub mod qsg_gossip;
 #[cfg(feature = "qsg_gossip")]
 pub use qsg_gossip::{
+    MAX_K as QSG_MAX_K,
     // Aliased at the flat re-export only: factorized_action already exports
     // `MAX_K` at the crate root, and the two gated modules collide under
     // --all-features (E0252 at HEAD 98823631 — Plan 589 landing bug,
     // unblocked by Plan 590's all-features gate leg). The module path
     // `qsg_gossip::MAX_K` is unchanged.
-    MessageMode, MAX_K as QSG_MAX_K, QsgConfig, QsgError, SIMPLEX_EPS, UniformStream,
-    qsg_blend_listener_into, qsg_disagreement_v, qsg_draw_categorical,
-    qsg_gossip_run_into, qsg_gossip_step_into, qsg_init_uniform_into,
-    qsg_mean_into, qsg_polarization_u, qsg_sample_message_into,
-    qsg_uncertainty, uniform_ordered_pair,
+    MessageMode,
+    QsgConfig,
+    QsgError,
+    SIMPLEX_EPS,
+    UniformStream,
+    qsg_blend_listener_into,
+    qsg_disagreement_v,
+    qsg_draw_categorical,
+    qsg_gossip_run_into,
+    qsg_gossip_step_into,
+    qsg_init_uniform_into,
+    qsg_mean_into,
+    qsg_polarization_u,
+    qsg_sample_message_into,
+    qsg_uncertainty,
+    uniform_ordered_pair,
 };
 
 // Plan 568: Recurrent Residual Quantization (RRQ) — single-checkpoint
@@ -3176,9 +3183,9 @@ pub use qsg_gossip::{
 pub mod rrq_quant;
 #[cfg(feature = "rrq_quant")]
 pub use rrq_quant::{
-    peak_to_mean_ratio, select_quant_strategy, BITS_PER_STAGE, CODES_PER_BYTE,
-    DEFAULT_DIRECT_RTN_BITS, DEFAULT_GROUP_SIZE, DEFAULT_N_STAGES, KS_FLAG_THRESHOLD,
-    LEVELS_PER_STAGE, PMR_THRESHOLD_2_2, QuantStrategy, RrqStage, RrqWeights,
+    BITS_PER_STAGE, CODES_PER_BYTE, DEFAULT_DIRECT_RTN_BITS, DEFAULT_GROUP_SIZE, DEFAULT_N_STAGES,
+    KS_FLAG_THRESHOLD, LEVELS_PER_STAGE, PMR_THRESHOLD_2_2, QuantStrategy, RrqStage, RrqWeights,
+    peak_to_mean_ratio, select_quant_strategy,
 };
 
 // Selection-Set Fixpoint Propagation — KEEP M3 in house operator vocabulary
@@ -3268,7 +3275,6 @@ pub mod bounded_target;
 #[cfg(feature = "bounded_target")]
 pub mod realization_gap;
 
-
 // RVM modelless extraction (Issue 696 / Research 433, riir-train,
 // arXiv:2608.23664 — anchored reward-weighted velocity regression, Choi et
 // al.): the DT2 ANTI-COMMON-MODE scalar gate (peak-quantile statistic +
@@ -3281,10 +3287,10 @@ pub mod realization_gap;
 // 2σ(kr)−1 / (2r−1)/β̄). Both zero-alloc, modelless,
 // sigmoid-not-softmax by construction. Opt-in POC — promotion only via the
 // issue's consumer PoC gates (T3 headline; T4 operator A/Bs).
-#[cfg(feature = "anti_common_mode")]
-pub mod anti_common_mode;
 #[cfg(feature = "anchored_reach")]
 pub mod anchored_reach;
+#[cfg(feature = "anti_common_mode")]
+pub mod anti_common_mode;
 
 // Numeric-deviation contextualization probe (Issue 697 Phase 1 / Research
 // 515, arXiv:2405.02803 "Is Flash Attention Stable?"): the f64
@@ -3300,7 +3306,6 @@ pub mod anchored_reach;
 // T3.2/T3.3 open; first consumer: riir-ai gate layer; riir-train: Issue 492.
 #[cfg(feature = "numeric_stability")]
 pub mod numeric_stability;
-
 
 // Kinematic rollout primitive (Plan 578 / Research 506, arXiv:2608.09926 —
 // LDR, Li et al.): the modelless core of latent dynamics reasoning —

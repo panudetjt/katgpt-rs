@@ -596,7 +596,7 @@ pub fn orthogonal_procrustes(
 fn polar_iteration(x: &[f32], d: usize, out: &mut [f32], xtx: &mut [f32], x_new: &mut [f32]) {
     const N_ITERS: usize = 15;
 
-debug_assert_eq!(x.len(), d * d);
+    debug_assert_eq!(x.len(), d * d);
     debug_assert_eq!(out.len(), d * d);
     debug_assert_eq!(xtx.len(), d * d);
     debug_assert_eq!(x_new.len(), d * d);
@@ -681,7 +681,10 @@ fn determinant_d(m: &[f32], d: usize) -> f32 {
 /// where the constant factor beats LU. Callers should use [`determinant_d`]
 /// (which dispatches automatically) rather than calling this directly.
 fn determinant_d_cofactor(m: &[f32], d: usize) -> f32 {
-    debug_assert!((2..=6).contains(&d), "determinant_d_cofactor: d out of range");
+    debug_assert!(
+        (2..=6).contains(&d),
+        "determinant_d_cofactor: d out of range"
+    );
     let mut det = 0.0_f32;
     let mut sub = vec![0.0_f32; (d - 1) * (d - 1)];
     for j in 0..d {

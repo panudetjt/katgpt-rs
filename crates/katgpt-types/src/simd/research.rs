@@ -1968,7 +1968,10 @@ pub struct ArgmaxAudit {
 /// `sigmoid_margin` — Issue 581
 #[cfg(feature = "sigmoid_margin")]
 pub fn audit_argmaxable(w: &[f32], l: usize, d: usize) -> ArgmaxAudit {
-    assert!(l <= 24, "audit_argmaxable: 2^{l} combinations is not tractable");
+    assert!(
+        l <= 24,
+        "audit_argmaxable: 2^{l} combinations is not tractable"
+    );
     let rank = matrix_rank(w, l, d, 1e-6);
     let total = 1usize << l;
     if rank == l {

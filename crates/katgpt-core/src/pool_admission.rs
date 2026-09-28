@@ -162,7 +162,8 @@ pub fn weakest_evictable(
         // poisoned want can never look weakest-to-evict (the "corrupt must
         // never look cheap" law). Ties keep the first (lowest) index.
         match best {
-            Some((w, _)) if !matches!(float_order::asc(row.want, w), core::cmp::Ordering::Less) => {}
+            Some((w, _)) if !matches!(float_order::asc(row.want, w), core::cmp::Ordering::Less) => {
+            }
             _ => best = Some((row.want, i)),
         }
     }
@@ -447,7 +448,10 @@ impl AdmissionSet {
         if self.pending == 0 {
             return None; // terminated — O(1), no universe rescan
         }
-        debug_assert!(self.universe_len > 0, "pending>0 with empty universe is corrupt");
+        debug_assert!(
+            self.universe_len > 0,
+            "pending>0 with empty universe is corrupt"
+        );
         for step in 0..self.universe_len {
             let idx = (self.sweep_cursor + step) % self.universe_len;
             if !self.had_turn[idx] {
@@ -460,7 +464,11 @@ impl AdmissionSet {
         // Unreachable while pending is maintained correctly (pending>0 ⇒ an
         // undesignated id exists); kept as a fail-loud invariant, not a
         // silent pass.
-        debug_assert!(false, "fair_turn pending={}>0 but sweep found none", self.pending);
+        debug_assert!(
+            false,
+            "fair_turn pending={}>0 but sweep found none",
+            self.pending
+        );
         None
     }
 }
@@ -533,8 +541,8 @@ mod tests {
         let mut s = full_set(&[1.0, 2.0, 3.0], 100); // admitted at 100
         assert_eq!(s.consider(99, 1e9, 107), AdmissionOutcome::Rejected); // age 7 < 8
         assert_eq!(
-            s.consider(99, 1e9, 108), // age 8 — evictable now
-            AdmissionOutcome::Admitted { displaced: Some(0) } // weakest want = 1.0
+            s.consider(99, 1e9, 108),                          // age 8 — evictable now
+            AdmissionOutcome::Admitted { displaced: Some(0) }  // weakest want = 1.0
         );
     }
 
@@ -710,7 +718,10 @@ mod tests {
             s.consider(9, f32::NAN, 200)
         }));
         if cfg!(debug_assertions) {
-            assert!(nan_candidate.is_err(), "NaN candidate must debug_assert in debug");
+            assert!(
+                nan_candidate.is_err(),
+                "NaN candidate must debug_assert in debug"
+            );
         } else {
             assert_eq!(nan_candidate.unwrap(), AdmissionOutcome::Rejected);
         }
@@ -719,7 +730,11 @@ mod tests {
         }));
         if !cfg!(debug_assertions) {
             assert!(inf_refresh.is_ok());
-            assert_eq!(s.row_for(0).unwrap().want, 1.0, "inf refresh dropped, want intact");
+            assert_eq!(
+                s.row_for(0).unwrap().want,
+                1.0,
+                "inf refresh dropped, want intact"
+            );
         }
         let _ = inf_refresh;
     }
@@ -756,7 +771,10 @@ mod tests {
             next_id += 1; // unique id, never resident — no identity shortcut
             let stateful = s.consider(next_id, want, tick);
             match (pure, stateful) {
-                (AdmissionDecision::Admit { .. }, AdmissionOutcome::Admitted { displaced: Some(_) }) => {}
+                (
+                    AdmissionDecision::Admit { .. },
+                    AdmissionOutcome::Admitted { displaced: Some(_) },
+                ) => {}
                 (AdmissionDecision::Reject, AdmissionOutcome::Rejected) => {}
                 other => panic!("pure {other:?}: core and set disagree at want={want}"),
             }

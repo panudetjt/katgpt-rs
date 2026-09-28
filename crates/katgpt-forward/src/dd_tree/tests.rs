@@ -1,4 +1,3 @@
-
 use super::*;
 use crate::dflash::dflash_predict;
 use katgpt_core::speculative::types::{SdeConfig, TreePath};
@@ -956,9 +955,9 @@ fn test_width_scale_config_defaults() {
 #[cfg(feature = "elf_sde")]
 #[test]
 fn test_best_of_k_rollouts_k1_matches_single_tree() {
-    use super::{WidthScaleConfig, WidthSelectionMode, best_of_k_rollouts};
     #[cfg(feature = "eqr_convergence")]
     use super::RestartMode;
+    use super::{WidthScaleConfig, WidthSelectionMode, best_of_k_rollouts};
     use katgpt_core::speculative::types::SdeConfig;
 
     let config = Config::draft();
@@ -1002,9 +1001,9 @@ fn test_best_of_k_rollouts_k1_matches_single_tree() {
 #[cfg(feature = "elf_sde")]
 #[test]
 fn test_best_of_k_rollouts_k16_produces_diverse_paths() {
-    use super::{WidthScaleConfig, WidthSelectionMode, best_of_k_rollouts};
     #[cfg(feature = "eqr_convergence")]
     use super::RestartMode;
+    use super::{WidthScaleConfig, WidthSelectionMode, best_of_k_rollouts};
     use katgpt_core::speculative::types::SdeConfig;
 
     let config = Config::draft();
@@ -1048,9 +1047,9 @@ fn test_best_of_k_rollouts_k16_produces_diverse_paths() {
 #[cfg(feature = "elf_sde")]
 #[test]
 fn test_best_of_k_rollouts_no_sde_fallback() {
-    use super::{WidthScaleConfig, WidthSelectionMode, best_of_k_rollouts};
     #[cfg(feature = "eqr_convergence")]
     use super::RestartMode;
+    use super::{WidthScaleConfig, WidthSelectionMode, best_of_k_rollouts};
     use katgpt_core::speculative::types::SdeConfig;
 
     let config = Config::draft();
@@ -1102,9 +1101,9 @@ fn test_best_of_k_rollouts_no_sde_fallback() {
 #[cfg(feature = "elf_sde")]
 #[test]
 fn test_best_of_k_rollouts_most_frequent_mode() {
-    use super::{WidthScaleConfig, WidthSelectionMode, best_of_k_rollouts};
     #[cfg(feature = "eqr_convergence")]
     use super::RestartMode;
+    use super::{WidthScaleConfig, WidthSelectionMode, best_of_k_rollouts};
     use katgpt_core::speculative::types::SdeConfig;
 
     let config = Config::draft();
@@ -1141,9 +1140,9 @@ fn test_best_of_k_rollouts_most_frequent_mode() {
 #[cfg(feature = "elf_sde")]
 #[test]
 fn test_best_of_k_rollouts_empty_marginals() {
-    use super::{WidthScaleConfig, WidthSelectionMode, best_of_k_rollouts};
     #[cfg(feature = "eqr_convergence")]
     use super::RestartMode;
+    use super::{WidthScaleConfig, WidthSelectionMode, best_of_k_rollouts};
     use katgpt_core::speculative::types::SdeConfig;
 
     let config = Config::draft();

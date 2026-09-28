@@ -32,9 +32,9 @@
 #![cfg(feature = "risk_control_exit")]
 
 use katgpt_core::risk_control_exit::{
-    CalibrateConfig, CalibrateScratch, DualExitPolicy, ExitTrace, ScheduleParams,
-    TerminalVerdict, TrajectorySample, calibrate_into, empirical_upper_risk, fp_loss,
-    mean_normalized_compute, run_policy,
+    CalibrateConfig, CalibrateScratch, DualExitPolicy, ExitTrace, ScheduleParams, TerminalVerdict,
+    TrajectorySample, calibrate_into, empirical_upper_risk, fp_loss, mean_normalized_compute,
+    run_policy,
 };
 use std::time::Instant;
 
@@ -92,8 +92,9 @@ impl Instance {
         let mut s = Vec::with_capacity(T);
         let mut correct = Vec::with_capacity(T);
         for t in 0..T {
-            let v = clamp01(d + (1.0 - d) * (t as f32 / T as f32).powf(0.8)
-                + TRIVIAL_NOISE * rng.next_normal());
+            let v = clamp01(
+                d + (1.0 - d) * (t as f32 / T as f32).powf(0.8) + TRIVIAL_NOISE * rng.next_normal(),
+            );
             s.push(v);
             correct.push(v >= 0.5);
         }
@@ -105,7 +106,10 @@ impl Instance {
         for _ in 0..T {
             s.push(clamp01(STUCK_MEAN + STUCK_SIGMA * rng.next_normal()));
         }
-        Self { s, correct: vec![false; T] }
+        Self {
+            s,
+            correct: vec![false; T],
+        }
     }
 }
 
@@ -131,9 +135,24 @@ fn draw(n: usize, stuck_frac: f64, seed: u64) -> Vec<Instance> {
 /// mutual-exclusivity invariant.
 const UPPER_GRID: [f32; 6] = [0.70, 0.75, 0.80, 0.85, 0.90, 0.95];
 const LOWER_GRID: [ScheduleParams; 3] = [
-    ScheduleParams { c: 8.0 / T as f32, s: 0.5, l: 0.0, u: 0.65 },
-    ScheduleParams { c: 16.0 / T as f32, s: 0.5, l: 0.0, u: 0.65 },
-    ScheduleParams { c: 32.0 / T as f32, s: 0.5, l: 0.0, u: 0.65 },
+    ScheduleParams {
+        c: 8.0 / T as f32,
+        s: 0.5,
+        l: 0.0,
+        u: 0.65,
+    },
+    ScheduleParams {
+        c: 16.0 / T as f32,
+        s: 0.5,
+        l: 0.0,
+        u: 0.65,
+    },
+    ScheduleParams {
+        c: 32.0 / T as f32,
+        s: 0.5,
+        l: 0.0,
+        u: 0.65,
+    },
 ];
 
 /// Realized FP risk of the DEPLOYED dual policy on a test set (the honest
@@ -182,10 +201,16 @@ fn accuracy(test: &[Instance], policy: &DualExitPolicy) -> f32 {
 fn upper_only_trace(s: &[f32], lambda_plus: f32) -> ExitTrace {
     for (t, &v) in s.iter().enumerate() {
         if v >= lambda_plus {
-            return ExitTrace { verdict: TerminalVerdict::Commit, tick: t };
+            return ExitTrace {
+                verdict: TerminalVerdict::Commit,
+                tick: t,
+            };
         }
     }
-    ExitTrace { verdict: TerminalVerdict::Exhausted, tick: s.len() - 1 }
+    ExitTrace {
+        verdict: TerminalVerdict::Exhausted,
+        tick: s.len() - 1,
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -215,8 +240,10 @@ fn g1_ucb_holds_naive_violates() {
         for r in 0..RESPLITS {
             let val = draw(n_val, 0.5, 0x5750_0000 + ((n_val as u64) << 24) + r as u64);
             let test = draw(800, 0.5, 0x5751_0000 + ((n_val as u64) << 24) + r as u64);
-            let val_samples: Vec<TrajectorySample<'_>> =
-                val.iter().map(|i| TrajectorySample::new(&i.s, &i.correct)).collect();
+            let val_samples: Vec<TrajectorySample<'_>> = val
+                .iter()
+                .map(|i| TrajectorySample::new(&i.s, &i.correct))
+                .collect();
 
             // UCB arm (the primitive).
             let cfg = CalibrateConfig::new(EPS, EPS, DELTA);
@@ -238,8 +265,13 @@ fn g1_ucb_holds_naive_violates() {
             // Naive arm (no UCB correction).
             let (nlp, ni) = naive_lambda_plus(&val_samples, EPS);
             naive_picks[ni] += 1;
-            let naive_policy =
-                DualExitPolicy::new(nlp, LOWER_GRID[2].c, LOWER_GRID[2].s, LOWER_GRID[2].l, LOWER_GRID[2].u);
+            let naive_policy = DualExitPolicy::new(
+                nlp,
+                LOWER_GRID[2].c,
+                LOWER_GRID[2].s,
+                LOWER_GRID[2].l,
+                LOWER_GRID[2].u,
+            );
             let naive_risk = realized_fp_risk(&test, &naive_policy);
             if naive_risk > EPS {
                 naive_violations += 1;
@@ -299,14 +331,14 @@ fn g2_exit_floor_dual_wins_or_ties_both_floors() {
     // (label, stuck fraction): 3:1 / 1:1 / 1:3 trivial:stuck.
     struct Row {
         label: &'static str,
-        dual: [f32; 2],   // [accuracy, compute]
+        dual: [f32; 2], // [accuracy, compute]
         single: [f32; 2],
         fixed: [f32; 2],
         dual_risk: f32,
         single_risk: f32,
         lambda_plus: f32,
     }
-fn r_select(r: &Row, k: usize) -> [f32; 2] {
+    fn r_select(r: &Row, k: usize) -> [f32; 2] {
         match k {
             0 => r.dual,
             1 => r.single,
@@ -314,14 +346,24 @@ fn r_select(r: &Row, k: usize) -> [f32; 2] {
         }
     }
 
-let compositions: [(&str, f64); 3] = [("3:1", 0.25), ("1:1", 0.50), ("1:3", 0.75)];
+    let compositions: [(&str, f64); 3] = [("3:1", 0.25), ("1:1", 0.50), ("1:3", 0.75)];
     let mut rows: Vec<Row> = Vec::new();
 
     for (label, stuck_frac) in compositions {
-        let val = draw(N_VAL, stuck_frac, 0x5752_0000 + (stuck_frac * 1000.0) as u64);
-        let test = draw(N_TEST, stuck_frac, 0x5753_0000 + (stuck_frac * 1000.0) as u64);
-        let val_samples: Vec<TrajectorySample<'_>> =
-            val.iter().map(|i| TrajectorySample::new(&i.s, &i.correct)).collect();
+        let val = draw(
+            N_VAL,
+            stuck_frac,
+            0x5752_0000 + (stuck_frac * 1000.0) as u64,
+        );
+        let test = draw(
+            N_TEST,
+            stuck_frac,
+            0x5753_0000 + (stuck_frac * 1000.0) as u64,
+        );
+        let val_samples: Vec<TrajectorySample<'_>> = val
+            .iter()
+            .map(|i| TrajectorySample::new(&i.s, &i.correct))
+            .collect();
 
         // Dual arm: the primitive, two-step calibrated.
         let cfg = CalibrateConfig::new(EPS, EPS, DELTA);
@@ -342,7 +384,10 @@ let compositions: [(&str, f64); 3] = [("3:1", 0.25), ("1:1", 0.50), ("1:3", 0.75
         // Dual metrics.
         let dual_acc = accuracy(&test, &dual_policy);
         let dual_compute = mean_normalized_compute(
-            &test.iter().map(|i| TrajectorySample::new(&i.s, &i.correct)).collect::<Vec<_>>(),
+            &test
+                .iter()
+                .map(|i| TrajectorySample::new(&i.s, &i.correct))
+                .collect::<Vec<_>>(),
             &dual_policy,
         );
         let dual_risk = realized_fp_risk(&test, &dual_policy);
@@ -378,8 +423,14 @@ let compositions: [(&str, f64); 3] = [("3:1", 0.25), ("1:1", 0.50), ("1:3", 0.75
         };
         println!(
             "G2 {label}: λ+={:.2} dual acc {:.3} comp {:.3} (risk {:.4}) | single acc {:.3} comp {:.3} (risk {:.4}) | fixed acc {:.3} comp 1.000",
-            row.lambda_plus, row.dual[0], row.dual[1], row.dual_risk,
-            row.single[0], row.single[1], row.single_risk, row.fixed[0]
+            row.lambda_plus,
+            row.dual[0],
+            row.dual[1],
+            row.dual_risk,
+            row.single[0],
+            row.single[1],
+            row.single_risk,
+            row.fixed[0]
         );
         rows.push(row);
     }
@@ -466,7 +517,7 @@ let compositions: [(&str, f64); 3] = [("3:1", 0.25), ("1:1", 0.50), ("1:3", 0.75
 fn perf_report_per_exit_call() {
     const ITERS: usize = 1_000_000;
 
-let policy = DualExitPolicy::new(0.85, 16.0 / T as f32, 0.5, 0.0, 0.65);
+    let policy = DualExitPolicy::new(0.85, 16.0 / T as f32, 0.5, 0.0, 0.65);
     let s: Vec<f32> = (0..T).map(|t| 0.3 + 0.02 * t as f32).collect();
     let mut sink = 0u64;
     let start = Instant::now();
@@ -477,5 +528,8 @@ let policy = DualExitPolicy::new(0.85, 16.0 / T as f32, 0.5, 0.0, 0.65);
     let elapsed = start.elapsed();
     let ns_per = elapsed.as_nanos() as f64 / ITERS as f64;
     println!("perf: {ns_per:.2} ns/exit over {ITERS} calls (sink {sink})");
-    assert!(ns_per < 1000.0, "exit() must stay sub-µs (got {ns_per:.2} ns)");
+    assert!(
+        ns_per < 1000.0,
+        "exit() must stay sub-µs (got {ns_per:.2} ns)"
+    );
 }

@@ -157,13 +157,8 @@ fn g4_kimi_k3_forward_zero_alloc_steady_state() {
     katgpt_core::alloc::reset_alloc_stats();
 
     for _ in 0..n_decode {
-        let logits = kimi_k3_forward_token_timed(
-            &config,
-            &weights,
-            &mut runtime,
-            current_tok,
-            &mut timing,
-        );
+        let logits =
+            kimi_k3_forward_token_timed(&config, &weights, &mut runtime, current_tok, &mut timing);
         // Greedy argmax (no allocation — operates on the existing logits slice)
         let mut best_idx = 0usize;
         let mut best_val = f32::NEG_INFINITY;

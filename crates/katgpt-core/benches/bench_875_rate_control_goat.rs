@@ -66,7 +66,9 @@ fn main() {
 
     println!("bench_875 — rate_control GOAT (Issue 873 primitive B / Research 581)");
     println!();
-    println!("[B rate_ctrl ] {per_observe:9.1} ns/observe (dual EWLS + tanh/exp nudge + jump detect)");
+    println!(
+        "[B rate_ctrl ] {per_observe:9.1} ns/observe (dual EWLS + tanh/exp nudge + jump detect)"
+    );
     println!("  sink = {final_sink} (Issue 855: the timed work is consumed)");
     println!();
     if per_observe < 1_000.0 {

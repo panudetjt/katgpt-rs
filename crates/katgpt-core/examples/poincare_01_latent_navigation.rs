@@ -136,13 +136,7 @@ fn section_1_offline_fit() -> PoincareAdapter {
     };
 
     let adapter = fit_poincare_adapter(
-        &z_refs,
-        &t_refs,
-        LATENT_DIM,
-        TARGET_DIM,
-        PHI_OUT,
-        PHI_OUT,
-        &cfg,
+        &z_refs, &t_refs, LATENT_DIM, TARGET_DIM, PHI_OUT, PHI_OUT, &cfg,
     )
     .expect("fit should succeed on a well-conditioned linear map");
 
@@ -151,8 +145,14 @@ fn section_1_offline_fit() -> PoincareAdapter {
     println!("    target_dim  = {}", adapter.target_dim);
     println!("    phi_hidden  = {}", adapter.phi_hidden);
     println!("    phi_out     = {}", adapter.phi_out);
-    println!("    W  shape    = [{} × {}]  (forward decoder)", adapter.target_dim, adapter.phi_out);
-    println!("    W† shape    = [{} × {}]  (pseudoinverse navigator)", adapter.phi_out, adapter.target_dim);
+    println!(
+        "    W  shape    = [{} × {}]  (forward decoder)",
+        adapter.target_dim, adapter.phi_out
+    );
+    println!(
+        "    W† shape    = [{} × {}]  (pseudoinverse navigator)",
+        adapter.phi_out, adapter.target_dim
+    );
     println!("    blake3      = {}...", hex_prefix(&adapter.blake3));
     println!();
     println!("  → The adapter is a frozen Pod: (φ, W, W†) committed with BLAKE3.");
@@ -192,12 +192,25 @@ fn section_2_forward_decoder(adapter: &PoincareAdapter) {
         *mt /= N_SAMPLES as f32;
     }
 
-    println!("  {:>4}  {:>10}  {:>10}  {:>10}  {:>10}  {:>10}", "idx", "t_true[0]", "t_hat[0]", "t_true[1]", "t_hat[1]", "err");
+    println!(
+        "  {:>4}  {:>10}  {:>10}  {:>10}  {:>10}  {:>10}",
+        "idx", "t_true[0]", "t_hat[0]", "t_true[1]", "t_hat[1]", "err"
+    );
     println!("  ────────────────────────────────────────────────────────────────────────");
-    for (i, (z, t_true)) in z_samples.iter().zip(target_samples.iter()).take(6).enumerate() {
+    for (i, (z, t_true)) in z_samples
+        .iter()
+        .zip(target_samples.iter())
+        .take(6)
+        .enumerate()
+    {
         eval_phi_into(z, adapter, &mut phi, &mut hidden);
         let t_hat: Vec<f32> = (0..TARGET_DIM)
-            .map(|j| dot(&adapter.W[j * adapter.phi_out()..(j + 1) * adapter.phi_out()], &phi))
+            .map(|j| {
+                dot(
+                    &adapter.W[j * adapter.phi_out()..(j + 1) * adapter.phi_out()],
+                    &phi,
+                )
+            })
             .collect();
         let err = ((t_true[0] - t_hat[0]).abs() + (t_true[1] - t_hat[1]).abs()) / 2.0;
         println!(
@@ -257,7 +270,10 @@ fn section_3_inverse_navigator(adapter: &PoincareAdapter) {
     let mut hidden = vec![0.0_f32; adapter.phi_hidden()];
     let mut phi = vec![0.0_f32; adapter.phi_out()];
 
-    println!("  {:>10}  {:>10}  {:>10}  {:>10}  {:>10}", "Δt[0]", "Δt[1]", "rec[0]", "rec[1]", "dir✓?");
+    println!(
+        "  {:>10}  {:>10}  {:>10}  {:>10}  {:>10}",
+        "Δt[0]", "Δt[1]", "rec[0]", "rec[1]", "dir✓?"
+    );
     println!("  ────────────────────────────────────────────────────────────────────");
     for trial in 0..5 {
         let z_src: Vec<f32> = (0..LATENT_DIM).map(|_| rng.f32() * 0.1 - 0.05).collect();
@@ -276,11 +292,21 @@ fn section_3_inverse_navigator(adapter: &PoincareAdapter) {
         // Recover: W·φ(z_out) − W·φ(z_src) should ≈ Δtarget.
         eval_phi_into(&z_src, adapter, &mut phi, &mut hidden);
         let w_src: Vec<f32> = (0..TARGET_DIM)
-            .map(|j| dot(&adapter.W[j * adapter.phi_out()..(j + 1) * adapter.phi_out()], &phi))
+            .map(|j| {
+                dot(
+                    &adapter.W[j * adapter.phi_out()..(j + 1) * adapter.phi_out()],
+                    &phi,
+                )
+            })
             .collect();
         eval_phi_into(&z_out, adapter, &mut phi, &mut hidden);
         let w_out: Vec<f32> = (0..TARGET_DIM)
-            .map(|j| dot(&adapter.W[j * adapter.phi_out()..(j + 1) * adapter.phi_out()], &phi))
+            .map(|j| {
+                dot(
+                    &adapter.W[j * adapter.phi_out()..(j + 1) * adapter.phi_out()],
+                    &phi,
+                )
+            })
             .collect();
         let recovered = [w_out[0] - w_src[0], w_out[1] - w_src[1]];
 
@@ -363,7 +389,10 @@ fn section_4_multi_step(adapter: &PoincareAdapter) {
     println!("  z_out (5-step)= {z_out_a:?}");
     println!("  |z_out - z_src| = {displacement:.4}");
     println!();
-    println!("  Determinism: two runs bit-identical? {}", if bit_identical { "✓ YES" } else { "✗ NO" });
+    println!(
+        "  Determinism: two runs bit-identical? {}",
+        if bit_identical { "✓ YES" } else { "✗ NO" }
+    );
     println!();
     println!("  → Multi-step splits a large displacement into smaller sub-steps,");
     println!("    reducing the tanh-warp error per step. Deterministic — no RNG,");
@@ -397,9 +426,15 @@ fn section_5_freeze_thaw(adapter: &PoincareAdapter) {
             let wpinv_match = r.W_pinv == adapter.W_pinv;
             let verify_ok = r.verify();
             println!("  from_bytes: OK");
-            println!("    blake3 match:    {}", if blake3_match { "✓" } else { "✗" });
+            println!(
+                "    blake3 match:    {}",
+                if blake3_match { "✓" } else { "✗" }
+            );
             println!("    W match:         {}", if w_match { "✓" } else { "✗" });
-            println!("    W† match:        {}", if wpinv_match { "✓" } else { "✗" });
+            println!(
+                "    W† match:        {}",
+                if wpinv_match { "✓" } else { "✗" }
+            );
             println!("    verify():        {}", if verify_ok { "✓" } else { "✗" });
         }
         Err(e) => println!("  from_bytes FAILED: {e:?}"),
@@ -415,7 +450,10 @@ fn section_5_freeze_thaw(adapter: &PoincareAdapter) {
     match tampered_result {
         Ok(r) => {
             let verify_ok = r.verify();
-            println!("  Tampered buffer: from_bytes OK, verify() = {}  (expected ✗)", if verify_ok { "✓" } else { "✗" });
+            println!(
+                "  Tampered buffer: from_bytes OK, verify() = {}  (expected ✗)",
+                if verify_ok { "✓" } else { "✗" }
+            );
         }
         Err(PoincareFitError::MalformedBuffer) => {
             println!("  Tampered buffer: from_bytes rejected (MalformedBuffer) ✓");

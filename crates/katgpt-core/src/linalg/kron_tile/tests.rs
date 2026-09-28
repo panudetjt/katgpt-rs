@@ -18,7 +18,10 @@ impl Lcg {
     }
     /// Uniform in `[-1, 1)`.
     fn next(&mut self) -> f32 {
-        self.0 = self.0.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+        self.0 = self
+            .0
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1);
         let u = ((self.0 >> 33) as f32) / (1u64 << 31) as f32;
         2.0 * u - 1.0
     }
@@ -123,7 +126,10 @@ fn kron_apply_batched_matches_per_tile() {
 
     let mut per_tile = vec![0.0f32; tiles * nn];
     for t in 0..tiles {
-        let (z, y) = (&x0[t * nn..(t + 1) * nn], &mut per_tile[t * nn..(t + 1) * nn]);
+        let (z, y) = (
+            &x0[t * nn..(t + 1) * nn],
+            &mut per_tile[t * nn..(t + 1) * nn],
+        );
         kron_apply_tile_into(&a, &b, n, z, y, &mut s);
     }
 
@@ -301,7 +307,11 @@ fn scratch_ensure_grows_once_and_is_idempotent() {
     s.ensure(32);
     assert_eq!(s.capacity_elems(), after, "re-ensure must not grow");
     s.ensure(8);
-    assert_eq!(s.capacity_elems(), after, "a SMALLER ensure must not shrink");
+    assert_eq!(
+        s.capacity_elems(),
+        after,
+        "a SMALLER ensure must not shrink"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -391,10 +401,16 @@ fn permute_into_is_a_gather_and_round_trips() {
 #[test]
 fn is_permutation_rejects_in_range_non_bijections() {
     assert!(is_permutation(&[0, 1, 2, 3], 4));
-    assert!(!is_permutation(&[0, 1, 1, 3], 4), "a duplicate is not a bijection");
+    assert!(
+        !is_permutation(&[0, 1, 1, 3], 4),
+        "a duplicate is not a bijection"
+    );
     assert!(!is_permutation(&[0, 1, 2, 9], 4), "out of range");
     assert!(!is_permutation(&[0, 1, 2], 4), "wrong length");
-    assert!(is_permutation(&[], 0), "the empty permutation is vacuously valid");
+    assert!(
+        is_permutation(&[], 0),
+        "the empty permutation is vacuously valid"
+    );
 }
 
 // ---------------------------------------------------------------------------

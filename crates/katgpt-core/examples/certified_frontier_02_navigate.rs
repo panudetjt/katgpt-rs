@@ -22,9 +22,7 @@ use katgpt_core::certified_frontier::{
     certified_manifold_graph,
 };
 use katgpt_core::subspace_phase_gate::JacobianSvdScratch;
-use katgpt_core::viable_manifold_graph::{
-    GraphBuildConfig, VolumeFieldConfig, manifold_geodesic,
-};
+use katgpt_core::viable_manifold_graph::{GraphBuildConfig, VolumeFieldConfig, manifold_geodesic};
 
 const GRID: usize = 32;
 const CELLS: usize = GRID * GRID;
@@ -75,7 +73,11 @@ fn decode(z: &[f32], out: &mut [f32]) {
 fn main() {
     let cfg = FrontierConfig {
         h: H,
-        lipschitz: SIGMOID_LIPSCHITZ * AMP * std::f32::consts::TAU * FREQ * std::f32::consts::SQRT_2,
+        lipschitz: SIGMOID_LIPSCHITZ
+            * AMP
+            * std::f32::consts::TAU
+            * FREQ
+            * std::f32::consts::SQRT_2,
         cell_spacing: 1.0 / (GRID - 1) as f32,
         acquire_radius: 1.5 / (GRID - 1) as f32,
         ..FrontierConfig::default()
@@ -184,6 +186,9 @@ fn main() {
     );
     assert!(all_certified, "geodesic left the certified set");
     assert!(worst_cb >= H, "a path node was below its certified bound");
-    assert!(worst_p >= H, "a path node was actually invalid — soundness breach");
+    assert!(
+        worst_p >= H,
+        "a path node was actually invalid — soundness breach"
+    );
     println!("\nOK — the navigator stayed inside the verifier\'s certified set.");
 }

@@ -167,12 +167,19 @@ fn all_finite(x: &[f32]) -> bool {
 fn run_bench() {
     let config = katgpt_rs::kimi_k3::model::KimiK3ModelConfig::kimi_k3_0_40b();
     let d = config.hidden_size;
-    println!("Config: D_model={d}, vocab={vocab}, layers={n_layers}",
-        vocab = config.vocab_size, n_layers = config.num_layers);
+    println!(
+        "Config: D_model={d}, vocab={vocab}, layers={n_layers}",
+        vocab = config.vocab_size,
+        n_layers = config.num_layers
+    );
     println!("MLA layers: {:?}", config.mla_layer_indices);
-    println!("MLA config: kv_lora_rank={}, q_lora_rank={}, d_h={}, n_heads={}",
-        config.mla_config.kv_lora_rank, config.mla_config.q_lora_rank,
-        config.mla_config.d_h(), config.mla_config.n_heads);
+    println!(
+        "MLA config: kv_lora_rank={}, q_lora_rank={}, d_h={}, n_heads={}",
+        config.mla_config.kv_lora_rank,
+        config.mla_config.q_lora_rank,
+        config.mla_config.d_h(),
+        config.mla_config.n_heads
+    );
 
     // ── Load real weights ──────────────────────────────────────────────────
     let model_dir = std::env::var("KIMI_K3_MODEL_DIR").unwrap_or_else(|_| {
@@ -211,7 +218,10 @@ fn run_bench() {
     // ── Build NIAH token sequence ──────────────────────────────────────────
     let seq_len = env_or("FLASHMEMORY_BENCH_SEQ", 512);
     let token_ids = build_niah_token_ids(seq_len, config.vocab_size);
-    println!("Sequence length: {seq_len} tokens (needle at position {})", seq_len / 2);
+    println!(
+        "Sequence length: {seq_len} tokens (needle at position {})",
+        seq_len / 2
+    );
 
     // Hidden states from real embedding table.
     let hidden_states: Vec<Vec<f32>> = token_ids
@@ -239,24 +249,16 @@ fn run_bench() {
     // ── Dense MLA setup ────────────────────────────────────────────────────
     let mut cache_dense = MlaKVCache::new(mla_config, seq_len + 1);
     let mut scratch_dense = MlaForwardScratch::new(mla_config, seq_len + 1);
-    let mut rope_dense = RopeFreqs::new_with_theta(
-        mla_config.qk_rope_head_dim,
-        mla_config.rope_theta,
-    );
+    let mut rope_dense =
+        RopeFreqs::new_with_theta(mla_config.qk_rope_head_dim, mla_config.rope_theta);
 
     // ── Sparse (FlashMemory) MLA setup ─────────────────────────────────────
     let mut cache_sparse = MlaKVCache::new(mla_config, seq_len + 1);
     let mut scratch_sparse = MlaForwardScratch::new(mla_config, seq_len + 1);
-    let mut rope_sparse = RopeFreqs::new_with_theta(
-        mla_config.qk_rope_head_dim,
-        mla_config.rope_theta,
-    );
+    let mut rope_sparse =
+        RopeFreqs::new_with_theta(mla_config.qk_rope_head_dim, mla_config.rope_theta);
     let mut block_cache = FlashMemoryBlockCache::new(mla_config, &fm_config, seq_len + 1);
-    let mut selector = FlashMemorySelector::new(
-        fm_config.clone(),
-        mla_config.n_heads,
-        max_blocks,
-    );
+    let mut selector = FlashMemorySelector::new(fm_config.clone(), mla_config.n_heads, max_blocks);
 
     // ── Run both forward paths ─────────────────────────────────────────────
     println!("\nRunning dense + sparse MLA forward on {seq_len} tokens ...");
@@ -320,15 +322,21 @@ fn run_bench() {
         // Finite check.
         if !all_finite(&out_dense) || !all_finite(&out_sparse) {
             eprintln!("FAIL: non-finite output at step {step}");
-            eprintln!("  dense finite: {}, sparse finite: {}",
-                all_finite(&out_dense), all_finite(&out_sparse));
+            eprintln!(
+                "  dense finite: {}, sparse finite: {}",
+                all_finite(&out_dense),
+                all_finite(&out_sparse)
+            );
             std::process::exit(1);
         }
     }
 
     let elapsed = t0.elapsed();
-    println!("done ({:.2}s, {:.1}ms/token)", elapsed.as_secs_f64(),
-        elapsed.as_secs_f64() * 1000.0 / seq_len as f64);
+    println!(
+        "done ({:.2}s, {:.1}ms/token)",
+        elapsed.as_secs_f64(),
+        elapsed.as_secs_f64() * 1000.0 / seq_len as f64
+    );
 
     // ── Report ─────────────────────────────────────────────────────────────
     println!("\n{}", "=".repeat(70));
@@ -345,7 +353,9 @@ fn run_bench() {
     let cs_mean = cos_sims.iter().sum::<f32>() / cos_sims.len() as f32;
 
     println!("\nCosine similarity (dense vs sparse output per token):");
-    println!("  min={cs_min:.4}  p25={cs_p25:.4}  median={cs_median:.4}  p75={cs_p75:.4}  max={cs_max:.4}  mean={cs_mean:.4}");
+    println!(
+        "  min={cs_min:.4}  p25={cs_p25:.4}  median={cs_median:.4}  p75={cs_p75:.4}  max={cs_max:.4}  mean={cs_mean:.4}"
+    );
 
     // Relative MSE statistics.
     rel_mses.sort_by(|a, b| a.total_cmp(b));
@@ -364,21 +374,27 @@ fn run_bench() {
         let attended_stats = &total_tokens_attended_per_token[warmup..];
         let avg_blocks: f32 =
             sel_stats.iter().map(|&x| x as f32).sum::<f32>() / sel_stats.len() as f32;
-        let avg_tokens: f32 = attended_stats.iter().map(|&x| x as f32).sum::<f32>()
-            / attended_stats.len() as f32;
+        let avg_tokens: f32 =
+            attended_stats.iter().map(|&x| x as f32).sum::<f32>() / attended_stats.len() as f32;
         let max_blocks_per_head = (max_blocks * mla_config.n_heads) as f32;
         let selection_ratio = avg_blocks / max_blocks_per_head;
         let attendance_ratio = avg_tokens / (seq_len * mla_config.n_heads) as f32;
 
         println!("\nBlock selection dynamics (post-warmup, steps {warmup}..{seq_len}):");
-        println!("  avg blocks selected (all heads): {avg_blocks:.1} / {max_blocks_per_head:.0} total ({pct_blocks:.1}%)",
-            pct_blocks = selection_ratio * 100.0);
-        println!("  avg tokens attended (all heads): {avg_tokens:.1} / {} total ({pct_tokens:.1}%)",
+        println!(
+            "  avg blocks selected (all heads): {avg_blocks:.1} / {max_blocks_per_head:.0} total ({pct_blocks:.1}%)",
+            pct_blocks = selection_ratio * 100.0
+        );
+        println!(
+            "  avg tokens attended (all heads): {avg_tokens:.1} / {} total ({pct_tokens:.1}%)",
             seq_len * mla_config.n_heads,
-            pct_tokens = attendance_ratio * 100.0);
-        println!("  selector refresh count: {} (amortization: {:.1}× = {refresh_period}-step period)",
+            pct_tokens = attendance_ratio * 100.0
+        );
+        println!(
+            "  selector refresh count: {} (amortization: {:.1}× = {refresh_period}-step period)",
             selector.refresh_count(),
-            seq_len as f64 / selector.refresh_count().max(1) as f64);
+            seq_len as f64 / selector.refresh_count().max(1) as f64
+        );
     }
 
     // ── G1 gate verdict ────────────────────────────────────────────────────
@@ -390,12 +406,24 @@ fn run_bench() {
     let rm_gate = rm_median <= 0.5;
     let all_finite_gate = true; // already checked per-token above
 
-    println!("  median cosine ≥ 0.90: {} ({cs_median:.4})", if cs_gate { "PASS" } else { "FAIL" });
-    println!("  median rel MSE ≤ 0.50: {} ({rm_median:.4})", if rm_gate { "PASS" } else { "FAIL" });
-    println!("  all outputs finite:    {}", if all_finite_gate { "PASS" } else { "FAIL" });
+    println!(
+        "  median cosine ≥ 0.90: {} ({cs_median:.4})",
+        if cs_gate { "PASS" } else { "FAIL" }
+    );
+    println!(
+        "  median rel MSE ≤ 0.50: {} ({rm_median:.4})",
+        if rm_gate { "PASS" } else { "FAIL" }
+    );
+    println!(
+        "  all outputs finite:    {}",
+        if all_finite_gate { "PASS" } else { "FAIL" }
+    );
 
     let g1_pass = cs_gate && rm_gate && all_finite_gate;
-    println!("\n  G1 VERDICT: {}", if g1_pass { "✅ PASS" } else { "❌ FAIL" });
+    println!(
+        "\n  G1 VERDICT: {}",
+        if g1_pass { "✅ PASS" } else { "❌ FAIL" }
+    );
 
     if g1_pass {
         println!("\n  → FlashMemory sparse selection preserves dense MLA output on");
@@ -403,7 +431,9 @@ fn run_bench() {
         println!("  → Phase 2 (256K scale test on 4090) is DE-RISKED on the correctness axis.");
     } else {
         println!("\n  → Sparse selection degrades output quality beyond tolerance.");
-        println!("  → Consider lowering threshold (currently {threshold}) or increasing block_size.");
+        println!(
+            "  → Consider lowering threshold (currently {threshold}) or increasing block_size."
+        );
         println!("  → Phase 2 scale test may produce incorrect results — investigate first.");
     }
 

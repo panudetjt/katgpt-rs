@@ -30,7 +30,10 @@ fn fresh_world() -> World {
 }
 
 fn drain_events(world: &mut World) -> Vec<GameEvent> {
-    world.resource_mut::<Messages<GameEvent>>().drain().collect()
+    world
+        .resource_mut::<Messages<GameEvent>>()
+        .drain()
+        .collect()
 }
 
 fn find_explosions(events: &[GameEvent]) -> Vec<(i32, i32, u32)> {

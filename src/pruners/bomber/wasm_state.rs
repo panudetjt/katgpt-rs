@@ -208,9 +208,17 @@ const ROW_BYTES: usize = ARENA_W * BYTES_PER_TOKEN;
 #[inline]
 fn write_grid(buf: &mut [u8; ZEROCOPY_BUF_SIZE], grid: &ArenaGrid) {
     let grid_dst = &mut buf[..GRID_BYTES];
-    for (y, dst_row) in grid_dst.as_chunks_mut::<ROW_BYTES>().0.iter_mut().enumerate() {
+    for (y, dst_row) in grid_dst
+        .as_chunks_mut::<ROW_BYTES>()
+        .0
+        .iter_mut()
+        .enumerate()
+    {
         let src_row = &grid.cells[y][..ARENA_W];
-        for (cell, slot) in src_row.iter().zip(dst_row.as_chunks_mut::<BYTES_PER_TOKEN>().0) {
+        for (cell, slot) in src_row
+            .iter()
+            .zip(dst_row.as_chunks_mut::<BYTES_PER_TOKEN>().0)
+        {
             slot.copy_from_slice(&u32::from(cell_to_token(cell)).to_le_bytes());
         }
     }
@@ -277,11 +285,7 @@ pub fn serialize_into_buffer(
 
     // Bombs: each bomb is 4 tokens (x, y, range, fuse).
     // Matches the WASM validator's `get_bomb` stride (Issue 016).
-    let off = write_bombs(
-        buf,
-        GRID_BYTES + 4 * BYTES_PER_TOKEN,
-        &bombs[..bomb_count],
-    );
+    let off = write_bombs(buf, GRID_BYTES + 4 * BYTES_PER_TOKEN, &bombs[..bomb_count]);
 
     debug_assert_eq!(off, total_bytes);
     (total_bytes, token_count)

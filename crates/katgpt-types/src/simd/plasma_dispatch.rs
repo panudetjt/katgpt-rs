@@ -152,7 +152,11 @@ pub fn simd_matvec_plasma_dispatch_with_l3(
     y: &mut [f32],
     l3_bytes: usize,
 ) {
-    debug_assert_eq!(dense.len(), ternary.rows * ternary.cols, "dense/ternary shape mismatch");
+    debug_assert_eq!(
+        dense.len(),
+        ternary.rows * ternary.cols,
+        "dense/ternary shape mismatch"
+    );
     if plasma_prefers_ternary_with_l3(ternary.rows, ternary.cols, l3_bytes) {
         simd_ternary_matvec(ternary, x, y);
     } else {
@@ -178,8 +182,9 @@ mod tests {
     fn small_layer() -> (Vec<f32>, TernaryWeights, Vec<f32>) {
         let rows = 64usize;
         let cols = 128usize;
-        let dense: Vec<f32> =
-            (0..rows * cols).map(|i| (((i * 1103515245) as f32) * 0.001) % 1.0).collect();
+        let dense: Vec<f32> = (0..rows * cols)
+            .map(|i| (((i * 1103515245) as f32) * 0.001) % 1.0)
+            .collect();
         let tw = TernaryWeights::quantize_from_f32(&dense, rows, cols);
         let x: Vec<f32> = (0..cols).map(|i| (i as f32 * 0.1).sin()).collect();
         (dense, tw, x)
@@ -188,8 +193,14 @@ mod tests {
     #[test]
     fn boundary_is_the_f32_operand_bytes() {
         // 512×512 → 1 MiB f32 operand.
-        assert!(!plasma_prefers_ternary_with_l3(512, 512, 1024 * 1024), "fits → f32");
-        assert!(plasma_prefers_ternary_with_l3(512, 512, 1024 * 1024 - 1), "over → ternary");
+        assert!(
+            !plasma_prefers_ternary_with_l3(512, 512, 1024 * 1024),
+            "fits → f32"
+        );
+        assert!(
+            plasma_prefers_ternary_with_l3(512, 512, 1024 * 1024 - 1),
+            "over → ternary"
+        );
         // The served shape (9 MiB operand) sits firmly below a 32 MiB L3.
         assert!(!plasma_prefers_ternary_with_l3(768, 3072, 32 * 1024 * 1024));
     }
@@ -203,21 +214,30 @@ mod tests {
         // Below the boundary (generous L3): f32 arm — bit-identical.
         simd_matvec_plasma_dispatch_with_l3(&dense, &tw, &x, &mut y_dispatch, 1 << 30);
         simd_matvec(&mut y_ref, &dense, &x, tw.rows, tw.cols);
-        assert_eq!(y_dispatch, y_ref, "below L3 the dispatch must be the f32 kernel");
+        assert_eq!(
+            y_dispatch, y_ref,
+            "below L3 the dispatch must be the f32 kernel"
+        );
 
         // Above the boundary (tiny L3): ternary arm — bit-identical to the
         // ternary kernel (and numerically DIFFERENT from the f32 arm, since
         // quantization is lossy — that difference is the arm-selection proof).
         simd_matvec_plasma_dispatch_with_l3(&dense, &tw, &x, &mut y_dispatch, 1);
         simd_ternary_matvec(&tw, &x, &mut y_ref);
-        assert_eq!(y_dispatch, y_ref, "above L3 the dispatch must be the ternary kernel");
+        assert_eq!(
+            y_dispatch, y_ref,
+            "above L3 the dispatch must be the ternary kernel"
+        );
         assert_ne!(y_dispatch.len(), 0);
     }
 
     #[test]
     fn l3_probe_is_sane_and_cached() {
         let a = l3_cache_bytes();
-        assert!(a > 0, "the probe must never answer zero (the fallback is 32 MiB)");
+        assert!(
+            a > 0,
+            "the probe must never answer zero (the fallback is 32 MiB)"
+        );
         assert_eq!(a, l3_cache_bytes(), "cached");
         assert_eq!(DEFAULT_L3_BYTES, 32 * 1024 * 1024);
     }

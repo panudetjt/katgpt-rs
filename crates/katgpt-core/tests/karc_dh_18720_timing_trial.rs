@@ -16,7 +16,7 @@
 
 #![cfg(feature = "karc_householder_eig_par")]
 
-use katgpt_core::linalg::symmetric_eig::{par::symmetric_eig_par, SymmetricEigScratch};
+use katgpt_core::linalg::symmetric_eig::{SymmetricEigScratch, par::symmetric_eig_par};
 
 /// Deterministic xorshift64 PRNG (matches the symmetric_eig test helper).
 fn xorshift64(state: &mut u64) -> u64 {
@@ -73,7 +73,11 @@ fn dh_18720_parallel_timing() {
     // Build the Gram matrix (this allocation is ~2.8 GB; takes a moment).
     let t_alloc = Instant::now();
     let mut a = vec![0.0_f64; d_h * d_h];
-    eprintln!("allocating {} entries ({:.2} GB)...", d_h * d_h, (d_h * d_h * 8) as f64 / 1e9);
+    eprintln!(
+        "allocating {} entries ({:.2} GB)...",
+        d_h * d_h,
+        (d_h * d_h * 8) as f64 / 1e9
+    );
     let mut state: u64 = 0x1872_dead_beef_face;
     random_spd_gram(&mut state, &mut a, d_h);
     eprintln!("Gram build: {:.2?}", t_alloc.elapsed());
@@ -118,9 +122,7 @@ fn dh_18720_parallel_timing() {
     let target_secs = 1800.0; // 30 min
     let actual_secs = dt.as_secs_f64();
     if actual_secs <= target_secs {
-        eprintln!(
-            "VERDICT: T6 PASS — parallel wall {dt:.2?} ≤ 30 min target"
-        );
+        eprintln!("VERDICT: T6 PASS — parallel wall {dt:.2?} ≤ 30 min target");
     } else {
         eprintln!(
             "VERDICT: T6 MISS — parallel wall {:.2?} > 30 min target ({:.2}× over)",

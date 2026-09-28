@@ -184,14 +184,20 @@ impl AuditInputs {
             .same_action_pairs
             .iter()
             .map(|((a1, b1), (a2, b2))| {
-                ((a1.as_slice(), b1.as_slice()), (a2.as_slice(), b2.as_slice()))
+                (
+                    (a1.as_slice(), b1.as_slice()),
+                    (a2.as_slice(), b2.as_slice()),
+                )
             })
             .collect();
         let diff: Vec<((&[f32], &[f32]), (&[f32], &[f32]))> = self
             .diff_action_pairs
             .iter()
             .map(|((a1, b1), (a2, b2))| {
-                ((a1.as_slice(), b1.as_slice()), (a2.as_slice(), b2.as_slice()))
+                (
+                    (a1.as_slice(), b1.as_slice()),
+                    (a2.as_slice(), b2.as_slice()),
+                )
             })
             .collect();
         AuditSlices {
@@ -214,11 +220,7 @@ struct AuditSlices<'a> {
 
 /// Measure `audit_confounders` median latency. Inputs are pre-built; only
 /// the audit call is timed.
-fn bench_audit<E>(
-    encoder: &E,
-    slices: &AuditSlices<'_>,
-    scratch: &mut AuditScratch,
-) -> Duration
+fn bench_audit<E>(encoder: &E, slices: &AuditSlices<'_>, scratch: &mut AuditScratch) -> Duration
 where
     E: Fn(&[f32], &[f32], &mut [f32]),
 {
@@ -275,17 +277,12 @@ fn main() {
     println!("║  Issue 194 — Latent Confounder Audit GOAT Gate (G2 perf)    ║");
     println!("╚══════════════════════════════════════════════════════════════╝");
     println!();
-    println!(
-        "Config: {TIMED_RUNS} timed runs (median), {WARMUP} warmup, seed=42"
-    );
+    println!("Config: {TIMED_RUNS} timed runs (median), {WARMUP} warmup, seed=42");
     println!();
 
     // ── G2: audit_confounders latency ──────────────────────────────────
     println!("── G2: audit_confounders latency ──────────────────────────────");
-    println!(
-        "{:>22}  {:>6}  {:>14}",
-        "encoder_dim", "label", "median"
-    );
+    println!("{:>22}  {:>6}  {:>14}", "encoder_dim", "label", "median");
     println!("{}", "-".repeat(50));
 
     const G2_TARGET_NS: u64 = 1_000; // 1 µs per audit call at the gate dim (HLA d=8).

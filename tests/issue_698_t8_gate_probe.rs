@@ -370,11 +370,22 @@ fn t698_t8_conditional_gate_mechanism_probe() {
     );
 
     let plain_gate = ResidualGate::new(R_REF, weights_config.n_embd);
-    let anchor_gate = ResidualGate::new_loop_stable(R_REF, weights_config.n_embd, ANCHOR_GATE_DECAY);
+    let anchor_gate =
+        ResidualGate::new_loop_stable(R_REF, weights_config.n_embd, ANCHOR_GATE_DECAY);
 
     // ── G1: double-run bit-identity + harness parity ─────────────
-    let a = measure_context(LoopStabilityMode::InterLoopNorm, &weights, &plain_gate, &sdpa_gate);
-    let b = measure_context(LoopStabilityMode::InterLoopNorm, &weights, &plain_gate, &sdpa_gate);
+    let a = measure_context(
+        LoopStabilityMode::InterLoopNorm,
+        &weights,
+        &plain_gate,
+        &sdpa_gate,
+    );
+    let b = measure_context(
+        LoopStabilityMode::InterLoopNorm,
+        &weights,
+        &plain_gate,
+        &sdpa_gate,
+    );
     for t in 0..N_PROMPTS {
         for (i, (ca, cb)) in a.cos[t].iter().zip(b.cos[t].iter()).enumerate() {
             assert_eq!(
@@ -397,10 +408,7 @@ fn t698_t8_conditional_gate_mechanism_probe() {
     // Harness parity: mean kl over tokens at the pinned grid = T1's spectrum.
     for (r, pin_bits) in T1_PINS {
         let pin = f32::from_bits(pin_bits);
-        let mean = (0..N_PROMPTS)
-            .map(|t| a.kl[t][r - 1])
-            .sum::<f32>()
-            / N_PROMPTS as f32;
+        let mean = (0..N_PROMPTS).map(|t| a.kl[t][r - 1]).sum::<f32>() / N_PROMPTS as f32;
         let rel = ((mean - pin) / pin).abs();
         assert!(
             rel < 1e-5,
@@ -416,7 +424,10 @@ fn t698_t8_conditional_gate_mechanism_probe() {
         &sdpa_gate,
     );
 
-    for (name, ctx) in [("InterLoopNorm (context)", &a), ("FixedAnchor+armed (gated)", &fixed)] {
+    for (name, ctx) in [
+        ("InterLoopNorm (context)", &a),
+        ("FixedAnchor+armed (gated)", &fixed),
+    ] {
         // Pairs (t, r): divergence = −cos, gain = kl(r) − kl(r+1), r ∈ 2..=R_MAX−1
         // (gain at r=R_MAX would need kl(R_MAX+1) — available; keep r ∈ 2..=R_MAX
         // with gain = kl(r) − kl(r+1) valid through r = R_MAX since kl goes to
@@ -431,7 +442,10 @@ fn t698_t8_conditional_gate_mechanism_probe() {
                 per_r[r - 2].push((-cosv, gain));
             }
         }
-        let pooled = spearman(&pool.iter().map(|p| p.0).collect::<Vec<_>>(), &pool.iter().map(|p| p.1).collect::<Vec<_>>());
+        let pooled = spearman(
+            &pool.iter().map(|p| p.0).collect::<Vec<_>>(),
+            &pool.iter().map(|p| p.1).collect::<Vec<_>>(),
+        );
         let mut per_r_rho: Vec<f32> = Vec::with_capacity(R_MAX - 1);
         for pairs in per_r.iter() {
             let rho = spearman(
@@ -467,9 +481,7 @@ fn t698_t8_conditional_gate_mechanism_probe() {
             "  pooled spearman(−cos, gain) over {} pairs = {pooled:+.3}   (Gate A ≥ +{GATE_A_POOLED})",
             pool.len()
         );
-        println!(
-            "  median token-level spearman = {median:+.3}   (Gate B ≥ +{GATE_B_MEDIAN})"
-        );
+        println!("  median token-level spearman = {median:+.3}   (Gate B ≥ +{GATE_B_MEDIAN})");
         println!(
             "  mean cos(S(r), S(r−1)) by r: r=2 {:.4} · r=4 {:.4} · r=8 {:.6} · r=12 {:.6} · r=16 {:.6}",
             mean_cos_by_r[0],
@@ -489,12 +501,16 @@ fn t698_t8_conditional_gate_mechanism_probe() {
             if pass {
                 println!("  VERDICT: PASS — divergence co-locates with marginal gain at the");
                 println!("  pre-registered thresholds, in the T8 deployment context (anchored +");
-                println!("  armed, the never-settles regime T2 measured — where late-loop divergence");
+                println!(
+                    "  armed, the never-settles regime T2 measured — where late-loop divergence"
+                );
                 println!("  and late-loop gain persist together). T8 implementation UNBLOCKS.");
                 println!("  Interpretant: unlike T7's static step-1 difficulty metrics (which");
                 println!("  ANTI-correlated at k≥4), the state's own divergence is a within-run,");
                 println!("  per-loop, per-token signal — how much the state just moved predicts");
-                println!("  how much the next loop moves it. The co-location GROWS with r (r=2 ≈ 0,");
+                println!(
+                    "  how much the next loop moves it. The co-location GROWS with r (r=2 ≈ 0,"
+                );
                 println!("  r≥7 substantial): the gate discriminates exactly where a copy-late");
                 println!("  schedule must decide when to close.");
             } else {

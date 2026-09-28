@@ -156,7 +156,10 @@ fn bfs_components(field: &CochainField) -> (usize, usize) {
 
 fn bit_identical(a: &CochainField, b: &CochainField) -> bool {
     a.data.len() == b.data.len()
-        && a.data.iter().zip(b.data.iter()).all(|(&x, &y)| x.to_bits() == y.to_bits())
+        && a.data
+            .iter()
+            .zip(b.data.iter())
+            .all(|(&x, &y)| x.to_bits() == y.to_bits())
 }
 
 // ===========================================================================
@@ -195,7 +198,10 @@ fn run_pca(params: &BirthDeathParams, seed: u64, use_async: bool) -> (usize, usi
     let mut field = CochainField::zeros(0, N_CELLS, DIM);
     seed_field(&mut field);
     let mut scratch = PcaScratch::for_complex(&cx, DIM);
-    let gate = GlobalTargetGate { target: 1.0, stop_when: StopWhen::Below };
+    let gate = GlobalTargetGate {
+        target: 1.0,
+        stop_when: StopWhen::Below,
+    };
     let mut rng = SplitMix64::new(seed);
     let mut t_connect = 0;
     for t in 1..=MAX_TICKS {
@@ -361,7 +367,10 @@ fn g3_kernel_unchanged(params: &BirthDeathParams) -> bool {
     let mut wrapped = CochainField::zeros(0, N_CELLS, DIM);
     seed_field(&mut wrapped);
     let mut scratch = PcaScratch::for_complex(&cx, DIM);
-    let never = GlobalTargetGate { target: 0.0, stop_when: StopWhen::Below };
+    let never = GlobalTargetGate {
+        target: 0.0,
+        stop_when: StopWhen::Below,
+    };
     let mut rng = SplitMix64::new(7);
     for _ in 0..10 {
         step_pca_sync(
@@ -388,9 +397,20 @@ fn g4_alloc(params: &BirthDeathParams) -> (usize, usize) {
     let mut field = CochainField::zeros(0, N_CELLS, DIM);
     seed_field(&mut field);
     let mut scratch = PcaScratch::for_complex(&cx, DIM);
-    let gate = GlobalTargetGate { target: 1.0, stop_when: StopWhen::Below };
+    let gate = GlobalTargetGate {
+        target: 1.0,
+        stop_when: StopWhen::Below,
+    };
     let mut rng = SplitMix64::new(3);
-    step_pca_sync(&cx, &mut field, params, &mut rng, &PcaGlobalFn::Betti0, &gate, &mut scratch);
+    step_pca_sync(
+        &cx,
+        &mut field,
+        params,
+        &mut rng,
+        &PcaGlobalFn::Betti0,
+        &gate,
+        &mut scratch,
+    );
     let before = ALLOC_COUNT.load(Ordering::Relaxed);
     for _ in 0..ALLOC_TICKS {
         step_pca_sync(
@@ -407,7 +427,15 @@ fn g4_alloc(params: &BirthDeathParams) -> (usize, usize) {
 
     seed_field(&mut field);
     let mut rng = SplitMix64::new(3);
-    step_pca_async(&cx, &mut field, params, &mut rng, &PcaGlobalFn::Betti0, &gate, &mut scratch);
+    step_pca_async(
+        &cx,
+        &mut field,
+        params,
+        &mut rng,
+        &PcaGlobalFn::Betti0,
+        &gate,
+        &mut scratch,
+    );
     let before = ALLOC_COUNT.load(Ordering::Relaxed);
     for _ in 0..ALLOC_TICKS {
         step_pca_async(
@@ -444,12 +472,20 @@ fn main() {
     let mut eng_pass = true; // G3 + G4
 
     // --- G1: correctness + determinism ---
-    print!("[G1]  BFS-verified finals ({G_SEEDS} seeds/arm) + determinism ({DET_SEEDS} seeds/arm)... ");
+    print!(
+        "[G1]  BFS-verified finals ({G_SEEDS} seeds/arm) + determinism ({DET_SEEDS} seeds/arm)... "
+    );
     let g1c = g1_correctness(&params);
     let g1d = g1_determinism(&params);
     println!("done");
-    println!("  G1 correctness (final b0==1 by independent BFS)  → {}", verdict(g1c));
-    println!("  G1 determinism (bit-identical, {DET_SEEDS} seeds × 3 arms)  → {}", verdict(g1d));
+    println!(
+        "  G1 correctness (final b0==1 by independent BFS)  → {}",
+        verdict(g1c)
+    );
+    println!(
+        "  G1 determinism (bit-identical, {DET_SEEDS} seeds × 3 arms)  → {}",
+        verdict(g1d)
+    );
     gain_pass &= g1c && g1d;
 
     // --- G2: iteration collapse ---
@@ -458,7 +494,11 @@ fn main() {
     println!("done");
     println!(
         "  G2 primary: pure-local fixpoint {:.0} ticks vs pca halt sync {:.0} / async {:.0} → collapse {:.2}× (gate ≥ 3×)  → {}",
-        row.pure_fill, row.sync_halt, row.async_halt, ratio, verdict(g2)
+        row.pure_fill,
+        row.sync_halt,
+        row.async_halt,
+        ratio,
+        verdict(g2)
     );
     println!(
         "  G2 raw diagnostic: first-tick-to-b0==1 pure {:.0} vs pca sync {:.0} / async {:.0} → {:.2}× (identical pre-trip dynamics, BY CONSTRUCTION)",
@@ -474,7 +514,9 @@ fn main() {
         "  G3 in-bench: untripped step_pca_sync bit-identical to stock kernel  → {}",
         verdict(g3)
     );
-    println!("  G3 external: kernel sources untouched by Plan 591; flag-off test count asserted separately (bench doc)");
+    println!(
+        "  G3 external: kernel sources untouched by Plan 591; flag-off test count asserted separately (bench doc)"
+    );
     eng_pass &= g3;
 
     // --- G4: zero alloc ---
@@ -508,10 +550,17 @@ fn main() {
     );
 
     println!();
-    println!("GOAT verdict: gain (G1+G2) {} · engineering (G3+G4) {}", verdict(gain_pass), verdict(eng_pass));
-    println!("Ruling: {}", if gain_pass && eng_pass {
-        "PROMOTE pca_global to default (all gates pass)"
-    } else {
-        "STAY OPT-IN (record raw numbers in Bench 707)"
-    });
+    println!(
+        "GOAT verdict: gain (G1+G2) {} · engineering (G3+G4) {}",
+        verdict(gain_pass),
+        verdict(eng_pass)
+    );
+    println!(
+        "Ruling: {}",
+        if gain_pass && eng_pass {
+            "PROMOTE pca_global to default (all gates pass)"
+        } else {
+            "STAY OPT-IN (record raw numbers in Bench 707)"
+        }
+    );
 }

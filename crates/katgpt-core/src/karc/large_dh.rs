@@ -211,7 +211,10 @@ fn low_rank_fit_jacobi_with_init(
             g_max_sweeps,
         );
     }
-    #[cfg(all(feature = "karc_householder_eig", not(feature = "karc_householder_eig_par")))]
+    #[cfg(all(
+        feature = "karc_householder_eig",
+        not(feature = "karc_householder_eig_par")
+    ))]
     {
         // Numerical Recipes default: 30 QL iterations per eigenvalue before
         // declaring non-convergence. For SPD Grams, ~2-5 iterations suffice.
@@ -251,17 +254,7 @@ fn low_rank_fit_jacobi_with_init(
         als_a_step(gram, cov, d_h, d_out, r, lambda, b_out, a_out, scratch);
 
         // ── B-step: Jacobi diagonalization ──
-        jacobi_b_step(
-            gram,
-            cov,
-            d_h,
-            d_out,
-            r,
-            lambda,
-            a_out,
-            b_out,
-            scratch,
-        );
+        jacobi_b_step(gram, cov, d_h, d_out, r, lambda, a_out, b_out, scratch);
 
         // ── Scale rebalance (shared with Kronecker path) ──
         als_scale_rebalance(a_out, b_out, d_out, d_h, r);
@@ -423,8 +416,8 @@ fn jacobi_b_step(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::jacobi_eigen;
+    use super::*;
 
     /// Regression guard for the Issue 185 sign bug in `jacobi_eigen`. The
     /// original Plan 308 T2.3 code computed the rotation angle as
@@ -501,7 +494,15 @@ mod tests {
         let mut b_kron = vec![0.0f64; r * d_h];
         let mut scr_kron = LowRankFitScratch::with_capacity(d_h, d_out, r);
         super::super::low_rank_fit_b_with_frozen_a(
-            &gram, &cov, d_h, d_out, r, lambda, &a_frozen, &mut b_kron, &mut scr_kron,
+            &gram,
+            &cov,
+            d_h,
+            d_out,
+            r,
+            lambda,
+            &a_frozen,
+            &mut b_kron,
+            &mut scr_kron,
         );
 
         // Jacobi path: eigendecompose G, then call jacobi_b_step.
@@ -521,7 +522,15 @@ mod tests {
             50,
         );
         jacobi_b_step(
-            &gram, &cov, d_h, d_out, r, lambda, &a_buf, &mut b_jac, &mut scr_jac,
+            &gram,
+            &cov,
+            d_h,
+            d_out,
+            r,
+            lambda,
+            &a_buf,
+            &mut b_jac,
+            &mut scr_jac,
         );
 
         // Both should satisfy the same normal equation (AᵀA)·B·G + λB = Aᵀ·Covᵀ

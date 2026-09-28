@@ -201,8 +201,14 @@ mod tests {
             row[3] = 8.0; // the spike
             *slot = kamath_rho(&row);
         }
-        assert!(rho_small > 1.5, "spiked ρ must clear the Gaussian band: {rho_small}");
-        assert!(rho_big > rho_small, "separation grows with n: {rho_big} !> {rho_small}");
+        assert!(
+            rho_small > 1.5,
+            "spiked ρ must clear the Gaussian band: {rho_small}"
+        );
+        assert!(
+            rho_big > rho_small,
+            "separation grows with n: {rho_big} !> {rho_small}"
+        );
         // and the score is decisively on the spiked side. NOTE the honest
         // calibration: a single spike gives ρ ≈ √n/(2√(2 ln n)) — INVARIANT
         // to spike magnitude (range and σ̂ both scale with it) — so realistic
@@ -211,7 +217,11 @@ mod tests {
         let mut row: Vec<f32> = (0..512).map(|i| hash_noise(i, 11) * 0.5).collect();
         row[3] = 8.0;
         let reading = kamath_regime(&row);
-        assert!(reading.spike_score > 0.65, "score {} must be spiked-side (>0.65; Gaussian band <0.54)", reading.spike_score);
+        assert!(
+            reading.spike_score > 0.65,
+            "score {} must be spiked-side (>0.65; Gaussian band <0.54)",
+            reading.spike_score
+        );
     }
 
     #[test]
@@ -273,6 +283,10 @@ mod tests {
             r_strong.normalized_entropy < r_weak.normalized_entropy,
             "amplified gold must concentrate the row"
         );
-        assert!(r_weak.normalized_entropy > 0.9, "weak-gold soup is dispersed: {}", r_weak.normalized_entropy);
+        assert!(
+            r_weak.normalized_entropy > 0.9,
+            "weak-gold soup is dispersed: {}",
+            r_weak.normalized_entropy
+        );
     }
 }

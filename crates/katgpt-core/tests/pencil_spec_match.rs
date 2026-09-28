@@ -43,7 +43,7 @@
 #![cfg(feature = "spectral_pencil")]
 
 use katgpt_core::spectral_pencil::dense::{DenseScratch, jacobi_eigen};
-use katgpt_core::spectral_pencil::init::{seeded_dense, BOX_R};
+use katgpt_core::spectral_pencil::init::{BOX_R, seeded_dense};
 use katgpt_core::spectral_pencil::sym::SymPacked;
 
 struct Lcg(u64);
@@ -152,7 +152,11 @@ fn t1_hand_instance_matches_lean_spec_test() {
     );
     // to_full recovers the intended matrix
     let full = v.to_full();
-    assert!((full[0][1] - 2.0).abs() < 1e-6, "off-scale wrong: {}", full[0][1]);
+    assert!(
+        (full[0][1] - 2.0).abs() < 1e-6,
+        "off-scale wrong: {}",
+        full[0][1]
+    );
 }
 
 /// T2: Weyl 1-Lipschitz on sampled pencil matrices — |λᵢ(A) − λᵢ(B)|
@@ -190,17 +194,15 @@ fn t2_weyl_lipschitz_sampled() {
             }
         }
         jacobi_eigen(&fd, false, &mut sd);
-        let norm_d = sd
-            .values
-            .iter()
-            .fold(0.0_f32, |m, &v| m.max(v.abs()));
+        let norm_d = sd.values.iter().fold(0.0_f32, |m, &v| m.max(v.abs()));
         let _ = (&pa, &pb); // packing path exercised by T1 tests
         for k in 0..D {
             let diff = (sa.values[k] - sb.values[k]).abs();
             assert!(
                 diff <= norm_d * (1.0 + 1e-3) + 1e-5,
                 "Weyl violated at k={k}: |{:.6} - {:.6}| = {diff:.6} > ‖A-B‖ {norm_d:.6}",
-                sa.values[k], sb.values[k]
+                sa.values[k],
+                sb.values[k]
             );
         }
     }
@@ -266,7 +268,13 @@ fn t4_ladder_unit_gap_exact() {
         // the Rust-orientation ladder: −1 at i<k, 0@k, +1 at i>k
         let mut ladder = [[0.0_f32; D]; D];
         for i in 0..D {
-            ladder[i][i] = if i < k { -1.0 } else if i == k { 0.0 } else { 1.0 };
+            ladder[i][i] = if i < k {
+                -1.0
+            } else if i == k {
+                0.0
+            } else {
+                1.0
+            };
         }
         jacobi_eigen(&ladder, false, &mut s);
         // ascending: −1×k, 0@k, +1×(D−1−k)
@@ -281,7 +289,11 @@ fn t4_ladder_unit_gap_exact() {
             "k={k} gap toward +1 rung: {gap_above} want 1"
         );
         // the zero itself sits exactly at ascending index k
-        assert!((s.values[k] - 0.0).abs() < 1e-5, "k={k} zero moved: {}", s.values[k]);
+        assert!(
+            (s.values[k] - 0.0).abs() < 1e-5,
+            "k={k} zero moved: {}",
+            s.values[k]
+        );
     }
 }
 

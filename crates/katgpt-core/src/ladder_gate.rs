@@ -361,7 +361,7 @@ mod tests {
         let mut g = gate(0.9, 1);
         assert_eq!(g.on_eval(0.95), LadderAction::Advance); // → 2
         assert_eq!(g.on_eval(0.95), LadderAction::Advance); // → 3
-                                                            // stage 3 expects 2 probes; 1 is malformed → shallowest retreat.
+        // stage 3 expects 2 probes; 1 is malformed → shallowest retreat.
         assert_eq!(
             g.on_eval_with_retention(0.95, &[0.95]),
             LadderAction::Retreat { to_stage: 1 }
@@ -608,8 +608,8 @@ mod tests {
     fn retreat_carries_a_shallower_stage_never_a_jump_up() {
         let mut g = gate(0.9, 1);
         assert_eq!(g.on_eval(0.95), LadderAction::Advance); // → 2
-                                                            // A malformed 4-probe slice at stage 2: fail-closed target is 1,
-                                                            // not "clamp to expected" — shallower is always the safe side.
+        // A malformed 4-probe slice at stage 2: fail-closed target is 1,
+        // not "clamp to expected" — shallower is always the safe side.
         let action = g.on_eval_with_retention(0.95, &[0.95, 0.95, 0.95, 0.95]);
         assert_eq!(action, LadderAction::Retreat { to_stage: 1 });
     }

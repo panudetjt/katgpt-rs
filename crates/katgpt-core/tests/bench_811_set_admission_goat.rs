@@ -34,10 +34,10 @@
 
 use katgpt_core::certified_frontier::vendi_diversity;
 use katgpt_core::set_admission::{
-    admit_into, certify_scratch, certify_set, AdmissionScratch, CertificateReport,
-    SetAdmissionConfig, DIM,
+    AdmissionScratch, CertificateReport, DIM, SetAdmissionConfig, admit_into, certify_scratch,
+    certify_set,
 };
-use katgpt_core::spectral_pencil::dense::{jacobi_eigen, DenseScratch};
+use katgpt_core::spectral_pencil::dense::{DenseScratch, jacobi_eigen};
 use std::hint::black_box;
 use std::time::Instant;
 
@@ -51,7 +51,10 @@ impl Lcg {
         Self(seed.wrapping_add(0x9E37_79B9_7F4A_7C15))
     }
     fn next_u64(&mut self) -> u64 {
-        self.0 = self.0.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        self.0 = self
+            .0
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         let z = self.0;
         z ^ (z >> 32)
     }
@@ -87,7 +90,9 @@ fn seeded_world(n: usize, seed: u64) -> (Vec<[f32; DIM]>, Vec<f32>, [f32; DIM]) 
             unit(&x)
         })
         .collect();
-    let quality: Vec<f32> = (0..n).map(|i| 0.8 + 0.2 * ((i * 7) % 11) as f32 / 10.0).collect();
+    let quality: Vec<f32> = (0..n)
+        .map(|i| 0.8 + 0.2 * ((i * 7) % 11) as f32 / 10.0)
+        .collect();
     let query = unit(&std::array::from_fn(|_i| rng.next_f32()));
     (pool, quality, query)
 }
@@ -117,7 +122,11 @@ fn set_objective(
     }
     let mut scratch = DenseScratch::<DIM>::new();
     let _ = jacobi_eigen(&gram, false, &mut scratch);
-    let logdet: f64 = scratch.values.iter().map(|&l| ((1.0 + l.max(0.0)) as f64).ln()).sum();
+    let logdet: f64 = scratch
+        .values
+        .iter()
+        .map(|&l| ((1.0 + l.max(0.0)) as f64).ln())
+        .sum();
     modular + cfg.alpha_align as f64 * align + cfg.kappa_div as f64 * logdet
 }
 
@@ -156,7 +165,11 @@ fn run_greedy(
     let mut scratch = AdmissionScratch::new();
     let mut out = vec![u16::MAX; k];
     admit_into(cfg, pool, quality, query, &mut out, &mut scratch);
-    out[..k].iter().take_while(|&&i| i != u16::MAX).map(|&i| i as usize).collect()
+    out[..k]
+        .iter()
+        .take_while(|&&i| i != u16::MAX)
+        .map(|&i| i as usize)
+        .collect()
 }
 
 // ── G1: brute-force parity ───────────────────────────────────────────
@@ -330,13 +343,21 @@ fn g2_perf_admission_gate_pr_and_certificate() {
     // scan is tens of us). The certificate's exact-Jacobi floor (8×8
     // sweep convergence) sits well above the plan's 1 us by the same
     // argument; 10 us covers it with headroom.
-    assert!(per_step <= 200e-9, "G2 FAIL: admission step {:.1} ns > 200 ns", per_step * 1e9);
+    assert!(
+        per_step <= 200e-9,
+        "G2 FAIL: admission step {:.1} ns > 200 ns",
+        per_step * 1e9
+    );
     assert!(
         per_gate <= 819e-6,
         "G2 FAIL: full gate {:.3} us > 819 us (= K·C·step budget, amended)",
         per_gate * 1e6
     );
-    assert!(per_cert <= 10e-6, "G2 FAIL: certificate {:.3} us > 10 us (amended budget)", per_cert * 1e6);
+    assert!(
+        per_cert <= 10e-6,
+        "G2 FAIL: certificate {:.3} us > 10 us (amended budget)",
+        per_cert * 1e6
+    );
 }
 
 // ── G3/T3.5 cross-checks that belong in the gate record ──────────────

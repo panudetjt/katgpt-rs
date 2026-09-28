@@ -98,8 +98,7 @@ fn g6_feature_isolation_no_ict_symbols_in_default_build() {
     // and the `cargo build` spawned above inherits that env var. Reading a
     // literal "target/release" made this gate unpassable under exactly the
     // workflow the repo prescribes (Issue 718 T3(a), first full-workspace run).
-    let target_dir =
-        std::env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".to_string());
+    let target_dir = std::env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".to_string());
     let release_dir = std::path::Path::new(&target_dir).join("release");
     let mut rlib_path = None;
     for entry in std::fs::read_dir(&release_dir)

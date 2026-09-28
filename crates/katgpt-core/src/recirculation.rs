@@ -193,9 +193,9 @@ impl RecircPair {
     #[must_use]
     pub fn for_depth(n_stages: usize) -> (f32, f32) {
         match n_stages {
-            0..=30 => (0.42, 0.15), // 26-layer 1B anchor {11, 4}
+            0..=30 => (0.42, 0.15),  // 26-layer 1B anchor {11, 4}
             31..=41 => (0.53, 0.26), // 34-layer 4B anchor {18, 9}
-            _ => (0.73, 0.33),     // 48-layer 12B anchor {35, 16}
+            _ => (0.73, 0.33),       // 48-layer 12B anchor {35, 16}
         }
     }
 
@@ -439,7 +439,11 @@ mod tests {
         assert_eq!((op48.src_stage, op48.dst_stage), (35, 16));
         // Custom pair + degenerate stacks.
         // Custom pair: round(0.5·10)=5, round(0.25·10)=3 (half-away-from-zero).
-        let opc = RecircPair::Custom { src: 0.5, dst: 0.25 }.to_op(10, 0.07, 10, false);
+        let opc = RecircPair::Custom {
+            src: 0.5,
+            dst: 0.25,
+        }
+        .to_op(10, 0.07, 10, false);
         assert_eq!((opc.src_stage, opc.dst_stage), (5, 3));
         assert_eq!(opc.beta, 1.0);
         assert_eq!(frac_to_stage(0.5, 1), 0);

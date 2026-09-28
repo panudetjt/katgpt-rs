@@ -365,9 +365,7 @@ fn main() {
     println!("  p50 tick:     {:>8.3} ms", p50.as_secs_f64() * 1.0e3);
     println!("  p99 tick:     {:>8.3} ms", p99.as_secs_f64() * 1.0e3);
     println!("  max tick:     {:>8.3} ms", max.as_secs_f64() * 1.0e3);
-    println!(
-        "  per-pair:     {per_pair_ns:>8.1} ns  ({PAIRS_PER_TICK} pairs/tick)"
-    );
+    println!("  per-pair:     {per_pair_ns:>8.1} ns  ({PAIRS_PER_TICK} pairs/tick)");
     println!(
         "  allocs/tick:  {:>8}   (target 0)  {}",
         alloc_delta / MEASURED_TICKS,

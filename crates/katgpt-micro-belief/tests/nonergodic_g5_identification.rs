@@ -183,10 +183,7 @@ type Suite = ([f64; 3], [f64; 3], [f64; 3], f64, [f64; 3]);
 /// `(acc[a, b, c], nll[a, b, c], ece[a, b, c], best_gamma, acc_per_leaky_gamma)`.
 fn run_suite<const K: usize>(k_label: usize) -> Suite {
     let params = mess3_params(k_label);
-    let gens: Vec<Gen> = params
-        .iter()
-        .map(|&(a, x)| Gen { alpha: a, x })
-        .collect();
+    let gens: Vec<Gen> = params.iter().map(|&(a, x)| Gen { alpha: a, x }).collect();
     let models: Vec<Mess3Block> = params
         .iter()
         .map(|&(a, x)| Mess3Block::new(a as f32, x as f32))

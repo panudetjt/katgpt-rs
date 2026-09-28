@@ -125,7 +125,11 @@ fn sample_different_value(
     } else {
         // All mass was on original — sample uniformly from non-original tokens
         let fallback = (rng.next() as usize) % len;
-        if fallback == original_token && len > 1 { (fallback + 1) % len } else { fallback }
+        if fallback == original_token && len > 1 {
+            (fallback + 1) % len
+        } else {
+            fallback
+        }
     }
 }
 
@@ -1070,7 +1074,7 @@ mod tests {
             }
         }
 
-let mut rng = Rng::new(42);
+        let mut rng = Rng::new(42);
         // All paths will have at least one token, and RejectAllPruner rejects everything
         struct RejectAllPruner;
 

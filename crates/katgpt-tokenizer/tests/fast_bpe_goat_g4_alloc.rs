@@ -30,7 +30,7 @@
 
 #![cfg(feature = "fast_bpe")]
 
-use katgpt_tokenizer::{BpeTrainer, BpeTokenizerImpl, FastBpeEncoder};
+use katgpt_tokenizer::{BpeTokenizerImpl, BpeTrainer, FastBpeEncoder};
 
 // ─── CountingAllocator (inlined; mirrors katgpt-core's macro pattern) ───────
 
@@ -71,12 +71,17 @@ fn g4_zero_alloc_audit_combined() {
 
         // Pre-compute references BEFORE warmup (the reference `encode` path
         // allocates per call — we don't want those allocs in the audit window).
-        let references: Vec<Vec<usize>> =
-            texts.iter().map(|t| BpeTokenizerImpl::encode(&tokenizer, t)).collect();
+        let references: Vec<Vec<usize>> = texts
+            .iter()
+            .map(|t| BpeTokenizerImpl::encode(&tokenizer, t))
+            .collect();
 
         // Warmup with the longest input so scratch reaches peak capacity.
         encoder.encode_into(corpus, &mut out);
-        eprintln!("g4 small-path warmup: symbols capacity = {}", encoder.symbols_capacity());
+        eprintln!(
+            "g4 small-path warmup: symbols capacity = {}",
+            encoder.symbols_capacity()
+        );
 
         ALLOC_COUNT.store(0, std::sync::atomic::Ordering::Relaxed);
 
@@ -115,7 +120,10 @@ fn g4_zero_alloc_audit_combined() {
         // Warmup with the corpus itself (much longer than `text`) so scratch
         // reaches peak capacity.
         encoder.encode_into(corpus, &mut out);
-        eprintln!("g4 long-path warmup: symbols capacity = {}", encoder.symbols_capacity());
+        eprintln!(
+            "g4 long-path warmup: symbols capacity = {}",
+            encoder.symbols_capacity()
+        );
 
         ALLOC_COUNT.store(0, std::sync::atomic::Ordering::Relaxed);
 

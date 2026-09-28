@@ -47,7 +47,7 @@ use katgpt_core::compaction::rubrics::search::SearchRubric;
 use katgpt_core::compaction::{
     Backstop, ClosedUnitCompactionGate, CompactionDecision, FireRule, RubricScratch,
 };
-use katgpt_core::latent_trajectory_geometry::{from_states, LatentTrajectoryGeometry};
+use katgpt_core::latent_trajectory_geometry::{LatentTrajectoryGeometry, from_states};
 use katgpt_core::personality_composition::sigmoid::sigmoid;
 use katgpt_core::{ArchetypeFieldSource, TriArchetypeBlend};
 
@@ -121,7 +121,11 @@ fn build_oscillation(seed: u64) -> Vec<Vec<f32>> {
     let mut traj = Vec::with_capacity(N_STEPS + 1);
     for i in 0..=N_STEPS {
         // Alternate between A and B every step (period 2).
-        let target = if i % 2 == 0 { &attractor_a } else { &attractor_b };
+        let target = if i % 2 == 0 {
+            &attractor_a
+        } else {
+            &attractor_b
+        };
         traj.push(target.clone());
     }
     traj.shrink_to_fit();
@@ -280,7 +284,9 @@ fn run_t52() -> (Vec<(usize, CompactionDecision<4>)>, bool) {
         };
 
         scratch.clear();
-        scratch.f32_buf.extend_from_slice(&[coherence, rank, div, novelty]);
+        scratch
+            .f32_buf
+            .extend_from_slice(&[coherence, rank, div, novelty]);
         scratch.usize_buf.push(step); // span_end
 
         // trajectory_prefix is just the step counter encoded as bytes — the
@@ -295,7 +301,8 @@ fn run_t52() -> (Vec<(usize, CompactionDecision<4>)>, bool) {
     let fired_at = |step: usize| {
         decisions
             .iter()
-            .find(|(s, _)| *s == step).is_some_and(|(_, d)| matches!(d, CompactionDecision::Compress { .. }))
+            .find(|(s, _)| *s == step)
+            .is_some_and(|(_, d)| matches!(d, CompactionDecision::Compress { .. }))
     };
     let pass = fired_at(20)
         && fired_at(40)
@@ -441,7 +448,11 @@ fn commit_and_probe(summary: &[f32], strategy: &'static str) -> T53Result {
 
     let pi = blend.pi;
     let tau = TriArchetypeBlend::DEFAULT_TAU;
-    let gates = [sigmoid(pi[0] / tau), sigmoid(pi[1] / tau), sigmoid(pi[2] / tau)];
+    let gates = [
+        sigmoid(pi[0] / tau),
+        sigmoid(pi[1] / tau),
+        sigmoid(pi[2] / tau),
+    ];
 
     let deterministic = hash1 == hash2;
     let non_degenerate = gates.iter().any(|&g| g > 0.6);
@@ -660,9 +671,8 @@ fn run_t53b() -> (T53bStrategyResult, T53bStrategyResult) {
                 let argmax_k = gates
                     .iter()
                     .enumerate()
-                    .max_by(|(_, a), (_, b)| {
-                        katgpt_core::float_order::cmp_for_max(**a, **b)
-                    }).map_or(0, |(k, _)| k);
+                    .max_by(|(_, a), (_, b)| katgpt_core::float_order::cmp_for_max(**a, **b))
+                    .map_or(0, |(k, _)| k);
                 let correct = matching_gate > 0.6 && argmax_k == mode_idx;
                 if correct {
                     n_correct += 1;
@@ -715,7 +725,11 @@ fn main() {
     for r in &results {
         println!(
             "  {:>20}  {:>10}  {:>14.4}  {:>14.4}  {:>10.4}",
-            r.name, r.geom.n_steps, r.geom.length, r.geom.mean_curvature, r.geom.min_adjacent_cosine
+            r.name,
+            r.geom.n_steps,
+            r.geom.length,
+            r.geom.mean_curvature,
+            r.geom.min_adjacent_cosine
         );
     }
     println!();
@@ -786,7 +800,9 @@ fn main() {
             let match_info = format!("  match={:.4} argmax={}", p.matching_gate, p.argmax_k);
             println!(
                 "  {:>22}  {}{}  {:>8}",
-                p.mode_name, gate_str, match_info,
+                p.mode_name,
+                gate_str,
+                match_info,
                 if p.correct { "YES" } else { "no" }
             );
         }
@@ -852,7 +868,11 @@ fn main() {
             println!("═ PARTIAL — only T5.3 (random-direction baseline) failed ═");
             println!("This is expected: T5.3 was the control. T5.3b supersedes it.");
         } else {
-            println!("═ PARTIAL — {} failed: {} ═", failed.len(), failed.join(", "));
+            println!(
+                "═ PARTIAL — {} failed: {} ═",
+                failed.len(),
+                failed.join(", ")
+            );
             println!();
             for (g, claim, _) in &gates_pass {
                 if failed.contains(g) {

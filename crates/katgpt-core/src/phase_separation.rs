@@ -246,11 +246,7 @@ pub fn phase_separation_all(phases: &[f32], out: &mut [f32]) {
 /// every input (modulo NaN, which the metric clamps away by construction).
 /// The two paths compute the same min; the sort is just a faster way to find
 /// the minimizing neighbor.
-pub fn phase_separation_sorted(
-    phases: &[f32],
-    scratch_perm: &mut [usize],
-    out: &mut [f32],
-) {
+pub fn phase_separation_sorted(phases: &[f32], scratch_perm: &mut [usize], out: &mut [f32]) {
     assert!(
         scratch_perm.len() >= phases.len(),
         "phase_separation_sorted: scratch_perm.len() ({}) < phases.len() ({})",
@@ -373,11 +369,7 @@ pub fn from_speeds_and_tick(speeds: &[u32], tick: u64, period: u32, out_phases: 
 /// **Panics** if `out_phases.len() < latent_states.len() / d`,
 /// `latent_states.len() % d != 0`, or `direction.len() != d`.
 #[inline]
-pub fn from_latent_projection(
-    latent_states: &[f32],
-    direction: &[f32],
-    out_phases: &mut [f32],
-) {
+pub fn from_latent_projection(latent_states: &[f32], direction: &[f32], out_phases: &mut [f32]) {
     let d = direction.len();
     assert!(d > 0, "from_latent_projection: direction is empty");
     assert_eq!(
@@ -544,7 +536,11 @@ mod tests {
         let mut scratch_perm1 = [0_usize; 1];
         let mut out1 = [0.0_f32; 1];
         phase_separation_sorted(&phases1, &mut scratch_perm1, &mut out1);
-        assert!(bits_eq(out1[0], 0.5), "N=1 separation = {}, expected 0.5", out1[0]);
+        assert!(
+            bits_eq(out1[0], 0.5),
+            "N=1 separation = {}, expected 0.5",
+            out1[0]
+        );
         assert!(
             bits_eq(phase_separation(&phases1, 0), 0.5),
             "N=1 naive separation = {}, expected 0.5",

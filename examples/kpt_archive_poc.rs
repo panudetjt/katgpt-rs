@@ -17,7 +17,7 @@
 use std::time::Instant;
 
 use katgpt_core::kpt_archive::{
-    build_archive, swap_in_place, write_atomic, KptArchive, OwnedKptArchive,
+    KptArchive, OwnedKptArchive, build_archive, swap_in_place, write_atomic,
 };
 use katgpt_rs::types::TernaryWeights;
 
@@ -27,14 +27,18 @@ const COLS: usize = 3072; // d=768 with the 4× FFN width — the served shape
 
 fn pseudo(i: usize) -> f32 {
     // Deterministic LCG-ish mix (the bench-fixture house shape — no RNG dep).
-    let h = (i as u64).wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+    let h = (i as u64)
+        .wrapping_mul(6364136223846793005)
+        .wrapping_add(1442695040888963407);
     ((h >> 33) as f32 / u32::MAX as f32) * 2.0 - 1.0
 }
 
 fn build_layers(seed: u64) -> Vec<TernaryWeights> {
     (0..LAYERS)
         .map(|l| {
-            let raw: Vec<f32> = (0..ROWS * COLS).map(|i| pseudo(i + seed as usize + l * 97)).collect();
+            let raw: Vec<f32> = (0..ROWS * COLS)
+                .map(|i| pseudo(i + seed as usize + l * 97))
+                .collect();
             TernaryWeights::quantize_from_f32(&raw, ROWS, COLS)
         })
         .collect()
@@ -65,13 +69,28 @@ fn main() {
         let got = archive.to_ternary_weights(i);
         assert_eq!(got.pos_bits, want.pos_bits, "layer {i} pos_bits round-trip");
         assert_eq!(got.neg_bits, want.neg_bits, "layer {i} neg_bits round-trip");
-        assert_eq!(got.row_scale, want.row_scale, "layer {i} row_scale round-trip");
+        assert_eq!(
+            got.row_scale, want.row_scale,
+            "layer {i} row_scale round-trip"
+        );
     }
     if let Ok(view) = archive.layer_view(0) {
         let copied = archive.to_ternary_weights(0);
-        assert_eq!(view.pos_bits, copied.pos_bits.as_slice(), "zero-copy pos == copied");
-        assert_eq!(view.neg_bits, copied.neg_bits.as_slice(), "zero-copy neg == copied");
-        assert_eq!(view.row_scale, copied.row_scale.as_slice(), "zero-copy scale == copied");
+        assert_eq!(
+            view.pos_bits,
+            copied.pos_bits.as_slice(),
+            "zero-copy pos == copied"
+        );
+        assert_eq!(
+            view.neg_bits,
+            copied.neg_bits.as_slice(),
+            "zero-copy neg == copied"
+        );
+        assert_eq!(
+            view.row_scale,
+            copied.row_scale.as_slice(),
+            "zero-copy scale == copied"
+        );
         println!("zero-copy layer view: OK (aligned buffer, views match the copying path)");
     } else {
         println!("zero-copy layer view: buffer misaligned (copying path is the contract)");
@@ -117,7 +136,10 @@ fn main() {
     let mut tampered = bytes.clone();
     let mid = tampered.len() / 2;
     tampered[mid] ^= 0x01;
-    assert!(KptArchive::from_bytes(&tampered).is_err(), "bit flip must be refused");
+    assert!(
+        KptArchive::from_bytes(&tampered).is_err(),
+        "bit flip must be refused"
+    );
 
     // (b) an attacker-controlled file drop still verifies as REFUSED, and
     //     the LIVE file is unaffected (swap_in_place only ever places bytes
@@ -128,10 +150,17 @@ fn main() {
     let pl = poison.len() - 64 - 8; // inside the last layer's payload
     poison[pl] ^= 0x80;
     write_atomic(&drop_path, &poison).expect("drop poison file");
-    assert!(OwnedKptArchive::load(&drop_path).unwrap().verify().is_err(), "poisoned drop must refuse");
+    assert!(
+        OwnedKptArchive::load(&drop_path).unwrap().verify().is_err(),
+        "poisoned drop must refuse"
+    );
     let owned_live = OwnedKptArchive::load(&path).expect("load live");
     let live = owned_live.verify().expect("live file still clean");
-    assert_eq!(live.archive_id(), id_back, "live file untouched by the poisoned drop");
+    assert_eq!(
+        live.archive_id(),
+        id_back,
+        "live file untouched by the poisoned drop"
+    );
     let _ = std::fs::remove_file(&drop_path);
 
     // (c) replay: the OLD archive still verifies structurally (it is a valid

@@ -821,14 +821,8 @@ fn the_withheld_pair_probe_reports_its_ceiling_and_withholds_on_a_degenerate_uni
     let mut scratch = TprScratch::new(&art);
 
     // Healthy universe, fully answerable pool.
-    let full = withheld_pair_top1_report(
-        &art,
-        &p.states,
-        &p.bindings,
-        &p.bindings,
-        &mut scratch,
-    )
-    .unwrap();
+    let full =
+        withheld_pair_top1_report(&art, &p.states, &p.bindings, &p.bindings, &mut scratch).unwrap();
     assert_eq!(full.coverage, 1.0);
     assert!(!full.spread.role_determined_by_filler());
     assert_eq!(
@@ -846,8 +840,7 @@ fn the_withheld_pair_probe_reports_its_ceiling_and_withholds_on_a_degenerate_uni
     // Same universe, half a pool: the number is now bounded by the pool and
     // the report says so instead of letting it be read against 1.0.
     let half = &p.bindings[..p.bindings.len() / 2];
-    let thin =
-        withheld_pair_top1_report(&art, &p.states, &p.bindings, half, &mut scratch).unwrap();
+    let thin = withheld_pair_top1_report(&art, &p.states, &p.bindings, half, &mut scratch).unwrap();
     assert!(thin.coverage < 1.0, "coverage {}", thin.coverage);
     assert!(
         thin.top1 <= thin.coverage + 1e-6,
@@ -873,14 +866,9 @@ fn the_withheld_pair_probe_reports_its_ceiling_and_withholds_on_a_degenerate_uni
     };
     let (dart, _) = als_fit(input(&q), &cfg).unwrap();
     let mut dscratch = TprScratch::new(&dart);
-    let degen = withheld_pair_top1_report(
-        &dart,
-        &q.states,
-        &q.bindings,
-        &q.bindings,
-        &mut dscratch,
-    )
-    .unwrap();
+    let degen =
+        withheld_pair_top1_report(&dart, &q.states, &q.bindings, &q.bindings, &mut dscratch)
+            .unwrap();
     assert_eq!(degen.coverage, 1.0, "the pool is still fully answerable");
     assert!(degen.spread.role_determined_by_filler());
     assert_eq!(degen.verdict(), None, "top1 {}", degen.top1);
@@ -936,7 +924,10 @@ fn observed_pairs_separates_a_counterfactual_the_fit_has_seen_from_one_it_has_no
     // Every planted pair is observed.
     for b in &p.bindings {
         for (&r, &f) in b.roles.iter().zip(b.fillers.iter()) {
-            assert!(obs.contains(r, f), "planted pair ({r}, {f}) must be observed");
+            assert!(
+                obs.contains(r, f),
+                "planted pair ({r}, {f}) must be observed"
+            );
         }
     }
     assert_eq!(obs.observed_fraction(&pairs_of(&p.bindings)), 1.0);

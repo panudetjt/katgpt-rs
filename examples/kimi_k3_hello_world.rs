@@ -48,14 +48,13 @@ use katgpt_rs::kimi_k3::model::{
     ForwardTiming, KimiK3ModelConfig, KimiK3Runtime, kimi_k3_forward_token,
     kimi_k3_forward_token_timed,
 };
-use katgpt_rs::kimi_k3::tiktoken::{load_tiktoken_bpe, TiktokenTokenizer};
+use katgpt_rs::kimi_k3::tiktoken::{TiktokenTokenizer, load_tiktoken_bpe};
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 fn model_dir() -> String {
-    std::env::var("KIMI_K3_MODEL_DIR").unwrap_or_else(|_| {
-        format!("{}/data/kimi-k3-0.40b", env!("CARGO_MANIFEST_DIR"))
-    })
+    std::env::var("KIMI_K3_MODEL_DIR")
+        .unwrap_or_else(|_| format!("{}/data/kimi-k3-0.40b", env!("CARGO_MANIFEST_DIR")))
 }
 
 fn bar() {
@@ -90,10 +89,7 @@ fn print_phase_breakdown(timing: &ForwardTiming, n_tokens: u64) {
     print_row("Final RMSNorm", timing.final_norm_us, n, total_us);
     print_row("LM head (163840×1024)", timing.lm_head_us, n, total_us);
     println!("   {}", "·".repeat(50));
-    println!(
-        "   {:<26} {:>8.2} ms {:>8}",
-        "TOTAL", total_ms, "100.0%",
-    );
+    println!("   {:<26} {:>8.2} ms {:>8}", "TOTAL", total_ms, "100.0%",);
 }
 
 fn print_row(label: &str, us_sum: u128, n: f64, total_us: u128) {
@@ -120,7 +116,7 @@ fn print_row(label: &str, us_sum: u128, n: f64, total_us: u128) {
 fn main() {
     use std::io::Write;
 
-let model_p = format!("{}/model.safetensors", model_dir());
+    let model_p = format!("{}/model.safetensors", model_dir());
     let tiktoken_p = format!("{}/tiktoken.model", model_dir());
 
     if !Path::new(&model_p).exists() {
@@ -154,8 +150,7 @@ let model_p = format!("{}/model.safetensors", model_dir());
         eprintln!("\n❌ tiktoken parse failed: {e:?}");
         std::process::exit(1);
     });
-    let tokenizer = TiktokenTokenizer::from_ranks(&ranks)
-        .with_special_tokens(1, 2, 0); // BOS=1, EOS=2, PAD=0 (from config.json)
+    let tokenizer = TiktokenTokenizer::from_ranks(&ranks).with_special_tokens(1, 2, 0); // BOS=1, EOS=2, PAD=0 (from config.json)
     let tok_load_ms = t_tok.elapsed().as_secs_f64() * 1000.0;
     println!("{tok_load_ms:.0} ms  (vocab={})", tokenizer.vocab_size());
 
@@ -183,10 +178,7 @@ let model_p = format!("{}/model.safetensors", model_dir());
     let mut runtime = KimiK3Runtime::new(&config, 64);
     println!(
         "   config    : {} layers, hidden={}, vocab={}, MoE(top-2 of {}+1 shared)",
-        config.num_layers,
-        config.hidden_size,
-        config.vocab_size,
-        config.moe_config.num_experts,
+        config.num_layers, config.hidden_size, config.vocab_size, config.moe_config.num_experts,
     );
     bar();
 
@@ -194,13 +186,18 @@ let model_p = format!("{}/model.safetensors", model_dir());
     let prompt_tokens = tokenizer.encode(&prompt);
     println!(
         "   tokenized : {:?} → {} tokens: {:?}",
-        prompt, prompt_tokens.len(), prompt_tokens
+        prompt,
+        prompt_tokens.len(),
+        prompt_tokens
     );
     bar();
 
     // ── 5. Prefill (process prompt tokens, no timing — just seed state) ───
     if !prompt_tokens.is_empty() {
-        println!("   ⚙️  PREFILL (processing {} prompt tokens)", prompt_tokens.len());
+        println!(
+            "   ⚙️  PREFILL (processing {} prompt tokens)",
+            prompt_tokens.len()
+        );
         let t_prefill = Instant::now();
         for &tok in &prompt_tokens {
             let _ = kimi_k3_forward_token(&config, &weights, &mut runtime, tok as u32);
@@ -291,7 +288,10 @@ let model_p = format!("{}/model.safetensors", model_dir());
 
     // ── 7. Summary ────────────────────────────────────────────────────────
     let full_text = tokenizer.decode(
-        &generated_tokens.iter().map(|&t| t as usize).collect::<Vec<_>>(),
+        &generated_tokens
+            .iter()
+            .map(|&t| t as usize)
+            .collect::<Vec<_>>(),
     );
     let total_decode_ms: f64 = decode_latencies_ms.iter().sum();
     let n = decode_latencies_ms.len().max(1);
@@ -354,8 +354,12 @@ let model_p = format!("{}/model.safetensors", model_dir());
     #[cfg(not(debug_assertions))]
     {
         println!();
-        println!("   ℹ️  Alloc count not measured in release build (TrackingAllocator is debug-only).");
-        println!("      Run `cargo run --features kimi_k3_loader --example kimi_k3_hello_world` (debug)");
+        println!(
+            "   ℹ️  Alloc count not measured in release build (TrackingAllocator is debug-only)."
+        );
+        println!(
+            "      Run `cargo run --features kimi_k3_loader --example kimi_k3_hello_world` (debug)"
+        );
         println!("      to verify the zero-alloc decode hot path.");
     }
 

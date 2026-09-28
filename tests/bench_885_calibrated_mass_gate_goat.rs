@@ -72,9 +72,24 @@ struct Regime {
 }
 
 const REGIMES: [Regime; 3] = [
-    Regime { name: "hot N=64 k=4", n: 64, k: 4, iters: 64 },
-    Regime { name: "game N=256 k=8", n: 256, k: 8, iters: 32 },
-    Regime { name: "bench884 N=1000 k=100", n: 1000, k: 100, iters: 8 },
+    Regime {
+        name: "hot N=64 k=4",
+        n: 64,
+        k: 4,
+        iters: 64,
+    },
+    Regime {
+        name: "game N=256 k=8",
+        n: 256,
+        k: 8,
+        iters: 32,
+    },
+    Regime {
+        name: "bench884 N=1000 k=100",
+        n: 1000,
+        k: 100,
+        iters: 8,
+    },
 ];
 
 struct Fixture {
@@ -97,8 +112,12 @@ fn sum_f64(v: &[f32]) -> f64 {
 
 #[test]
 fn g2_calibrated_gate_vs_incumbent() {
-    println!("\nBench 885 — calibrated-mass gate vs gate_sigmoid_topk_into (T = 1, β = {BETA}, d = {D_MODEL})");
-    println!("| regime | b/a median | min..max | a ns/call | b ns/call | |Σw−k| incumbent | |Σw−k| calibrated |");
+    println!(
+        "\nBench 885 — calibrated-mass gate vs gate_sigmoid_topk_into (T = 1, β = {BETA}, d = {D_MODEL})"
+    );
+    println!(
+        "| regime | b/a median | min..max | a ns/call | b ns/call | |Σw−k| incumbent | |Σw−k| calibrated |"
+    );
     println!("|---|---|---|---|---|---|---|");
     let mut worst = 0.0f64;
     for (ri, g) in REGIMES.iter().enumerate() {
@@ -121,7 +140,11 @@ fn g2_calibrated_gate_vs_incumbent() {
             cal_b = cal_b.max((sum_f64(&m_b) - k as f64).abs());
         }
         let tol = 1e-3 + 2.0e-7 * n as f64;
-        assert!(cal_b <= tol, "{}: calibrated |Σm − k| = {cal_b} > {tol}", g.name);
+        assert!(
+            cal_b <= tol,
+            "{}: calibrated |Σm − k| = {cal_b} > {tol}",
+            g.name
+        );
 
         let (mut sink_a, mut sink_b) = (0.0f32, 0.0f32);
         let ab = ab_median_ratio(
@@ -131,14 +154,30 @@ fn g2_calibrated_gate_vs_incumbent() {
             |i| {
                 let x = &f.xs[i % X_POOL];
                 let kk = gate_sigmoid_topk_into(
-                    black_box(x), &f.r, n, D_MODEL, BETA, k, &mut s_a, &mut i_a,
+                    black_box(x),
+                    &f.r,
+                    n,
+                    D_MODEL,
+                    BETA,
+                    k,
+                    &mut s_a,
+                    &mut i_a,
                 );
                 sink_a += s_a[i_a[kk - 1]];
             },
             |i| {
                 let x = &f.xs[i % X_POOL];
                 let (kk, tau) = gate_sigmoid_topk_mass_into(
-                    black_box(x), &f.r, n, D_MODEL, BETA, k, 1.0, &mut z_b, &mut m_b, &mut i_b,
+                    black_box(x),
+                    &f.r,
+                    n,
+                    D_MODEL,
+                    BETA,
+                    k,
+                    1.0,
+                    &mut z_b,
+                    &mut m_b,
+                    &mut i_b,
                 );
                 sink_b += m_b[i_b[kk - 1]] + tau * 1e-30;
             },
@@ -161,7 +200,10 @@ fn g2_calibrated_gate_vs_incumbent() {
     println!("G2 vs the issue's ≤ 1.05× bar: {verdict} (worst regime median {worst:.2}×)");
     // Gross ceiling: the composition is incumbent + ≤ 50 bisection passes, so
     // anything past 200× is a de-optimization, not box noise.
-    assert!(worst < 200.0, "calibrated gate {worst:.1}× the incumbent — de-optimized");
+    assert!(
+        worst < 200.0,
+        "calibrated gate {worst:.1}× the incumbent — de-optimized"
+    );
 }
 
 #[test]
@@ -192,5 +234,8 @@ fn g4_calibrated_gate_steady_state_is_alloc_free() {
         }
         black_box(acc);
     });
-    assert_eq!(allocs, 0, "steady-state gate_sigmoid_topk_mass_into allocated {allocs}×");
+    assert_eq!(
+        allocs, 0,
+        "steady-state gate_sigmoid_topk_mass_into allocated {allocs}×"
+    );
 }

@@ -73,7 +73,11 @@ fn build_world(seed: u64) -> World {
         for j in 0..D {
             embeds[i * D + j] = rng.next_gaussian();
         }
-        let norm = embeds[i * D..i * D + D].iter().map(|x| x * x).sum::<f32>().sqrt();
+        let norm = embeds[i * D..i * D + D]
+            .iter()
+            .map(|x| x * x)
+            .sum::<f32>()
+            .sqrt();
         if norm > 1e-10 {
             for j in 0..D {
                 embeds[i * D + j] /= norm;
@@ -108,8 +112,10 @@ fn build_world(seed: u64) -> World {
         }
     }
 
-    let mut sym: Vec<(usize, usize, f32)> =
-        edges.iter().flat_map(|&(a, b, w)| [(a, b, w), (b, a, w)]).collect();
+    let mut sym: Vec<(usize, usize, f32)> = edges
+        .iter()
+        .flat_map(|&(a, b, w)| [(a, b, w), (b, a, w)])
+        .collect();
     sym.sort_unstable_by(|x, y| x.0.cmp(&y.0).then(x.1.cmp(&y.1)));
 
     let mut offsets = vec![0u32; n + 1];
@@ -141,7 +147,14 @@ fn build_world(seed: u64) -> World {
         })
         .collect();
 
-    World { n, embeds, offsets, targets, weights, queries }
+    World {
+        n,
+        embeds,
+        offsets,
+        targets,
+        weights,
+        queries,
+    }
 }
 
 fn main() {
@@ -173,7 +186,10 @@ fn main() {
     // The no-early-stop upper bound: same operator, max_iters raised to 64 —
     // shows the membership fixpoint is what keeps the cost down (stable runs
     // halt in a handful of iterations).
-    let cfg_bound = PropagationConfig { max_iters: 64, ..Default::default() };
+    let cfg_bound = PropagationConfig {
+        max_iters: 64,
+        ..Default::default()
+    };
 
     // ── Propagation: early-stop (membership fixpoint) ──
     let mut total_iters = 0usize;
@@ -181,8 +197,15 @@ fn main() {
     let t0 = Instant::now();
     for seed in black_box(&seeds) {
         let o = propagate_selection_to_fixpoint_into(
-            &world.offsets, &world.targets, &world.weights, seed, n, 32, &cfg,
-            &mut out, &mut scratch,
+            &world.offsets,
+            &world.targets,
+            &world.weights,
+            seed,
+            n,
+            32,
+            &cfg,
+            &mut out,
+            &mut scratch,
         );
         total_iters += o.iters;
         stable_count += o.stable as usize;
@@ -194,8 +217,15 @@ fn main() {
     let t0 = Instant::now();
     for seed in black_box(&seeds) {
         let _ = propagate_selection_to_fixpoint_into(
-            &world.offsets, &world.targets, &world.weights, seed, n, 32, &cfg_bound,
-            &mut out, &mut scratch,
+            &world.offsets,
+            &world.targets,
+            &world.weights,
+            seed,
+            n,
+            32,
+            &cfg_bound,
+            &mut out,
+            &mut scratch,
         );
     }
     let prop_bound_us = t0.elapsed().as_secs_f64() / seeds.len() as f64 * 1e6;
@@ -206,10 +236,7 @@ fn main() {
     for seed in black_box(&seeds) {
         idx.clear();
         idx.extend(0..n);
-        idx.sort_by(|a, b| {
-            seed[*b].total_cmp(&seed[*a])
-                .then(a.cmp(b))
-        });
+        idx.sort_by(|a, b| seed[*b].total_cmp(&seed[*a]).then(a.cmp(b)));
         idx.truncate(32);
         black_box(&idx);
     }
@@ -263,10 +290,7 @@ fn main() {
             }
             idx.clear();
             idx.extend(0..n);
-            idx.sort_by(|a, b| {
-                fused[*b].total_cmp(&fused[*a])
-                    .then(a.cmp(b))
-            });
+            idx.sort_by(|a, b| fused[*b].total_cmp(&fused[*a]).then(a.cmp(b)));
             idx.truncate(32);
             black_box(&idx);
         }

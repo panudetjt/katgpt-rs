@@ -34,7 +34,9 @@ use katgpt_rs::hla::MultiLayerAhlaCache;
 // lib no longer registers a `#[global_allocator]` as a library).
 #[path = "common/alloc_tracking.rs"]
 mod alloc_tracking;
-use katgpt_rs::transformer::loop_deep::{DirectionScales, LoopDeepRun, project_lambda, robust_norm};
+use katgpt_rs::transformer::loop_deep::{
+    DirectionScales, LoopDeepRun, project_lambda, robust_norm,
+};
 use katgpt_rs::transformer::{
     ForwardContext, MultiLayerKVCache, TransformerWeights, forward_looped,
 };
@@ -141,7 +143,10 @@ fn window_multiplier(norms: &[f32], from: usize, to: usize, every: usize) -> f32
     assert!(from < to && to <= norms.len(), "bad window {from}..{to}");
     let a = norms[from];
     let b = norms[to];
-    assert!(a.is_finite() && b.is_finite() && a > 0.0, "non-finite window");
+    assert!(
+        a.is_finite() && b.is_finite() && a > 0.0,
+        "non-finite window"
+    );
     let iters = ((to - from) * every) as f32;
     (b / a).powf(1.0 / iters)
 }
@@ -187,8 +192,7 @@ fn g1_bit_identity_none_alpha0_and_neutral_scales() {
                 let (base, _) = run_deep(&config, &weights, &gate, &sdpa, 0, None);
 
                 let mut run = LoopDeepRun::new(4); // stats on, knobs off
-                let (stats_only, _) =
-                    run_deep(&config, &weights, &gate, &sdpa, 0, Some(&mut run));
+                let (stats_only, _) = run_deep(&config, &weights, &gate, &sdpa, 0, Some(&mut run));
                 assert_eq!(
                     base, stats_only,
                     "T={t} fixture={fixture} pos={pos}: stats-only run perturbed logits"
@@ -202,7 +206,10 @@ fn g1_bit_identity_none_alpha0_and_neutral_scales() {
                 );
 
                 let mut run = LoopDeepRun::new(4);
-                run.direction_scales = Some(DirectionScales { radial: 1.0, tangential: 1.0 });
+                run.direction_scales = Some(DirectionScales {
+                    radial: 1.0,
+                    tangential: 1.0,
+                });
                 let (neutral, _) = run_deep(&config, &weights, &gate, &sdpa, 0, Some(&mut run));
                 assert_eq!(
                     base, neutral,
@@ -263,13 +270,15 @@ fn g2_destabilized_rescue_and_eigenvalue_map() {
     {
         let (config, weights, gate, sdpa) = destabilized_fixture(1024);
         let mut run = LoopDeepRun::new(16);
-        let (logits, final_norm) =
-            run_deep(&config, &weights, &gate, &sdpa, 0, Some(&mut run));
+        let (logits, final_norm) = run_deep(&config, &weights, &gate, &sdpa, 0, Some(&mut run));
         let degraded = !logits_finite(&logits)
             || run.stats.state_non_finite_at.is_some()
             || !final_norm.is_finite()
             || final_norm > 1e30;
-        assert!(degraded, "undamped arm did NOT degrade at T=1024 — fixture broken");
+        assert!(
+            degraded,
+            "undamped arm did NOT degrade at T=1024 — fixture broken"
+        );
         undamped_logits = logits;
         undamped_norm = final_norm;
         println!(
@@ -287,16 +296,21 @@ fn g2_destabilized_rescue_and_eigenvalue_map() {
     for &alpha in &ALPHAS {
         let (config, weights, gate, sdpa) = destabilized_fixture(1024);
         let mut run = LoopDeepRun::with_damping(alpha, 0, 16);
-        let (logits, final_norm) =
-            run_deep(&config, &weights, &gate, &sdpa, 0, Some(&mut run));
+        let (logits, final_norm) = run_deep(&config, &weights, &gate, &sdpa, 0, Some(&mut run));
 
         // Sane outputs: finite readout + finite state + no tripwire fire.
         assert!(
             logits_finite(&logits),
             "α={alpha}: damped readout non-finite at T=1024"
         );
-        assert!(final_norm.is_finite() && final_norm < 1e30, "α={alpha}: state blew up");
-        assert!(run.stats.state_non_finite_at.is_none(), "α={alpha}: state tripwire fired");
+        assert!(
+            final_norm.is_finite() && final_norm < 1e30,
+            "α={alpha}: state blew up"
+        );
+        assert!(
+            run.stats.state_non_finite_at.is_none(),
+            "α={alpha}: state tripwire fired"
+        );
 
         // Eigenvalue map: the SECOND-HALF window (τ ∈ [512, 1024]) — late
         // enough that the h̃ term is negligible and the multiplier has
@@ -315,7 +329,10 @@ fn g2_destabilized_rescue_and_eigenvalue_map() {
         );
         // Monotonicity: multiplier strictly increases with α (more damping
         // ⇔ smaller α ⇔ slower growth).
-        assert!(mult > prev_mult, "α={alpha}: multiplier not monotone ({mult} ≤ {prev_mult})");
+        assert!(
+            mult > prev_mult,
+            "α={alpha}: multiplier not monotone ({mult} ≤ {prev_mult})"
+        );
         prev_mult = mult;
     }
     println!("└─────────┴───────────────┴───────────────┴──────────────┘");
@@ -329,7 +346,10 @@ fn g2_destabilized_rescue_and_eigenvalue_map() {
         let mut ref_logits = Vec::with_capacity(N_TOKENS);
         for tok in 0..N_TOKENS {
             let (logits, _) = run_deep(&config, &weights, &gate, &sdpa, tok, Some(&mut run));
-            assert!(logits_finite(&logits), "token {tok}: non-finite on the damped arm");
+            assert!(
+                logits_finite(&logits),
+                "token {tok}: non-finite on the damped arm"
+            );
             ref_logits.push(logits);
         }
         let mut dist_sum = 0.0f32;
@@ -342,7 +362,10 @@ fn g2_destabilized_rescue_and_eigenvalue_map() {
         }
         let disc = dist_sum / count as f32;
         println!("damped (α=0.25) inter-prompt logit discrimination = {disc:.4} (must be > 0)");
-        assert!(disc > 0.01, "damped arm collapsed to identical readouts (disc={disc})");
+        assert!(
+            disc > 0.01,
+            "damped arm collapsed to identical readouts (disc={disc})"
+        );
         // The undamped arm is non-finite by here — the honest contrast.
         assert!(
             !logits_finite(&undamped_logits) || undamped_norm > 1e30,
@@ -370,7 +393,10 @@ fn g3_stable_fixture_damping_cost() {
             let (base, _) = run_deep(&config, &weights, &gate, &sdpa, tok, None);
             let mut run = LoopDeepRun::with_damping(0.25, 0, 0);
             let (damped, _) = run_deep(&config, &weights, &gate, &sdpa, tok, Some(&mut run));
-            assert!(logits_finite(&damped), "T={t} tok={tok}: damped readout non-finite");
+            assert!(
+                logits_finite(&damped),
+                "T={t} tok={tok}: damped readout non-finite"
+            );
             if argmax(&base) == argmax(&damped) {
                 agree += 1;
             }
@@ -392,7 +418,9 @@ fn g3_stable_fixture_damping_cost() {
             "T={t}: damping flipped the majority of readouts on the STABLE fixture"
         );
     }
-    println!("[G3] ✅ explicit damping on the stable fixture stays structurally sane; cost recorded");
+    println!(
+        "[G3] ✅ explicit damping on the stable fixture stays structurally sane; cost recorded"
+    );
 }
 
 // ── G4: alloc-free stabilization hot loop (deterministic counters) ───────
@@ -408,7 +436,10 @@ fn g4_alloc_free_stabilization_hot_loop() {
     reset_alloc_stats();
     let sentinel: Vec<u8> = vec![0u8; 64];
     let (sent_count, _) = get_alloc_stats();
-    assert!(sent_count > 0, "TrackingAllocator not installed — alloc gate vacuous");
+    assert!(
+        sent_count > 0,
+        "TrackingAllocator not installed — alloc gate vacuous"
+    );
     drop(sentinel);
 
     let (config, weights, gate, sdpa) = stable_fixture(256);
@@ -426,7 +457,10 @@ fn g4_alloc_free_stabilization_hot_loop() {
     // measured region). The warm-up primes THIS SAME `run` so its stats
     // vectors and logit scratch reach capacity before the reset.
     let mut run = LoopDeepRun::with_damping(0.25, 0, 16);
-    run.direction_scales = Some(DirectionScales { radial: 0.25, tangential: 1.0 });
+    run.direction_scales = Some(DirectionScales {
+        radial: 0.25,
+        tangential: 1.0,
+    });
     let _ = forward_looped(
         &mut ctx,
         &weights,
@@ -522,7 +556,10 @@ fn t4_tangential_radial_probe_and_direction_drift() {
         let last = &snaps[snaps.len() - 1];
         let norm = last.iter().map(|v| v * v).sum::<f32>().sqrt();
         println!("mean consecutive state-direction cosine (late, T=64) = {mean_dir_cos:.4}");
-        println!("final state norm at T=64 = {norm:.3e} (norm ratio vs √n = {:.1}×)", norm / (n as f32).sqrt());
+        println!(
+            "final state norm at T=64 = {norm:.3e} (norm ratio vs √n = {:.1}×)",
+            norm / (n as f32).sqrt()
+        );
         // A direction cosine ≈ 1 with a huge norm = magnitude-driven failure:
         // the state grows along a FIXED direction. That predicts the radial
         // axis is the operative one here (upstream's direction-drift failure
@@ -540,8 +577,20 @@ fn t4_tangential_radial_probe_and_direction_drift() {
     // (multiplier → ρ → overflow).
     let arms: [(&str, Option<DirectionScales>); 3] = [
         ("none (degraded control)", None),
-        ("radial ×0.25", Some(DirectionScales { radial: 0.25, tangential: 1.0 })),
-        ("tangential ×0.25", Some(DirectionScales { radial: 1.0, tangential: 0.25 })),
+        (
+            "radial ×0.25",
+            Some(DirectionScales {
+                radial: 0.25,
+                tangential: 1.0,
+            }),
+        ),
+        (
+            "tangential ×0.25",
+            Some(DirectionScales {
+                radial: 1.0,
+                tangential: 0.25,
+            }),
+        ),
     ];
 
     println!("┌─────────────────────────┬───────────────┬───────────────┐");
@@ -554,8 +603,7 @@ fn t4_tangential_radial_probe_and_direction_drift() {
         let (config, weights, gate, sdpa) = destabilized_fixture(1024);
         let mut run = LoopDeepRun::new(64);
         run.direction_scales = *scales;
-        let (logits, final_norm) =
-            run_deep(&config, &weights, &gate, &sdpa, 0, Some(&mut run));
+        let (logits, final_norm) = run_deep(&config, &weights, &gate, &sdpa, 0, Some(&mut run));
         let finite = logits_finite(&logits)
             && run.stats.state_non_finite_at.is_none()
             && final_norm.is_finite();
@@ -564,7 +612,10 @@ fn t4_tangential_radial_probe_and_direction_drift() {
             None => assert!(!finite, "control arm unexpectedly survived T=1024"),
             Some(s) if s.radial < 1.0 => {
                 radial_rescued = finite;
-                assert!(finite, "radial ×0.25 failed to rescue the magnitude-driven failure");
+                assert!(
+                    finite,
+                    "radial ×0.25 failed to rescue the magnitude-driven failure"
+                );
             }
             Some(s) if s.tangential < 1.0 => {
                 tangential_degraded = !finite;
@@ -574,7 +625,9 @@ fn t4_tangential_radial_probe_and_direction_drift() {
     }
     println!("└─────────────────────────┴───────────────┴───────────────┘");
     println!();
-    println!("Verdict on OUR fixture: radial-rescued={radial_rescued}, tangential-degraded={tangential_degraded}");
+    println!(
+        "Verdict on OUR fixture: radial-rescued={radial_rescued}, tangential-degraded={tangential_degraded}"
+    );
     println!("Upstream (sotaku) had the OPPOSITE axis because their failure mode was");
     println!("accumulated DIRECTION drift; ours is magnitude growth along a fixed direction");
     println!("(ρ-gated carry) — the diagnostic above pins which regime a given model is in.");

@@ -459,7 +459,13 @@ pub fn kda_forward_token<'s>(
     // Gate into kernel: f_a_hidden = W^{f_a} · h  [head_dim]
     simd_matmul_rows(&mut scratch.f_a_hidden, &weights.f_a_proj, h, dk, d);
     // g_raw = W^{f_b} · f_a_hidden  [proj_dim]
-    simd_matmul_rows(&mut scratch.g_raw, &weights.f_b_proj, &scratch.f_a_hidden, proj, dk);
+    simd_matmul_rows(
+        &mut scratch.g_raw,
+        &weights.f_b_proj,
+        &scratch.f_a_hidden,
+        proj,
+        dk,
+    );
 
     // β pre-sigmoid: beta_pre = W^β · h  [n_heads]
     simd_matmul_rows(&mut scratch.beta_pre, &weights.beta_proj, h, n_h, d);
@@ -497,7 +503,9 @@ pub fn kda_forward_token<'s>(
         // q_h: L2Norm then scale by 1/sqrt(head_dim).
         // Copy into o_h (reused as q buffer — the gdn2 kernel reads q after
         // writing out, so we need a separate q slice).
-        scratch.o_h.copy_from_slice(&scratch.z_q_conv[off..off + dk]);
+        scratch
+            .o_h
+            .copy_from_slice(&scratch.z_q_conv[off..off + dk]);
         l2_normalize_eps_kda(&mut scratch.o_h);
         for i in 0..dk {
             scratch.o_h[i] *= scale;
@@ -507,7 +515,9 @@ pub fn kda_forward_token<'s>(
         // k_h: L2Norm (no scale). Use alpha_h as scratch (it's written below
         // before the gdn2 call, but we need k for the gdn2 call — borrow order
         // matters).
-        scratch.alpha_h.copy_from_slice(&scratch.z_k_conv[off..off + dk]);
+        scratch
+            .alpha_h
+            .copy_from_slice(&scratch.z_k_conv[off..off + dk]);
         l2_normalize_eps_kda(&mut scratch.alpha_h);
         let k_h = &scratch.alpha_h;
 
@@ -581,16 +591,16 @@ pub fn kda_forward_token<'s>(
         let out_slice = &mut scratch.o_concat[off..off + dk];
 
         gdn2_recurrent_step(
-            k_h,               // k
-            v_h,               // v
-            q_h,               // q
-            s,                 // state matrix (dk × dv), updated in-place
-            alpha_ref,         // per-channel decay
-            &scratch.erase_b_h,// β-broadcast erase gate
-            beta_h,            // w_val = sigmoid(β)
-            &scratch.gdn2_write_w, // write_w_channel (unused for Kda)
-            out_slice,         // output [dv]
-            &mut scratch.gdn2_temp, // temp buffer [dv]
+            k_h,                     // k
+            v_h,                     // v
+            q_h,                     // q
+            s,                       // state matrix (dk × dv), updated in-place
+            alpha_ref,               // per-channel decay
+            &scratch.erase_b_h,      // β-broadcast erase gate
+            beta_h,                  // w_val = sigmoid(β)
+            &scratch.gdn2_write_w,   // write_w_channel (unused for Kda)
+            out_slice,               // output [dv]
+            &mut scratch.gdn2_temp,  // temp buffer [dv]
             &mut scratch.gdn2_delta, // delta buffer [dv]
             dk,
             dk,
@@ -635,7 +645,13 @@ pub fn kda_forward_token<'s>(
 
     // ── Step 4: Output projection ──────────────────────────────────────────
     // output = W_o · o_concat  [hidden_size]
-    simd_matmul_rows(&mut scratch.output, &weights.o_proj, &scratch.o_concat, d, proj);
+    simd_matmul_rows(
+        &mut scratch.output,
+        &weights.o_proj,
+        &scratch.o_concat,
+        d,
+        proj,
+    );
 
     &mut scratch.output[..d]
 }
@@ -707,7 +723,9 @@ mod tests {
         let mut cache = KdaLayerCache::new(&config);
         let mut scratch = KdaForwardScratch::new(&config);
 
-        let h: Vec<f32> = (0..config.hidden_size).map(|i| (i as f32).sin() * 0.1).collect();
+        let h: Vec<f32> = (0..config.hidden_size)
+            .map(|i| (i as f32).sin() * 0.1)
+            .collect();
         let out = kda_forward_token(&config, &weights, &mut cache, &mut scratch, &h);
 
         assert_eq!(out.len(), config.hidden_size);
@@ -802,7 +820,9 @@ mod tests {
         let mut cache = KdaLayerCache::new(&config);
         let mut scratch = KdaForwardScratch::new(&config);
 
-        let h0: Vec<f32> = (0..config.hidden_size).map(|i| (i as f32).sin() * 0.1).collect();
+        let h0: Vec<f32> = (0..config.hidden_size)
+            .map(|i| (i as f32).sin() * 0.1)
+            .collect();
         let h1: Vec<f32> = (0..config.hidden_size)
             .map(|i| ((i + 13) as f32).sin() * 0.1)
             .collect();

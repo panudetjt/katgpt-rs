@@ -228,12 +228,13 @@ impl TernaryWeights {
     ///
     /// On error, `self` is left unmodified.
     pub fn overwrite_from_i8(&mut self, src: &[i8]) -> Result<(), TernaryPackError> {
-        if src.len() == self.rows * self.cols {} else {
-                return Err(TernaryPackError::LengthMismatch {
-                    got: src.len(),
-                    want: self.rows * self.cols,
-                });
-            }
+        if src.len() == self.rows * self.cols {
+        } else {
+            return Err(TernaryPackError::LengthMismatch {
+                got: src.len(),
+                want: self.rows * self.cols,
+            });
+        }
         // Validate before writing so a rejected buffer cannot leave `self`
         // half-updated.
         if let Some(pos) = src.iter().position(|&v| !(-1..=1).contains(&v)) {
@@ -366,7 +367,10 @@ mod tests {
             *v = -*v;
         }
         tw.overwrite_from_i8(&dense).expect("still ternary");
-        assert_eq!(tw.row_scale, scales, "row_scale must survive the round trip");
+        assert_eq!(
+            tw.row_scale, scales,
+            "row_scale must survive the round trip"
+        );
         for r in 0..ROWS {
             for c in 0..COLS {
                 assert_eq!(tw.get(r, c), dense[r * COLS + c]);
@@ -414,7 +418,10 @@ mod tests {
         let err = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             tw.unpack_into(&mut dst);
         }));
-        assert!(err.is_err(), "unpack_into must assert on a mis-sized buffer");
+        assert!(
+            err.is_err(),
+            "unpack_into must assert on a mis-sized buffer"
+        );
     }
 
     /// The onward composition Plan 333 T3.3b needs: `[i8]` → row-scale tier →

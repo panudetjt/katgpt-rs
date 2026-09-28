@@ -560,11 +560,7 @@ pub fn simd_ternary_matmul_batch(w: &TernaryWeights, x: &[f32], batch: usize, y:
             // happens to match, batch >= 4 takes the par_chunks path which
             // slices exactly). Pre-existing since Plan 148; found by Issue 578's
             // G4 batch test.
-            simd_ternary_matvec(
-                w,
-                &x[x_off..x_off + w.cols],
-                &mut y[y_off..y_off + w.rows],
-            );
+            simd_ternary_matvec(w, &x[x_off..x_off + w.cols], &mut y[y_off..y_off + w.rows]);
         }
     } else {
         use rayon::prelude::*;

@@ -271,11 +271,7 @@ pub(crate) fn run_fit_after_shares(
     Ok(())
 }
 
-fn validate_fit(
-    x: &[f32],
-    shape: [usize; 3],
-    ranks: [usize; 3],
-) -> Result<(), SliceTcaError> {
+fn validate_fit(x: &[f32], shape: [usize; 3], ranks: [usize; 3]) -> Result<(), SliceTcaError> {
     let total = shape[0] * shape[1] * shape[2];
     if x.len() != total {
         return Err(SliceTcaError::InputSizeMismatch {
@@ -420,7 +416,14 @@ pub fn reallocate_class(
         rebuilt.push_component(class, decomp.loading(i), slice, rows, cols, weight)?;
     }
     let weight = norm_2(&new_loading);
-    rebuilt.push_component(new_class, &new_loading, &new_slice, new_rows, new_cols, weight)?;
+    rebuilt.push_component(
+        new_class,
+        &new_loading,
+        &new_slice,
+        new_rows,
+        new_cols,
+        weight,
+    )?;
     rebuilt.canonicalize(0.0);
     *decomp = rebuilt;
 
@@ -437,7 +440,13 @@ fn rank1_split(
     scratch: &mut SliceTcaScratch,
 ) -> (Vec<f32>, Vec<f32>, f32) {
     if rows >= cols {
-        thin_svd_into(m, rows, cols, &mut scratch.svd_result, &mut scratch.svd_work);
+        thin_svd_into(
+            m,
+            rows,
+            cols,
+            &mut scratch.svd_result,
+            &mut scratch.svd_work,
+        );
         (
             scratch.svd_result.left_singular_vector(0).to_vec(),
             scratch.svd_result.right_singular_vector(0).to_vec(),

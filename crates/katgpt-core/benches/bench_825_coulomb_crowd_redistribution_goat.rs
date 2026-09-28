@@ -389,7 +389,10 @@ fn main() {
     // Stop on FIRST ARRIVAL at a sink — the only rule a hand-built attract
     // field can offer, because it carries no target weights to derive one from.
     // Same table builder, same walker; one vector differs.
-    let first_sink: Vec<f32> = mu1.iter().map(|&m| if m > 0.0 { 1.0 } else { 0.0 }).collect();
+    let first_sink: Vec<f32> = mu1
+        .iter()
+        .map(|&m| if m > 0.0 { 1.0 } else { 0.0 })
+        .collect();
     let router_naive = CrowdRouter::from_flow_with_absorption(&cx, &j_naive, &first_sink);
     let n_big = 1_000_000usize;
     let start = walkers_from(&mu0, n_big);
@@ -481,6 +484,9 @@ fn gate_g4(cx: &CellComplex, rhs: &[f32], n_edges: usize) -> bool {
         }
     });
     let ok = allocs == 0;
-    println!("\nG4 alloc: {allocs} allocation(s) over 100 refined solve + d(phi) passes -> {}", pf(ok));
+    println!(
+        "\nG4 alloc: {allocs} allocation(s) over 100 refined solve + d(phi) passes -> {}",
+        pf(ok)
+    );
     ok
 }

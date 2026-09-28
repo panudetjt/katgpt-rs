@@ -50,7 +50,7 @@
 
 use crate::mux::bfs::MuxBfs;
 use crate::mux::dd_tree::{LeafPaths, MuxDdTree};
-use crate::mux::top_k::{extract_top_k_into, MAX_TOP_K};
+use crate::mux::top_k::{MAX_TOP_K, extract_top_k_into};
 
 /// Default gap-derivative dead-band (flat tolerance).
 pub const DEFAULT_GAP_EPS: f32 = 1e-4;
@@ -239,7 +239,15 @@ impl MuxBfs {
         narrower: &mut GapTrendNarrower,
     ) {
         let mut leaves = LeafPaths::new();
-        self.step_height_gated_into(tree, depth, logits_by_leaf, heights_by_leaf, gate, narrower, &mut leaves);
+        self.step_height_gated_into(
+            tree,
+            depth,
+            logits_by_leaf,
+            heights_by_leaf,
+            gate,
+            narrower,
+            &mut leaves,
+        );
     }
 
     /// Zero-alloc variant of [`Self::step_height_gated`] — reuses the
@@ -401,7 +409,11 @@ mod tests {
         for f in &frontiers {
             widths.push(n.observe(f));
         }
-        assert_eq!(widths, vec![4, 3, 2, 1, 1], "progressive narrowing to floor 1");
+        assert_eq!(
+            widths,
+            vec![4, 3, 2, 1, 1],
+            "progressive narrowing to floor 1"
+        );
     }
 
     /// Shrinking gaps widen back toward base (explore recovery).
@@ -501,7 +513,15 @@ mod tests {
         let gate = HeightGate::new(1);
         let mut narrower = GapTrendNarrower::new(4);
         let mut leaves_buf = LeafPaths::new();
-        step_uniform(&bfs, &mut gated_tree, &logits, 0, &gate, &mut narrower, &mut leaves_buf);
+        step_uniform(
+            &bfs,
+            &mut gated_tree,
+            &logits,
+            0,
+            &gate,
+            &mut narrower,
+            &mut leaves_buf,
+        );
         assert_eq!(gated_tree.leaf_count(), 1, "width-1 commit → one successor");
         assert!(gated_tree.depth >= 1, "depth still grows");
         assert!(
@@ -515,7 +535,15 @@ mod tests {
         let mut far_tree = MuxDdTree::new(4);
         far_tree.init_root(&logits);
         let mut narrower2 = GapTrendNarrower::new(4);
-        step_uniform(&bfs, &mut far_tree, &logits, 99, &gate, &mut narrower2, &mut leaves_buf);
+        step_uniform(
+            &bfs,
+            &mut far_tree,
+            &logits,
+            99,
+            &gate,
+            &mut narrower2,
+            &mut leaves_buf,
+        );
         assert_eq!(far_tree.leaf_count(), baseline_leaves);
     }
 
@@ -533,8 +561,20 @@ mod tests {
         tree.init_root(&flat);
         // 4 steps: leaves grow 1 → 4 → 16 → 64 (uniform width held at 4).
         for step in 0..4 {
-            step_uniform(&bfs, &mut tree, &flat, 99, &gate, &mut narrower, &mut leaves_buf);
-            assert_eq!(narrower.width(), 4, "flat gaps must never narrow (step {step})");
+            step_uniform(
+                &bfs,
+                &mut tree,
+                &flat,
+                99,
+                &gate,
+                &mut narrower,
+                &mut leaves_buf,
+            );
+            assert_eq!(
+                narrower.width(),
+                4,
+                "flat gaps must never narrow (step {step})"
+            );
         }
         assert_eq!(tree.leaf_count(), 4 * 4 * 4 * 4);
     }
@@ -554,10 +594,21 @@ mod tests {
         let mut widths = Vec::new();
         for step in 1..5 {
             let l = sharpe_logits(step);
-            step_uniform(&bfs, &mut tree, &l, 99, &gate, &mut narrower, &mut leaves_buf);
+            step_uniform(
+                &bfs,
+                &mut tree,
+                &l,
+                99,
+                &gate,
+                &mut narrower,
+                &mut leaves_buf,
+            );
             widths.push(narrower.width());
         }
-        assert!(widths.windows(2).all(|w| w[0] >= w[1]), "monotone narrowing: {widths:?}");
+        assert!(
+            widths.windows(2).all(|w| w[0] >= w[1]),
+            "monotone narrowing: {widths:?}"
+        );
         assert_eq!(*widths.last().unwrap(), 1);
     }
 
@@ -593,7 +644,7 @@ mod tests {
     fn g2_controller_latency_ns_scale() {
         const N: usize = 100_000;
 
-let mut n = GapTrendNarrower::new(4);
+        let mut n = GapTrendNarrower::new(4);
         let gate = HeightGate::new(2);
         // Warm up.
         for _ in 0..1_000 {
@@ -606,7 +657,9 @@ let mut n = GapTrendNarrower::new(4);
             w = w.wrapping_add(gate.commit_width(3, w.max(1)));
         }
         let per_op_ns = t0.elapsed().as_nanos() as f64 / (2 * N) as f64;
-        assert!(per_op_ns < 50.0, "controller must be ns-scale: {per_op_ns:.2} ns/op");
+        assert!(
+            per_op_ns < 50.0,
+            "controller must be ns-scale: {per_op_ns:.2} ns/op"
+        );
     }
-
 }

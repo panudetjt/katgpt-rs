@@ -36,12 +36,16 @@ fn alloc_delta<R>(f: impl FnOnce() -> R) -> (R, usize) {
 fn g4_hot_path_is_alloc_free() {
     // Setup (heap allowed): K=8 synthetic D=32 components off-stack.
     let blocks: Vec<SyntheticBlock> = (0..8).map(|n| SyntheticBlock::new(32, n)).collect();
-    let models: [&dyn ComponentModel; 8] = std::array::from_fn(|n| &blocks[n] as &dyn ComponentModel);
+    let models: [&dyn ComponentModel; 8] =
+        std::array::from_fn(|n| &blocks[n] as &dyn ComponentModel);
 
     // Construction: fully inline (η + weights + fat pointers) → 0 allocs.
     let (mut filter, build_allocs) =
         alloc_delta(|| NonergodicFilter::<8, 32>::new(models, [0.125; 8]));
-    assert_eq!(build_allocs, 0, "construction allocated {build_allocs} times");
+    assert_eq!(
+        build_allocs, 0,
+        "construction allocated {build_allocs} times"
+    );
 
     // Setup token stream (heap allowed, outside the measured region).
     let mut rng = fastrand::Rng::with_seed(592);
@@ -53,7 +57,10 @@ fn g4_hot_path_is_alloc_free() {
             filter.tick(t);
         }
     });
-    assert_eq!(tick_allocs, 0, "tick allocated {tick_allocs} times over 1000 ticks");
+    assert_eq!(
+        tick_allocs, 0,
+        "tick allocated {tick_allocs} times over 1000 ticks"
+    );
 
     // Telescoping readout: 100 calls → 0 allocs.
     let mut tele = [0.0f32; 8 * 32];
@@ -62,7 +69,10 @@ fn g4_hot_path_is_alloc_free() {
             filter.telescope_into(&mut tele);
         }
     });
-    assert_eq!(tele_allocs, 0, "telescope_into allocated {tele_allocs} times");
+    assert_eq!(
+        tele_allocs, 0,
+        "telescope_into allocated {tele_allocs} times"
+    );
 
     // Readout accessors → 0 allocs.
     let (_, read_allocs) = alloc_delta(|| {

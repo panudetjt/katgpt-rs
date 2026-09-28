@@ -497,7 +497,12 @@ mod goat_benchmarks {
     /// dead (`let _ = f()` measured 0 ns even with black_box inside the
     /// callee — the Issue 723 Class A2 direct-call-vs-loop probe), so the
     /// work must escape through a value the test later consumes.
-    fn run_rv_gated_query(gate: &TriggerGate, thresholds: &RvThresholds, rv: f64, sink: &mut u64) -> (u64, bool) {
+    fn run_rv_gated_query(
+        gate: &TriggerGate,
+        thresholds: &RvThresholds,
+        rv: f64,
+        sink: &mut u64,
+    ) -> (u64, bool) {
         let tier = gate.rv_tier_boost(rv, thresholds);
         let start = Instant::now();
         let routed_tier = match tier {
@@ -561,7 +566,8 @@ mod goat_benchmarks {
             let rv = tracker.rv();
 
             // RV-gated routing
-            let (rv_latency, went_cpu) = run_rv_gated_query(&gate, &thresholds, rv, &mut rv_work_sink);
+            let (rv_latency, went_cpu) =
+                run_rv_gated_query(&gate, &thresholds, rv, &mut rv_work_sink);
             rv_gated_latencies.push(rv_latency);
 
             // Baseline: always GPU (no RV routing)

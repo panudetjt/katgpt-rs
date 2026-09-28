@@ -968,11 +968,7 @@ mod census_tests {
             println!(
                 "workload={name} grid={grid} agents={agents} ticks_simulated={ticks} \
                  tree_entered={}/{} census_states={} max_stuck={} truncated={}",
-                self.tree_entered_ticks,
-                ticks,
-                self.states,
-                self.max_stuck,
-                self.truncated_any,
+                self.tree_entered_ticks, ticks, self.states, self.max_stuck, self.truncated_any,
             );
             if self.states == 0 {
                 println!("  (greedy fast path on every tick — constraint tree never entered)");

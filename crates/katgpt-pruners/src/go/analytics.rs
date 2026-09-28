@@ -278,7 +278,9 @@ fn sign_f32(x: f32) -> i8 {
 /// - `0.0` if the losing player has no moves with a predecessor trace value.
 /// - Otherwise, the average `|trace[i] - trace[i-1]|` over the loser's moves.
 pub fn compute_mlwr(trace: &[f32], moves: &[MoveRecord], winner: Option<GoCellSer>) -> f32 {
-    let Some(winner_cell) = winner else { return 0.0 };
+    let Some(winner_cell) = winner else {
+        return 0.0;
+    };
 
     // Determine the loser
     let loser = match winner_cell {

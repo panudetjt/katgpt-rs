@@ -292,14 +292,8 @@ mod tests {
         let pi = seeded_shuffle(1024, 0x602_c0de);
         let alr = local_ar_ness(&pi);
         let agr = global_ar_ness(&pi);
-        assert!(
-            (0.4..0.6).contains(&alr),
-            "ALR outside random band: {alr}"
-        );
-        assert!(
-            (0.4..0.6).contains(&agr),
-            "AGR outside random band: {agr}"
-        );
+        assert!((0.4..0.6).contains(&alr), "ALR outside random band: {alr}");
+        assert!((0.4..0.6).contains(&agr), "AGR outside random band: {agr}");
     }
 
     #[test]

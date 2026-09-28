@@ -442,9 +442,7 @@ pub struct InfoNceConfig {
 
 impl Default for InfoNceConfig {
     fn default() -> Self {
-        Self {
-            n_negatives: 8,
-        }
+        Self { n_negatives: 8 }
     }
 }
 

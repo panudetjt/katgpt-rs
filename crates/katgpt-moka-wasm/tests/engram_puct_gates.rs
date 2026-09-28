@@ -115,7 +115,10 @@ fn g1_empty_table_first_moves_bit_identical() {
         let board = random_position(0xC0FFEE ^ seed, 3 + (seed as usize % 14));
         let a = fused.select_move(&board);
         let b = plain.select_move(&board);
-        assert_eq!(a, b, "seed {seed}: fused(empty) diverged from plain at {board:?}");
+        assert_eq!(
+            a, b,
+            "seed {seed}: fused(empty) diverged from plain at {board:?}"
+        );
     }
 }
 
@@ -221,10 +224,7 @@ fn g6_deterministic_table_and_players() {
     let mut p1 = PuctPlayer::with_engram(BUDGET, C_PUCT, TOP_K, EngramPuctMemory::from_mined(&t1));
     let mut p2 = PuctPlayer::with_engram(BUDGET, C_PUCT, TOP_K, EngramPuctMemory::from_mined(&t2));
     assert_eq!(p1.select_move(&board), p2.select_move(&board));
-    assert_eq!(
-        p1.select_move(&Board::new()),
-        p2.select_move(&Board::new())
-    );
+    assert_eq!(p1.select_move(&Board::new()), p2.select_move(&Board::new()));
 }
 
 /// Q-init direction: discover the plain player's most-visited root move M,
@@ -271,8 +271,7 @@ fn q_init_suppresses_a_memory_losing_move() {
     let mined = MinedTable::build(1 << 12, test_heads(), vec![entry]);
 
     // 3. Fused search must suppress M's share.
-    let mut fused =
-        PuctPlayer::with_engram(B, C_PUCT, TOP_K, EngramPuctMemory::from_mined(&mined));
+    let mut fused = PuctPlayer::with_engram(B, C_PUCT, TOP_K, EngramPuctMemory::from_mined(&mined));
     let _ = fused.select_move(&board);
     let fused_root = fused.root_child_visits();
     assert_eq!(

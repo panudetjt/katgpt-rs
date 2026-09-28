@@ -191,7 +191,11 @@ impl Verdict {
             self.n,
             100.0 * p,
             self.draws,
-            if self.n >= 200 { "n≥200" } else { "UNDERPOWERED n<200" }
+            if self.n >= 200 {
+                "n≥200"
+            } else {
+                "UNDERPOWERED n<200"
+            }
         );
         println!(
             "  Wilson one-sided 95% lower = {:.1}% | two-sided 95% = [{:.1}%, {:.1}%] | CP exact lower = {:.1}%",
@@ -201,7 +205,14 @@ impl Verdict {
             100.0 * cp
         );
         let pass = self.n >= 200 && w1 > 0.5;
-        println!("  G5 verdict: {}", if pass { "PASS (lower bound > 50%)" } else { "FAIL" });
+        println!(
+            "  G5 verdict: {}",
+            if pass {
+                "PASS (lower bound > 50%)"
+            } else {
+                "FAIL"
+            }
+        );
         pass
     }
 }
@@ -306,12 +317,8 @@ fn main() {
     }
 
     // ── T3.1 + T3.3: paired head-to-head ────────────────────────────────
-    let mut fused = PuctPlayer::with_engram(
-        BUDGET,
-        C_PUCT,
-        TOP_K,
-        EngramPuctMemory::from_mined(&mined),
-    );
+    let mut fused =
+        PuctPlayer::with_engram(BUDGET, C_PUCT, TOP_K, EngramPuctMemory::from_mined(&mined));
     let mut plain = PuctPlayer::new(BUDGET, C_PUCT, TOP_K);
     let (mut wins, mut draws, mut games) = (0usize, 0usize, 0usize);
     let t0 = std::time::Instant::now();
@@ -367,16 +374,20 @@ fn main() {
 
     // ── T3.2b: independent-opponent control (greedy) ────────────────────
     if !skip_greedy {
-        let mut fused_g = PuctPlayer::with_engram(
-            BUDGET,
-            C_PUCT,
-            TOP_K,
-            EngramPuctMemory::from_mined(&mined),
-        );
+        let mut fused_g =
+            PuctPlayer::with_engram(BUDGET, C_PUCT, TOP_K, EngramPuctMemory::from_mined(&mined));
         let mut plain_g = PuctPlayer::new(BUDGET, C_PUCT, TOP_K);
         let mut greedy = GreedyMoka::new();
-        let mut arm_f = Verdict { wins: 0, draws: 0, n: 0 };
-        let mut arm_p = Verdict { wins: 0, draws: 0, n: 0 };
+        let mut arm_f = Verdict {
+            wins: 0,
+            draws: 0,
+            n: 0,
+        };
+        let mut arm_p = Verdict {
+            wins: 0,
+            draws: 0,
+            n: 0,
+        };
         for i in 0..greedy_n {
             let seed = EVAL_SEED_BASE.wrapping_mul((i as u64).wrapping_add(1));
             // Same seed + same color schedule for BOTH arms; PUCT colour
@@ -392,14 +403,13 @@ fn main() {
                 );
                 play_game(&mut pb, &mut wg, seed)
             } else {
-                1.0
-                    - {
-                        let (mut gb, mut pw) = (
-                            |b: &Board| greedy.select(b),
-                            |b: &Board| fused_g.select_move(b),
-                        );
-                        play_game(&mut gb, &mut pw, seed)
-                    }
+                1.0 - {
+                    let (mut gb, mut pw) = (
+                        |b: &Board| greedy.select(b),
+                        |b: &Board| fused_g.select_move(b),
+                    );
+                    play_game(&mut gb, &mut pw, seed)
+                }
             };
             let p_r = if i % 2 == 0 {
                 let (mut pb, mut wg) = (
@@ -408,14 +418,13 @@ fn main() {
                 );
                 play_game(&mut pb, &mut wg, seed)
             } else {
-                1.0
-                    - {
-                        let (mut gb, mut pw) = (
-                            |b: &Board| greedy.select(b),
-                            |b: &Board| plain_g.select_move(b),
-                        );
-                        play_game(&mut gb, &mut pw, seed)
-                    }
+                1.0 - {
+                    let (mut gb, mut pw) = (
+                        |b: &Board| greedy.select(b),
+                        |b: &Board| plain_g.select_move(b),
+                    );
+                    play_game(&mut gb, &mut pw, seed)
+                }
             };
             for (v, r) in [(&mut arm_f, f_r), (&mut arm_p, p_r)] {
                 v.n += 1;
@@ -471,14 +480,22 @@ fn main() {
                 }
             }
         }
-        Verdict { wins: w, draws: d, n: g }
-            .report("T3.3 budget arm (fused b25 vs plain b50 — 'equal at ≤50% budget' alternative)");
+        Verdict {
+            wins: w,
+            draws: d,
+            n: g,
+        }
+        .report("T3.3 budget arm (fused b25 vs plain b50 — 'equal at ≤50% budget' alternative)");
     }
 
     println!(
         "\n=== SUMMARY: G5 head-to-head {h2h_wins}/{h2h_games} = {:.1}% — {} ===",
         100.0 * h2h_wins as f64 / h2h_games.max(1) as f64,
-        if g5_pass { "PASS" } else { "FAIL (records the negative; feature stays opt-in)" }
+        if g5_pass {
+            "PASS"
+        } else {
+            "FAIL (records the negative; feature stays opt-in)"
+        }
     );
     std::process::exit(if g5_pass { 0 } else { 1 });
 }

@@ -55,7 +55,11 @@ fn gate_g1_hold_concentration() -> GateResult {
         (10_000, 8, 0.75),
     ] {
         let delta = 0.5_f32;
-        let mode = SsmaxMode::HoldConcentration { c, k, rolling_delta: delta };
+        let mode = SsmaxMode::HoldConcentration {
+            c,
+            k,
+            rolling_delta: delta,
+        };
         let m = mode.multiplier((n as f32).ln());
         let mass = two_level_topk_mass(n, k, (m * delta) as f64);
         let hit = (mass - c as f64).abs() < 5e-3;
@@ -69,16 +73,27 @@ fn gate_g1_hold_concentration() -> GateResult {
         }
     }
     // from_mode caches the exact finite-n form
-    let mode = SsmaxMode::HoldConcentration { c: 0.9, k: 1, rolling_delta: 0.5 };
+    let mode = SsmaxMode::HoldConcentration {
+        c: 0.9,
+        k: 1,
+        rolling_delta: 0.5,
+    };
     let cfg = SsmaxConfig::from_mode(&mode, 10_000);
     let direct = mode.multiplier((10_000_f32).ln());
     let cfg_ok = (cfg.multiplier() - direct).abs() < 1e-3;
-    println!("  from_mode caches exact form: {cfg_ok} ({} vs {direct:.4})", cfg.multiplier());
+    println!(
+        "  from_mode caches exact form: {cfg_ok} ({} vs {direct:.4})",
+        cfg.multiplier()
+    );
     ok &= cfg_ok;
     GateResult {
         name: "G1a HoldConcentration exactness",
         passed: ok,
-        detail: if ok { "all thresholds hold c".into() } else { detail },
+        detail: if ok {
+            "all thresholds hold c".into()
+        } else {
+            detail
+        },
     }
 }
 
@@ -95,7 +110,10 @@ fn gate_g1_logit_regime() -> GateResult {
         let row: Vec<f32> = (0..n).map(|i| hash(i, 7)).collect();
         let rho = kamath_rho(&row);
         let hit = (0.35..=1.15).contains(&rho);
-        println!("  gaussian n={n:5}: ρ = {rho:.3} ({})", if hit { "band OK" } else { "OUT" });
+        println!(
+            "  gaussian n={n:5}: ρ = {rho:.3} ({})",
+            if hit { "band OK" } else { "OUT" }
+        );
         ok &= hit;
     }
     // spike separation grows with n
@@ -131,7 +149,11 @@ fn gate_g1_logit_regime() -> GateResult {
     GateResult {
         name: "G1b logit_regime bands",
         passed: ok,
-        detail: if ok { "bands + separation + bounds + determinism".into() } else { "see lines above".into() },
+        detail: if ok {
+            "bands + separation + bounds + determinism".into()
+        } else {
+            "see lines above".into()
+        },
     }
 }
 
@@ -169,7 +191,11 @@ fn gate_g2_latency() -> GateResult {
         worst_ns = worst_ns.max(ns);
     }
     // HoldConcentration multiplier: one ln/exp + arithmetic — bar 100 ns
-    let mode = SsmaxMode::HoldConcentration { c: 0.9, k: 1, rolling_delta: 0.5 };
+    let mode = SsmaxMode::HoldConcentration {
+        c: 0.9,
+        k: 1,
+        rolling_delta: 0.5,
+    };
     let log_n = (4_096_f32).ln();
     for _ in 0..100 {
         black_box(mode.multiplier(black_box(log_n)));
@@ -181,7 +207,10 @@ fn gate_g2_latency() -> GateResult {
     }
     let ns = t0.elapsed().as_secs_f64() * 1e9 / iters as f64;
     let hit = ns < 100.0;
-    println!("  HoldConcentration multiplier: {ns:6.1} ns/call (< 100 ns: {})", if hit { "OK" } else { "OUT" });
+    println!(
+        "  HoldConcentration multiplier: {ns:6.1} ns/call (< 100 ns: {})",
+        if hit { "OK" } else { "OUT" }
+    );
     ok &= hit;
     GateResult {
         name: "G2 latency",
@@ -198,7 +227,11 @@ fn gate_g4_alloc() -> GateResult {
         ((h % 2009) as f32 / 1004.5) - 1.0
     };
     let row: Vec<f32> = (0..1024).map(|i| hash(i, 5)).collect();
-    let mode = SsmaxMode::HoldConcentration { c: 0.9, k: 1, rolling_delta: 0.5 };
+    let mode = SsmaxMode::HoldConcentration {
+        c: 0.9,
+        k: 1,
+        rolling_delta: 0.5,
+    };
     let log_n = (1024_f32).ln();
 
     // warm once
@@ -229,13 +262,22 @@ fn main() {
     println!("\n================ GOAT VERDICT ================");
     let mut all = true;
     for g in &gates {
-        println!("  [{}] {} — {}", if g.passed { "PASS" } else { "FAIL" }, g.name, g.detail);
+        println!(
+            "  [{}] {} — {}",
+            if g.passed { "PASS" } else { "FAIL" },
+            g.name,
+            g.detail
+        );
         all &= g.passed;
     }
     // G3 is the default-build parity argument (lib suites), not a bench arm:
-    println!("  [NOTE] G3 no-regression: default-build lib tests (30 ssmax incl. 6 new HoldConcentration) — run separately");
+    println!(
+        "  [NOTE] G3 no-regression: default-build lib tests (30 ssmax incl. 6 new HoldConcentration) — run separately"
+    );
     if all {
-        println!("\n  → G1 + G2 + G4 ALL PASS — logit_regime ships OPT-IN; HoldConcentration ships in the default-on ssmax module (Adaptive-variant precedent).");
+        println!(
+            "\n  → G1 + G2 + G4 ALL PASS — logit_regime ships OPT-IN; HoldConcentration ships in the default-on ssmax module (Adaptive-variant precedent)."
+        );
     } else {
         println!("\n  → GATE FAILED");
         std::process::exit(1);

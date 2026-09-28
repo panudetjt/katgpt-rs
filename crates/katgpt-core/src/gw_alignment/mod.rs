@@ -59,14 +59,10 @@ const SCORE_ZERO_FLOOR: f64 = 1e-30;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GwError {
     /// A probe set exceeded [`GW_MAX`].
-    TooLarge {
-        len: usize,
-    },
+    TooLarge { len: usize },
     /// A distance matrix was empty, or its first row did not have `rows`
     /// entries (not square).
-    NotSquare {
-        rows: usize,
-    },
+    NotSquare { rows: usize },
     /// A row length did not match the first row's.
     Ragged {
         row: usize,
@@ -85,11 +81,9 @@ impl core::fmt::Display for GwError {
                 f,
                 "distance matrix has {rows} rows; must be square and non-empty"
             ),
-            GwError::Ragged {
-                row,
-                expected,
-                got,
-            } => write!(f, "row {row} has {got} entries, expected {expected}"),
+            GwError::Ragged { row, expected, got } => {
+                write!(f, "row {row} has {got} entries, expected {expected}")
+            }
         }
     }
 }
@@ -214,11 +208,7 @@ pub fn score_from_loss(loss: f32) -> f32 {
     let loss = loss.max(0.0);
     let z = (f64::from(GW_SCORE_BETA) * f64::from(loss)).min(SCORE_EXP_CLAMP);
     let s = 1.0 / (1.0 + f64::exp(z));
-    if s < SCORE_ZERO_FLOOR {
-        0.0
-    } else {
-        s as f32
-    }
+    if s < SCORE_ZERO_FLOOR { 0.0 } else { s as f32 }
 }
 
 #[cfg(test)]

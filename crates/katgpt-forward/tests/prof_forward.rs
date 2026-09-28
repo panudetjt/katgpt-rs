@@ -77,11 +77,7 @@ fn black_box<T>(x: T) -> T {
 
 /// Run `forward()` once at each position in `0..seq_len`, repeating the whole
 /// loop `iters` times. Returns total elapsed.
-fn run_decode_loop(
-    config: &Config,
-    seq_len: usize,
-    iters: usize,
-) -> std::time::Duration {
+fn run_decode_loop(config: &Config, seq_len: usize, iters: usize) -> std::time::Duration {
     let mut rng = katgpt_types::Rng::new(42);
     let weights = TransformerWeights::new(config, &mut rng);
     let mut ctx = ForwardContext::new(config);
@@ -141,7 +137,9 @@ fn prof_forward_phase_breakdown() {
     println!("── Interpretation ──");
     println!("  ns/token at seq_len=1  ≈ matmul-dominated cost (embedding + QKV +");
     println!("                             attn[1] + output proj + MLP + lm_head)");
-    println!("  (ns/token at seq_len=N) - (ns/token at seq_len=1) ≈ attention scan cost at depth N");
+    println!(
+        "  (ns/token at seq_len=N) - (ns/token at seq_len=1) ≈ attention scan cost at depth N"
+    );
     println!("  If attention cost grows linearly with N and dominates at large N,");
     println!("  attention is the bottleneck for long contexts. If the seq_len=1");
     println!("  cost dominates, matmuls are the bottleneck (weight-bandwidth-bound).");
@@ -222,7 +220,10 @@ fn g1_f16_approximate_correctness() {
     } else {
         0.0
     };
-    println!("  relative error:    {rel_err:.4} ({:.2}%)", rel_err * 100.0);
+    println!(
+        "  relative error:    {rel_err:.4} ({:.2}%)",
+        rel_err * 100.0
+    );
     println!();
 
     // G1 gate: the relative error should be small (< 15%).
@@ -244,7 +245,10 @@ fn g2_f16_speedup_vs_f32() {
     // Test at both medium (fits in L3) and large (exceeds L3) configs.
     // The f16 win only materializes when the model exceeds cache — the
     // halved bandwidth matters only for DRAM reads.
-    for (label, config) in [("medium (fits L3)", medium_config()), ("large (exceeds L3)", large_config())] {
+    for (label, config) in [
+        ("medium (fits L3)", medium_config()),
+        ("large (exceeds L3)", large_config()),
+    ] {
         let mut rng = katgpt_types::Rng::new(42);
         let weights = TransformerWeights::new(&config, &mut rng);
         let weights_f16 = weights.to_f16();
@@ -287,18 +291,24 @@ fn g2_f16_speedup_vs_f32() {
         // Estimate weight bytes for context
         let n = config.n_embd;
         let kvd = config.n_kv_head * config.head_dim;
-        let per_layer_f32 = (n * n + kvd * n * 2 + n * n + config.mlp_hidden * n + n * config.mlp_hidden) * 4;
+        let per_layer_f32 =
+            (n * n + kvd * n * 2 + n * n + config.mlp_hidden * n + n * config.mlp_hidden) * 4;
         let total_f32 = per_layer_f32 * config.n_layer + config.vocab_size * n * 4;
 
         println!();
         println!("═══ G2: f16 speedup vs f32 [{label}] ═══");
-        println!("  config: n_embd={}, n_layer={}, vocab={}, mlp_hidden={}",
-            config.n_embd, config.n_layer, config.vocab_size, config.mlp_hidden);
+        println!(
+            "  config: n_embd={}, n_layer={}, vocab={}, mlp_hidden={}",
+            config.n_embd, config.n_layer, config.vocab_size, config.mlp_hidden
+        );
         println!("  total f32 weight bytes: {:.1} MB", total_f32 as f64 / 1e6);
         println!("  iters: {iters}");
         println!("  f32: {f32_ns:>12.1} ns/token");
         println!("  f16: {f16_ns:>12.1} ns/token");
-        println!("  speedup: {speedup:.3}× ({:.1}% of f32)", f16_ns / f32_ns * 100.0);
+        println!(
+            "  speedup: {speedup:.3}× ({:.1}% of f32)",
+            f16_ns / f32_ns * 100.0
+        );
         println!();
 
         // G2 gate threshold: 1.5× matches the issue's promotion criteria.

@@ -63,12 +63,18 @@
 /// `usize::MAX` — keep everything, the safe direction.
 #[inline]
 pub fn alibi_entmax_window_1p5(z_min: f32, z_max: f32, slope: f32) -> usize {
-    debug_assert!(slope.is_finite() && slope > 0.0, "ALiBi slope must be finite > 0");
+    debug_assert!(
+        slope.is_finite() && slope > 0.0,
+        "ALiBi slope must be finite > 0"
+    );
     debug_assert!(
         z_min.is_finite() && z_max.is_finite() && z_max >= z_min,
         "raw-logit bounds must be finite and ordered"
     );
-    if !(slope.is_finite() && slope > 0.0 && z_min.is_finite() && z_max.is_finite()
+    if !(slope.is_finite()
+        && slope > 0.0
+        && z_min.is_finite()
+        && z_max.is_finite()
         && z_max >= z_min)
     {
         return usize::MAX;
@@ -149,10 +155,7 @@ mod tests {
         assert_eq!(alibi_entmax_window_1p5(0.0, 4.0, -1.0), usize::MAX);
         assert_eq!(alibi_entmax_window_1p5(0.0, f32::NAN, 1.0), usize::MAX);
         assert_eq!(alibi_entmax_window_1p5(5.0, 1.0, 1.0), usize::MAX);
-        assert_eq!(
-            alibi_entmax_window_1p5(0.0, 4.0, f32::INFINITY),
-            usize::MAX
-        );
+        assert_eq!(alibi_entmax_window_1p5(0.0, 4.0, f32::INFINITY), usize::MAX);
     }
 
     #[test]

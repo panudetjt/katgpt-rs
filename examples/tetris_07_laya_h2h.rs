@@ -38,20 +38,20 @@
 //!     --verify-walk ../reflex-site/arena/demo_oracle.json
 //! ```
 
-use katgpt_tetris::sim as tetris_sim;
 use katgpt_tetris::lookahead as tetris_lookahead;
 use katgpt_tetris::rulebook as tetris_rulebook;
+use katgpt_tetris::sim as tetris_sim;
 
 use std::io::{Read, Write};
 use std::net::TcpStream;
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::OnceLock;
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
-use tetris_lookahead::{apply, garbage_board, pick, Bag, Player, LINES_SCORE};
+use tetris_lookahead::{Bag, LINES_SCORE, Player, apply, garbage_board, pick};
 use tetris_sim::{
-    landing_options_with, outcome_features, render_spot_sentence, render_state_sentence, Board,
-    DropRule, Piece, SPOT_QUESTION,
+    Board, DropRule, Piece, SPOT_QUESTION, landing_options_with, outcome_features,
+    render_spot_sentence, render_state_sentence,
 };
 
 // ── The player registry (a new candidate = one arm) ──────────────────────
@@ -140,7 +140,9 @@ fn laya_decide(addr: &str, state: &str) -> Result<Option<f64>, String> {
     LAYA_RT_US.fetch_add(t0.elapsed().as_micros() as u64, Ordering::Relaxed);
     LAYA_RT_N.fetch_add(1, Ordering::Relaxed);
     let text = String::from_utf8_lossy(&resp);
-    let (head, json) = text.split_once("\r\n\r\n").ok_or("malformed HTTP response")?;
+    let (head, json) = text
+        .split_once("\r\n\r\n")
+        .ok_or("malformed HTTP response")?;
     let status = head.lines().next().unwrap_or("");
     if !status.contains(" 200 ") {
         return Err(format!("{status}: {json}"));
@@ -162,18 +164,21 @@ fn laya_decide(addr: &str, state: &str) -> Result<Option<f64>, String> {
 fn laya_score_all(sentences: &[String]) -> Vec<Option<f64>> {
     let cfg = LAYA.get().expect("laya client not configured");
     let next = AtomicUsize::new(0);
-    let slots: Vec<std::sync::Mutex<Option<f64>>> =
-        (0..sentences.len()).map(|_| std::sync::Mutex::new(None)).collect();
+    let slots: Vec<std::sync::Mutex<Option<f64>>> = (0..sentences.len())
+        .map(|_| std::sync::Mutex::new(None))
+        .collect();
     std::thread::scope(|sc| {
         for _ in 0..cfg.concurrency.min(sentences.len()).max(1) {
-            sc.spawn(|| loop {
-                let i = next.fetch_add(1, Ordering::Relaxed);
-                if i >= sentences.len() {
-                    break;
+            sc.spawn(|| {
+                loop {
+                    let i = next.fetch_add(1, Ordering::Relaxed);
+                    if i >= sentences.len() {
+                        break;
+                    }
+                    let p = laya_decide(&cfg.addr, &sentences[i])
+                        .unwrap_or_else(|e| panic!("laya /decide failed: {e}"));
+                    *slots[i].lock().unwrap() = p;
                 }
-                let p = laya_decide(&cfg.addr, &sentences[i])
-                    .unwrap_or_else(|e| panic!("laya /decide failed: {e}"));
-                *slots[i].lock().unwrap() = p;
             });
         }
     });
@@ -267,7 +272,10 @@ fn verify_walk(path: &str) {
     let v: serde_json::Value = serde_json::from_str(&text).expect("demo oracle json");
     let walk = v["tetris_walk"].as_array().expect("tetris_walk");
     let meta = &v["_meta"]["sources"]["tetris_laya"]["summary"];
-    println!("recorded laya (Rust) walk: {} turns · summary {meta}", walk.len());
+    println!(
+        "recorded laya (Rust) walk: {} turns · summary {meta}",
+        walk.len()
+    );
     let (mut state_ok, mut pick_ok, mut board_ok, mut n) = (0usize, 0usize, 0usize, 0usize);
     let mut max_dp = 0.0f64;
     let (mut lines, mut points) = (0u32, 0u64);
@@ -376,7 +384,10 @@ fn main() {
     // results[player][seed]
     let mut results: Vec<Vec<Game>> = Vec::with_capacity(players.len());
     for (name, f) in &players {
-        let rt0 = (LAYA_RT_US.load(Ordering::Relaxed), LAYA_RT_N.load(Ordering::Relaxed));
+        let rt0 = (
+            LAYA_RT_US.load(Ordering::Relaxed),
+            LAYA_RT_N.load(Ordering::Relaxed),
+        );
         let mut row = Vec::with_capacity(seeds.len());
         if *name == "laya" || jobs <= 1 {
             // laya: sequential games (its own `--concurrency` in-flight
@@ -484,6 +495,9 @@ fn main() {
     }
     println!("\nsole per-seed wins (ties excluded):");
     for (p, (name, _)) in players.iter().enumerate() {
-        println!("  {name}: most pieces {} · most points {}", wins_p[p], wins_s[p]);
+        println!(
+            "  {name}: most pieces {} · most points {}",
+            wins_p[p], wins_s[p]
+        );
     }
 }

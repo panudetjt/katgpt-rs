@@ -34,10 +34,16 @@ fn spectral_pencil_t10_goat_serial() {
         const N: usize = 8;
         const CALLS: usize = 1_000;
 
-let init = seeded_dense::<D, N>(b"goat-alloc", 6);
-        let pencil = DensePencil::<D, N> { a0: init.a0, a: init.a };
+        let init = seeded_dense::<D, N>(b"goat-alloc", 6);
+        let pencil = DensePencil::<D, N> {
+            a0: init.a0,
+            a: init.a,
+        };
         let tri_init = seeded_tridiag::<D, N>(b"goat-alloc-tri", 6);
-        let tri_pencil = TridiagPencil::<D, N> { a0: tri_init.a0, a: tri_init.a };
+        let tri_pencil = TridiagPencil::<D, N> {
+            a0: tri_init.a0,
+            a: tri_init.a,
+        };
         let mut dscratch = DenseScratch::<D>::new();
         let mut tscratch = TriScratch::<D>::new();
         let mut x = [0.5_f32; N];
@@ -49,7 +55,12 @@ let init = seeded_dense::<D, N>(b"goat-alloc", 6);
             let _ = tri_pencil.eval(&x, 6, &mut tscratch);
             let _ = tri_pencil.count_below(&x, 0.25, &mut tscratch);
             let _ = katgpt_core::spectral_pencil::attribution::attribute(
-                &pencil.a0, &pencil.a, &x, 6, 0.1, &mut dscratch,
+                &pencil.a0,
+                &pencil.a,
+                &x,
+                6,
+                0.1,
+                &mut dscratch,
             );
         }
 
@@ -62,7 +73,12 @@ let init = seeded_dense::<D, N>(b"goat-alloc", 6);
             sink += tri_pencil.eval(&x, 6, &mut tscratch);
             sink += tri_pencil.count_below(&x, 0.25, &mut tscratch) as f32;
             let rep = katgpt_core::spectral_pencil::attribution::attribute(
-                &pencil.a0, &pencil.a, &x, 6, 0.1, &mut dscratch,
+                &pencil.a0,
+                &pencil.a,
+                &x,
+                6,
+                0.1,
+                &mut dscratch,
             );
             sink += rep.influence[0];
         }
@@ -84,7 +100,10 @@ let init = seeded_dense::<D, N>(b"goat-alloc", 6);
         let mut folds = [0_u64; 2];
         for fold in folds.iter_mut() {
             let init = seeded_dense::<D, N>(b"goat-repro/run", 4);
-            let pencil = DensePencil::<D, N> { a0: init.a0, a: init.a };
+            let pencil = DensePencil::<D, N> {
+                a0: init.a0,
+                a: init.a,
+            };
             let mut scratch = DenseScratch::<D>::new();
             let mut h = 0xfeed_beef_u64;
             for t in 0..128 {
@@ -105,7 +124,10 @@ let init = seeded_dense::<D, N>(b"goat-alloc", 6);
         macro_rules! shape_check {
             ($d:expr, $n:expr) => {{
                 let init = seeded_dense::<$d, $n>(b"headroom", $d / 2);
-                let pencil = DensePencil::<$d, $n> { a0: init.a0, a: init.a };
+                let pencil = DensePencil::<$d, $n> {
+                    a0: init.a0,
+                    a: init.a,
+                };
                 let mut scratch = DenseScratch::<$d>::new();
                 let x = [0.5_f32; $n];
                 let ev = pencil.eval(&x, $d / 2, &mut scratch);
@@ -117,7 +139,10 @@ let init = seeded_dense::<D, N>(b"goat-alloc", 6);
         shape_check!(16, 16);
         shape_check!(32, 8);
         let tri = seeded_tridiag::<32, 8>(b"headroom-tri", 16);
-        let tp = TridiagPencil::<32, 8> { a0: tri.a0, a: tri.a };
+        let tp = TridiagPencil::<32, 8> {
+            a0: tri.a0,
+            a: tri.a,
+        };
         let mut ts = TriScratch::<32>::new();
         let x = [0.5_f32; 8];
         assert!(tp.eval(&x, 16, &mut ts).is_finite());

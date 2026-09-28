@@ -64,10 +64,18 @@ struct GateResult {
 
 impl GateResult {
     fn pass(name: &'static str, detail: impl Into<String>) -> Self {
-        Self { name, passed: true, detail: detail.into() }
+        Self {
+            name,
+            passed: true,
+            detail: detail.into(),
+        }
     }
     fn fail(name: &'static str, detail: impl Into<String>) -> Self {
-        Self { name, passed: false, detail: detail.into() }
+        Self {
+            name,
+            passed: false,
+            detail: detail.into(),
+        }
     }
 }
 
@@ -197,8 +205,9 @@ fn gate_g2_perf() -> GateResult {
         let keys_ref = refs(&keys);
         let values_ref = refs(&values);
         let cfg = HebbianMlpConfig::new(D, m);
-        let mem = HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 0xABCD)
-            .expect("construction");
+        let mem =
+            HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 0xABCD)
+                .expect("construction");
         let mut phi = vec![0.0_f32; m];
         let mut fwd = [0.0_f32; D];
         let z = &keys[0];
@@ -212,8 +221,13 @@ fn gate_g2_perf() -> GateResult {
         }
         let ns = start.elapsed().as_nanos() as f64 / iters as f64;
         let ok = ns < 200.0;
-        if !ok { all_ok = false; }
-        details.push(format!("HLA D=8 m=64 forward = {ns:.0} ns/query (target < 200){}", if ok { "" } else { "  [OVER]" }));
+        if !ok {
+            all_ok = false;
+        }
+        details.push(format!(
+            "HLA D=8 m=64 forward = {ns:.0} ns/query (target < 200){}",
+            if ok { "" } else { "  [OVER]" }
+        ));
     }
 
     // (b) Shard-scale: D=64, m=512.
@@ -234,14 +248,23 @@ fn gate_g2_perf() -> GateResult {
     let start = Instant::now();
     for _ in 0..iters {
         let _ = black_box(HebbianKernelMemory::<D>::construct(
-            &keys_ref, &values_ref, &fact_map, cfg, 0xABCD,
+            &keys_ref,
+            &values_ref,
+            &fact_map,
+            cfg,
+            0xABCD,
         ));
     }
     let construct_ns_total = start.elapsed().as_nanos() as f64 / iters as f64;
     let construct_us_per_fact = construct_ns_total / 1000.0 / f as f64;
     let construct_ok = construct_us_per_fact < 200.0;
-    if !construct_ok { all_ok = false; }
-    details.push(format!("shard D=64 m=512 construction = {construct_us_per_fact:.1} µs/fact (target < 200){}", if construct_ok { "" } else { "  [OVER]" }));
+    if !construct_ok {
+        all_ok = false;
+    }
+    details.push(format!(
+        "shard D=64 m=512 construction = {construct_us_per_fact:.1} µs/fact (target < 200){}",
+        if construct_ok { "" } else { "  [OVER]" }
+    ));
 
     // Forward latency.
     let mem = HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 0xABCD)
@@ -260,8 +283,13 @@ fn gate_g2_perf() -> GateResult {
     let fwd_ns = start.elapsed().as_nanos() as f64 / fwd_iters as f64;
     let fwd_us = fwd_ns / 1000.0;
     let fwd_ok = fwd_us < 50.0;
-    if !fwd_ok { all_ok = false; }
-    details.push(format!("shard D=64 m=512 forward = {fwd_us:.1} µs/query (target < 50){}", if fwd_ok { "" } else { "  [OVER]" }));
+    if !fwd_ok {
+        all_ok = false;
+    }
+    details.push(format!(
+        "shard D=64 m=512 forward = {fwd_us:.1} µs/query (target < 50){}",
+        if fwd_ok { "" } else { "  [OVER]" }
+    ));
 
     if all_ok {
         GateResult::pass("G2 perf", details.join("; "))
@@ -278,7 +306,7 @@ fn gate_g4_alloc_free() -> GateResult {
     const D: usize = 64;
     const CALLS: usize = 100;
 
-let f = 128;
+    let f = 128;
     let v = 128;
     let m = 512;
     let (keys, values, fact_map) = synthetic_fact_set::<D>(f, v, 0x1234);
@@ -343,7 +371,9 @@ fn main() {
     println!("    Paper: arXiv:2607.10034 (Garcia et al., Stanford/UB 2026-07-10)");
     println!("    G1: D=64, F=128, m=128. G2: two regimes (HLA D=8/m=64 + shard D=64/m=512).");
     println!("    G2 targets recalibrated per FMA floor (was: 1µs forward at D=64/m=512 —");
-    println!("    structurally infeasible, ~64K FMAs/query). See geometric_product Plan 319 precedent.\n");
+    println!(
+        "    structurally infeasible, ~64K FMAs/query). See geometric_product Plan 319 precedent.\n"
+    );
 
     let g1 = gate_g1_correctness();
     let g2 = gate_g2_perf();
@@ -365,7 +395,9 @@ fn main() {
         }
     }
 
-    println!("\n=== G5 (Super-GOAT quality-axis gate) — RESOLVED 2026-07-25 (Bench 462, riir-neuron-db) ===");
+    println!(
+        "\n=== G5 (Super-GOAT quality-axis gate) — RESOLVED 2026-07-25 (Bench 462, riir-neuron-db) ==="
+    );
     println!("    Three-competitor race at d=64, F=128: Constructed=GD edit_score 1.000");
     println!("    at 2/5/10% edits vs Frozen 0.000 efficacy — G5 PASS.");
     println!("    Primitive promoted DEFAULT-ON 2026-07-25 (Phase 24, Plan 559 Phase 3).");

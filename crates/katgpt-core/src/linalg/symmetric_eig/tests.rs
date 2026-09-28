@@ -31,11 +31,7 @@ fn u64_to_unit_f64(x: u64) -> f64 {
     let u = x >> 11;
     let sign = (x >> 63) & 1;
     let m = (u as f64) / ((1u64 << 53) as f64);
-    if sign == 1 {
-        -m
-    } else {
-        m
-    }
+    if sign == 1 { -m } else { m }
 }
 
 /// Generate a random SPD matrix with distinct eigenvalues.
@@ -68,13 +64,7 @@ fn random_spd(state: &mut u64, a_out: &mut [f64], n: usize) {
 }
 
 /// Verify A · v = λ · v for each eigenpair. Returns the max error.
-fn check_eigenpairs(
-    a: &[f64],
-    eigvals: &[f64],
-    eigvecs: &[f64],
-    n: usize,
-    tol: f64,
-) -> f64 {
+fn check_eigenpairs(a: &[f64], eigvals: &[f64], eigvecs: &[f64], n: usize, tol: f64) -> f64 {
     let mut max_err = 0.0_f64;
     for k in 0..n {
         for i in 0..n {
@@ -240,14 +230,7 @@ fn parity_vs_jacobi_random_spd() {
             let mut hh_eigvals = vec![0.0; n];
             let mut hh_eigvecs = vec![0.0; n * n];
             let mut hh_scratch = SymmetricEigScratch::new();
-            symmetric_eig(
-                &mut hh_eigvals,
-                &mut hh_eigvecs,
-                &a,
-                &mut hh_scratch,
-                n,
-                30,
-            );
+            symmetric_eig(&mut hh_eigvals, &mut hh_eigvecs, &a, &mut hh_scratch, n, 30);
 
             let mut jac_eigvals = vec![0.0; n];
             let mut jac_eigvecs = vec![0.0; n * n];
@@ -500,18 +483,17 @@ fn par_vs_serial_bit_identity_small() {
         let mut eigvals_p = vec![0.0; n];
         let mut eigvecs_p = vec![0.0; n * n];
         let mut scratch_p = SymmetricEigScratch::new();
-        symmetric_eig_par(
-            &mut eigvals_p,
-            &mut eigvecs_p,
-            &a,
-            &mut scratch_p,
-            n,
-            30,
-        );
+        symmetric_eig_par(&mut eigvals_p, &mut eigvecs_p, &a, &mut scratch_p, n, 30);
 
         // Bit-identity check: bytes must match exactly.
-        let eigvals_match = eigvals_s.iter().zip(&eigvals_p).all(|(a, b)| a.to_bits() == b.to_bits());
-        let eigvecs_match = eigvecs_s.iter().zip(&eigvecs_p).all(|(a, b)| a.to_bits() == b.to_bits());
+        let eigvals_match = eigvals_s
+            .iter()
+            .zip(&eigvals_p)
+            .all(|(a, b)| a.to_bits() == b.to_bits());
+        let eigvecs_match = eigvecs_s
+            .iter()
+            .zip(&eigvecs_p)
+            .all(|(a, b)| a.to_bits() == b.to_bits());
         assert!(
             eigvals_match,
             "n={n}: eigvals differ between serial and parallel"
@@ -548,14 +530,7 @@ fn par_vs_serial_bit_identity_medium() {
         let mut eigvals_p = vec![0.0; n];
         let mut eigvecs_p = vec![0.0; n * n];
         let mut scratch_p = SymmetricEigScratch::new();
-        symmetric_eig_par(
-            &mut eigvals_p,
-            &mut eigvecs_p,
-            &a,
-            &mut scratch_p,
-            n,
-            30,
-        );
+        symmetric_eig_par(&mut eigvals_p, &mut eigvecs_p, &a, &mut scratch_p, n, 30);
 
         // Bit-identity on eigenvalues.
         for (i, (vs, vp)) in eigvals_s.iter().zip(&eigvals_p).enumerate() {
@@ -599,14 +574,7 @@ fn par_vs_serial_diagonal_identity() {
     let mut eigvals_p = vec![0.0; n];
     let mut eigvecs_p = vec![0.0; n * n];
     let mut scratch_p = SymmetricEigScratch::new();
-    symmetric_eig_par(
-        &mut eigvals_p,
-        &mut eigvecs_p,
-        &a,
-        &mut scratch_p,
-        n,
-        30,
-    );
+    symmetric_eig_par(&mut eigvals_p, &mut eigvecs_p, &a, &mut scratch_p, n, 30);
 
     assert!(
         eigvals_s

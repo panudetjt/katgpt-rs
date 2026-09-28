@@ -23,9 +23,9 @@
 
 use katgpt_core::position_group_action::PositionGroupAction;
 use katgpt_core::rotary_value_embedding::{
-    RoVeConfig, RoVeRotationTable, batch_inverse_rotate_output_into, batch_inverse_rotate_output_into_fast,
-    batch_rotate_values_into, batch_rotate_values_into_fast, inverse_rotate_output_into,
-    rotate_values_into,
+    RoVeConfig, RoVeRotationTable, batch_inverse_rotate_output_into,
+    batch_inverse_rotate_output_into_fast, batch_rotate_values_into, batch_rotate_values_into_fast,
+    inverse_rotate_output_into, rotate_values_into,
 };
 use katgpt_core::types::math::matmul;
 use std::hint::black_box;
@@ -168,9 +168,9 @@ fn g1_bit_identical_to_disabled() -> (bool, f32) {
 fn g2_latency_overhead_vs_qkv() -> (bool, f64, f64, f64, f64, f64, bool) {
     // Returns (scalar_pass, proj_ns, scalar_rove_ns, scalar_ratio, fast_rove_ns, fast_ratio, fast_pass)
     const N_ITERS: usize = 20;
-const TARGET_RATIO: f64 = 0.05;
+    const TARGET_RATIO: f64 = 0.05;
 
-let n: usize = 1024;
+    let n: usize = 1024;
     let d: usize = 768;
 
     let action = RoVeConfig::default().build_rope_action(d);
@@ -195,7 +195,11 @@ let n: usize = 1024;
     let table_build_ns = table_build_start.elapsed().as_secs_f64() * 1e9;
     let table_build_us = table_build_ns / 1000.0;
     println!("   [fast] table build (once): {table_build_ns:.0} ns ({table_build_us:.2} µs)");
-    println!("   [fast] table size: {} entries = {:.1} KB", n * d, (n * d * 4) as f64 / 1024.0);
+    println!(
+        "   [fast] table size: {} entries = {:.1} KB",
+        n * d,
+        (n * d * 4) as f64 / 1024.0
+    );
 
     // Warmup (both paths).
     for _ in 0..3 {
@@ -261,13 +265,30 @@ let n: usize = 1024;
     println!("   V projection (n={n}, d={d}): {proj_ns:.0} ns/layer");
     println!("   RoVE SCALAR (rotate+inv):   {rove_scalar_ns:.0} ns/layer");
     println!("   RoVE FAST   (rotate+inv):   {rove_fast_ns:.0} ns/layer");
-    println!("   ratio scalar (rove/proj):   {scalar_ratio:.4}× ({:.2}%)", scalar_ratio * 100.0);
-    println!("   ratio fast   (rove/proj):   {fast_ratio:.4}× ({:.2}%)", fast_ratio * 100.0);
-    println!("   speedup fast/scalar:        {:.2}×", rove_scalar_ns / rove_fast_ns.max(1e-9));
+    println!(
+        "   ratio scalar (rove/proj):   {scalar_ratio:.4}× ({:.2}%)",
+        scalar_ratio * 100.0
+    );
+    println!(
+        "   ratio fast   (rove/proj):   {fast_ratio:.4}× ({:.2}%)",
+        fast_ratio * 100.0
+    );
+    println!(
+        "   speedup fast/scalar:        {:.2}×",
+        rove_scalar_ns / rove_fast_ns.max(1e-9)
+    );
     println!("   target:                      ratio < {TARGET_RATIO} (5%)");
     let scalar_pass = scalar_ratio < TARGET_RATIO;
     let fast_pass = fast_ratio < TARGET_RATIO;
-    (scalar_pass, proj_ns, rove_scalar_ns, scalar_ratio, rove_fast_ns, fast_ratio, fast_pass)
+    (
+        scalar_pass,
+        proj_ns,
+        rove_scalar_ns,
+        scalar_ratio,
+        rove_fast_ns,
+        fast_ratio,
+        fast_pass,
+    )
 }
 
 // ─── G3: no-regression (compile-only gate) ────────────────────────────────
@@ -303,7 +324,7 @@ fn g3_feature_is_opt_in_additive() -> bool {
 fn g4_batch_zero_alloc() -> (bool, usize, usize) {
     const N_CALLS: usize = 1000;
 
-let n: usize = 1024;
+    let n: usize = 1024;
     let d: usize = 768;
     let action = RoVeConfig::default().build_rope_action(d);
     let positions: Vec<usize> = (0..n).collect();
@@ -366,7 +387,7 @@ let n: usize = 1024;
 fn g5_flashattention_output_equivalence() -> (bool, f32) {
     const BUDGET: f32 = 1e-4;
 
-let mut rng = Lcg::new(0x1234_5678);
+    let mut rng = Lcg::new(0x1234_5678);
     let n: usize = 16; // small n so the n×n materialization is cheap
     let d: usize = 32;
     let action = RoVeConfig::default().build_rope_action(d);
@@ -466,11 +487,22 @@ fn main() {
     println!("── G2 (perf): RoVE overhead < 5% of V projection ────────────────");
     println!("   n=1024, d=768 (paper small-model config)");
     println!("   Measures BOTH scalar (transcendentals per call) + fast (precomputed table)");
-    let (g2_scalar_pass, g2_proj_ns, g2_scalar_rove_ns, g2_scalar_ratio, g2_fast_rove_ns, g2_fast_ratio, g2_fast_pass) =
-        g2_latency_overhead_vs_qkv();
+    let (
+        g2_scalar_pass,
+        g2_proj_ns,
+        g2_scalar_rove_ns,
+        g2_scalar_ratio,
+        g2_fast_rove_ns,
+        g2_fast_ratio,
+        g2_fast_pass,
+    ) = g2_latency_overhead_vs_qkv();
     println!(
         "   G2 scalar: {} (proj {g2_proj_ns:.0}ns, rove {g2_scalar_rove_ns:.0}ns, ratio {g2_scalar_ratio:.4}×)",
-        if g2_scalar_pass { "PASS ✓" } else { "FAIL ✗" }
+        if g2_scalar_pass {
+            "PASS ✓"
+        } else {
+            "FAIL ✗"
+        }
     );
     println!(
         "   G2 fast:   {} (rove {g2_fast_rove_ns:.0}ns, ratio {g2_fast_ratio:.4}×)",
@@ -481,7 +513,10 @@ fn main() {
     if !g2_fast_pass {
         all_pass = false;
     }
-    println!("   G2 gate verdict (fast path): {}", if g2_fast_pass { "PASS ✓" } else { "FAIL ✗" });
+    println!(
+        "   G2 gate verdict (fast path): {}",
+        if g2_fast_pass { "PASS ✓" } else { "FAIL ✗" }
+    );
     println!();
 
     // G3: no-regression (compile-only gate).

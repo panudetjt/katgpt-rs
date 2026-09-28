@@ -1,4 +1,8 @@
-#![cfg(all(feature = "lt2_looped", feature = "cadence_gate", feature = "loop_stability_fix"))]
+#![cfg(all(
+    feature = "lt2_looped",
+    feature = "cadence_gate",
+    feature = "loop_stability_fix"
+))]
 //! Issue 731 T2 — τ calibration for the residual-gated loop exit, e2e on the
 //! T1 fixture convention (micro + seed-42 + Uniform + AHLA, R_REF = 32).
 //!
@@ -68,8 +72,19 @@ const K_GRID: [usize; 14] = [1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 28, 32];
 
 /// Phase-B τ grid (log-spaced + the floor-only arm). Realistic τ ≤ 10 on
 /// InterLoopNorm must never fire (expectation 1).
-const TAU_GRID: [f32; 11] =
-    [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0, f32::INFINITY];
+const TAU_GRID: [f32; 11] = [
+    0.001,
+    0.003,
+    0.01,
+    0.03,
+    0.1,
+    0.3,
+    1.0,
+    3.0,
+    10.0,
+    30.0,
+    f32::INFINITY,
+];
 
 fn make_config(stability: LoopStabilityMode) -> Config {
     let mut config = Config::micro();
@@ -150,10 +165,22 @@ fn phase_a_curve(
 ) -> Vec<(usize, f32)> {
     // Reference logits per token at the full R_REF depth.
     let refs: Vec<Vec<f32>> = (0..N_PROMPTS)
-        .map(|t| run(config, weights, residual_gate, sdpa_gate, t, Some(R_REF), None))
+        .map(|t| {
+            run(
+                config,
+                weights,
+                residual_gate,
+                sdpa_gate,
+                t,
+                Some(R_REF),
+                None,
+            )
+        })
         .collect();
     let mut curve = Vec::with_capacity(K_GRID.len());
-    println!("\n[{label}] depth → quality (mean cosine distance to the R_REF = {R_REF} reference; lower = closer)");
+    println!(
+        "\n[{label}] depth → quality (mean cosine distance to the R_REF = {R_REF} reference; lower = closer)"
+    );
     println!("| k | mean dist |");
     println!("|---|---|");
     for &k in &K_GRID {
@@ -177,14 +204,24 @@ fn phase_b_calibration(
     sdpa_gate: &SdpaOutputGate,
     curve: &[(usize, f32)],
 ) {
-    println!("\n[{label}] τ calibration (d_min = {D_MIN}) — fired-at distribution and quality at fire");
+    println!(
+        "\n[{label}] τ calibration (d_min = {D_MIN}) — fired-at distribution and quality at fire"
+    );
     println!("| tau | fired n/27 | median k | min | max | mean cos-dist at median k |");
     println!("|---|---|---|---|---|---|");
     for &tau in &TAU_GRID {
         let mut fired: Vec<usize> = Vec::new();
         for t in 0..N_PROMPTS {
             let mut probe = LoopResidualExit::new(tau, D_MIN);
-            run(config, weights, residual_gate, sdpa_gate, t, None, Some(&mut probe));
+            run(
+                config,
+                weights,
+                residual_gate,
+                sdpa_gate,
+                t,
+                None,
+                Some(&mut probe),
+            );
             if let Some(k) = probe.fired_at_iteration() {
                 fired.push(k);
             }
@@ -217,7 +254,15 @@ fn phase_b_calibration(
         if let Some(&k) = fired.first() {
             let t = 0;
             let mut probe = LoopResidualExit::new(tau, D_MIN);
-            let exited = run(config, weights, residual_gate, sdpa_gate, t, None, Some(&mut probe));
+            let exited = run(
+                config,
+                weights,
+                residual_gate,
+                sdpa_gate,
+                t,
+                None,
+                Some(&mut probe),
+            );
             if probe.fired_at_iteration() == Some(k) {
                 let elastic = run(config, weights, residual_gate, sdpa_gate, t, Some(k), None);
                 assert_eq!(
@@ -237,13 +282,26 @@ fn bench_731_t2_residual_calibration() {
     let curve = phase_a_curve("None", &config, &weights, &residual_gate, &sdpa_gate);
     let knee = curve.iter().find(|(_, d)| *d <= 0.01).map(|(k, _)| *k);
     println!("  knee (first grid k with mean dist ≤ 0.01): {:?}", knee);
-    phase_b_calibration("None", &config, &weights, &residual_gate, &sdpa_gate, &curve);
+    phase_b_calibration(
+        "None",
+        &config,
+        &weights,
+        &residual_gate,
+        &sdpa_gate,
+        &curve,
+    );
     let none_curve = curve.clone();
 
     // ── Arm 2: InterLoopNorm (the Research-440 control regime) ──────
     let config = make_config(LoopStabilityMode::InterLoopNorm);
     let (weights, residual_gate, sdpa_gate) = make_fixture(&config);
-    let curve = phase_a_curve("InterLoopNorm", &config, &weights, &residual_gate, &sdpa_gate);
+    let curve = phase_a_curve(
+        "InterLoopNorm",
+        &config,
+        &weights,
+        &residual_gate,
+        &sdpa_gate,
+    );
     let knee = curve.iter().find(|(_, d)| *d <= 0.01).map(|(k, _)| *k);
     println!("  knee (first grid k with mean dist ≤ 0.01): {:?}", knee);
     phase_b_calibration(
@@ -269,7 +327,15 @@ fn bench_731_t2_residual_calibration() {
         }
         for t in 0..N_PROMPTS {
             let mut probe = LoopResidualExit::new(tau, D_MIN);
-            run(&config, &weights, &residual_gate, &sdpa_gate, t, None, Some(&mut probe));
+            run(
+                &config,
+                &weights,
+                &residual_gate,
+                &sdpa_gate,
+                t,
+                None,
+                Some(&mut probe),
+            );
             assert_eq!(
                 probe.fired_at_iteration(),
                 None,
@@ -277,7 +343,9 @@ fn bench_731_t2_residual_calibration() {
             );
         }
     }
-    println!("\n  control (amended to the measured boundary): InterLoopNorm, τ ≤ 3 — 0/27 fired on every τ; τ = 10 measured 1/27 FALSE-POSITIVE at k = 5 (the Research-440 mid-ramp trap, recorded).");
+    println!(
+        "\n  control (amended to the measured boundary): InterLoopNorm, τ ≤ 3 — 0/27 fired on every τ; τ = 10 measured 1/27 FALSE-POSITIVE at k = 5 (the Research-440 mid-ramp trap, recorded)."
+    );
 
     // Post-hoc readout (NOT part of the pre-registered qualification): the
     // d_min lever at the knee. The None-arm table shows the settle signal
@@ -290,7 +358,15 @@ fn bench_731_t2_residual_calibration() {
     let mut fired: Vec<usize> = Vec::new();
     for t in 0..N_PROMPTS {
         let mut probe = LoopResidualExit::new(1.0, 10);
-        let out = run(&config, &weights, &residual_gate, &sdpa_gate, t, None, Some(&mut probe));
+        let out = run(
+            &config,
+            &weights,
+            &residual_gate,
+            &sdpa_gate,
+            t,
+            None,
+            Some(&mut probe),
+        );
         if let Some(k) = probe.fired_at_iteration() {
             fired.push(k);
         }

@@ -28,7 +28,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 mod ab_timing;
 
 use ab_timing::{ab_median_ratio, best_of_us};
-use katgpt_core::differential_anchor::{correct_query_into, AnchorBuilder, AnchorSource};
+use katgpt_core::differential_anchor::{AnchorBuilder, AnchorSource, correct_query_into};
 use katgpt_core::fitted_anchor_table::StreamingMeanTable;
 
 // ── G4: counting allocator ────────────────────────────────────────────────
@@ -121,7 +121,11 @@ fn main() {
         |_it| {
             for q in &queries_snapshot {
                 for (c, d) in cands.iter().enumerate() {
-                    scores_a[c] = black_box(q).iter().zip(black_box(d)).map(|(x, y)| x * y).sum();
+                    scores_a[c] = black_box(q)
+                        .iter()
+                        .zip(black_box(d))
+                        .map(|(x, y)| x * y)
+                        .sum();
                 }
                 black_box(&mut scores_a);
             }
@@ -130,7 +134,11 @@ fn main() {
             for q in &queries_snapshot {
                 correct_query_into(q, &anchor, lam, &mut qh);
                 for (c, d) in cands.iter().enumerate() {
-                    scores_b[c] = black_box(&qh).iter().zip(black_box(d)).map(|(x, y)| x * y).sum();
+                    scores_b[c] = black_box(&qh)
+                        .iter()
+                        .zip(black_box(d))
+                        .map(|(x, y)| x * y)
+                        .sum();
                 }
                 black_box(&mut scores_b);
             }
@@ -156,7 +164,10 @@ fn main() {
     }
     let pass_allocs = allocs() - before;
     println!("G4a corrected scoring pass allocs: {pass_allocs}");
-    assert_eq!(pass_allocs, 0, "G4a FAILED: steady-state allocs {pass_allocs}");
+    assert_eq!(
+        pass_allocs, 0,
+        "G4a FAILED: steady-state allocs {pass_allocs}"
+    );
 
     // (b) the substrate's observe loop (the 883 calibration path) over a
     // pre-allocated table + a grand-only tail observation.
@@ -184,7 +195,10 @@ fn main() {
         katgpt_core::differential_anchor::correct_query(q, &anchor, lam);
     }
     let inplace_allocs = allocs() - before;
-    assert_eq!(inplace_allocs, 0, "G4c FAILED: in-place allocs {inplace_allocs}");
+    assert_eq!(
+        inplace_allocs, 0,
+        "G4c FAILED: in-place allocs {inplace_allocs}"
+    );
 
     println!("bench_886: ALL GATES PASSED (G2a axpy {axpy_us:.3}µs, G2b {r:.4}, G4 0 allocs)");
 }

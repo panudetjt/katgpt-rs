@@ -162,7 +162,15 @@ mod tests {
         ];
         let r = [0.0f32; 4];
         let mut v = [0.0f32; 4];
-        latent_value_into(&states, 4, &c, &r, &LatentValueConfig::DEFAULT, None, &mut v);
+        latent_value_into(
+            &states,
+            4,
+            &c,
+            &r,
+            &LatentValueConfig::DEFAULT,
+            None,
+            &mut v,
+        );
         assert!(v[0] > v[3] && v[1] > v[3] && v[2] > v[3], "{v:?}");
     }
 
@@ -172,7 +180,15 @@ mod tests {
         let states = [1.0f32, 0.0, 0.0, 1.0];
         let r = [0.0f32, 0.5];
         let mut v = [0.0f32; 2];
-        latent_value_into(&states, 2, &c, &r, &LatentValueConfig::DEFAULT, None, &mut v);
+        latent_value_into(
+            &states,
+            2,
+            &c,
+            &r,
+            &LatentValueConfig::DEFAULT,
+            None,
+            &mut v,
+        );
         assert!(v[0] > v[1], "{v:?}");
     }
 
@@ -182,11 +198,23 @@ mod tests {
         let states = [f32::NAN, 0.0, 1.0, 0.0, 0.9, 0.1];
         let r = [0.0f32, 0.0, 0.0];
         let mut v = [0.0f32; 3];
-        latent_value_into(&states, 3, &c, &r, &LatentValueConfig::DEFAULT, None, &mut v);
+        latent_value_into(
+            &states,
+            3,
+            &c,
+            &r,
+            &LatentValueConfig::DEFAULT,
+            None,
+            &mut v,
+        );
         assert_ne!(select_best(&v), 0, "{v:?}");
         assert_eq!(select_best(&[f32::NAN, 0.1, f32::NAN]), 1);
         assert_eq!(select_best(&[f32::NAN, f32::NAN]), 0);
-        assert_eq!(select_best(&[0.5, 0.5, 0.2]), 0, "ties keep the lowest index");
+        assert_eq!(
+            select_best(&[0.5, 0.5, 0.2]),
+            0,
+            "ties keep the lowest index"
+        );
     }
 
     #[test]
@@ -196,7 +224,15 @@ mod tests {
         let r = [0.0f32; 2];
         let mut v = [0.0f32; 2];
         let d = [-1.0f32, 0.0];
-        latent_value_into(&states, 2, &c, &r, &LatentValueConfig::DEFAULT, Some(&d), &mut v);
+        latent_value_into(
+            &states,
+            2,
+            &c,
+            &r,
+            &LatentValueConfig::DEFAULT,
+            Some(&d),
+            &mut v,
+        );
         assert_eq!(select_best(&v), 1, "{v:?}");
     }
 }

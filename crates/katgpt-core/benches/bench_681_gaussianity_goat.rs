@@ -78,10 +78,7 @@ fn lattice_population_d8(seed: u64) -> (Vec<f32>, usize) {
 /// `effective_rank` over a flat population (the geometry API takes
 /// `&[Vec<f32>]` — test-side assembly, not probe cost).
 fn erank_of(states: &[f32], d: usize) -> f32 {
-    let rows: Vec<Vec<f32>> = states
-        .chunks(d)
-        .map(|c| c.to_vec())
-        .collect();
+    let rows: Vec<Vec<f32>> = states.chunks(d).map(|c| c.to_vec()).collect();
     effective_rank(&rows)
 }
 
@@ -123,12 +120,7 @@ fn main() {
         let er = erank_of(&states, D);
         println!(
             "(ii) Bimodal e_0  d={D}: score={:.2e} p_min={:.2e} erank={:.1}/{} worst_dir={} D_0={:.4}",
-            rep.score,
-            rep.min_p_value,
-            er,
-            D,
-            rep.worst_direction,
-            rep.per_direction[0]
+            rep.score, rep.min_p_value, er, D, rep.worst_direction, rep.per_direction[0]
         );
         if rep.score >= 0.5 {
             failures += 1;
@@ -168,9 +160,7 @@ fn main() {
         }
         if er < 0.85 * D as f32 {
             failures += 1;
-            println!(
-                "  FAIL: NON-REDUNDANCY broken — erank {er:.1} collapsed too"
-            );
+            println!("  FAIL: NON-REDUNDANCY broken — erank {er:.1} collapsed too");
         }
     }
 
@@ -190,9 +180,7 @@ fn main() {
         }
         if er < 0.85 * d as f32 {
             failures += 1;
-            println!(
-                "  FAIL: NON-REDUNDANCY broken — erank {er:.2} below 0.85·{d}"
-            );
+            println!("  FAIL: NON-REDUNDANCY broken — erank {er:.2} below 0.85·{d}");
         }
     }
 
@@ -207,7 +195,10 @@ fn main() {
             && b.per_direction == c.per_direction
             && a.score.to_bits() == c.score.to_bits()
             && a.min_p_value.to_bits() == c.min_p_value.to_bits();
-        println!("═══ G5 — determinism ×3 bit-identical: {} ═══", if ok { "PASS" } else { "FAIL" });
+        println!(
+            "═══ G5 — determinism ×3 bit-identical: {} ═══",
+            if ok { "PASS" } else { "FAIL" }
+        );
         if !ok {
             failures += 1;
         }
@@ -217,7 +208,7 @@ fn main() {
     {
         const REPS: usize = 50;
 
-let states = gaussian_population(42);
+        let states = gaussian_population(42);
         let mut scratch = GaussianityScratch::new(N, D, 7);
 
         // Warmup.

@@ -39,19 +39,21 @@ fn gaussian_row(n: usize, sigma: f32, seed: u64) -> Vec<f32> {
     for slot in row.iter_mut() {
         let u1 = match spare.take() {
             Some(s) => s,
-            None => {
-                loop {
-                    state = state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
-                    let u1 = ((state >> 11) as f64) / ((1u64 << 53) as f64);
-                    state = state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
-                    let u2 = ((state >> 11) as f64) / ((1u64 << 53) as f64);
-                    if u1 > 1e-12 && u2 > 1e-12 {
-                        let r = (-2.0 * u1.ln()).sqrt();
-                        spare = Some((r * (2.0 * std::f64::consts::PI * u2).sin()) as f32);
-                        break (r * (2.0 * std::f64::consts::PI * u2).cos()) as f32;
-                    }
+            None => loop {
+                state = state
+                    .wrapping_mul(6364136223846793005)
+                    .wrapping_add(1442695040888963407);
+                let u1 = ((state >> 11) as f64) / ((1u64 << 53) as f64);
+                state = state
+                    .wrapping_mul(6364136223846793005)
+                    .wrapping_add(1442695040888963407);
+                let u2 = ((state >> 11) as f64) / ((1u64 << 53) as f64);
+                if u1 > 1e-12 && u2 > 1e-12 {
+                    let r = (-2.0 * u1.ln()).sqrt();
+                    spare = Some((r * (2.0 * std::f64::consts::PI * u2).sin()) as f32);
+                    break (r * (2.0 * std::f64::consts::PI * u2).cos()) as f32;
                 }
-            }
+            },
         };
         *slot = u1 * sigma;
     }
@@ -149,8 +151,14 @@ fn g1b_support_sigma_invariance_and_collapse_counterfactual() {
         }
         // σ-invariance of the scheduled support (σ cancels in σ·β exactly;
         // residual spread is finite-n fluctuation only).
-        let lo = supports_per_sigma.iter().cloned().fold(f32::INFINITY, f32::min);
-        let hi = supports_per_sigma.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+        let lo = supports_per_sigma
+            .iter()
+            .cloned()
+            .fold(f32::INFINITY, f32::min);
+        let hi = supports_per_sigma
+            .iter()
+            .cloned()
+            .fold(f32::NEG_INFINITY, f32::max);
         assert!(
             hi / lo < 2.0,
             "n={n}: scheduled support must be σ-invariant, got {supports_per_sigma:?} (max/min = {})",

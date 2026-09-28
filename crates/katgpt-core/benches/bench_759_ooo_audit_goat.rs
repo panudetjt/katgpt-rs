@@ -21,8 +21,8 @@
 //!   Issue 714 live-counter canary).
 
 use katgpt_core::ooo_audit::{
-    BankAudit, CurationResult, OooAuditConfig, audit_bank_into, exemplar_rbf_sim_into,
-    fixtures::planted_cluster_bank, greedy_curate, AuditScratch,
+    AuditScratch, BankAudit, CurationResult, OooAuditConfig, audit_bank_into,
+    exemplar_rbf_sim_into, fixtures::planted_cluster_bank, greedy_curate,
 };
 use std::hint::black_box;
 use std::time::Instant;
@@ -64,8 +64,14 @@ fn gate_g1_correctness() -> GateResult {
     println!("  unique features:  {count} (planted: 4)");
     println!("  true units kept:  {true_units_ok}");
     println!("  min true-unit OOO: {min_true_ooo:.4} (bar 0.8)");
-    println!("  pruned redundant:  {:?} (planted dups: [4, 5])", result.pruned_redundant);
-    println!("  dropped noise:     {:?} (planted noise: [6, 7])", result.dropped_uninterpretable);
+    println!(
+        "  pruned redundant:  {:?} (planted dups: [4, 5])",
+        result.pruned_redundant
+    );
+    println!(
+        "  dropped noise:     {:?} (planted noise: [6, 7])",
+        result.dropped_uninterpretable
+    );
 
     let mut pruned_sorted = result.pruned_redundant.clone();
     pruned_sorted.sort_unstable();
@@ -113,10 +119,21 @@ fn gate_g2_latency() -> GateResult {
     let mut curate_us = Vec::with_capacity(ITERS as usize);
     for _ in 0..ITERS {
         let t0 = Instant::now();
-        audit_bank_into(black_box(&a), black_box(&sim), black_box(&cfg), &mut scratch, &mut audit);
+        audit_bank_into(
+            black_box(&a),
+            black_box(&sim),
+            black_box(&cfg),
+            &mut scratch,
+            &mut audit,
+        );
         audit_us.push(t0.elapsed().as_micros() as u64);
         let t1 = Instant::now();
-        greedy_curate(black_box(&audit), black_box(&cfg), &mut scratch, &mut result);
+        greedy_curate(
+            black_box(&audit),
+            black_box(&cfg),
+            &mut scratch,
+            &mut result,
+        );
         curate_us.push(t1.elapsed().as_micros() as u64);
     }
     audit_us.sort_unstable();
@@ -183,7 +200,12 @@ fn main() {
     println!("\n================ GOAT VERDICT ================");
     let mut all = true;
     for g in &gates {
-        println!("  [{}] {} — {}", if g.passed { "PASS" } else { "FAIL" }, g.name, g.detail);
+        println!(
+            "  [{}] {} — {}",
+            if g.passed { "PASS" } else { "FAIL" },
+            g.name,
+            g.detail
+        );
         all &= g.passed;
     }
     if all {

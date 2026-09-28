@@ -96,15 +96,15 @@ fn main() {
 fn alloc_page_legacy(cache: &mut PagedKVCache) -> usize {
     // Exact replica of the private `PagedKVCache::alloc_page` via pub fields.
     let idx = if let Some(idx) = cache.free_pages.pop() {
-            cache.pages[idx].fill(0.0);
-            idx
-        } else {
-            cache.pages.push(vec![0.0; PAGE_SIZE * cache.kv_dim * 2]);
-            let idx = cache.total_pages;
-            cache.total_pages += 1;
-            cache.page_ref_counts.push(0);
-            idx
-        };
+        cache.pages[idx].fill(0.0);
+        idx
+    } else {
+        cache.pages.push(vec![0.0; PAGE_SIZE * cache.kv_dim * 2]);
+        let idx = cache.total_pages;
+        cache.total_pages += 1;
+        cache.page_ref_counts.push(0);
+        idx
+    };
     cache.page_ref_counts[idx] += 1;
     idx
 }

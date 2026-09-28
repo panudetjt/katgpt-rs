@@ -97,8 +97,7 @@ pub fn pick_domain<const N: usize, const A: usize>(
         .map(|d| (d, scores[d]))
         .max_by(|(d1, s1), (d2, s2)| {
             // Strict > so ties pick the lower index (first one wins on equal).
-            crate::float_order::cmp_for_max(*s1, *s2)
-                .then(d2.cmp(d1)) // lower d wins on tie → reverse the d comparison
+            crate::float_order::cmp_for_max(*s1, *s2).then(d2.cmp(d1)) // lower d wins on tie → reverse the d comparison
         })
         .unwrap_or((0, scores[0]));
     best
@@ -358,9 +357,24 @@ impl<const K: usize, const L: usize> ClusterHolder<K, L> {
     /// The caller-supplied scratch buffer must be at least `L` elements.
     #[inline]
     pub fn apply_direct(&self, z_proj: &[f32], scratch: &mut [f32], dz_out: &mut [f32]) -> usize {
-        debug_assert!(z_proj.len() >= L, "z_proj too short: {} < {}", z_proj.len(), L);
-        debug_assert!(scratch.len() >= L, "scratch too short: {} < {}", scratch.len(), L);
-        debug_assert!(dz_out.len() >= L, "dz_out too short: {} < {}", dz_out.len(), L);
+        debug_assert!(
+            z_proj.len() >= L,
+            "z_proj too short: {} < {}",
+            z_proj.len(),
+            L
+        );
+        debug_assert!(
+            scratch.len() >= L,
+            "scratch too short: {} < {}",
+            scratch.len(),
+            L
+        );
+        debug_assert!(
+            dz_out.len() >= L,
+            "dz_out too short: {} < {}",
+            dz_out.len(),
+            L
+        );
         let fields_ref: [&dyn ArchetypeFieldSource<L>; K] =
             std::array::from_fn(|i| self.fields[i].as_ref());
         let z_slice = &z_proj[..L];
@@ -388,7 +402,12 @@ impl<const K: usize, const L: usize> ClusterHolder<K, L> {
     /// `pi` length must equal `EXPERT_COUNT` (`K`).
     #[inline]
     pub fn override_pi_direct(&mut self, pi: &[f32]) {
-        debug_assert!(pi.len() >= K, "override_pi slice too short: {} < {}", pi.len(), K);
+        debug_assert!(
+            pi.len() >= K,
+            "override_pi slice too short: {} < {}",
+            pi.len(),
+            K
+        );
         self.blend.pi[..K].copy_from_slice(&pi[..K]);
     }
 }
@@ -774,20 +793,10 @@ mod tests {
                     *v = (h as f32 - 5.0) / 5.0;
                 }
                 for k in 0..=N {
-                    let want = reference_repeated_pick_domain::<N, A>(
-                        &activity,
-                        &directions,
-                        k,
-                        LIVE,
-                    );
+                    let want =
+                        reference_repeated_pick_domain::<N, A>(&activity, &directions, k, LIVE);
                     let mut got = [(0usize, 0.0f32); N];
-                    let n = pick_domains_top_k::<N, A>(
-                        &activity,
-                        &directions,
-                        k,
-                        0.0,
-                        &mut got,
-                    );
+                    let n = pick_domains_top_k::<N, A>(&activity, &directions, k, 0.0, &mut got);
                     assert_eq!(
                         n,
                         want.len(),
@@ -828,7 +837,10 @@ mod tests {
                 break;
             }
         }
-        assert!(any_selected, "corpus never selected anything — the equivalence would be vacuous");
+        assert!(
+            any_selected,
+            "corpus never selected anything — the equivalence would be vacuous"
+        );
     }
 
     #[test]
@@ -840,26 +852,22 @@ mod tests {
         let directions: [[f32; 2]; 3] = [[-1.0, -1.0], [-0.5, -2.0], [-2.0, -0.1]];
         let want = pick_domain::<3, 2>(&activity, &directions);
         let mut out = [(0usize, 0.0f32); 3];
-        let n = pick_domains_top_k::<3, 2>(
-            &activity,
-            &directions,
-            1,
-            f32::NEG_INFINITY,
-            &mut out,
-        );
+        let n = pick_domains_top_k::<3, 2>(&activity, &directions, 1, f32::NEG_INFINITY, &mut out);
         assert_eq!(n, 1);
         assert_eq!(out[0].0, want);
 
         let m = pick_domains_top_k::<3, 2>(&activity, &directions, 1, 0.0, &mut out);
-        assert_eq!(m, 0, "the positive floor admits nothing from an all-negative matrix");
+        assert_eq!(
+            m, 0,
+            "the positive floor admits nothing from an all-negative matrix"
+        );
     }
 
     #[test]
     fn top_k_orders_descending_and_breaks_ties_by_lowest_index() {
         let activity = [1.0f32, 1.0];
         // Three domains tie at 1.0; one scores 2.0.
-        let directions: [[f32; 2]; 4] =
-            [[1.0, 0.0], [0.0, 1.0], [1.0, 1.0], [0.5, 0.5]];
+        let directions: [[f32; 2]; 4] = [[1.0, 0.0], [0.0, 1.0], [1.0, 1.0], [0.5, 0.5]];
         let mut out = [(0usize, 0.0f32); 4];
         let n = pick_domains_top_k::<4, 2>(&activity, &directions, 4, 0.0, &mut out);
         assert_eq!(n, 4);
@@ -887,7 +895,6 @@ mod tests {
             "k is clamped to N, never reads past `out`"
         );
     }
-
 
     #[test]
     fn g1_pick_domain_argmax_picks_expected_winner() {
@@ -1041,7 +1048,12 @@ mod tests {
             let x = (seed * 37 + i * 13) as f32;
             *slot = ((x * 0.1).sin() + (x * 0.07).cos()) * 0.5;
         }
-        let norm: f32 = direction.iter().map(|v| v * v).sum::<f32>().sqrt().max(1e-8);
+        let norm: f32 = direction
+            .iter()
+            .map(|v| v * v)
+            .sum::<f32>()
+            .sqrt()
+            .max(1e-8);
         for v in direction.iter_mut() {
             *v /= norm;
         }
@@ -1201,11 +1213,7 @@ mod tests {
         ];
         let combat_cluster = ClusterHolder::<2, 2>::new(combat_blend, combat_fields);
 
-        StaticRouter2::new(
-            move_cluster,
-            combat_cluster,
-            [[1.0, 0.0], [0.0, 1.0]],
-        )
+        StaticRouter2::new(move_cluster, combat_cluster, [[1.0, 0.0], [0.0, 1.0]])
     }
 
     #[test]

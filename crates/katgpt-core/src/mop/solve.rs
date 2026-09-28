@@ -308,12 +308,7 @@ impl<const N: usize, const A: usize> MopSolver<N, A> {
     ///
     /// Terminal/pinned states: returns all-zeros (the caller treats the
     /// state as having no decision).
-    pub fn pi_star(
-        &self,
-        solution: &MopSolution<N, A>,
-        s: usize,
-        out: &mut [f32; A],
-    ) {
+    pub fn pi_star(&self, solution: &MopSolution<N, A>, s: usize, out: &mut [f32; A]) {
         let mut max_arg = f32::NEG_INFINITY;
         for (k, o) in out.iter_mut().enumerate() {
             let a = solution.lse_args[s][k];
@@ -344,7 +339,10 @@ impl<const N: usize, const A: usize> MopSolver<N, A> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mop::arenas::{GRID_DEAD, GRID_N, RING_A, RING_DEAD, RING_N, four_room_gridworld, ring_world, ring_world_noisy};
+    use crate::mop::arenas::{
+        GRID_DEAD, GRID_N, RING_A, RING_DEAD, RING_N, four_room_gridworld, ring_world,
+        ring_world_noisy,
+    };
 
     /// Structurally-different reference implementation of paper Eq. 7:
     /// direct z-space with explicit Π_j z_j^{p_ijk} (powf loop) — no
@@ -362,11 +360,8 @@ mod tests {
             iters += 1;
             let mut z_next = vec![0.0f32; N];
             let mut sup = 0.0f32;
-            for (i, ((p_i, mask_i), z_next_i)) in p
-                .iter()
-                .zip(mask.iter())
-                .zip(z_next.iter_mut())
-                .enumerate()
+            for (i, ((p_i, mask_i), z_next_i)) in
+                p.iter().zip(mask.iter()).zip(z_next.iter_mut()).enumerate()
             {
                 // Same pin rule (recomputed independently).
                 let avail: Vec<usize> = (0..A).filter(|&k| mask_i[k] != 0).collect();
@@ -415,12 +410,26 @@ mod tests {
     fn config_validation_rejects_bad_params() {
         let base = MopConfig::paper_default();
         assert!(MopConfig { alpha: 0.0, ..base }.validate().is_err());
-        assert!(MopConfig { alpha: -1.0, ..base }.validate().is_err());
+        assert!(
+            MopConfig {
+                alpha: -1.0,
+                ..base
+            }
+            .validate()
+            .is_err()
+        );
         assert!(MopConfig { beta: -0.1, ..base }.validate().is_err());
         assert!(MopConfig { gamma: 0.0, ..base }.validate().is_err());
         assert!(MopConfig { gamma: 1.0, ..base }.validate().is_err());
         assert!(MopConfig { tol: 0.0, ..base }.validate().is_err());
-        assert!(MopConfig { max_iter: 0, ..base }.validate().is_err());
+        assert!(
+            MopConfig {
+                max_iter: 0,
+                ..base
+            }
+            .validate()
+            .is_err()
+        );
         assert!(base.validate().is_ok());
     }
 
@@ -480,7 +489,11 @@ mod tests {
             assert_eq!(sol.v_star[s], 0.0, "trap/food ({r},{c}) must be V=0");
         }
         // Converged within the cap.
-        assert!(sol.sup_delta < cfg.tol, "did not converge: {}", sol.sup_delta);
+        assert!(
+            sol.sup_delta < cfg.tol,
+            "did not converge: {}",
+            sol.sup_delta
+        );
         // Reachable states have strictly positive value (occupancy).
         assert!(sol.v_star[10] > 0.0); // cell (1,1)
     }
@@ -497,7 +510,12 @@ mod tests {
             let sol = solver.solve(&p, &mask, &mut scratch);
             // π* sums to 1 over available actions, 0 elsewhere.
             let mut pi = [0.0f32; 4];
-            for s in [10usize /* (1,1) */, 30 /* (3,3) */, 70 /* (7,7) */, 31 /* door (3,4) */] {
+            for s in [
+                10usize, /* (1,1) */
+                30,      /* (3,3) */
+                70,      /* (7,7) */
+                31,      /* door (3,4) */
+            ] {
                 solver.pi_star(&sol, s, &mut pi);
                 let sum: f32 = pi.iter().sum();
                 assert!((sum - 1.0).abs() <= 1e-5, "s={s} π sum {sum}");
@@ -549,7 +567,10 @@ mod tests {
         let sol = solver.solve(&p, &mask, &mut scratch);
         for i in 0..RING_N {
             assert!((v1[i] - v2[i]).abs() <= 1e-5, "init-dependence at {i}");
-            assert!((sol.v_star[i] - v1[i]).abs() <= 1e-5, "solver vs ref at {i}");
+            assert!(
+                (sol.v_star[i] - v1[i]).abs() <= 1e-5,
+                "solver vs ref at {i}"
+            );
         }
     }
 
@@ -581,7 +602,12 @@ mod tests {
 
         // γ → 1: analytic value scales as 1/(1−γ); assert relative accuracy.
         let (pd, md) = ring_world();
-        let cfg_hg = MopConfig { gamma: 0.99, tol: 1e-10, max_iter: 100_000, ..cfg };
+        let cfg_hg = MopConfig {
+            gamma: 0.99,
+            tol: 1e-10,
+            max_iter: 100_000,
+            ..cfg
+        };
         let solver_hg = MopSolver::<RING_N, RING_A>::new(cfg_hg).unwrap();
         let sol_hg = solver_hg.solve(&pd, &md, &mut scratch);
         let expected = cfg_hg.alpha * 3.0f32.ln() / (1.0 - cfg_hg.gamma);
@@ -694,8 +720,16 @@ mod tests {
         let plain = solver.solve(&p, &mask, &mut scratch_a);
         let psafe = solver.solve_psafe(&p, &mask, &ones, &mut scratch_b);
         for i in 0..GRID_N {
-            assert_eq!(plain.v_star[i].to_bits(), psafe.v_star[i].to_bits(), "v_star bit mismatch i={i}");
-            assert_eq!(plain.ln_z[i].to_bits(), psafe.ln_z[i].to_bits(), "ln_z bit mismatch i={i}");
+            assert_eq!(
+                plain.v_star[i].to_bits(),
+                psafe.v_star[i].to_bits(),
+                "v_star bit mismatch i={i}"
+            );
+            assert_eq!(
+                plain.ln_z[i].to_bits(),
+                psafe.ln_z[i].to_bits(),
+                "ln_z bit mismatch i={i}"
+            );
             for k in 0..4 {
                 assert_eq!(
                     plain.lse_args[i][k].to_bits(),
@@ -716,7 +750,10 @@ mod tests {
             for i in 0..RING_N {
                 assert_eq!(plain.v_star[i].to_bits(), psafe.v_star[i].to_bits());
                 for k in 0..RING_A {
-                    assert_eq!(plain.lse_args[i][k].to_bits(), psafe.lse_args[i][k].to_bits());
+                    assert_eq!(
+                        plain.lse_args[i][k].to_bits(),
+                        psafe.lse_args[i][k].to_bits()
+                    );
                 }
             }
         }
@@ -805,7 +842,10 @@ mod tests {
         for (i, (&v_sol, &v_r)) in sol.v_star.iter().zip(v_ref.iter()).enumerate() {
             let d = (v_sol - v_r).abs();
             let bound = (v_r.abs() * 1e-6).max(1e-6);
-            assert!(d <= bound, "state {i}: |ΔV| {d:e} > {bound:e} (V_ref {v_r})");
+            assert!(
+                d <= bound,
+                "state {i}: |ΔV| {d:e} > {bound:e} (V_ref {v_r})"
+            );
             let rel = d / v_r.abs().max(1.0);
             if rel > max_rel {
                 max_rel = rel;

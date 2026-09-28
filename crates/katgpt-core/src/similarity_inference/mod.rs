@@ -159,7 +159,9 @@ mod poc;
 #[cfg(test)]
 mod tests;
 
-pub use best_response::{PayoffMatrix, canonical_pd, embedded_best_response, embedded_best_response_into};
+pub use best_response::{
+    PayoffMatrix, canonical_pd, embedded_best_response, embedded_best_response_into,
+};
 pub use posterior::SimilarityPosterior;
 
 /// Errors raised by the similarity-inference primitive.
@@ -174,15 +176,9 @@ pub enum SimilarityError {
     /// `n_actions` is zero. A game with zero actions is ill-defined.
     EmptyActionSet,
     /// Payoff-matrix shape mismatch: the supplied matrix is not `A × A`.
-    PayoffShapeMismatch {
-        expected: usize,
-        got: usize,
-    },
+    PayoffShapeMismatch { expected: usize, got: usize },
     /// Partner-marginal length mismatch (expected `A`, got otherwise).
-    MarginalShapeMismatch {
-        expected: usize,
-        got: usize,
-    },
+    MarginalShapeMismatch { expected: usize, got: usize },
 }
 
 /// A read-only stream of joint-action observations between one focal agent

@@ -331,9 +331,7 @@ fn main() {
     let elapsed = t.elapsed();
     let per_call_ns = elapsed.as_nanos() as f64 / iters as f64;
 
-    println!(
-        "  apply_ssmax_inplace @ n_kv={n_kv}: {per_call_ns:.1} ns/call ({iters} iterations)"
-    );
+    println!("  apply_ssmax_inplace @ n_kv={n_kv}: {per_call_ns:.1} ns/call ({iters} iterations)");
     println!(
         "  Budget: ≤ 1% of attention forward time. A typical forward at n_kv=1024 is ~100µs-1ms; SSMax overhead of ~{per_call_ns:.0}ns is <0.1% — well under budget."
     );

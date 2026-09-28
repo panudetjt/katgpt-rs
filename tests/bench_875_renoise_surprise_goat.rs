@@ -204,7 +204,11 @@ fn mixture() -> Mixture {
         candidates.push(VecState(u.iter().map(|x| r * x).collect()));
         stable.push(false);
     }
-    Mixture { candidates, stable, probe }
+    Mixture {
+        candidates,
+        stable,
+        probe,
+    }
 }
 
 /// precision@N_EACH for NOVELTY: fraction of the N_EACH highest-scored
@@ -243,9 +247,18 @@ fn g1_surprise_mode_is_deterministic_and_shell_holds() {
         &cfg,
         &mut fastrand::Rng::with_seed(11),
     );
-    assert_eq!(a.drift.to_bits(), b.drift.to_bits(), "same seed must reproduce");
+    assert_eq!(
+        a.drift.to_bits(),
+        b.drift.to_bits(),
+        "same seed must reproduce"
+    );
     assert_eq!(a.per_draw, b.per_draw);
-    assert!(a.per_draw.iter().take(K_DRAWS as usize).all(|d| d.is_finite()));
+    assert!(
+        a.per_draw
+            .iter()
+            .take(K_DRAWS as usize)
+            .all(|d| d.is_finite())
+    );
     // World sanity: every candidate sits on the shell (identical whitened
     // radius) — the plain control's blindness is by construction.
     let shell = (R_FRAC * L) * (R_FRAC * L) / D as f32;
@@ -345,7 +358,10 @@ fn g2_latency_surprise_is_unchanged_class_vs_incumbent() {
             sink_b += s.drift;
         },
     );
-    assert!(sink_a.is_finite() && sink_b.is_finite(), "arms must be consumed");
+    assert!(
+        sink_a.is_finite() && sink_b.is_finite(),
+        "arms must be consumed"
+    );
 
     ratio.report("G2 latency incumbent vs surprise");
     println!(
@@ -397,13 +413,19 @@ fn g3_consumer_sketch_consolidation_ordering_is_surprise_ranked() {
     scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
 
     // The admission list (first N_EACH) against the oracle.
-    let admitted_planted = scored[..N_EACH].iter().filter(|(i, _)| !m.stable[*i]).count();
+    let admitted_planted = scored[..N_EACH]
+        .iter()
+        .filter(|(i, _)| !m.stable[*i])
+        .count();
     assert!(
         admitted_planted as f32 / N_EACH as f32 >= 0.90,
         "consolidation-ordering sketch: {admitted_planted}/{N_EACH} first admissions planted"
     );
     // And the tail is the stable remainder — an ordering, not a threshold.
-    let tail_stable = scored[N_EACH..].iter().filter(|(i, _)| m.stable[*i]).count();
+    let tail_stable = scored[N_EACH..]
+        .iter()
+        .filter(|(i, _)| m.stable[*i])
+        .count();
     assert!(
         tail_stable as f32 / N_EACH as f32 >= 0.90,
         "consolidation-ordering sketch: {tail_stable}/{N_EACH} tail deferrals stable"

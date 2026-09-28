@@ -398,7 +398,10 @@ mod tests {
         let mut prev = f32::INFINITY;
         for &n in &[3_usize, 8, 64, 512, 4096, 524_288] {
             let m = sched.multiplier((n as f32).ln());
-            assert!(m <= prev, "multiplier must be non-increasing in n: {m} > {prev}");
+            assert!(
+                m <= prev,
+                "multiplier must be non-increasing in n: {m} > {prev}"
+            );
             prev = m;
         }
     }
@@ -522,7 +525,11 @@ mod tests {
     #[test]
     fn apply_empty_slice_is_noop() {
         let mut scores: Vec<f32> = vec![];
-        apply_asentmax_inplace(&mut scores, &AsentmaxSchedule::Derived { sigma_hat: 1.0 }, 6.0);
+        apply_asentmax_inplace(
+            &mut scores,
+            &AsentmaxSchedule::Derived { sigma_hat: 1.0 },
+            6.0,
+        );
         assert!(scores.is_empty());
     }
 
@@ -543,7 +550,10 @@ mod tests {
         let est = RollingSigmaEstimator::new(0.5);
         est.observe_row(&[]);
         est.observe_row(&[1.0]);
-        assert!((est.resolve_sigma() - 1.0).abs() < TOL, "short rows are no-ops");
+        assert!(
+            (est.resolve_sigma() - 1.0).abs() < TOL,
+            "short rows are no-ops"
+        );
         // All-NaN row: max/min stay ±inf → range is NaN → skipped.
         est.observe_row(&[f32::NAN, f32::NAN]);
         assert!(
@@ -561,7 +571,9 @@ mod tests {
         let mut row = vec![0.0_f32; n];
         let mut state = 0x243F_6A88_85A3_08D3_u64;
         for slot in row.iter_mut() {
-            state = state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            state = state
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
             let u = ((state >> 11) as f64) / ((1u64 << 53) as f64);
             *slot = (u as f32) * 8.0 - 4.0; // uniform [-4, 4)
         }
@@ -584,7 +596,9 @@ mod tests {
     fn estimator_clamps_extreme_sigma() {
         // Huge-range rows push σ̂ up but resolve clamps at 1e3.
         let est = RollingSigmaEstimator::new(0.5);
-        let huge: Vec<f32> = (0..2048).map(|i| if i % 2 == 0 { 1e9 } else { -1e9 }).collect();
+        let huge: Vec<f32> = (0..2048)
+            .map(|i| if i % 2 == 0 { 1e9 } else { -1e9 })
+            .collect();
         for _ in 0..80 {
             est.observe_row(&huge);
         }
@@ -599,7 +613,9 @@ mod tests {
                 let est = std::sync::Arc::clone(&est);
                 std::thread::spawn(move || {
                     for i in 0..200 {
-                        let row: Vec<f32> = (0..64).map(|j| ((i * 7 + t * 13 + j) % 17) as f32 - 8.0).collect();
+                        let row: Vec<f32> = (0..64)
+                            .map(|j| ((i * 7 + t * 13 + j) % 17) as f32 - 8.0)
+                            .collect();
                         est.observe_row(&row);
                     }
                 })
@@ -626,7 +642,9 @@ mod tests {
         let mut state = 0x13198A2E03707344_u64;
         let mut row = vec![0.0_f32; n];
         for slot in row.iter_mut() {
-            state = state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            state = state
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
             // Box-Muller-ish cheap normal: sum of 3 uniforms, centered.
             let u1 = ((state >> 11) as f64 / (1u64 << 53) as f64) as f32;
             let u2 = ((state >> 21) as f64 / (1u64 << 53) as f64) as f32;

@@ -41,11 +41,7 @@ fn grad_check_config() -> MoeConfig {
 /// Run the forward, compute sum-of-squares loss + the upstream gradient.
 ///
 /// `d_output[i] = 2 · output[i]` (derivative of Σ output²).
-fn run_forward(
-    config: &MoeConfig,
-    weights: &MoeWeights,
-    h: &[f32],
-) -> (f32, Vec<f32>) {
+fn run_forward(config: &MoeConfig, weights: &MoeWeights, h: &[f32]) -> (f32, Vec<f32>) {
     let d = config.d();
     let mut scratch = MoeForwardScratch::new(config);
     let mut output = vec![0.0f32; d];
@@ -119,7 +115,14 @@ fn gradient_check_all_params() {
             let analytic_slice: &[f32] = $analytic;
             for i in 0..analytic_slice.len() {
                 let a = analytic_slice[i];
-                let n = finite_diff_one(&config, &weights, &h, |w| $get(w, i), |w, v| $set(w, i, v), epsilon);
+                let n = finite_diff_one(
+                    &config,
+                    &weights,
+                    &h,
+                    |w| $get(w, i),
+                    |w, v| $set(w, i, v),
+                    epsilon,
+                );
                 let re = rel_err(a, n);
                 if re > max_rel_err {
                     max_rel_err = re;
@@ -128,7 +131,12 @@ fn gradient_check_all_params() {
                 assert!(
                     re < tol,
                     "{}[{}]: rel_err {:.4} >= tol {:.4} (analytic={:.6e}, numeric={:.6e})",
-                    $name, i, re, tol, a, n
+                    $name,
+                    i,
+                    re,
+                    tol,
+                    a,
+                    n
                 );
             }
         };
@@ -196,7 +204,8 @@ fn gradient_check_all_params() {
             "routed_expert_down_proj",
             grads.routed_expert_down_proj.as_ref().unwrap(),
             |w: &MoeWeights, i: usize| w.routed_expert_down_proj.as_ref().unwrap()[i],
-            |w: &mut MoeWeights, i: usize, v: f32| w.routed_expert_down_proj.as_mut().unwrap()[i] = v
+            |w: &mut MoeWeights, i: usize, v: f32| w.routed_expert_down_proj.as_mut().unwrap()[i] =
+                v
         );
     }
     if weights.routed_expert_up_proj.is_some() {
@@ -212,7 +221,8 @@ fn gradient_check_all_params() {
             "routed_expert_norm_weight",
             grads.routed_expert_norm_weight.as_ref().unwrap(),
             |w: &MoeWeights, i: usize| w.routed_expert_norm_weight.as_ref().unwrap()[i],
-            |w: &mut MoeWeights, i: usize, v: f32| w.routed_expert_norm_weight.as_mut().unwrap()[i] = v
+            |w: &mut MoeWeights, i: usize, v: f32| w.routed_expert_norm_weight.as_mut().unwrap()
+                [i] = v
         );
     }
 
@@ -257,7 +267,11 @@ fn gradient_check_input_hidden() {
         assert!(
             re < tol,
             "dh[{}]: rel_err {:.4} >= tol {:.4} (analytic={:.6e}, numeric={:.6e})",
-            i, re, tol, dh[i], numeric
+            i,
+            re,
+            tol,
+            dh[i],
+            numeric
         );
     }
     println!("MoE dL/dh gradient check PASSED. max_rel_err = {max_rel_err:.4}");
@@ -328,9 +342,7 @@ fn gradient_check_nonlatent_path() {
         assert!(re < tol, "dh[{i}]: rel_err {re:.4}");
     }
 
-    println!(
-        "MoE non-latent path gradient check PASSED. max_rel_err (router) = {max_rel_err:.4}"
-    );
+    println!("MoE non-latent path gradient check PASSED. max_rel_err (router) = {max_rel_err:.4}");
 }
 
 // ─── Wide-gamma gradient check (Issue 693 H2 regression guard) ────────────
@@ -356,7 +368,9 @@ fn gradient_check_wide_gamma() {
     let mut weights = MoeWeights::random(&config, 42);
     // Wide-gamma fixture: γ spans [0.5, 2.0] deterministically.
     let d_moe = config.routed_expert_hidden_size.unwrap();
-    let wide: Vec<f32> = (0..d_moe).map(|i| 0.5 + (i as f32 / d_moe as f32) * 1.5).collect();
+    let wide: Vec<f32> = (0..d_moe)
+        .map(|i| 0.5 + (i as f32 / d_moe as f32) * 1.5)
+        .collect();
     weights.routed_expert_norm_weight = Some(wide);
     // Adversarial shaping (both are REQUIRED to unmask the bug — see NOTE):
     // 1. Zero the shared expert → its contribution to hidden_out is exactly 0.
@@ -410,7 +424,14 @@ fn gradient_check_wide_gamma() {
             let analytic_slice: &[f32] = $analytic;
             for i in 0..analytic_slice.len() {
                 let a = analytic_slice[i];
-                let n = finite_diff_one(&config, &weights, &h, |w| $get(w, i), |w, v| $set(w, i, v), epsilon);
+                let n = finite_diff_one(
+                    &config,
+                    &weights,
+                    &h,
+                    |w| $get(w, i),
+                    |w, v| $set(w, i, v),
+                    epsilon,
+                );
                 let re = rel_err(a, n);
                 if re > max_rel_err {
                     max_rel_err = re;
@@ -419,7 +440,12 @@ fn gradient_check_wide_gamma() {
                 assert!(
                     re < tol,
                     "{}[{}]: rel_err {:.4} >= tol {:.4} (analytic={:.6e}, numeric={:.6e})",
-                    $name, i, re, tol, a, n
+                    $name,
+                    i,
+                    re,
+                    tol,
+                    a,
+                    n
                 );
             }
         };
@@ -469,9 +495,7 @@ fn gradient_check_wide_gamma() {
         assert!(re < tol, "dh[{i}]: rel_err {re:.4} >= tol {tol:.4}");
     }
 
-    println!(
-        "MoE wide-gamma gradient check PASSED. max_rel_err = {max_rel_err:.4} ({worst})"
-    );
+    println!("MoE wide-gamma gradient check PASSED. max_rel_err = {max_rel_err:.4} ({worst})");
 }
 
 // ─── Smoke test: backward runs without panic ────────────────────────────────

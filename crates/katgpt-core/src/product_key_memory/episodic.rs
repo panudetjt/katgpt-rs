@@ -1563,7 +1563,12 @@ mod tests {
                     &mut scratch,
                 );
             }
-            store.working().values.iter().map(|b| b.to_bits() as u8).collect()
+            store
+                .working()
+                .values
+                .iter()
+                .map(|b| b.to_bits() as u8)
+                .collect()
         };
         assert_eq!(run(21), run(21), "same seed → bit-identical");
     }

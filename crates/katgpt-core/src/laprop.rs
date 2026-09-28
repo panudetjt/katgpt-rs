@@ -295,7 +295,11 @@ mod tests {
         for step in 0..10_000 {
             let mut x = [0.0f32; D];
             for v in &mut x {
-                *v = if (step + *v as usize).is_multiple_of(2) { next() } else { -next() };
+                *v = if (step + *v as usize).is_multiple_of(2) {
+                    next()
+                } else {
+                    -next()
+                };
             }
             acc.push(&x);
         }
@@ -351,8 +355,7 @@ mod tests {
         let m = acc.momentum_uncorrected();
         for i in 0..D {
             let expected = pow * m_after_spike[i];
-            let same = m[i].to_bits() == expected.to_bits()
-                || (m[i] == 0.0 && expected == 0.0); // ±0 sign-flip via `+0.0`
+            let same = m[i].to_bits() == expected.to_bits() || (m[i] == 0.0 && expected == 0.0); // ±0 sign-flip via `+0.0`
             assert!(
                 same,
                 "G1b: residual[{i}] = {} (bits {:#x}) != μ^{}·spike = {} (bits {:#x})",
@@ -399,7 +402,10 @@ mod tests {
         let m = acc.momentum();
         let expected = 1.0f32 / (1.0 + DEFAULT_EPS).sqrt();
         for &v in &m {
-            assert!((v - expected).abs() < 1e-6, "got {v}, expected ≈ {expected}");
+            assert!(
+                (v - expected).abs() < 1e-6,
+                "got {v}, expected ≈ {expected}"
+            );
         }
         // Zero steps → zeros.
         let fresh = NormalizedMomentumAccumulator::<3>::new(0.9, 0.9);
@@ -438,7 +444,10 @@ mod tests {
         let mut nu = 0.0f32;
         while nu < 0.99 {
             let b = NormalizedMomentumScalar::new(0.9, nu).bound();
-            assert!(b >= prev, "bound must be monotone in ν: {b} < {prev} at ν={nu}");
+            assert!(
+                b >= prev,
+                "bound must be monotone in ν: {b} < {prev} at ν={nu}"
+            );
             prev = b;
             nu += 0.05;
         }

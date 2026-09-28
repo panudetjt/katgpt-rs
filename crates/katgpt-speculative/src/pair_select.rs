@@ -154,11 +154,7 @@ pub fn gate_lambda(cfg: &PairSelectConfig, candidates: &[(u32, f32)]) -> f32 {
                 .iter()
                 .map(|&(_, p)| {
                     let q = p / total;
-                    if q > 0.0 {
-                        -q * q.ln()
-                    } else {
-                        0.0
-                    }
+                    if q > 0.0 { -q * q.ln() } else { 0.0 }
                 })
                 .sum();
             cfg.lambda0 * fast_sigmoid(cfg.kappa * h)
@@ -266,7 +262,11 @@ pub fn pair_scored_path_into(
         for &(b, u) in pos.iter() {
             let u_logp = u.ln();
             let pair_p = table.probability(a, b);
-            let pair_logp = if pair_p > 0.0 { pair_p.ln() } else { MISSING_PAIR_LOGP };
+            let pair_logp = if pair_p > 0.0 {
+                pair_p.ln()
+            } else {
+                MISSING_PAIR_LOGP
+            };
             let score = u_logp + lambda * pair_logp;
             if score > best_score {
                 best_score = score;
@@ -296,7 +296,11 @@ mod tests {
     use crate::bigram_markov::BigramMarkovBuilder;
 
     /// Toy table from explicit bigram counts: `add((prev, next) × n)`.
-    fn table_from_pairs(pairs: &[(u32, u32, u32)], vocab: usize, top_m: usize) -> BigramMarkovTable {
+    fn table_from_pairs(
+        pairs: &[(u32, u32, u32)],
+        vocab: usize,
+        top_m: usize,
+    ) -> BigramMarkovTable {
         let mut b = BigramMarkovBuilder::new();
         for &(p, n, count) in pairs {
             for _ in 0..count {
@@ -340,7 +344,10 @@ mod tests {
                 .take_while(|p| !p.is_empty())
                 .map(|p| p[0].0)
                 .collect();
-            assert_eq!(path, argmax, "λ=0 diverged from argmax-of-marginals at prev={prev}");
+            assert_eq!(
+                path, argmax,
+                "λ=0 diverged from argmax-of-marginals at prev={prev}"
+            );
         }
     }
 
@@ -387,7 +394,14 @@ mod tests {
         // No-truncation regime (m ≥ row length): the sparse propagation must
         // equal explicit dense matrix powers.
         let table = table_from_pairs(
-            &[(0, 1, 3), (0, 2, 1), (1, 2, 2), (1, 3, 2), (2, 0, 1), (2, 3, 1)],
+            &[
+                (0, 1, 3),
+                (0, 2, 1),
+                (1, 2, 2),
+                (1, 3, 2),
+                (2, 0, 1),
+                (2, 3, 1),
+            ],
             4,
             8,
         );
@@ -481,7 +495,11 @@ mod tests {
         // prev = 4 has no row in the fixture → every pair floors.
         assert_eq!(table.probability(4, 5), 0.0);
         let path = pair_scored_path(&table, 4, &lattice, &small);
-        assert_eq!(path, vec![3], "dominant U must beat the floored pair at λ=0.1");
+        assert_eq!(
+            path,
+            vec![3],
+            "dominant U must beat the floored pair at λ=0.1"
+        );
     }
 
     #[test]

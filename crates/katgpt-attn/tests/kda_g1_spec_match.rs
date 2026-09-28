@@ -520,7 +520,9 @@ fn g1_kda_causality_state_does_not_depend_on_future() {
     let config = small_config();
     let weights = KdaWeights::random(&config, 7);
 
-    let t0: Vec<f32> = (0..config.hidden_size).map(|i| (i as f32).sin() * 0.1).collect();
+    let t0: Vec<f32> = (0..config.hidden_size)
+        .map(|i| (i as f32).sin() * 0.1)
+        .collect();
     let t1: Vec<f32> = (0..config.hidden_size)
         .map(|i| ((i + 13) as f32).sin() * 0.1)
         .collect();
@@ -557,7 +559,9 @@ fn g1_decay_is_in_unit_interval() {
     let mut cache = KdaLayerCache::new(&config);
     let mut scratch = KdaForwardScratch::new(&config);
 
-    let h: Vec<f32> = (0..config.hidden_size).map(|i| (i as f32).sin() * 0.1).collect();
+    let h: Vec<f32> = (0..config.hidden_size)
+        .map(|i| (i as f32).sin() * 0.1)
+        .collect();
     let _ = kda_forward_token(&config, &weights, &mut cache, &mut scratch, &h);
 
     // After forward, the state matrices should have finite values.

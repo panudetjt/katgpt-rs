@@ -29,7 +29,10 @@ fn seeded_dense_eigengap_ge_half_on_box() {
         for seed_idx in 0..8_u64 {
             let seed = format!("gap-probe/{seed_idx}/{k}");
             let init = seeded_dense::<D, N>(seed.as_bytes(), k);
-            let pencil = DensePencil::<D, N> { a0: init.a0, a: init.a };
+            let pencil = DensePencil::<D, N> {
+                a0: init.a0,
+                a: init.a,
+            };
             let mut scratch = DenseScratch::<D>::new();
             let mut rng = Lcg(seed_idx ^ (k as u64) << 8);
 
@@ -64,7 +67,10 @@ fn seeded_tridiag_eigengap_ge_half_on_box() {
         for seed_idx in 0..8_u64 {
             let seed = format!("tri-gap/{seed_idx}/{k}");
             let init = seeded_tridiag::<D, N>(seed.as_bytes(), k);
-            let pencil = TridiagPencil::<D, N> { a0: init.a0, a: init.a };
+            let pencil = TridiagPencil::<D, N> {
+                a0: init.a0,
+                a: init.a,
+            };
             let mut scratch = TriScratch::<D>::new();
             let mut rng = Lcg(seed_idx ^ 0xBEEF ^ (k as u64));
 
@@ -157,7 +163,10 @@ fn extremal_k_concave_convex_on_line_sweeps() {
     const N: usize = 2;
     // A generic seeded pencil; sweep x[0] ∈ [−4, 4] at fixed x[1].
     let init = seeded_dense::<D, N>(b"shape-sweep", 2);
-    let pencil = DensePencil::<D, N> { a0: init.a0, a: init.a };
+    let pencil = DensePencil::<D, N> {
+        a0: init.a0,
+        a: init.a,
+    };
     let mut scratch = DenseScratch::<D>::new();
     let xs: Vec<f32> = (0..41).map(|i| -4.0 + 8.0 * (i as f32) / 40.0).collect();
     let mut f_at = |x0: f32, k: usize| -> f32 {
@@ -188,7 +197,10 @@ fn evaluations_are_bit_reproducible() {
     const D: usize = 6;
     const N: usize = 4;
     let init = seeded_dense::<D, N>(b"repro", 3);
-    let pencil = DensePencil::<D, N> { a0: init.a0, a: init.a };
+    let pencil = DensePencil::<D, N> {
+        a0: init.a0,
+        a: init.a,
+    };
     let mut s1 = DenseScratch::<D>::new();
     let mut s2 = DenseScratch::<D>::new();
     let mut rng = Lcg(9);
@@ -257,7 +269,10 @@ fn tridiag_pencil_eval_matches_dense() {
     const D: usize = 6;
     const N: usize = 3;
     let init = seeded_tridiag::<D, N>(b"pencil-xcheck", 2);
-    let pencil = TridiagPencil::<D, N> { a0: init.a0, a: init.a };
+    let pencil = TridiagPencil::<D, N> {
+        a0: init.a0,
+        a: init.a,
+    };
     let mut ts = TriScratch::<D>::new();
     let mut rng = Lcg(3);
     for _ in 0..128 {
@@ -304,7 +319,10 @@ fn sturm_counts_are_monotone_and_reproducible() {
     const D: usize = 7;
     const N: usize = 2;
     let init = seeded_tridiag::<D, N>(b"count-probe", 3);
-    let pencil = TridiagPencil::<D, N> { a0: init.a0, a: init.a };
+    let pencil = TridiagPencil::<D, N> {
+        a0: init.a0,
+        a: init.a,
+    };
     let mut ts = TriScratch::<D>::new();
     let x = [1.5_f32, -2.0];
     let mut prev = 0_u32;

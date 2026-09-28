@@ -39,7 +39,7 @@ use super::init::{mix64, sobol_init_into};
 use super::perturb::{Perturbation, add_guidance};
 use super::score::{latent_value_into, select_best};
 use super::types::{
-    GuidedWidthConfig, GuidedWidthScratch, Guidance, Hooks, MAX_BRANCHES, MAX_DIRECTIONS,
+    Guidance, GuidedWidthConfig, GuidedWidthScratch, Hooks, MAX_BRANCHES, MAX_DIRECTIONS,
     RolloutReport,
 };
 use crate::diversity::temp::blake3_noise_fill;
@@ -181,10 +181,9 @@ where
     // ── Guidance ranking (table present, usable, admitted by the arm) ──
     let mut order = [0u16; MAX_DIRECTIONS];
     let n_dirs = match &guidance {
-        Some(g) if perturb.admits_guidance() && g.table.dim() == d && !g.table.is_empty() => {
-            g.posterior
-                .rank_into(g.epsilon, &mut order[..g.table.len()])
-        }
+        Some(g) if perturb.admits_guidance() && g.table.dim() == d && !g.table.is_empty() => g
+            .posterior
+            .rank_into(g.epsilon, &mut order[..g.table.len()]),
         _ => 0,
     };
     let guidance = if n_dirs > 0 { guidance } else { None };
@@ -457,7 +456,10 @@ mod tests {
             );
             assert!(rep.incumbent);
             assert_eq!(rep.step_evals, 16);
-            assert_eq!(out.map(f32::to_bits).to_vec(), want.iter().map(|x| x.to_bits()).collect::<Vec<_>>());
+            assert_eq!(
+                out.map(f32::to_bits).to_vec(),
+                want.iter().map(|x| x.to_bits()).collect::<Vec<_>>()
+            );
         }
     }
 
@@ -468,8 +470,24 @@ mod tests {
         let mut s1 = GuidedWidthScratch::with_capacity(8, 8);
         let mut s2 = GuidedWidthScratch::with_capacity(8, 8);
         let (mut o1, mut o2) = ([0.0f32; 8], [0.0f32; 8]);
-        let r1 = guided_width_rollouts(&h0, &c, Hooks::default(), &mut Transversal::default(), &mut double_well, &mut s1, &mut o1);
-        let r2 = guided_width_rollouts(&h0, &c, Hooks::default(), &mut Transversal::default(), &mut double_well, &mut s2, &mut o2);
+        let r1 = guided_width_rollouts(
+            &h0,
+            &c,
+            Hooks::default(),
+            &mut Transversal::default(),
+            &mut double_well,
+            &mut s1,
+            &mut o1,
+        );
+        let r2 = guided_width_rollouts(
+            &h0,
+            &c,
+            Hooks::default(),
+            &mut Transversal::default(),
+            &mut double_well,
+            &mut s2,
+            &mut o2,
+        );
         assert_eq!(r1, r2);
         assert_eq!(o1.map(f32::to_bits), o2.map(f32::to_bits));
         assert_eq!(r1.step_evals, 8 * 16);
@@ -486,14 +504,31 @@ mod tests {
         let run = |hooks: Hooks<'_>| {
             let mut s = GuidedWidthScratch::with_capacity(6, 8);
             let mut o = [0.0f32; 8];
-            let r = guided_width_rollouts(&h0, &c, hooks, &mut Transversal::default(), &mut double_well, &mut s, &mut o);
-            (r, o.map(f32::to_bits), s.values().iter().map(|v| v.to_bits()).collect::<Vec<_>>())
+            let r = guided_width_rollouts(
+                &h0,
+                &c,
+                hooks,
+                &mut Transversal::default(),
+                &mut double_well,
+                &mut s,
+                &mut o,
+            );
+            (
+                r,
+                o.map(f32::to_bits),
+                s.values().iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+            )
         };
         let none = run(Hooks::default());
         let empty = DirectionTable::from_parts(8, vec![], vec![]).unwrap();
         let post = DirectionPosterior::new(0);
         let with_empty = run(Hooks {
-            guidance: Some(Guidance { table: &empty, posterior: &post, epsilon: 0.05, bias_tau: 0.5 }),
+            guidance: Some(Guidance {
+                table: &empty,
+                posterior: &post,
+                epsilon: 0.05,
+                bias_tau: 0.5,
+            }),
             ..Hooks::default()
         });
         assert_eq!(none, with_empty);
@@ -501,7 +536,12 @@ mod tests {
         let wrong = DirectionTable::from_parts(4, vec![1.0, 0.0, 0.0, 0.0], vec![1.0]).unwrap();
         let post1 = DirectionPosterior::new(1);
         let with_wrong = run(Hooks {
-            guidance: Some(Guidance { table: &wrong, posterior: &post1, epsilon: 0.05, bias_tau: 0.5 }),
+            guidance: Some(Guidance {
+                table: &wrong,
+                posterior: &post1,
+                epsilon: 0.05,
+                bias_tau: 0.5,
+            }),
             ..Hooks::default()
         });
         assert_eq!(none, with_wrong);
@@ -521,7 +561,12 @@ mod tests {
             &h0,
             &c,
             Hooks {
-                guidance: Some(Guidance { table: &tab, posterior: &post, epsilon: 0.05, bias_tau: 0.5 }),
+                guidance: Some(Guidance {
+                    table: &tab,
+                    posterior: &post,
+                    epsilon: 0.05,
+                    bias_tau: 0.5,
+                }),
                 ..Hooks::default()
             },
             &mut Transversal::default(),
@@ -551,16 +596,43 @@ mod tests {
         };
         let h0 = [0.5f32; 8];
         let mut c = cfg(4, 24, 0.25);
-        c.trap = Some(TrapReallocConfig { window: 2, ..TrapReallocConfig::DEFAULT });
+        c.trap = Some(TrapReallocConfig {
+            window: 2,
+            ..TrapReallocConfig::DEFAULT
+        });
         let mut s = GuidedWidthScratch::with_capacity(4, 8);
         let mut o = [0.0f32; 8];
-        let rep = guided_width_rollouts(&h0, &c, Hooks::default(), &mut Transversal::default(), &mut flip, &mut s, &mut o);
+        let rep = guided_width_rollouts(
+            &h0,
+            &c,
+            Hooks::default(),
+            &mut Transversal::default(),
+            &mut flip,
+            &mut s,
+            &mut o,
+        );
         assert!(rep.kicks > 0, "{rep:?}");
         assert!(rep.respawns > 0, "{rep:?}");
-        assert_eq!(rep.step_evals, 4 * 24, "respawn re-spends, never adds, budget");
+        assert_eq!(
+            rep.step_evals,
+            4 * 24,
+            "respawn re-spends, never adds, budget"
+        );
         // Without respawn the trapped branches are stopped instead.
-        c.trap = Some(TrapReallocConfig { window: 2, respawn: false, ..TrapReallocConfig::DEFAULT });
-        let rep2 = guided_width_rollouts(&h0, &c, Hooks::default(), &mut Transversal::default(), &mut flip, &mut s, &mut o);
+        c.trap = Some(TrapReallocConfig {
+            window: 2,
+            respawn: false,
+            ..TrapReallocConfig::DEFAULT
+        });
+        let rep2 = guided_width_rollouts(
+            &h0,
+            &c,
+            Hooks::default(),
+            &mut Transversal::default(),
+            &mut flip,
+            &mut s,
+            &mut o,
+        );
         assert!(rep2.killed > 0 && rep2.respawns == 0, "{rep2:?}");
         assert!(rep2.step_evals < 4 * 24);
         assert!(s.values()[1..].iter().any(|v| v.is_nan()));
@@ -575,14 +647,20 @@ mod tests {
         };
         let h0 = [0.5f32; 8];
         let mut c = cfg(4, 24, 0.25);
-        c.trap = Some(TrapReallocConfig { window: 2, ..TrapReallocConfig::DEFAULT });
+        c.trap = Some(TrapReallocConfig {
+            window: 2,
+            ..TrapReallocConfig::DEFAULT
+        });
         let mut nan_probe = |_: &[f32]| f32::NAN;
         let mut s = GuidedWidthScratch::with_capacity(4, 8);
         let mut o = [0.0f32; 8];
         let rep = guided_width_rollouts(
             &h0,
             &c,
-            Hooks { probe: Some(&mut nan_probe), ..Hooks::default() },
+            Hooks {
+                probe: Some(&mut nan_probe),
+                ..Hooks::default()
+            },
             &mut Transversal::default(),
             &mut flip,
             &mut s,

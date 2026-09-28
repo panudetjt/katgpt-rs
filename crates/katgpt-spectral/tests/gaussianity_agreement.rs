@@ -42,13 +42,21 @@ fn ks_d_bit_identical_on_identical_samples() {
         {
             let mut rng = Rng::new(3);
             (0..1024)
-                .map(|_| if rng.uniform() < 0.95 { rng.normal() } else { 10.0 * rng.normal() })
+                .map(|_| {
+                    if rng.uniform() < 0.95 {
+                        rng.normal()
+                    } else {
+                        10.0 * rng.normal()
+                    }
+                })
                 .collect()
         },
         // Discrete lattice.
         {
             let mut rng = Rng::new(4);
-            (0..256).map(|_| if rng.uniform() < 0.5 { 0.0f32 } else { 1.0 }).collect()
+            (0..256)
+                .map(|_| if rng.uniform() < 0.5 { 0.0f32 } else { 1.0 })
+                .collect()
         },
     ];
 

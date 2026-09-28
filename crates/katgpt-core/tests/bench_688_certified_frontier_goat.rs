@@ -75,7 +75,11 @@ fn world() -> Vec<f32> {
 fn cfg() -> FrontierConfig {
     FrontierConfig {
         h: H,
-        lipschitz: SIGMOID_LIPSCHITZ * AMP * std::f32::consts::TAU * FREQ * std::f32::consts::SQRT_2,
+        lipschitz: SIGMOID_LIPSCHITZ
+            * AMP
+            * std::f32::consts::TAU
+            * FREQ
+            * std::f32::consts::SQRT_2,
         cell_spacing: 1.0 / (GRID - 1) as f32,
         delta: DELTA,
         ..FrontierConfig::default()
@@ -109,11 +113,8 @@ fn arm_primitive(seed: u64, truth: &[f32]) -> ArmResult {
     let mut f = Box::new(CertifiedFrontier::<CELLS, 2>::new());
     for i in 0..CELLS {
         let (r, col) = (i / GRID, i % GRID);
-        f.push_cell([
-            col as f32 / (GRID - 1) as f32,
-            r as f32 / (GRID - 1) as f32,
-        ])
-        .expect("capacity");
+        f.push_cell([col as f32 / (GRID - 1) as f32, r as f32 / (GRID - 1) as f32])
+            .expect("capacity");
     }
     let mut rng = Lcg::new(seed);
     for t in 1..=ROUNDS {
@@ -147,7 +148,11 @@ fn arm_adjacency_floor(seed: u64, truth: &[f32]) -> ArmResult {
     let mut rng = Lcg::new(seed);
     for _ in 1..=ROUNDS {
         let i = rng.below(CELLS);
-        if rng.next_f32() < truth[i] { valid[i] += 1 } else { invalid[i] += 1 }
+        if rng.next_f32() < truth[i] {
+            valid[i] += 1
+        } else {
+            invalid[i] += 1
+        }
     }
     let leans_valid = |i: usize| valid[i] > invalid[i] && valid[i] + invalid[i] > 0;
     let mut certified = vec![false; CELLS];
@@ -191,7 +196,15 @@ fn t3_4_report_the_floor_adjacency_only_expansion() {
     );
     println!(
         "{:>4} | {:>9} {:>6} {:>8} {:>9} | {:>9} {:>6} {:>8} {:>9} | {:>7}",
-        "seed", "prim.cert", "viol", "rate", "product", "floor.cert", "viol", "rate", "product",
+        "seed",
+        "prim.cert",
+        "viol",
+        "rate",
+        "product",
+        "floor.cert",
+        "viol",
+        "rate",
+        "product",
         "ratio"
     );
 
@@ -251,8 +264,16 @@ fn t3_4_report_the_floor_adjacency_only_expansion() {
     // against both numbers; see the file for the scope call.
     println!(
         "\nverdict inputs: product-metric {} | calibration {}",
-        if mean_ratio > 1.0 { "primitive DOMINATES floor" } else { "floor DOMINATES primitive" },
-        if floor_rate <= DELTA as f64 { "floor is ALSO calibrated" } else { "floor BREACHES delta (primitive is the only deployable arm)" }
+        if mean_ratio > 1.0 {
+            "primitive DOMINATES floor"
+        } else {
+            "floor DOMINATES primitive"
+        },
+        if floor_rate <= DELTA as f64 {
+            "floor is ALSO calibrated"
+        } else {
+            "floor BREACHES delta (primitive is the only deployable arm)"
+        }
     );
 }
 
@@ -345,7 +366,11 @@ fn t3_4b_where_delta_actually_binds() {
          (= scale {:.2}) -> {} certified, {viol} violations, rate {rate:.5} [{}]",
         union / paper,
         cert / SEEDS as usize,
-        if rate <= DELTA as f64 { "calibrated" } else { "BREACHES delta" }
+        if rate <= DELTA as f64 {
+            "calibrated"
+        } else {
+            "BREACHES delta"
+        }
     );
 }
 
@@ -365,7 +390,8 @@ fn t3_1_g2_perf_batch_acquisition_and_expansion_at_crowd_scale() {
     let mut f = Box::new(CertifiedFrontier::<POOL, D>::new());
     let mut rng = Lcg::new(0x9A7E);
     for _ in 0..POOL {
-        f.push_cell(std::array::from_fn(|_| rng.next_f32())).unwrap();
+        f.push_cell(std::array::from_fn(|_| rng.next_f32()))
+            .unwrap();
     }
     // Warm the frontier so acquisition has a realistic candidate population.
     for i in 0..POOL {
@@ -527,7 +553,10 @@ mod t53_dual_perf {
         println!("  n        dual      primal");
         println!("  16    {d16:8.1}   {p16:8.1}");
         println!("  64         —      {p64:8.1}");
-        println!("  256   {d256:8.1}   {p256:8.1}   speedup {:.1}x", p256 / d256);
+        println!(
+            "  256   {d256:8.1}   {p256:8.1}   speedup {:.1}x",
+            p256 / d256
+        );
         println!("  4096  {d4096:8.1}          —   (primal would be 64 MiB of state)");
         println!(
             "  scaling 16->4096: dual {:.3}x   |   primal 16->256: {:.1}x",

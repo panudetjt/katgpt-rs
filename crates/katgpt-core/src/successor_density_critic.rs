@@ -121,10 +121,19 @@ impl SdcConfig {
     fn validate(&self) {
         assert!(self.n_states >= 1, "n_states must be >= 1");
         assert!(self.n_actions >= 1, "n_actions must be >= 1");
-        assert!(self.alpha > 0.0 && self.alpha.is_finite(), "alpha must be finite and > 0 (alpha=0 makes unseen cells log(0) NaN)");
-        assert!(self.gamma >= 0.0 && self.gamma < 1.0, "gamma must lie in [0, 1) — the geometric successor measure does not normalize at gamma >= 1");
+        assert!(
+            self.alpha > 0.0 && self.alpha.is_finite(),
+            "alpha must be finite and > 0 (alpha=0 makes unseen cells log(0) NaN)"
+        );
+        assert!(
+            self.gamma >= 0.0 && self.gamma < 1.0,
+            "gamma must lie in [0, 1) — the geometric successor measure does not normalize at gamma >= 1"
+        );
         if self.sampler == SamplerKind::CLearning {
-            assert!(self.gamma > 0.0, "CLearning sampler requires gamma > 0 — at gamma = 0 no far future exists and the blend's far arm is undefined");
+            assert!(
+                self.gamma > 0.0,
+                "CLearning sampler requires gamma > 0 — at gamma = 0 no far future exists and the blend's far arm is undefined"
+            );
         }
     }
 }
@@ -139,7 +148,14 @@ impl SdcConfig {
 /// is finite by construction.
 #[inline]
 #[must_use]
-pub fn laplace_log_ratio(n_sag: f64, n_sa: f64, n_g: f64, n_total: f64, alpha: f64, n_goals: f64) -> f64 {
+pub fn laplace_log_ratio(
+    n_sag: f64,
+    n_sa: f64,
+    n_g: f64,
+    n_total: f64,
+    alpha: f64,
+    n_goals: f64,
+) -> f64 {
     // One multiply, one divide, fixed order — bit-identical rebuilds.
     let num = (n_sag + alpha) * (n_total + alpha * n_goals);
     let den = (n_sa + alpha * n_goals) * (n_g + alpha);
@@ -252,7 +268,12 @@ impl SuccessorDensityBuilder {
         );
         let s_count = self.cfg.n_states as usize;
         let a_count = self.cfg.n_actions as usize;
-        debug_assert!(states.iter().chain(actions.iter()).all(|&id| (id as usize) < s_count));
+        debug_assert!(
+            states
+                .iter()
+                .chain(actions.iter())
+                .all(|&id| (id as usize) < s_count)
+        );
         debug_assert!(actions.iter().all(|&id| (id as usize) < a_count));
 
         let gamma = self.cfg.gamma as f64;
@@ -442,10 +463,9 @@ impl SuccessorDensityBuilder {
         let gamma = self.cfg.gamma as f64;
         match self.cfg.sampler {
             SamplerKind::Discounted => (1.0 - gamma, (1.0 - gamma) * gamma),
-            SamplerKind::CLearning => (
-                (1.0 - gamma) / (2.0 - gamma),
-                (1.0 - gamma) / (2.0 - gamma),
-            ),
+            SamplerKind::CLearning => {
+                ((1.0 - gamma) / (2.0 - gamma), (1.0 - gamma) / (2.0 - gamma))
+            }
         }
     }
 
@@ -661,7 +681,10 @@ impl SuccessorDensityTable {
             return None;
         }
         let n_scores = n / 4;
-        if n_states == 0 || n_actions == 0 || n_scores != n_states as usize * n_actions as usize * n_states as usize {
+        if n_states == 0
+            || n_actions == 0
+            || n_scores != n_states as usize * n_actions as usize * n_states as usize
+        {
             return None;
         }
         let cfg = SdcConfig {
@@ -742,7 +765,8 @@ mod tests {
         let mut b = SuccessorDensityBuilder::new(cfg(4, 2, 1.0, 0.5, SamplerKind::Discounted));
         b.observe_step(1, 0, 3);
         let w = 0.5_f64; // (1 − 0.5)
-        let cell = |s: u32, a: u32, g: u32| b.n_sag[((s as usize) * 2 + a as usize) * 4 + g as usize];
+        let cell =
+            |s: u32, a: u32, g: u32| b.n_sag[((s as usize) * 2 + a as usize) * 4 + g as usize];
         let sa = |s: usize, a: usize| s * 2 + a;
         assert_eq!(cell(1, 0, 3), w);
         assert_eq!(b.n_sa[sa(1, 0)], w);
@@ -810,8 +834,8 @@ mod tests {
         for _ in 0..2000 {
             let act = (next() % 2) as u32;
             cur = match act {
-                0 => cur,                     // stay
-                _ => (cur + 1) % 4,           // step forward
+                0 => cur,           // stay
+                _ => (cur + 1) % 4, // step forward
             };
             states.push(cur);
             actions.push(act);
@@ -882,8 +906,7 @@ mod tests {
                     };
                     for (g, slot) in nxt_sa.iter_mut().enumerate() {
                         let hit = if s2 == g { 1.0 } else { 0.0 };
-                        *slot = (1.0 - gamma) * hit
-                            + gamma * 0.5 * (p[s2][0][g] + p[s2][1][g]);
+                        *slot = (1.0 - gamma) * hit + gamma * 0.5 * (p[s2][0][g] + p[s2][1][g]);
                     }
                 }
             }
@@ -944,20 +967,18 @@ mod tests {
         let mut included = 0_usize;
         for s in 0..4_u32 {
             for g in 0..4_u32 {
-                let gap = (exact[s as usize][0][g as usize]
-                    - exact[s as usize][1][g as usize])
-                    .abs();
+                let gap =
+                    (exact[s as usize][0][g as usize] - exact[s as usize][1][g as usize]).abs();
                 if gap < 0.02 {
                     continue;
                 }
                 included += 1;
-                let exact_best = if exact[s as usize][0][g as usize]
-                    >= exact[s as usize][1][g as usize]
-                {
-                    0
-                } else {
-                    1
-                };
+                let exact_best =
+                    if exact[s as usize][0][g as usize] >= exact[s as usize][1][g as usize] {
+                        0
+                    } else {
+                        1
+                    };
                 assert_eq!(
                     table.argmax_a(s, g),
                     exact_best,
@@ -1044,7 +1065,10 @@ mod tests {
             for a in 0..2_u32 {
                 for g in 0..4_u32 {
                     let p = t.p_successor(s, a, g);
-                    assert!(p > 0.0 && p < 1.0, "p_successor({s},{a},{g}) = {p} out of (0,1)");
+                    assert!(
+                        p > 0.0 && p < 1.0,
+                        "p_successor({s},{a},{g}) = {p} out of (0,1)"
+                    );
                     // Link identity: p == sigmoid(score) within f32 rounding.
                     // The inline form is the INDEPENDENT ORACLE (Issue 861):
                     // production delegates to `crate::exact_sigmoid_f64`; this
@@ -1056,7 +1080,10 @@ mod tests {
                         let e = x.exp();
                         e / (1.0 + e)
                     } as f32;
-                    assert!((p - sig).abs() < 1e-6, "link identity broken at ({s},{a},{g})");
+                    assert!(
+                        (p - sig).abs() < 1e-6,
+                        "link identity broken at ({s},{a},{g})"
+                    );
                     lo = lo.min(p);
                     hi = hi.max(p);
                 }

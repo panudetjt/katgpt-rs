@@ -80,10 +80,7 @@ fn lipschitz_bound() -> f32 {
 
 fn cell_xy(i: usize) -> (f32, f32) {
     let (r, c) = (i / GRID, i % GRID);
-    (
-        c as f32 / (GRID - 1) as f32,
-        r as f32 / (GRID - 1) as f32,
-    )
+    (c as f32 / (GRID - 1) as f32, r as f32 / (GRID - 1) as f32)
 }
 
 fn build_world() -> (CertifiedFrontier<CELLS, 2>, Vec<f32>) {
@@ -102,7 +99,10 @@ fn build_world() -> (CertifiedFrontier<CELLS, 2>, Vec<f32>) {
 /// Widening dot product — the reference side works in f64 throughout so any
 /// disagreement is the module's f32 factor, not a shared rounding path.
 fn dot64<const D: usize>(a: &[f32; D], b: &[f32; D]) -> f64 {
-    a.iter().zip(b.iter()).map(|(x, y)| *x as f64 * *y as f64).sum()
+    a.iter()
+        .zip(b.iter())
+        .map(|(x, y)| *x as f64 * *y as f64)
+        .sum()
 }
 
 /// Gaussian elimination with partial pivoting, f64. Deliberately a different
@@ -173,7 +173,12 @@ fn t2_1_posterior_variance_matches_a_dense_reference_solve() {
         let kx_orig = kx.clone();
         dense_solve(&mut k, &mut kx);
         let k_self = dot64(&x, &x);
-        let reference = k_self - kx_orig.iter().zip(kx.iter()).map(|(a, b)| a * b).sum::<f64>();
+        let reference = k_self
+            - kx_orig
+                .iter()
+                .zip(kx.iter())
+                .map(|(a, b)| a * b)
+                .sum::<f64>();
 
         let got = buf.posterior_variance_linear(&x, &mut scratch) as f64;
         let abs = (got - reference).abs();
@@ -214,7 +219,10 @@ fn t2_1b_posterior_variance_is_nonnegative_and_shrinks_with_observations() {
         );
         prev = now;
     }
-    assert!(!buf.append_observation(&probe, 0.0), "must refuse when full");
+    assert!(
+        !buf.append_observation(&probe, 0.0),
+        "must refuse when full"
+    );
 }
 
 // ── T2.2 — soundness under adversarial query orders ────────────────────────
@@ -295,7 +303,11 @@ fn perf_expand_certified_dirty_set_matches_the_full_rescan() {
             let valid = rng.next_f32() < truth[i];
             assert!(inc.observe(i, valid) && full.observe(i, valid));
 
-            let beta = if t % 7 == 0 { confidence_schedule(t, cfg.delta, cfg.lambda, cfg.b_rkhs, 2) * 0.5 } else { confidence_schedule(t, cfg.delta, cfg.lambda, cfg.b_rkhs, 2) };
+            let beta = if t % 7 == 0 {
+                confidence_schedule(t, cfg.delta, cfg.lambda, cfg.b_rkhs, 2) * 0.5
+            } else {
+                confidence_schedule(t, cfg.delta, cfg.lambda, cfg.b_rkhs, 2)
+            };
             newly_inc_total += inc.expand_certified(&cfg, beta);
             newly_full_total += full.expand_certified_full(&cfg, beta);
         }
@@ -363,7 +375,10 @@ fn t2_2b_soundness_holds_under_the_actual_frontier_policy() {
         assert_eq!(violations, 0, "policy-driven run certified an invalid cell");
         grew += usize::from(f.certified_count() > 1);
     }
-    assert_eq!(grew, 16, "the frontier policy certified nothing beyond the seed");
+    assert_eq!(
+        grew, 16,
+        "the frontier policy certified nothing beyond the seed"
+    );
 }
 
 // ── T2.3 — monotonicity ────────────────────────────────────────────────────
@@ -386,7 +401,11 @@ fn t2_3_certified_set_never_shrinks_under_arbitrary_query_sequences() {
             // Adversarial: with probability 1/4 feed the *opposite* label, so
             // the sequence is not even drawn from the planted world.
             let honest = rng.next_f32() < truth[i];
-            let valid = if rng.next_f32() < 0.25 { !honest } else { honest };
+            let valid = if rng.next_f32() < 0.25 {
+                !honest
+            } else {
+                honest
+            };
             f.observe(i, valid);
             let beta = confidence_schedule(t, cfg.delta, cfg.lambda, cfg.b_rkhs, 2);
             f.expand_certified(&cfg, beta);
@@ -487,10 +506,7 @@ fn t2_5_dilation_admits_no_violation_against_a_known_lipschitz_field() {
     let mut truth = Vec::with_capacity(FINE_CELLS);
     for i in 0..FINE_CELLS {
         let (r, c) = (i / FINE, i % FINE);
-        let (x, y) = (
-            c as f32 / (FINE - 1) as f32,
-            r as f32 / (FINE - 1) as f32,
-        );
+        let (x, y) = (c as f32 / (FINE - 1) as f32, r as f32 / (FINE - 1) as f32);
         f.push_cell([x, y]).expect("capacity");
         truth.push(p_true(x, y));
     }
@@ -644,7 +660,11 @@ fn t2_5c_advance_horizon_is_positive_and_grows_as_epsilon_tightens() {
     let tight = advance_horizon(alpha, beta, gamma, 0.02);
     assert!(loose > 0.0 && tight > loose);
     // Quadratic in 1/epsilon: a 10x tighter target costs ~100x the rounds.
-    assert!((tight / loose - 100.0).abs() < 1.0, "ratio {}", tight / loose);
+    assert!(
+        (tight / loose - 100.0).abs() < 1.0,
+        "ratio {}",
+        tight / loose
+    );
 }
 
 // ── T2.6 — the scoreboards ─────────────────────────────────────────────────
@@ -673,12 +693,13 @@ fn t2_6_sphere_exclusion_is_order_pinned_and_reports_saturation() {
     assert!(rev.centers > 0);
 
     // Saturation must be reported, not silently truncate the count.
-    let spread: Vec<[f32; 3]> = (0..600)
-        .map(|i| [i as f32, 0.0, 0.0])
-        .collect();
+    let spread: Vec<[f32; 3]> = (0..600).map(|i| [i as f32, 0.0, 0.0]).collect();
     let sat = sphere_exclusion_coverage(&spread, 0.5);
     assert!(sat.saturated, "600 well-separated points must saturate 256");
-    assert_eq!(sat.centers, katgpt_core::certified_frontier::SPHERE_EXCLUSION_MAX_CENTERS);
+    assert_eq!(
+        sat.centers,
+        katgpt_core::certified_frontier::SPHERE_EXCLUSION_MAX_CENTERS
+    );
 }
 
 #[test]
@@ -732,7 +753,10 @@ fn prop1_design_bounds_have_the_predicted_shape() {
     let wide = spherical_cap_bound(64, 1.2);
     assert!(narrow < wide, "narrow {narrow} vs wide {wide}");
     assert!(spherical_cap_bound(256, 0.2) < spherical_cap_bound(8, 0.2));
-    assert!((spherical_cap_bound(1, 0.3) - 1.0).abs() < 1e-6, "m=1 is degenerate");
+    assert!(
+        (spherical_cap_bound(1, 0.3) - 1.0).abs() < 1e-6,
+        "m=1 is degenerate"
+    );
 
     // Laurent-Massart: grows with dimension and with confidence.
     assert!(laurent_massart_radius(64, 0.05) > laurent_massart_radius(8, 0.05));
@@ -774,7 +798,10 @@ fn straddling_gate_prunes_deep_inside_and_far_outside_cells() {
         f.query_is_decision_relevant(edge, &cfg, beta),
         "a cell straddling h is exactly what a query buys"
     );
-    assert!(!f.query_is_decision_relevant(99, &cfg, beta), "out of range");
+    assert!(
+        !f.query_is_decision_relevant(99, &cfg, beta),
+        "out of range"
+    );
 }
 
 #[test]
@@ -847,7 +874,10 @@ fn capacity_and_bounds_are_refused_not_wrapped() {
     let cfg = FrontierConfig::default();
     assert!(!f.seed_certified(9, &cfg));
     assert!(f.seed_certified(0, &cfg));
-    assert!(!f.seed_certified(0, &cfg), "double seed must not double-count");
+    assert!(
+        !f.seed_certified(0, &cfg),
+        "double seed must not double-count"
+    );
     assert_eq!(f.certified_count(), 1);
     // Untouched cells share one Beta sd, so the documented lowest-index
     // tie-break picks the seed itself...
@@ -867,13 +897,20 @@ fn cached_beta_sd_tracks_the_closed_form_exactly() {
     // so pin the cache against the closed form on every step.
     let mut f = CertifiedFrontier::<1, 1>::new();
     f.push_cell([0.0]).unwrap();
-    assert!((f.sigma(0) - (1.0f32 / 12.0).sqrt()).abs() < 1e-6, "prior sd");
+    assert!(
+        (f.sigma(0) - (1.0f32 / 12.0).sqrt()).abs() < 1e-6,
+        "prior sd"
+    );
     let mut rng = Lcg::new(0xCA5);
     let (mut v, mut i) = (0u32, 0u32);
     for _ in 0..500 {
         let ok = rng.next_f32() < 0.7;
         f.observe(0, ok);
-        if ok { v += 1 } else { i += 1 }
+        if ok {
+            v += 1
+        } else {
+            i += 1
+        }
         let expected = beta_mean_variance(v, i).1.sqrt();
         assert!(
             (f.sigma(0) - expected).abs() < 1e-7,
@@ -931,7 +968,10 @@ fn acquisition_lane_matches_a_full_rescan() {
             f.reachability_dilation(&cfg, 1);
         }
     }
-    assert!(f.certified_count() > 1, "run certified nothing beyond the seed");
+    assert!(
+        f.certified_count() > 1,
+        "run certified nothing beyond the seed"
+    );
 
     // A radius change invalidates the cached candidacy; rebuild must restore
     // agreement rather than leaving the lane stale.
@@ -940,7 +980,11 @@ fn acquisition_lane_matches_a_full_rescan() {
         ..cfg
     };
     f.rebuild_neighborhoods(&wider);
-    assert_eq!(f.acquire_frontier_target(&wider), reference(&f), "after rebuild");
+    assert_eq!(
+        f.acquire_frontier_target(&wider),
+        reference(&f),
+        "after rebuild"
+    );
 }
 
 #[cfg(feature = "viable_manifold_graph")]
@@ -972,7 +1016,10 @@ fn t4_1_geodesics_over_a_certified_graph_never_leave_the_certified_set() {
         let beta = confidence_schedule(t, cfg.delta, cfg.lambda, cfg.b_rkhs, 2);
         f.expand_certified(&cfg, beta);
     }
-    assert!(f.certified_count() >= 2, "need at least two nodes to navigate");
+    assert!(
+        f.certified_count() >= 2,
+        "need at least two nodes to navigate"
+    );
 
     let mut scratch = JacobianSvdScratch::with_capacity(2, 3);
     let cmg = certified_manifold_graph(
@@ -1014,11 +1061,17 @@ fn t4_1_geodesics_over_a_certified_graph_never_leave_the_certified_set() {
         for n in &path {
             let cell = cmg.node_to_cell[*n as usize] as usize;
             assert!(f.cells()[cell].certified, "geodesic left the certified set");
-            assert!(f.cells()[cell].cb >= H, "path node below its certified bound");
+            assert!(
+                f.cells()[cell].cb >= H,
+                "path node below its certified bound"
+            );
             assert!(truth[cell] >= H, "path node was actually invalid");
         }
     }
-    assert!(checked > 0, "no reachable pair — the navigation check was vacuous");
+    assert!(
+        checked > 0,
+        "no reachable pair — the navigation check was vacuous"
+    );
 }
 
 // ── T5.3 — the regime-conditional dual form ────────────────────────────────
@@ -1044,7 +1097,10 @@ mod t53_dual {
     struct Lcg(u64);
     impl Lcg {
         fn next_f32(&mut self) -> f32 {
-            self.0 = self.0.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+            self.0 = self
+                .0
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
             ((self.0 >> 33) as f32 / (1u64 << 31) as f32) * 2.0 - 1.0
         }
         fn feat(&mut self) -> [f32; D] {
@@ -1137,7 +1193,10 @@ mod t53_dual {
             let vp = primal.posterior_variance_linear(&x, &mut scratch);
             let vd = dual.posterior_variance_linear(&x);
             assert!(close(vp, k_self, 1e-6), "primal n=0: {vp} vs {k_self}");
-            assert!(close(vd, k_self, 1e-5), "dual n=0 lambda={lambda}: {vd} vs {k_self}");
+            assert!(
+                close(vd, k_self, 1e-5),
+                "dual n=0 lambda={lambda}: {vd} vs {k_self}"
+            );
         }
     }
 
@@ -1163,7 +1222,11 @@ mod t53_dual {
             }
             out
         };
-        assert_eq!(run(), run(), "dual posterior is not run-to-run bit-identical");
+        assert_eq!(
+            run(),
+            run(),
+            "dual posterior is not run-to-run bit-identical"
+        );
     }
 
     /// A non-finite observation is **rejected**, not absorbed: `false`, the
@@ -1180,8 +1243,14 @@ mod t53_dual {
 
         let mut nan_feat = [0.5f32; D];
         nan_feat[3] = f32::NAN;
-        assert!(!p.append_observation(&nan_feat, 1.0), "NaN feature was absorbed");
-        assert!(!p.append_observation(&good, f32::INFINITY), "inf label was absorbed");
+        assert!(
+            !p.append_observation(&nan_feat, 1.0),
+            "NaN feature was absorbed"
+        );
+        assert!(
+            !p.append_observation(&good, f32::INFINITY),
+            "inf label was absorbed"
+        );
         assert_eq!(p.len(), 1, "a rejected observation changed the count");
 
         let mut probe = [0.0f32; D];
@@ -1209,11 +1278,20 @@ mod t53_dual {
         for i in 0..500 {
             assert!(p.append_observation(&x, 1.0));
             let v = p.posterior_variance_linear(&x);
-            assert!(v.is_finite() && v >= 0.0, "variance went bad at repeat {i}: {v}");
-            assert!(v <= last + 1e-6, "variance rose on a repeated observation at {i}");
+            assert!(
+                v.is_finite() && v >= 0.0,
+                "variance went bad at repeat {i}: {v}"
+            );
+            assert!(
+                v <= last + 1e-6,
+                "variance rose on a repeated observation at {i}"
+            );
             last = v;
         }
-        assert!(last < 1e-3, "500 identical observations left sigma^2 = {last}");
+        assert!(
+            last < 1e-3,
+            "500 identical observations left sigma^2 = {last}"
+        );
     }
 
     /// The regime rule and the state-size claim the doc table makes. `size_of`
@@ -1270,7 +1348,10 @@ mod t53_dual {
         let vd = drive(&mut dual, &feats);
         assert_eq!(dual.scratch_len(), 0);
         assert_eq!(primal.scratch_len(), 20);
-        assert!(close(vp, vd, 2e-3), "trait-driven arms disagree: {vp} vs {vd}");
+        assert!(
+            close(vp, vd, 2e-3),
+            "trait-driven arms disagree: {vp} vs {vd}"
+        );
         // Zero-length scratch is legal for the dual and must not panic.
         assert!(LinearPosterior::posterior_variance_linear(&dual, &feats[0], &mut []).is_finite());
     }

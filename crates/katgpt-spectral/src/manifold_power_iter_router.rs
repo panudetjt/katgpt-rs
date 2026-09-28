@@ -1102,7 +1102,11 @@ mod tests {
                 assert_eq!(ka, kb);
                 assert_eq!(ia, ib, "indices moved (n={n} k={k} β={beta} seed={seed})");
                 let bits = |v: &[f32]| v.iter().map(|f| f.to_bits()).collect::<Vec<_>>();
-                assert_eq!(bits(&sa), bits(&sb), "scores moved (n={n} β={beta} seed={seed})");
+                assert_eq!(
+                    bits(&sa),
+                    bits(&sb),
+                    "scores moved (n={n} β={beta} seed={seed})"
+                );
             }
         }
     }
@@ -1125,7 +1129,13 @@ mod tests {
         let mut idx = vec![0usize; n];
         let (kk, tau) =
             gate_sigmoid_topk_mass_into(x, r, n, d, beta, k, t, &mut logits, &mut mass, &mut idx);
-        MassRun { kk, tau, logits, mass, idx }
+        MassRun {
+            kk,
+            tau,
+            logits,
+            mass,
+            idx,
+        }
     }
 
     #[cfg(feature = "calibrated_mass_gate")]
@@ -1155,7 +1165,10 @@ mod tests {
                 inc_sorted.sort_unstable();
                 let mut mass_sorted = m.idx[..m.kk].to_vec();
                 mass_sorted.sort_unstable();
-                assert_eq!(mass_sorted, inc_sorted, "n={n} k={k} seed={seed}: SET must agree");
+                assert_eq!(
+                    mass_sorted, inc_sorted,
+                    "n={n} k={k} seed={seed}: SET must agree"
+                );
                 for w in 0..kk {
                     let inc_sigma = scores[idx[w]];
                     let mass_sigma = katgpt_core::simd::fast_sigmoid(m.logits[m.idx[w]]);
@@ -1224,16 +1237,27 @@ mod tests {
         let r = seeded_matrix(8000, n, d);
         let x = seeded_vec(8001, d);
         let m = run_mass(&x, &r, n, d, 1.3, 1, 1.0);
-        let k = m.logits.iter().map(|&z| katgpt_core::simd::exact_sigmoid_f64(z as f64)).sum::<f64>();
+        let k = m
+            .logits
+            .iter()
+            .map(|&z| katgpt_core::simd::exact_sigmoid_f64(z as f64))
+            .sum::<f64>();
         let kr = k.round() as usize;
         let m2 = run_mass(&x, &r, n, d, 1.3, kr, 1.0);
         for (j, &z) in m2.logits.iter().enumerate() {
             let want = katgpt_core::simd::exact_sigmoid_f64(z as f64 - m2.tau as f64);
-            assert!((m2.mass[j] as f64 - want).abs() <= 1e-6, "mass is σ(z − τ) at j={j}");
+            assert!(
+                (m2.mass[j] as f64 - want).abs() <= 1e-6,
+                "mass is σ(z − τ) at j={j}"
+            );
         }
         // Rounding k by ≤ 0.5 over a slope of Σσ'(z) moves τ by at most
         // 0.5 / Σσ'(z); well inside 0.1 for this fixture.
-        assert!(m2.tau.abs() <= 0.1, "τ={} should be ≈0 at k≈Σσ(z)={k}", m2.tau);
+        assert!(
+            m2.tau.abs() <= 0.1,
+            "τ={} should be ≈0 at k≈Σσ(z)={k}",
+            m2.tau
+        );
     }
 
     #[cfg(feature = "calibrated_mass_gate")]

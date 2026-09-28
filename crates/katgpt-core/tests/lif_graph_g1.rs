@@ -29,7 +29,11 @@ fn drive(
         for _ in 0..n_drive {
             let node = rng.below(drive_pool) as u32;
             // Alternate a big and a small drive: bursts + partial responses.
-            let w = if rng.next_u64() & 1 == 0 { mag } else { mag * 0.4 };
+            let w = if rng.next_u64() & 1 == 0 {
+                mag
+            } else {
+                mag * 0.4
+            };
             r.inject(node, w);
         }
     }
@@ -68,12 +72,7 @@ fn run_arm(
         spike_sets.push(s);
     }
     let (v, g, refrac) = r.state();
-    (
-        spike_sets,
-        v.to_vec(),
-        g.to_vec(),
-        refrac.to_vec(),
-    )
+    (spike_sets, v.to_vec(), g.to_vec(), refrac.to_vec())
 }
 
 fn assert_parity(
@@ -162,15 +161,7 @@ fn parity_cascade_saturation() {
         let edges = er_edges(300, 1200, 0.2, 400.0, seed * 31);
         // Any spike cascades; inhibition pushes back — both paths must agree
         // through the full churn.
-        assert_parity(
-            "cascade",
-            300,
-            &edges,
-            (5, 5, 400.0),
-            400,
-            seed,
-            200,
-        );
+        assert_parity("cascade", 300, &edges, (5, 5, 400.0), 400, seed, 200);
     }
 }
 
@@ -208,7 +199,10 @@ fn determinism_run_twice() {
             dense,
             7,
         );
-        assert_eq!(a.0, b.0, "spike trains must be reproducible (dense={dense})");
+        assert_eq!(
+            a.0, b.0,
+            "spike trains must be reproducible (dense={dense})"
+        );
         assert_eq!(a.1, b.1, "v must be reproducible (dense={dense})");
         assert_eq!(a.2, b.2, "g must be reproducible (dense={dense})");
         assert_eq!(a.3, b.3, "refrac must be reproducible (dense={dense})");
@@ -273,10 +267,7 @@ fn parity_fixtures_exercise_active_set_churn() {
     // Phase A (cascade fixture): the event path's active set must churn
     // non-trivially mid-run.
     let edges = er_edges(300, 1200, 0.2, 400.0, 11 * 31);
-    let mut r = LifReservoir::new(
-        SignedAdjacency::from_edges(300, &edges),
-        LifParams::shiu(),
-    );
+    let mut r = LifReservoir::new(SignedAdjacency::from_edges(300, &edges), LifParams::shiu());
     let mut rng = FixtureRng::new(3);
     let mut max_active = 0;
     for t in 0..200 {

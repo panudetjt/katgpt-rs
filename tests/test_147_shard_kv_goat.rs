@@ -805,8 +805,7 @@ fn test_proof6_cross_method_benchmark() {
     println!("  Parameters: head_dim={head_dim}, n_keys={n_keys}");
     println!();
 
-    let mut results: Vec<MethodResult> =
-        vec![bench_shard_kv(head_dim, max_seq_len, n_keys, 4.0)];
+    let mut results: Vec<MethodResult> = vec![bench_shard_kv(head_dim, max_seq_len, n_keys, 4.0)];
 
     // SpectralQuant at 3-bit
     results.push(bench_spectral_quant(head_dim, max_seq_len, n_keys, 3.0));

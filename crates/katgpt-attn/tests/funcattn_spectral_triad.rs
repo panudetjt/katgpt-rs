@@ -20,7 +20,7 @@
 #![cfg(feature = "funcattn_spectral_pre_rotate")]
 
 use katgpt_core::subspace_intervention::{
-    ridge_probe_fit_into, three_arm_eval_on_basis, InterventionRng, InterventionScratch,
+    InterventionRng, InterventionScratch, ridge_probe_fit_into, three_arm_eval_on_basis,
 };
 use katgpt_spectral::calibrate_eigenbasis;
 
@@ -108,8 +108,21 @@ fn funcattn_eigenbasis_beats_random_at_matched_budget() {
     let mut ra = vec![0.0_f32; ks.len()];
     let mut re = vec![0.0_f32; ks.len()];
     three_arm_eval_on_basis(
-        &xe, &ye, N_TEST, D, &w, C, &ks, &basis, rank_cap, 0xDEAD_BEEF, &mut scratch, &mut al,
-        &mut ra, &mut re, &mut recall,
+        &xe,
+        &ye,
+        N_TEST,
+        D,
+        &w,
+        C,
+        &ks,
+        &basis,
+        rank_cap,
+        0xDEAD_BEEF,
+        &mut scratch,
+        &mut al,
+        &mut ra,
+        &mut re,
+        &mut recall,
     );
 
     println!("FUNCATTN spectral arm (Issue 779 T2): full={full:.3} chance={CHANCE:.3}");

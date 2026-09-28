@@ -29,7 +29,7 @@ const WASM_PATH: &str = "/tmp/moka-wasm-bench/pkg/katgpt_moka_wasm_bg.wasm";
 fn wasmi_infer_latency() {
     const ITERS: usize = 50;
 
-let wasm_bytes = std::fs::read(WASM_PATH)
+    let wasm_bytes = std::fs::read(WASM_PATH)
         .unwrap_or_else(|e| panic!("read {WASM_PATH}: {e} — build the wasm32 target first"));
 
     let mut config = Config::default();
@@ -57,9 +57,13 @@ let wasm_bytes = std::fs::read(WASM_PATH)
             let name = format!("{}::{}", import.module(), import.name());
             let name_for_trap = name.clone();
             let stub = wasmi::Func::new(&mut store, func_ty.clone(), move |_, _, _| {
-                panic!("unexpected call into JS-interop stub {name_for_trap} during wasmi benchmark");
+                panic!(
+                    "unexpected call into JS-interop stub {name_for_trap} during wasmi benchmark"
+                );
             });
-            linker.define(import.module(), import.name(), stub).expect("define stub import");
+            linker
+                .define(import.module(), import.name(), stub)
+                .expect("define stub import");
         }
     }
 
@@ -67,17 +71,27 @@ let wasm_bytes = std::fs::read(WASM_PATH)
         .instantiate_and_start(&mut store, &module)
         .expect("instantiate_and_start");
 
-    let memory: Memory = instance.get_memory(&store, "memory").expect("wasm-bindgen always exports memory");
-    let wasmi_init: TypedFunc<(), ()> = instance.get_typed_func(&store, "wasmi_init").expect("wasmi_init export");
-    let wasmi_alloc: TypedFunc<u32, u32> = instance.get_typed_func(&store, "wasmi_alloc").expect("wasmi_alloc export");
-    let wasmi_infer: TypedFunc<(u32, u32), ()> = instance.get_typed_func(&store, "wasmi_infer").expect("wasmi_infer export");
+    let memory: Memory = instance
+        .get_memory(&store, "memory")
+        .expect("wasm-bindgen always exports memory");
+    let wasmi_init: TypedFunc<(), ()> = instance
+        .get_typed_func(&store, "wasmi_init")
+        .expect("wasmi_init export");
+    let wasmi_alloc: TypedFunc<u32, u32> = instance
+        .get_typed_func(&store, "wasmi_alloc")
+        .expect("wasmi_alloc export");
+    let wasmi_infer: TypedFunc<(u32, u32), ()> = instance
+        .get_typed_func(&store, "wasmi_infer")
+        .expect("wasmi_infer export");
 
     wasmi_init.call(&mut store, ()).expect("wasmi_init call");
 
     const INPUT_LEN: u32 = 81 * 12; // moka::INPUT_ELEMENT_COUNT
     const OUTPUT_LEN: u32 = 83; // POLICY_MOVES + value
 
-    let features_ptr = wasmi_alloc.call(&mut store, INPUT_LEN).expect("alloc features");
+    let features_ptr = wasmi_alloc
+        .call(&mut store, INPUT_LEN)
+        .expect("alloc features");
     let out_ptr = wasmi_alloc.call(&mut store, OUTPUT_LEN).expect("alloc out");
 
     // Write a plausible mid-game-ish feature tensor: a handful of stones set
@@ -91,15 +105,21 @@ let wasm_bytes = std::fs::read(WASM_PATH)
         features[pos * 12 + 11] = -7.0 / 15.0; // komi plane, constant
     }
     let feature_bytes: Vec<u8> = features.iter().flat_map(|f| f.to_le_bytes()).collect();
-    memory.write(&mut store, features_ptr as usize, &feature_bytes).expect("write features");
+    memory
+        .write(&mut store, features_ptr as usize, &feature_bytes)
+        .expect("write features");
 
     // Warmup.
     for _ in 0..10 {
-        wasmi_infer.call(&mut store, (features_ptr, out_ptr)).expect("infer");
+        wasmi_infer
+            .call(&mut store, (features_ptr, out_ptr))
+            .expect("infer");
     }
     let start = Instant::now();
     for _ in 0..ITERS {
-        wasmi_infer.call(&mut store, (features_ptr, out_ptr)).expect("infer");
+        wasmi_infer
+            .call(&mut store, (features_ptr, out_ptr))
+            .expect("infer");
     }
     let elapsed = start.elapsed();
     let per_call_us = elapsed.as_micros() as f64 / ITERS as f64;
@@ -112,7 +132,12 @@ let wasm_bytes = std::fs::read(WASM_PATH)
     // exact values — the equivalence oracle for THIS forward pass already
     // lives in katgpt-pruners::moka_net; this test's job is timing).
     let mut out_bytes = vec![0u8; (OUTPUT_LEN as usize) * 4];
-    memory.read(&store, out_ptr as usize, &mut out_bytes).expect("read output");
+    memory
+        .read(&store, out_ptr as usize, &mut out_bytes)
+        .expect("read output");
     let value = f32::from_le_bytes(out_bytes[(82 * 4)..(83 * 4)].try_into().unwrap());
-    assert!(value.is_finite(), "wasmi output value must be finite, got {value}");
+    assert!(
+        value.is_finite(),
+        "wasmi output value must be finite, got {value}"
+    );
 }

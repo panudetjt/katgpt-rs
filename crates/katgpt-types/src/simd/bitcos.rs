@@ -50,9 +50,9 @@
 // would warn unused on every non-x86_64 lane; ungated in the fn body would
 // not compile on this arm. (The AGENTS.md x86_64 sibling-arm lesson.)
 #[cfg(target_arch = "x86_64")]
-use super::{simd_level, SimdLevel};
-use crate::bitcos::BitcosWeights;
+use super::{SimdLevel, simd_level};
 use crate::GROUP_SIZE;
+use crate::bitcos::BitcosWeights;
 
 /// Decode table: `(presence nibble m, sign window s) → 4 ternary codes`.
 ///
@@ -199,7 +199,11 @@ pub fn bitcos_matvec_lut(w: &BitcosWeights, x: &[f32], y: &mut [f32]) {
                     let bit = 1u64 << k;
                     if p & bit != 0 {
                         let rank = (p & (bit - 1)).count_ones();
-                        let sign = if (window >> rank) & 1 != 0 { -1.0f32 } else { 1.0 };
+                        let sign = if (window >> rank) & 1 != 0 {
+                            -1.0f32
+                        } else {
+                            1.0
+                        };
                         group_acc += sign * unsafe { *x.get_unchecked(c0 + k) };
                     } else {
                         group_acc += 0.0 * unsafe { *x.get_unchecked(c0 + k) };
@@ -363,7 +367,9 @@ mod tests {
         let mut gw = TernaryGroupWeights::new(rows, cols);
         for r in 0..rows {
             for c in 0..cols {
-                s = s.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+                s = s
+                    .wrapping_mul(6_364_136_223_846_793_005)
+                    .wrapping_add(1_442_695_040_888_963_407);
                 if (s >> 33).is_multiple_of(keep_mod) {
                     gw.set(r, c, if (s >> 20) & 1 == 0 { 1 } else { -1 });
                 }
@@ -380,7 +386,9 @@ mod tests {
         let mut x = vec![0.0f32; cols];
         let mut s = 0x9e3779b97f4a7c15u64;
         for v in x.iter_mut() {
-            s = s.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+            s = s
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
             *v = ((s >> 33) as f32 / (1u64 << 31) as f32) - 1.0;
         }
         let mut y = vec![0.0f32; gw.rows];
@@ -404,7 +412,9 @@ mod tests {
             let mut x = vec![0.0f32; cols];
             let mut s = 0x9e3779b97f4a7c15u64;
             for v in x.iter_mut() {
-                s = s.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+                s = s
+                    .wrapping_mul(6_364_136_223_846_793_005)
+                    .wrapping_add(1_442_695_040_888_963_407);
                 *v = ((s >> 33) as f32 / (1u64 << 31) as f32) - 1.0;
             }
             let mut y = vec![0.0f32; rows];
@@ -426,7 +436,9 @@ mod tests {
             let mut x = vec![0.0f32; cols];
             let mut s = 0x2545_f491_4f6c_dd1du64;
             for v in x.iter_mut() {
-                s = s.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+                s = s
+                    .wrapping_mul(6_364_136_223_846_793_005)
+                    .wrapping_add(1_442_695_040_888_963_407);
                 *v = ((s >> 33) as f32 / (1u64 << 31) as f32) - 1.0;
             }
             let mut y_s = vec![0.0f32; rows];
@@ -456,7 +468,9 @@ mod tests {
                 let mut x = vec![0.0f32; cols];
                 let mut s = 0x8dde_6e20_cbb0_973fu64;
                 for v in x.iter_mut() {
-                    s = s.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+                    s = s
+                        .wrapping_mul(6_364_136_223_846_793_005)
+                        .wrapping_add(1_442_695_040_888_963_407);
                     *v = ((s >> 33) as f32 / (1u64 << 31) as f32) - 1.0;
                 }
                 let mut y_s = vec![0.0f32; rows];

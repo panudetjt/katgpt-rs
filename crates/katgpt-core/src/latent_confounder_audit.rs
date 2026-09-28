@@ -351,11 +351,7 @@ where
 /// Count skips pairs whose observation lengths are zero or where `buf` has
 /// zero length (defensive — diagnostic primitive must not panic).
 #[inline]
-fn accumulate_norm_sq<E>(
-    encoder: &E,
-    pairs: &[(&[f32], &[f32])],
-    buf: &mut [f32],
-) -> (f32, u32)
+fn accumulate_norm_sq<E>(encoder: &E, pairs: &[(&[f32], &[f32])], buf: &mut [f32]) -> (f32, u32)
 where
     E: Fn(&[f32], &[f32], &mut [f32]),
 {
@@ -540,13 +536,11 @@ mod tests {
         // Ordinary pairs (typical transitions with non-trivial displacement).
         let ordinary_pairs: &[(&[f32], &[f32])] = &[(&x_a, &xp_a), (&x_b, &xp_b)];
         // Same-action / diff-context: same displacement direction, different x.
-        let same_action: &[((&[f32], &[f32]), (&[f32], &[f32]))] = &[
-            ((&x_a, &xp_a), (&x_b, &xp_b)),
-        ];
+        let same_action: &[((&[f32], &[f32]), (&[f32], &[f32]))] =
+            &[((&x_a, &xp_a), (&x_b, &xp_b))];
         // Diff-action / same-context: opposite displacement direction, same x.
-        let diff_action: &[((&[f32], &[f32]), (&[f32], &[f32]))] = &[
-            ((&x_a, &xp_a), (&x_a, &xp_a_diff)),
-        ];
+        let diff_action: &[((&[f32], &[f32]), (&[f32], &[f32]))] =
+            &[((&x_a, &xp_a), (&x_a, &xp_a_diff))];
 
         let audit = audit_confounders(
             &enc,
@@ -593,26 +587,44 @@ mod tests {
     // We use a ramp whose mean is zero so the encoder output is non-zero:
     //   disp_same  = [-0.28, -0.20, -0.12, -0.04, +0.04, +0.12, +0.20, +0.28]
     //   disp_diff  = opposite sign (different action direction)
-    const DISP_SAME: [f32; 8] =
-        [-0.28, -0.20, -0.12, -0.04, 0.04, 0.12, 0.20, 0.28];
-    const DISP_DIFF: [f32; 8] =
-        [0.28, 0.20, 0.12, 0.04, -0.04, -0.12, -0.20, -0.28];
+    const DISP_SAME: [f32; 8] = [-0.28, -0.20, -0.12, -0.04, 0.04, 0.12, 0.20, 0.28];
+    const DISP_DIFF: [f32; 8] = [0.28, 0.20, 0.12, 0.04, -0.04, -0.12, -0.20, -0.28];
 
     /// Build the standard test-fixture observation pairs.
     fn fixture_pairs() -> (
-        [f32; 8], [f32; 8], [f32; 8], [f32; 8], [f32; 8], [f32; 8], [f32; 8],
+        [f32; 8],
+        [f32; 8],
+        [f32; 8],
+        [f32; 8],
+        [f32; 8],
+        [f32; 8],
+        [f32; 8],
     ) {
         let x_a = [0.1_f32, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8];
         let x_b = [1.0_f32, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7];
         let mut xp_a = [0.0_f32; 8]; // x_a + DISP_SAME
         let mut xp_b = [0.0_f32; 8]; // x_b + DISP_SAME
         let mut xp_a_diff = [0.0_f32; 8]; // x_a + DISP_DIFF
-        let shifted_a = [x_a[0] + 10.0, x_a[1] + 10.0, x_a[2] + 10.0,
-                         x_a[3] + 10.0, x_a[4] + 10.0, x_a[5] + 10.0,
-                         x_a[6] + 10.0, x_a[7] + 10.0];
-        let shifted_b = [x_b[0] + 5.0, x_b[1] + 5.0, x_b[2] + 5.0,
-                         x_b[3] + 5.0, x_b[4] + 5.0, x_b[5] + 5.0,
-                         x_b[6] + 5.0, x_b[7] + 5.0];
+        let shifted_a = [
+            x_a[0] + 10.0,
+            x_a[1] + 10.0,
+            x_a[2] + 10.0,
+            x_a[3] + 10.0,
+            x_a[4] + 10.0,
+            x_a[5] + 10.0,
+            x_a[6] + 10.0,
+            x_a[7] + 10.0,
+        ];
+        let shifted_b = [
+            x_b[0] + 5.0,
+            x_b[1] + 5.0,
+            x_b[2] + 5.0,
+            x_b[3] + 5.0,
+            x_b[4] + 5.0,
+            x_b[5] + 5.0,
+            x_b[6] + 5.0,
+            x_b[7] + 5.0,
+        ];
         for i in 0..8 {
             xp_a[i] = x_a[i] + DISP_SAME[i];
             xp_b[i] = x_b[i] + DISP_SAME[i];
@@ -635,12 +647,10 @@ mod tests {
         let zero_pairs: &[(&[f32], &[f32])] = &[(&x_a, &x_a)];
         let shift_pairs: &[(&[f32], &[f32])] = &[(&x_a, &shifted_a)];
         let ordinary_pairs: &[(&[f32], &[f32])] = &[(&x_a, &xp_a), (&x_b, &xp_b)];
-        let same_action: &[((&[f32], &[f32]), (&[f32], &[f32]))] = &[
-            ((&x_a, &xp_a), (&x_b, &xp_b)),
-        ];
-        let diff_action: &[((&[f32], &[f32]), (&[f32], &[f32]))] = &[
-            ((&x_a, &xp_a), (&x_a, &xp_a_diff)),
-        ];
+        let same_action: &[((&[f32], &[f32]), (&[f32], &[f32]))] =
+            &[((&x_a, &xp_a), (&x_b, &xp_b))];
+        let diff_action: &[((&[f32], &[f32]), (&[f32], &[f32]))] =
+            &[((&x_a, &xp_a), (&x_a, &xp_a_diff))];
 
         let audit = audit_confounders(
             &enc,
@@ -692,12 +702,10 @@ mod tests {
         let zero_pairs: &[(&[f32], &[f32])] = &[(&x_a, &x_a)];
         let shift_pairs: &[(&[f32], &[f32])] = &[(&x_a, &shifted_a)];
         let ordinary_pairs: &[(&[f32], &[f32])] = &[(&x_a, &xp_a), (&x_b, &xp_b)];
-        let same_action: &[((&[f32], &[f32]), (&[f32], &[f32]))] = &[
-            ((&x_a, &xp_a), (&x_b, &xp_b)),
-        ];
-        let diff_action: &[((&[f32], &[f32]), (&[f32], &[f32]))] = &[
-            ((&x_a, &xp_a), (&x_a, &xp_a_diff)),
-        ];
+        let same_action: &[((&[f32], &[f32]), (&[f32], &[f32]))] =
+            &[((&x_a, &xp_a), (&x_b, &xp_b))];
+        let diff_action: &[((&[f32], &[f32]), (&[f32], &[f32]))] =
+            &[((&x_a, &xp_a), (&x_a, &xp_a_diff))];
 
         let mut scratch = AuditScratch::new(d);
         let coefficients = [0.0_f32, 0.5, 1.0, 2.0, 5.0];
@@ -721,19 +729,25 @@ mod tests {
             assert!(
                 audit.zero_transition_response >= prev_r0 - 1.0e-5,
                 "R_0 not monotone at c={}: {} < prev {}",
-                c, audit.zero_transition_response, prev_r0
+                c,
+                audit.zero_transition_response,
+                prev_r0
             );
             // R_shift must be non-decreasing in c.
             assert!(
                 audit.shift_invariance_response >= prev_r_shift - 1.0e-5,
                 "R_shift not monotone at c={}: {} < prev {}",
-                c, audit.shift_invariance_response, prev_r_shift
+                c,
+                audit.shift_invariance_response,
+                prev_r_shift
             );
             // shortcut_leakage non-decreasing in c (clean → leaky).
             assert!(
                 audit.shortcut_leakage >= prev_leakage - 1.0e-5,
                 "shortcut_leakage not monotone at c={}: {} < prev {}",
-                c, audit.shortcut_leakage, prev_leakage
+                c,
+                audit.shortcut_leakage,
+                prev_leakage
             );
 
             prev_r0 = audit.zero_transition_response;
@@ -746,21 +760,35 @@ mod tests {
         let clean_leak = {
             let enc = make_encoder(d, 0.0);
             audit_confounders(
-                &enc, zero_pairs, shift_pairs, ordinary_pairs,
-                same_action, diff_action, &mut scratch,
-            ).shortcut_leakage
+                &enc,
+                zero_pairs,
+                shift_pairs,
+                ordinary_pairs,
+                same_action,
+                diff_action,
+                &mut scratch,
+            )
+            .shortcut_leakage
         };
         let dirty_leak = {
             let enc = make_encoder(d, 5.0);
             audit_confounders(
-                &enc, zero_pairs, shift_pairs, ordinary_pairs,
-                same_action, diff_action, &mut scratch,
-            ).shortcut_leakage
+                &enc,
+                zero_pairs,
+                shift_pairs,
+                ordinary_pairs,
+                same_action,
+                diff_action,
+                &mut scratch,
+            )
+            .shortcut_leakage
         };
         assert!(
             dirty_leak - clean_leak > 0.1,
             "shortcut_leakage should grow with c: clean={}, dirty={}, gap={}",
-            clean_leak, dirty_leak, dirty_leak - clean_leak
+            clean_leak,
+            dirty_leak,
+            dirty_leak - clean_leak
         );
     }
 
@@ -780,12 +808,8 @@ mod tests {
         let zero_pairs: &[(&[f32], &[f32])] = &[(&x, &x)];
         let shift_pairs: &[(&[f32], &[f32])] = &[(&x, &xp)];
         let ordinary_pairs: &[(&[f32], &[f32])] = &[(&x, &xp)];
-        let same_action: &[((&[f32], &[f32]), (&[f32], &[f32]))] = &[
-            ((&x, &xp), (&x, &xp)),
-        ];
-        let diff_action: &[((&[f32], &[f32]), (&[f32], &[f32]))] = &[
-            ((&x, &xp), (&x, &xp)),
-        ];
+        let same_action: &[((&[f32], &[f32]), (&[f32], &[f32]))] = &[((&x, &xp), (&x, &xp))];
+        let diff_action: &[((&[f32], &[f32]), (&[f32], &[f32]))] = &[((&x, &xp), (&x, &xp))];
         let audit = audit_confounders(
             &zero_enc,
             zero_pairs,
@@ -827,12 +851,8 @@ mod tests {
         let zero_pairs: &[(&[f32], &[f32])] = &[(&x, &x)];
         let shift_pairs: &[(&[f32], &[f32])] = &[(&x, &xp)];
         let ordinary_pairs: &[(&[f32], &[f32])] = &[(&x, &xp)];
-        let same_action: &[((&[f32], &[f32]), (&[f32], &[f32]))] = &[
-            ((&x, &xp), (&x, &xp)),
-        ];
-        let diff_action: &[((&[f32], &[f32]), (&[f32], &[f32]))] = &[
-            ((&x, &xp), (&x, &xp)),
-        ];
+        let same_action: &[((&[f32], &[f32]), (&[f32], &[f32]))] = &[((&x, &xp), (&x, &xp))];
+        let diff_action: &[((&[f32], &[f32]), (&[f32], &[f32]))] = &[((&x, &xp), (&x, &xp))];
         let audit = audit_confounders(
             &const_enc,
             zero_pairs,
@@ -867,10 +887,22 @@ mod tests {
         let empty_pos: &[((&[f32], &[f32]), (&[f32], &[f32]))] = &[];
 
         let audit1 = audit_confounders(
-            &enc, pairs, pairs, pairs, empty_pos, empty_pos, &mut scratch,
+            &enc,
+            pairs,
+            pairs,
+            pairs,
+            empty_pos,
+            empty_pos,
+            &mut scratch,
         );
         let audit2 = audit_confounders(
-            &enc, pairs, pairs, pairs, empty_pos, empty_pos, &mut scratch,
+            &enc,
+            pairs,
+            pairs,
+            pairs,
+            empty_pos,
+            empty_pos,
+            &mut scratch,
         );
         // Deterministic + reused scratch must produce identical results.
         assert_eq!(audit1, audit2);
@@ -914,13 +946,17 @@ mod tests {
             ((&good_a, &good_b), (&good_a, &good_b)),
             ((&good_a, &good_b), (good_a.as_slice(), empty)), // skipped
         ];
-        let diff_action: &[((&[f32], &[f32]), (&[f32], &[f32]))] = &[
-            ((&good_a, &good_b), (&good_a, &good_b)),
-        ];
+        let diff_action: &[((&[f32], &[f32]), (&[f32], &[f32]))] =
+            &[((&good_a, &good_b), (&good_a, &good_b))];
         // Must not panic; must produce finite results.
         let audit = audit_confounders(
-            &enc, zero_pairs, shift_pairs, ordinary_pairs,
-            same_action, diff_action, &mut scratch,
+            &enc,
+            zero_pairs,
+            shift_pairs,
+            ordinary_pairs,
+            same_action,
+            diff_action,
+            &mut scratch,
         );
         assert!(audit.zero_transition_response.is_finite());
         assert!(audit.shortcut_leakage.is_finite());
@@ -967,12 +1003,10 @@ mod tests {
         let zero_pairs: &[(&[f32], &[f32])] = &[(&x_a, &x_a)];
         let shift_pairs: &[(&[f32], &[f32])] = &[(&x_a, &shifted_a)];
         let ordinary_pairs: &[(&[f32], &[f32])] = &[(&x_a, &xp_a), (&x_b, &xp_b)];
-        let same_action: &[((&[f32], &[f32]), (&[f32], &[f32]))] = &[
-            ((&x_a, &xp_a), (&x_b, &xp_b)),
-        ];
-        let diff_action: &[((&[f32], &[f32]), (&[f32], &[f32]))] = &[
-            ((&x_a, &xp_a), (&x_a, &xp_a_diff)),
-        ];
+        let same_action: &[((&[f32], &[f32]), (&[f32], &[f32]))] =
+            &[((&x_a, &xp_a), (&x_b, &xp_b))];
+        let diff_action: &[((&[f32], &[f32]), (&[f32], &[f32]))] =
+            &[((&x_a, &xp_a), (&x_a, &xp_a_diff))];
 
         // Sentinel: confirm the allocator is installed by allocating a known
         // amount, then checking the counter increased. If it didn't, the
@@ -993,8 +1027,13 @@ mod tests {
         // Warmup: one untimed call to allocate any lazy runtime state
         // (none expected, but defensive).
         let _ = audit_confounders(
-            &enc, zero_pairs, shift_pairs, ordinary_pairs,
-            same_action, diff_action, &mut scratch,
+            &enc,
+            zero_pairs,
+            shift_pairs,
+            ordinary_pairs,
+            same_action,
+            diff_action,
+            &mut scratch,
         );
 
         // Reset + measure 100 calls. Steady state MUST be zero allocations
@@ -1003,8 +1042,13 @@ mod tests {
         reset_alloc_stats();
         for _ in 0..100 {
             let _ = audit_confounders(
-                &enc, zero_pairs, shift_pairs, ordinary_pairs,
-                same_action, diff_action, &mut scratch,
+                &enc,
+                zero_pairs,
+                shift_pairs,
+                ordinary_pairs,
+                same_action,
+                diff_action,
+                &mut scratch,
             );
         }
         let (count, bytes) = get_alloc_stats();

@@ -43,8 +43,8 @@ use katgpt_claim::clr::{
     Claim, ClaimVerifier, ClrConfig, ClrScratch, DirectionVectorSource, FnClaimExtractor,
     SigmoidProjectionVerifier, Trajectory, clr_vote,
 };
-use katgpt_core::simd::simd_dot_f32;
 use katgpt_core::sigmoid_calibration::{brier_score, expected_calibration_error, log_loss};
+use katgpt_core::simd::simd_dot_f32;
 
 // ──────────────────────────────────────────────────────────────────────────
 // Shared fixture helpers (bench_284 shapes, kept local so the two GOAT
@@ -130,9 +130,7 @@ fn build_draws(
         // bench_284 G2's embedding generator: random entries, scale in
         // [0.5, 3.5] so dots span a wide range and exercise all bins.
         let scale = 0.5 + rng.f32() * 3.0;
-        let embedding: Vec<f32> = (0..DIM)
-            .map(|_| (rng.f32() * 2.0 - 1.0) * scale)
-            .collect();
+        let embedding: Vec<f32> = (0..DIM).map(|_| (rng.f32() * 2.0 - 1.0) * scale).collect();
         let dot = simd_dot_f32(&embedding, directions.direction(0), DIM);
         let raw_verdict = sigmoid(dot);
         let p_true = label_of_dot(dot);
@@ -182,7 +180,10 @@ fn g1_miscalibrated_fixture() {
     for d in &train {
         calibrated.observe(d.raw_verdict, d.label);
     }
-    assert!(calibrated.refit(), "planted fixture must move the parameters");
+    assert!(
+        calibrated.refit(),
+        "planted fixture must move the parameters"
+    );
 
     let (t, b) = calibrated.params();
 
@@ -281,10 +282,11 @@ fn g1b_calibrated_fixture_no_harm() {
     let br_delta = brier_score(&cal_ps, &ys) - brier_score(&raw_ps, &ys);
 
     eprintln!("──────── G1b: calibrated fixture (Bench 284 G2 shape) ────────");
+    eprintln!("refit moved params: {moved}; landed (T, b) = ({t:.4}, {b:.4}) — near identity");
     eprintln!(
-        "refit moved params: {moved}; landed (T, b) = ({t:.4}, {b:.4}) — near identity"
+        "ECE raw → cal: {ece_raw:.4} → {ece_cal:.4} (Δ {:+.4})",
+        ece_cal - ece_raw
     );
-    eprintln!("ECE raw → cal: {ece_raw:.4} → {ece_cal:.4} (Δ {:+.4})", ece_cal - ece_raw);
     eprintln!("logloss Δ {ll_delta:+.4}, brier Δ {br_delta:+.4}");
     eprintln!(
         "no-harm band : |ΔECE| ≤ 0.005 (bin sampling noise at n={TEST_N}, 10 bins) + the standing 0.10 gate — the claim is 'within noise of raw', NOT improvement (there is nothing to fix)"
@@ -317,7 +319,11 @@ fn g3_no_regression() {
     for (i, d) in draws.iter().enumerate() {
         let raw = raw_verdict(calibrated.inner(), &d.embedding);
         let cal = cal_verdict(&calibrated, &d.embedding);
-        assert_eq!(raw.to_bits(), cal.to_bits(), "cold start must be exact (draw {i})");
+        assert_eq!(
+            raw.to_bits(),
+            cal.to_bits(),
+            "cold start must be exact (draw {i})"
+        );
     }
     eprintln!(
         "──────── G3a: cold-start bit-identity over {} verdicts ────────",
@@ -350,9 +356,7 @@ fn g3_no_regression() {
             inversions += 1;
         }
     }
-    eprintln!(
-        "──────── G3b: pairwise order after real refit — {inversions} inversions ────────"
-    );
+    eprintln!("──────── G3b: pairwise order after real refit — {inversions} inversions ────────");
     assert_eq!(
         inversions, 0,
         "G3b FAILED: monotone calibration inverted {inversions} verdict pairs"
@@ -434,8 +438,7 @@ fn build_g1_suite_local(seed: u64) -> (Vec<Trajectory<u8>>, FlatDirections) {
                     emb[d] = baseline * dir[d] + n;
                 }
                 if is_flawed_member && m == m_flaw {
-                    let mut perturb: Vec<f32> =
-                        (0..8).map(|_| rng.f32() * 2.0 - 1.0).collect();
+                    let mut perturb: Vec<f32> = (0..8).map(|_| rng.f32() * 2.0 - 1.0).collect();
                     let dot_p = simd_dot_f32(&perturb, dir, 8);
                     for d in 0..8 {
                         perturb[d] -= dot_p * dir[d];
@@ -470,7 +473,14 @@ fn vote_pick<V: ClaimVerifier<u8>>(
 ) -> u8 {
     let extractor = FnClaimExtractor::new(5, |t: &Trajectory<u8>| t.claims.clone());
     let outcome_eq = |a: &u8, b: &u8| a == b;
-    let result = clr_vote(trajectories, &extractor, verifier, config, &outcome_eq, scratch);
+    let result = clr_vote(
+        trajectories,
+        &extractor,
+        verifier,
+        config,
+        &outcome_eq,
+        scratch,
+    );
     result.winner.outcome
 }
 

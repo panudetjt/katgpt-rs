@@ -54,7 +54,9 @@ fn at(pages: &[usize], c: usize, l: usize) -> usize {
 }
 
 fn tokens(seed: u32, chunks: usize) -> Vec<u32> {
-    (0..chunks * PT).map(|i| seed * 1_000_003 + i as u32).collect()
+    (0..chunks * PT)
+        .map(|i| seed * 1_000_003 + i as u32)
+        .collect()
 }
 
 /// The full serving flow against the mock pool: match → adopt → fill

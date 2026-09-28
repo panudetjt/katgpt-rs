@@ -245,8 +245,8 @@ impl<const K: usize, const D: usize> DriftSegmentStore<K, D> {
         } else {
             self.slots[self.n_active - 1].n_tokens
         };
-        let boundary = cur_len == u32::MAX
-            || (self.armed && score >= self.tau && cur_len >= self.min_segment);
+        let boundary =
+            cur_len == u32::MAX || (self.armed && score >= self.tau && cur_len >= self.min_segment);
 
         if boundary {
             if self.n_active == K {
@@ -487,7 +487,11 @@ mod tests {
             store.observe(&k, &v);
         }
 
-        assert!(store.n_slots() >= 2, "expected >= 2 slots, got {}", store.n_slots());
+        assert!(
+            store.n_slots() >= 2,
+            "expected >= 2 slots, got {}",
+            store.n_slots()
+        );
         assert!(
             store.boundaries_fired() <= 4,
             "boundary spam: {} fires for 1 change point",
@@ -517,7 +521,11 @@ mod tests {
             let k = noisy(&a, 0.08, &mut rng);
             store.observe(&k, &a);
         }
-        assert_eq!(store.boundaries_fired(), 1, "only the initial slot may open");
+        assert_eq!(
+            store.boundaries_fired(),
+            1,
+            "only the initial slot may open"
+        );
         assert_eq!(store.n_slots(), 1);
     }
 
@@ -615,7 +623,11 @@ mod tests {
         for _ in 0..300 {
             store.observe(&noisy(&c, 0.10, &mut rng), &c);
         }
-        assert_eq!(store.n_slots(), 3, "all three regimes must be separate slots");
+        assert_eq!(
+            store.n_slots(),
+            3,
+            "all three regimes must be separate slots"
+        );
         let d0 = store.slot(0).density();
         let d1 = store.slot(1).density();
         let d2 = store.slot(2).density();

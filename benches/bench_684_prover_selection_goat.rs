@@ -70,8 +70,8 @@ const ALPHAS: [f32; 3] = [0.2, 0.4, 0.6];
 /// selection quantization noise (~±0.003), so quality gates run on the
 /// aggregate mean + win-rate, not on every cell.
 const SEEDS: [u64; 16] = [
-    42, 1337, 20260827, 7, 91, 31337, 2024, 65537, 7919, 104729, 1299709, 15485863,
-    32452843, 49979687, 67867967, 86028121,
+    42, 1337, 20260827, 7, 91, 31337, 2024, 65537, 7919, 104729, 1299709, 15485863, 32452843,
+    49979687, 67867967, 86028121,
 ];
 
 /// xorshift64* — platform-independent u64 arithmetic, deterministic.
@@ -327,8 +327,7 @@ fn main() {
         // G2 the inversion is real + the pre-gate flags the strength winner
         // (per-seed: these margins are 10–50×, robust).
         assert_eq!(
-            strength_pick,
-            0,
+            strength_pick, 0,
             "G2a FAIL seed {seed}: strength ranking must pick strong_flat (got {})",
             PROVER_NAMES[strength_pick]
         );

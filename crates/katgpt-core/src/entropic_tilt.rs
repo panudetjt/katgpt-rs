@@ -236,7 +236,11 @@ pub fn tilt_advantages_loo_into(rewards: &[f32], gamma: f32, advantages_out: &mu
         // Z ≥ e_i by construction; the max element makes Z ≥ 1, and with
         // n ≥ 2 at least one other term is > 0, so z_loo > 0.
         let z_loo = z - e_i;
-        let w = if z_loo > 0.0 { n_minus_1 * e_i / z_loo } else { 1.0 };
+        let w = if z_loo > 0.0 {
+            n_minus_1 * e_i / z_loo
+        } else {
+            1.0
+        };
         advantages_out.push(w - 1.0);
     }
     beta
@@ -424,7 +428,10 @@ mod tests {
         let rewards = [0.0f32, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0];
         let mut loo = Vec::new();
         tilt_advantages_loo_into(&rewards, KL_BUDGET_LN2, &mut loo);
-        assert!(loo[7] > 0.0, "the rare success must be upweighted under LOO");
+        assert!(
+            loo[7] > 0.0,
+            "the rare success must be upweighted under LOO"
+        );
         for (i, &a) in loo[..7].iter().enumerate() {
             assert!(a < 0.0, "failure {i} must be downweighted, got {a}");
         }

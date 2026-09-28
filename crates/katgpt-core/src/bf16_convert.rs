@@ -538,10 +538,10 @@ unsafe fn bf16_bits_to_f32_avx2(src: &[u16], dst: &mut [f32]) {
 #[target_feature(enable = "avx2")]
 unsafe fn f32_to_bf16_rne_avx2(src: &[f32], dst: &mut [u16]) {
     use core::arch::x86_64::{
-        __m128i, _mm_packus_epi32, _mm_storeu_si128, _mm256_add_epi32,
-        _mm256_and_si256, _mm256_blendv_epi8, _mm256_castps_si256, _mm256_castsi256_si128,
-        _mm256_cmpgt_epi32, _mm256_extracti128_si256, _mm256_loadu_ps, _mm256_or_si256,
-        _mm256_set1_epi32, _mm256_srli_epi32,
+        __m128i, _mm_packus_epi32, _mm_storeu_si128, _mm256_add_epi32, _mm256_and_si256,
+        _mm256_blendv_epi8, _mm256_castps_si256, _mm256_castsi256_si128, _mm256_cmpgt_epi32,
+        _mm256_extracti128_si256, _mm256_loadu_ps, _mm256_or_si256, _mm256_set1_epi32,
+        _mm256_srli_epi32,
     };
 
     unsafe {

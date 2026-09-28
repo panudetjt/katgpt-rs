@@ -100,7 +100,11 @@ impl EntropyGapReport {
 /// (buffers reused across calls — zero allocation once warmed, G4).
 ///
 /// Bit-deterministic: f64 accumulation, fixed summation order, f32 storage.
-pub fn entropy_gap_into(ref_entropies: &[f32], gen_entropies: &[f32], report: &mut EntropyGapReport) {
+pub fn entropy_gap_into(
+    ref_entropies: &[f32],
+    gen_entropies: &[f32],
+    report: &mut EntropyGapReport,
+) {
     report.ref_entropies.clear();
     report.ref_entropies.extend_from_slice(ref_entropies);
     report.gen_entropies.clear();
@@ -153,8 +157,20 @@ fn pooled_std(a: &[f32], mean_a: f64, b: &[f32], mean_b: f64) -> Option<f64> {
     if a.len() < 2 || b.len() < 2 {
         return None;
     }
-    let ss_a: f64 = a.iter().map(|&x| { let d = x as f64 - mean_a; d * d }).sum();
-    let ss_b: f64 = b.iter().map(|&x| { let d = x as f64 - mean_b; d * d }).sum();
+    let ss_a: f64 = a
+        .iter()
+        .map(|&x| {
+            let d = x as f64 - mean_a;
+            d * d
+        })
+        .sum();
+    let ss_b: f64 = b
+        .iter()
+        .map(|&x| {
+            let d = x as f64 - mean_b;
+            d * d
+        })
+        .sum();
     let n = (a.len() + b.len() - 2) as f64;
     Some(((ss_a + ss_b) / n).sqrt())
 }
@@ -182,10 +198,18 @@ mod tests {
         let mut ref_logits = vec![0.0f32; 8];
         ref_logits[2] = 40.0;
         let gen_logits = vec![0.0f32; 8];
-        let ref_ents: Vec<f32> = (0..16).map(|_| conditional_entropy_nats(&ref_logits)).collect();
-        let gen_ents: Vec<f32> = (0..16).map(|_| conditional_entropy_nats(&gen_logits)).collect();
+        let ref_ents: Vec<f32> = (0..16)
+            .map(|_| conditional_entropy_nats(&ref_logits))
+            .collect();
+        let gen_ents: Vec<f32> = (0..16)
+            .map(|_| conditional_entropy_nats(&gen_logits))
+            .collect();
         let r = entropy_gap(&ref_ents, &gen_ents);
-        assert!(r.mean_gap > 1.0, "memorization gap must be large: {}", r.mean_gap);
+        assert!(
+            r.mean_gap > 1.0,
+            "memorization gap must be large: {}",
+            r.mean_gap
+        );
         assert!(r.mean_ref < 0.1);
         assert!((r.mean_gen - 8.0f32.ln()).abs() < 1e-4);
     }
@@ -204,7 +228,10 @@ mod tests {
         let b: Vec<f32> = (0..64).map(|i| ((i * 3) % 11) as f32 * 0.25).collect();
         let r1 = entropy_gap(&a, &b);
         let r2 = entropy_gap(&a, &b);
-        assert_eq!(r1.artifact, r2.artifact, "same inputs must hash identically");
+        assert_eq!(
+            r1.artifact, r2.artifact,
+            "same inputs must hash identically"
+        );
         assert_eq!(r1, r2);
         // Different inputs → different artifact (sanity, not avalanche).
         let c: Vec<f32> = b.iter().map(|x| x + 1.0).collect();
@@ -225,7 +252,10 @@ mod tests {
     #[test]
     fn tiny_samples_standardized_gap_is_zero() {
         let r = entropy_gap(&[1.0], &[2.0]);
-        assert_eq!(r.standardized_gap, 0.0, "no pooled std under 2 samples — never fabricate");
+        assert_eq!(
+            r.standardized_gap, 0.0,
+            "no pooled std under 2 samples — never fabricate"
+        );
         assert_eq!(r.mean_gap, 1.0);
     }
 }

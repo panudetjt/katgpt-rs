@@ -97,7 +97,13 @@ fn mixed_fixture(shape: [usize; 3], noise: f32, seed: u64) -> Tensor3 {
     x
 }
 
-fn pure_fixture(shape: [usize; 3], class: SliceClass, comps: usize, noise: f32, seed: u64) -> Tensor3 {
+fn pure_fixture(
+    shape: [usize; 3],
+    class: SliceClass,
+    comps: usize,
+    noise: f32,
+    seed: u64,
+) -> Tensor3 {
     let mut x = Tensor3::zeros(shape);
     let mut rng = Rng::new(seed);
     add_plant(&mut x, class, comps, &mut rng);
@@ -160,7 +166,14 @@ fn zero_tensor_shares_zero_and_empty_fit() {
     assert_eq!(shares, [0.0; 3]);
     let mut scratch = SliceTcaScratch::with_capacity(shape);
     let mut d = SliceDecomposition::empty(shape);
-    fit_slice_into(&x.data, shape, &SliceTcaConfig::default(), &mut scratch, &mut d).unwrap();
+    fit_slice_into(
+        &x.data,
+        shape,
+        &SliceTcaConfig::default(),
+        &mut scratch,
+        &mut d,
+    )
+    .unwrap();
     assert_eq!(d.n_components, 0);
     let mut hat = Tensor3::zeros(shape);
     d.reconstruct_into(&mut hat).unwrap();
@@ -192,17 +205,17 @@ fn single_class_rank_bounds_enforced() {
     let x = Tensor3::zeros(shape);
     let mut scratch = SliceTcaScratch::with_capacity(shape);
     let mut d = SliceDecomposition::empty(shape);
-    let err = super::fit_single_class_into(
-        &x.data,
-        shape,
-        0,
-        5,
-        ENERGY_FLOOR_TAU,
-        &mut scratch,
-        &mut d,
-    );
+    let err =
+        super::fit_single_class_into(&x.data, shape, 0, 5, ENERGY_FLOOR_TAU, &mut scratch, &mut d);
     // min(4, 48) = 4 < 5.
-    assert!(matches!(err, Err(SliceTcaError::RankTooLarge { axis: 0, rank: 5, bound: 4 })));
+    assert!(matches!(
+        err,
+        Err(SliceTcaError::RankTooLarge {
+            axis: 0,
+            rank: 5,
+            bound: 4
+        })
+    ));
 }
 
 // ─── T1.4 / T1.7 ALS ────────────────────────────────────────────────────────
@@ -216,7 +229,11 @@ fn als_loss_monotone_non_increasing() {
     let cfg = SliceTcaConfig::default();
     fit_with_ranks_into(&x.data, shape, [2, 2, 0], &cfg, &mut scratch, &mut d).unwrap();
     let losses = scratch.last_sweep_losses();
-    assert_eq!(losses.len(), cfg.als_sweeps + 1, "init + sweep losses recorded");
+    assert_eq!(
+        losses.len(),
+        cfg.als_sweeps + 1,
+        "init + sweep losses recorded"
+    );
     // Monotone within f32 slack (the exact-math sequence is non-increasing).
     let tol = 1e-5;
     for w in 1..losses.len() {
@@ -237,7 +254,10 @@ fn als_improves_or_matches_svd_init() {
     fit_with_ranks_into(&x.data, shape, [2, 2, 0], &cfg, &mut scratch, &mut d).unwrap();
     let first = scratch.last_sweep_losses()[0];
     let last = *scratch.last_sweep_losses().last().unwrap();
-    assert!(last <= first + 1e-6, "ALS worsened: first {first}, last {last}");
+    assert!(
+        last <= first + 1e-6,
+        "ALS worsened: first {first}, last {last}"
+    );
 }
 
 #[test]
@@ -256,8 +276,16 @@ fn mixed_fit_beats_single_class_fits() {
     let mut best_floor = f32::INFINITY;
     for axis in 0..3 {
         let mut d = SliceDecomposition::empty(shape);
-        super::fit_single_class_into(&x.data, shape, axis, 4, ENERGY_FLOOR_TAU, &mut scratch, &mut d)
-            .unwrap();
+        super::fit_single_class_into(
+            &x.data,
+            shape,
+            axis,
+            4,
+            ENERGY_FLOOR_TAU,
+            &mut scratch,
+            &mut d,
+        )
+        .unwrap();
         best_floor = best_floor.min(relative_loss(&x, &d));
     }
     assert!(
@@ -272,7 +300,14 @@ fn full_pipeline_reconstruction_round_trip() {
     let x = mixed_fixture(shape, 0.05, 7);
     let mut scratch = SliceTcaScratch::with_capacity(shape);
     let mut d = SliceDecomposition::empty(shape);
-    fit_slice_into(&x.data, shape, &SliceTcaConfig::default(), &mut scratch, &mut d).unwrap();
+    fit_slice_into(
+        &x.data,
+        shape,
+        &SliceTcaConfig::default(),
+        &mut scratch,
+        &mut d,
+    )
+    .unwrap();
     let loss = relative_loss(&x, &d);
     // Noise floor ~5% energy + classifier margins: a well-fit mixed signal
     // must sit well below the noise-free budget.
@@ -581,7 +616,10 @@ fn zero_alloc_reconstruction_and_classifier() {
         d.entity_slice_into(3, &mut slab).unwrap();
     }
     let (allocs, _bytes) = get_alloc_stats();
-    assert_eq!(allocs, 0, "{allocs} allocations in the steady-state hot path");
+    assert_eq!(
+        allocs, 0,
+        "{allocs} allocations in the steady-state hot path"
+    );
 }
 
 #[test]

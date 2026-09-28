@@ -74,16 +74,15 @@ impl MuxPatternStore {
             .get(query_type)?
             .iter()
             .filter(|p| p.tier == tier)
-            .max_by(|a, b| {
-                katgpt_core::float_order::cmp_for_max(a.kl_reward, b.kl_reward)
-            })
+            .max_by(|a, b| katgpt_core::float_order::cmp_for_max(a.kl_reward, b.kl_reward))
     }
 
     /// Thaw the best pattern regardless of tier.
     pub fn thaw_best(&self, query_type: &str) -> Option<&MuxTarget> {
-        self.patterns.get(query_type)?.iter().max_by(|a, b| {
-            katgpt_core::float_order::cmp_for_max(a.kl_reward, b.kl_reward)
-        })
+        self.patterns
+            .get(query_type)?
+            .iter()
+            .max_by(|a, b| katgpt_core::float_order::cmp_for_max(a.kl_reward, b.kl_reward))
     }
 
     /// Number of stored patterns.

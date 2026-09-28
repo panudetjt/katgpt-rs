@@ -25,7 +25,6 @@
 //! let blind = pruner.blind_spot_arms(3);
 //! ```
 
-
 use crate::bandit::BanditPruner;
 use katgpt_speculative::ScreeningPruner;
 

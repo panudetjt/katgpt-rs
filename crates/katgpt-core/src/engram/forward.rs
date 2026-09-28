@@ -86,7 +86,7 @@ impl EngramConfig {
             fusion: SigmoidFusionConfig {
                 tau: (d as f32).sqrt(),
                 rmsnorm_eps: 1e-6,
-            logit_bias: 0.0,
+                logit_bias: 0.0,
             },
             k_heads: K_MAX,
         }

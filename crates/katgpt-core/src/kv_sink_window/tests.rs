@@ -46,8 +46,14 @@ fn w04_no_d_max_is_lossy_not_a_free_pass() {
     let p = SinkWindowPolicy::new(4, 1024);
     assert_eq!(p.fidelity(None), WindowFidelity::Lossy);
     assert!(!p.fidelity(None).is_lossless());
-    assert_eq!(p.fidelity(Some(512)), WindowFidelity::Lossless { d_max: 512 });
-    assert_eq!(p.fidelity(Some(1024)), WindowFidelity::Lossless { d_max: 1024 });
+    assert_eq!(
+        p.fidelity(Some(512)),
+        WindowFidelity::Lossless { d_max: 512 }
+    );
+    assert_eq!(
+        p.fidelity(Some(1024)),
+        WindowFidelity::Lossless { d_max: 1024 }
+    );
     assert_eq!(p.fidelity(Some(1025)), WindowFidelity::Lossy);
 }
 

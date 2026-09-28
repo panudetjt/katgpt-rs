@@ -65,9 +65,9 @@ fn f16_f16_correctness() {
 #[ignore]
 fn prof_f16_f16_kernel_speedup() {
     const ITERS: usize = 10_000;
-const GATE: f64 = 1.5;
+    const GATE: f64 = 1.5;
 
-println!();
+    println!();
     println!("═══ f16×f16 Kernel Microbenchmark (Issue 201 Phase 1) ═══");
     println!("CPU: Apple Silicon (fp16 + fhm target features)");
     println!();
@@ -149,14 +149,14 @@ println!();
 
     println!();
     println!("── Decision gate (Issue 201 Phase 1) ──");
-    println!(
-        "  f16xf16 best speedup at L3+ sizes (>=65536): {large_f16f16_speedup:.3}x"
-    );
+    println!("  f16xf16 best speedup at L3+ sizes (>=65536): {large_f16f16_speedup:.3}x");
     if large_f16f16_speedup >= GATE {
         println!("  PASS — f16xf16 kernel is >={GATE}x faster at L3+ sizes");
         println!("  -> Proceed to Phase 2: implement ForwardContextF16 + full forward path");
     } else {
         println!("  FAIL — f16xf16 kernel is NOT >={GATE}x faster at L3+ sizes");
-        println!("  -> The full-f16 path won't beat f32 either. Close Issue 201 with negative result.");
+        println!(
+            "  -> The full-f16 path won't beat f32 either. Close Issue 201 with negative result."
+        );
     }
 }

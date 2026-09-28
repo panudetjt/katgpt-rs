@@ -383,7 +383,10 @@ mod tests {
         for (k, v) in &model {
             rebuild.insert(&elem(&k.to_le_bytes(), &[*v]));
         }
-        assert_eq!(incremental, rebuild, "incremental state drifted from rebuild");
+        assert_eq!(
+            incremental, rebuild,
+            "incremental state drifted from rebuild"
+        );
         assert_eq!(incremental.checksum(), rebuild.checksum());
     }
 
@@ -417,21 +420,14 @@ mod tests {
     #[test]
     fn known_answer_vector() {
         let mut h: LtHash = LtHash::identity();
-        let e1: Element = Element::derive(
-            "katgpt-lthash-kat-v1",
-            &[b"account-1", b"1000"],
-        );
+        let e1: Element = Element::derive("katgpt-lthash-kat-v1", &[b"account-1", b"1000"]);
         h.insert(&e1);
-        let e2: Element = Element::derive(
-            "katgpt-lthash-kat-v1",
-            &[b"account-2", b"2049"],
-        );
+        let e2: Element = Element::derive("katgpt-lthash-kat-v1", &[b"account-2", b"2049"]);
         h.insert(&e2);
         let checksum = h.checksum();
         let hex: String = checksum.iter().map(|b| format!("{b:02x}")).collect();
         assert_eq!(
-            hex,
-            "dc6a921442ede14db66c2c56a80999deaacc6627b37e57f1596ee395975c4963",
+            hex, "dc6a921442ede14db66c2c56a80999deaacc6627b37e57f1596ee395975c4963",
             "construction changed — every persisted LtHash value changes with it"
         );
     }

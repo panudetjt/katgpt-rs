@@ -324,7 +324,14 @@ pub(crate) fn whiten_inplace(x: &mut [f32], n: usize, k: usize, sc: &mut Transpo
 
 /// Entropic Sinkhorn on a cost matrix (`n1 × n2`, row-major), uniform
 /// masses, writing the balanced transport plan into `plan`. Deterministic.
-pub(crate) fn sinkhorn_plan(cost: &[f32], n1: usize, n2: usize, eps: f32, iters: usize, plan: &mut Vec<f32>) {
+pub(crate) fn sinkhorn_plan(
+    cost: &[f32],
+    n1: usize,
+    n2: usize,
+    eps: f32,
+    iters: usize,
+    plan: &mut Vec<f32>,
+) {
     debug_assert_eq!(cost.len(), n1 * n2);
     plan.clear();
     plan.resize(n1 * n2, 0.0);
@@ -552,7 +559,9 @@ mod tests {
         let n1 = 8;
         let n2 = 8;
         let mut lcg = Lcg(11);
-        let cost: Vec<f32> = (0..n1 * n2).map(|_| (lcg.next_f32_unit() + 1.0).abs()).collect();
+        let cost: Vec<f32> = (0..n1 * n2)
+            .map(|_| (lcg.next_f32_unit() + 1.0).abs())
+            .collect();
         let mut plan = Vec::new();
         sinkhorn_plan(&cost, n1, n2, 0.1, 50, &mut plan);
         for i in 0..n1 {
@@ -597,10 +606,25 @@ mod tests {
     #[test]
     fn validate_dims_enforces_floors() {
         assert_eq!(validate_dims(16, 8, 16, 8, 4), Ok(4));
-        assert_eq!(validate_dims(4, 8, 16, 8, 4), Err(TransportError::TooFewSamples));
-        assert_eq!(validate_dims(16, 0, 16, 8, 4), Err(TransportError::DimMismatch));
-        assert_eq!(validate_dims(64, 2048, 64, 8, 4), Err(TransportError::DimTooLarge));
-        assert_eq!(validate_dims(64, 8, 64, 8, 65), Err(TransportError::LatentDimTooLarge));
-        assert_eq!(validate_dims(16, 8, 16, 8, 8), Err(TransportError::LatentDimExceedsSamples));
+        assert_eq!(
+            validate_dims(4, 8, 16, 8, 4),
+            Err(TransportError::TooFewSamples)
+        );
+        assert_eq!(
+            validate_dims(16, 0, 16, 8, 4),
+            Err(TransportError::DimMismatch)
+        );
+        assert_eq!(
+            validate_dims(64, 2048, 64, 8, 4),
+            Err(TransportError::DimTooLarge)
+        );
+        assert_eq!(
+            validate_dims(64, 8, 64, 8, 65),
+            Err(TransportError::LatentDimTooLarge)
+        );
+        assert_eq!(
+            validate_dims(16, 8, 16, 8, 8),
+            Err(TransportError::LatentDimExceedsSamples)
+        );
     }
 }

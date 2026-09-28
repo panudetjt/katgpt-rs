@@ -177,7 +177,7 @@ impl<T, V: ClaimVerifier<T>> ClaimVerifier<T> for CalibratedVerifier<V> {
 /// shipped trait method returning a bare [`Verdict`] and is untouched, so a
 /// caller that has not opted in compiles and behaves byte-identically.
 #[cfg(feature = "calibration_staleness")]
-pub use bound::{direction_pool_id, BoundCalibratedVerifier};
+pub use bound::{BoundCalibratedVerifier, direction_pool_id};
 
 #[cfg(feature = "calibration_staleness")]
 mod bound {
@@ -292,7 +292,7 @@ mod tests {
     #[cfg(feature = "calibration_staleness")]
     mod bound_calibrated_verifier {
         use super::*;
-        use crate::clr::calibration::{direction_pool_id, BoundCalibratedVerifier};
+        use crate::clr::calibration::{BoundCalibratedVerifier, direction_pool_id};
         use katgpt_core::calibration_staleness::{SnapshotId, Staleness};
 
         /// A pool whose generation and contents both move — the real shape,
@@ -371,7 +371,8 @@ mod tests {
             assert_ne!(now, fitted);
             assert_eq!(bound.staleness(now), Staleness::VersionMoved);
             assert!(
-                BoundCalibratedVerifier::<()>::verify_embedding_checked(&bound, now, &emb, 0).is_none(),
+                BoundCalibratedVerifier::<()>::verify_embedding_checked(&bound, now, &emb, 0)
+                    .is_none(),
                 "a stale Platt pair returns a plausible verdict, not a NaN — \
                  which is why this is a refusal and not a warning"
             );
@@ -385,7 +386,10 @@ mod tests {
             let fitted = direction_pool_id(&old);
             let bound = calibrated(&old).bound_to(fitted);
             let sneaky = direction_pool_id(&pool(0.5, 4));
-            assert_eq!(sneaky.version, fitted.version, "the generation was NOT bumped");
+            assert_eq!(
+                sneaky.version, fitted.version,
+                "the generation was NOT bumped"
+            );
             assert_eq!(bound.staleness(sneaky), Staleness::CommitmentMoved);
         }
 
@@ -476,7 +480,10 @@ mod tests {
             };
             let raw = calibrated.inner().verify(&claim, 0);
             let cal = calibrated.verify(&claim, 0);
-            assert!(raw >= prev_raw && cal >= prev_cal, "order inverted at x = {x}");
+            assert!(
+                raw >= prev_raw && cal >= prev_cal,
+                "order inverted at x = {x}"
+            );
             prev_raw = raw;
             prev_cal = cal;
         }

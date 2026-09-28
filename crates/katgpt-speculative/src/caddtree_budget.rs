@@ -86,7 +86,9 @@ impl AcceptanceSurrogate {
         let mut cum_confidence = 1.0_f32;
         let mut total = 0.0_f32;
         for marg in marginals.iter() {
-            let Some(top1) = marg.iter().copied().reduce(f32::max) else { break };
+            let Some(top1) = marg.iter().copied().reduce(f32::max) else {
+                break;
+            };
             cum_confidence *= top1;
             let gate = sigmoid(self.confidence_k * (cum_confidence - self.confidence_threshold));
             total += gate;
@@ -111,7 +113,9 @@ impl AcceptanceSurrogate {
             if marg.is_empty() {
                 break;
             }
-            let Some(top1) = marg.iter().copied().reduce(f32::max) else { break };
+            let Some(top1) = marg.iter().copied().reduce(f32::max) else {
+                break;
+            };
             // With B branches, the best candidate improves acceptance.
             // P(at least one good branch) = 1 - (1 - top1)^B, capped at 1.0.
             let effective_prob = 1.0 - (1.0 - top1).powi(budget as i32).min(1.0);
@@ -224,16 +228,16 @@ impl LatencyEstimator {
         };
 
         if self.observations == 0 {
-                // First observation: use directly (no EMA blend).
-                self.draft_per_node = obs_draft_per_node;
-                self.verify_per_node = obs_verify_per_node;
-                self.verify_base = verify_time_us - obs_verify_per_node * (budget as f64 - 1.0);
-            } else {
-                self.draft_per_node = self.draft_per_node * (1.0 - a) + obs_draft_per_node * a;
-                self.verify_base = self.verify_base * (1.0 - a) + verify_time_us * a;
-                self.verify_per_node =
-                    self.verify_per_node * (1.0 - a) + obs_verify_per_node.max(0.0) * a;
-            }
+            // First observation: use directly (no EMA blend).
+            self.draft_per_node = obs_draft_per_node;
+            self.verify_per_node = obs_verify_per_node;
+            self.verify_base = verify_time_us - obs_verify_per_node * (budget as f64 - 1.0);
+        } else {
+            self.draft_per_node = self.draft_per_node * (1.0 - a) + obs_draft_per_node * a;
+            self.verify_base = self.verify_base * (1.0 - a) + verify_time_us * a;
+            self.verify_per_node =
+                self.verify_per_node * (1.0 - a) + obs_verify_per_node.max(0.0) * a;
+        }
         self.observations += 1;
     }
 
@@ -489,7 +493,7 @@ pub fn build_dd_tree_adaptive_mux_residual(
     // 1. Build the adaptive tree (existing logic, unchanged).
     use katgpt_core::simd::fast_exp;
 
-let (tree, budget) = build_dd_tree_adaptive(marginals, config);
+    let (tree, budget) = build_dd_tree_adaptive(marginals, config);
 
     let n_embd = config.n_embd;
     let vocab_size = config.vocab_size;

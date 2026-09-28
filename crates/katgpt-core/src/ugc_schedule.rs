@@ -403,26 +403,17 @@ fn fill_z_buf(dz: &dyn UgcDenoiser, rng: &mut Rng, scratch: &mut UgcScratch) {
     let d = dz.dim();
     scratch.reset_obs();
     for i in 0..d {
-        let UgcScratch {
-            obs, post_cur, ..
-        } = scratch;
+        let UgcScratch { obs, post_cur, .. } = scratch;
         dz.posterior_into(i, obs, post_cur);
         let chosen = sample_categorical(post_cur, rng);
         scratch.obs[i] = chosen;
     }
-    scratch
-        .z_buf
-        .copy_from_slice(&scratch.obs);
+    scratch.z_buf.copy_from_slice(&scratch.obs);
 }
 
 /// Draw a clean sample `z ~ P_Z` into `out` (convenience wrapper over the
 /// scratch-backed path; `out.len() == dz.dim()`).
-pub fn sample_z(
-    dz: &dyn UgcDenoiser,
-    rng: &mut Rng,
-    out: &mut [usize],
-    scratch: &mut UgcScratch,
-) {
+pub fn sample_z(dz: &dyn UgcDenoiser, rng: &mut Rng, out: &mut [usize], scratch: &mut UgcScratch) {
     fill_z_buf(dz, rng, scratch);
     out.copy_from_slice(&scratch.z_buf);
 }
@@ -472,7 +463,8 @@ impl UgcProfile {
     /// complexity `H·log(odds-ratio)`).
     pub fn coarse_complexity(&self) -> f32 {
         let total: f32 = self.increments.iter().sum();
-        let ell = self.lambda_grid.last().unwrap_or(&0.0) - self.lambda_grid.first().unwrap_or(&0.0);
+        let ell =
+            self.lambda_grid.last().unwrap_or(&0.0) - self.lambda_grid.first().unwrap_or(&0.0);
         ell * total
     }
     /// Fine-partition complexity `P_UGC = (Σ √(ΔH·Δλ))²` (Eq 5b + Theorem 3:
@@ -605,7 +597,11 @@ pub fn estimate_profile(
         scratch.u_buf = u;
     }
 
-    let h: Vec<f32> = scratch.h_sum.iter().map(|&v| (v / m as f64) as f32).collect();
+    let h: Vec<f32> = scratch
+        .h_sum
+        .iter()
+        .map(|&v| (v / m as f64) as f32)
+        .collect();
     // Per-interval masses via integration by parts on the coupled ĥ curve:
     // ΔH_g = [t(1−t)h]_{t_g}^{t_{g+1}} + ∫ (2t−1)h dt (trapezoid).
     let increments: Vec<f32> = (0..g)
@@ -692,7 +688,7 @@ pub fn equal_sqrt_mass_grid(profile: &UgcProfile, n: usize) -> Vec<f32> {
 pub fn dp_partition(profile: &UgcProfile, k: usize) -> Vec<usize> {
     const INF: f64 = f64::INFINITY;
 
-let g = profile.increments.len();
+    let g = profile.increments.len();
     assert!(k >= 1 && k <= g, "need 1 <= K <= number of intervals");
     let mut prefix = vec![0.0f64; g + 1];
     for i in 0..g {
@@ -773,8 +769,9 @@ pub fn certified_block_plan(boundaries: &[f32], uppers: &[f32], n_budget: usize)
     let chat = chat_sqrt * chat_sqrt;
     let multipliers: Vec<f32> = (0..k)
         .map(|i| {
-            let rho =
-                4.0 * (chat / n_budget as f64).sqrt() * (s_k[i] as f64 / (uppers[i].max(1e-12) as f64)).sqrt();
+            let rho = 4.0
+                * (chat / n_budget as f64).sqrt()
+                * (s_k[i] as f64 / (uppers[i].max(1e-12) as f64)).sqrt();
             rho.min(1.0) as f32
         })
         .collect();
@@ -876,9 +873,7 @@ pub fn bernoulli_unmask_with_grid(
     scratch.reset_obs();
     for i in 0..d {
         if rng.uniform() < grid[0] {
-            let UgcScratch {
-                obs, post_cur, ..
-            } = scratch;
+            let UgcScratch { obs, post_cur, .. } = scratch;
             dz.posterior_into(i, obs, post_cur);
             let chosen = sample_categorical(post_cur, rng);
             scratch.obs[i] = chosen;
@@ -901,9 +896,7 @@ pub fn bernoulli_unmask_with_grid(
         let masked = std::mem::take(&mut scratch.masked_buf);
         for &i in &masked {
             if (rng.uniform() as f64) < beta {
-                let UgcScratch {
-                    obs, post_cur, ..
-                } = scratch;
+                let UgcScratch { obs, post_cur, .. } = scratch;
                 dz.posterior_into(i, obs, post_cur);
                 let chosen = sample_categorical(post_cur, rng);
                 scratch.obs[i] = chosen;
@@ -918,9 +911,7 @@ pub fn bernoulli_unmask_with_grid(
     // Completion: sequential exact conditional fill of remaining masked.
     for i in 0..d {
         if scratch.obs[i] == UGC_MASK {
-            let UgcScratch {
-                obs, post_cur, ..
-            } = scratch;
+            let UgcScratch { obs, post_cur, .. } = scratch;
             dz.posterior_into(i, obs, post_cur);
             let chosen = sample_categorical(post_cur, rng);
             scratch.obs[i] = chosen;
@@ -1138,7 +1129,14 @@ mod tests {
         let mut s = UgcScratch::new(3, 2, 8, 64);
         let mut out = [0usize; 3];
         for _ in 0..32 {
-            bernoulli_unmask_with_grid(&Correlated, &[0.2, 0.5, 0.8], &mut rng, &mut s, &mut out, None);
+            bernoulli_unmask_with_grid(
+                &Correlated,
+                &[0.2, 0.5, 0.8],
+                &mut rng,
+                &mut s,
+                &mut out,
+                None,
+            );
             assert!(out[0] < 2 && out[1] < 2 && out[2] < 2);
             assert!(out[0] == out[1] && out[1] == out[2], "sampled {out:?}");
         }
@@ -1214,21 +1212,17 @@ mod anchor_view_tests {
         let mut out = [0usize; 4];
         let mut steps = [u32::MAX; 4];
         let grid = [0.5f32, 0.75];
-        bernoulli_unmask_with_grid(
-            &Flat,
-            &grid,
-            &mut rng,
-            &mut s,
-            &mut out,
-            Some(&mut steps),
-        );
+        bernoulli_unmask_with_grid(&Flat, &grid, &mut rng, &mut s, &mut out, Some(&mut steps));
         // Everything commits (completion fills all): init=0, transition=1,
         // completion=grid.len()=2.
         assert!(steps.iter().all(|&st| st <= grid.len() as u32), "{steps:?}");
         let n_init = steps.iter().filter(|&&st| st == 0).count();
         // t_0 = 0.5 over d=4 with a fixed seed pins the init count; require
         // a genuinely sparse split so the assertions below are non-vacuous.
-        assert!(n_init > 0 && n_init < 4, "seed produced |A|={n_init}: {steps:?}");
+        assert!(
+            n_init > 0 && n_init < 4,
+            "seed produced |A|={n_init}: {steps:?}"
+        );
         let view = CertifiedSpineView::init_spine(&steps);
         assert_eq!(view.anchor_positions().len(), n_init);
         assert_eq!(view.chain_positions().len(), 4 - n_init);
@@ -1327,14 +1321,7 @@ mod anchor_view_tests {
         let mut s = UgcScratch::new(d, alpha, 16, 64);
         let mut out = vec![0usize; d];
         let mut steps = vec![u32::MAX; d];
-        bernoulli_unmask_with_grid(
-            &dz,
-            &grid,
-            &mut rng,
-            &mut s,
-            &mut out,
-            Some(&mut steps),
-        );
+        bernoulli_unmask_with_grid(&dz, &grid, &mut rng, &mut s, &mut out, Some(&mut steps));
 
         let view = CertifiedSpineView::init_spine(&steps);
         let anchors = view.anchor_positions();
@@ -1351,8 +1338,7 @@ mod anchor_view_tests {
         for idx in 0..alpha.pow(d as u32) {
             let xs = dz.digits(idx);
             // q(x_A) — the joint over the anchor block.
-            let fixed_a: Vec<(usize, usize)> =
-                anchors.iter().map(|&a| (a, xs[a])).collect();
+            let fixed_a: Vec<(usize, usize)> = anchors.iter().map(|&a| (a, xs[a])).collect();
             let mut prod = dz.mass_given(&fixed_a);
             // Π q(x_i | anchors + earlier chain), ascending chain order.
             for &i in &chain {

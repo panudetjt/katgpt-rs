@@ -72,6 +72,7 @@
 
 pub use crate::linalg::ridge_solve::{
     chol_solve_f64, cholesky_f64, ridge_solve_direct_f64, ridge_solve_woodbury_f32,
+    try_ridge_solve_woodbury_f32,
 };
 
 // NOTE: the `pub use` above serves double duty — it imports the Cholesky
@@ -2064,6 +2065,9 @@ impl<B: KarcBasis<M>, const D: usize, const M: usize, const K: usize> KarcForeca
     /// singular for redundant features).
     ///
     /// On success, sets `Wout` (`D × d_h` row-major) and `is_fitted() == true`.
+    /// On [`FitError::Singular`] (indefinite f32 sample Gram on the Woodbury
+    /// path, Issue 904) `Wout` is left untouched — the caller's warn-and-keep
+    /// arm keeps forecasting with the previous fit.
     pub fn fit_ridge(&mut self, lambda: f32) -> Result<(), FitError> {
         let d_h = Self::D_H;
         if self.n_samples == 0 {
@@ -2143,6 +2147,12 @@ impl<B: KarcBasis<M>, const D: usize, const M: usize, const K: usize> KarcForeca
     /// sample-space path (the sample count N is small in this regime, so f32
     /// precision suffices; for very small λ the caller should prefer the direct
     /// path which accumulates in f64).
+    ///
+    /// Degrade contract (Issue 904): an indefinite f32 sample Gram returns
+    /// [`FitError::Singular`] instead of panicking. The solve runs into scratch
+    /// and `Wout` is written only on success, so a failed fit leaves the
+    /// previous weights intact — the caller's warn-and-keep arm keeps
+    /// forecasting with them.
     fn fit_woodbury(&mut self, lambda: f32, d_h: usize, n: usize) -> Result<(), FitError> {
         let s = &mut self.scratch;
         s.clear();
@@ -2164,14 +2174,17 @@ impl<B: KarcBasis<M>, const D: usize, const M: usize, const K: usize> KarcForeca
         s.sample_chol.resize(n * n, 0.0);
         s.sample_z.resize(n * D, 0.0);
         let w_t_len = d_h * D;
-        self.wout.clear();
-        self.wout.resize(w_t_len, 0.0);
+        // Solve into the scratch transpose buffer first: on an indefinite f32
+        // sample Gram the solve returns Err (mapped to FitError::Singular) and
+        // `wout` — the previous fit — must stay untouched for the caller's
+        // warn-and-keep contract to actually keep (Issue 904).
+        s.w_t_transpose.clear();
+        s.w_t_transpose.resize(w_t_len, 0.0);
         {
             let y = &self.targets_buf[..n * D];
             let x = &self.features_buf[..n * d_h];
-            let w_t = &mut self.wout[..w_t_len];
-            ridge_solve_woodbury_f32(
-                w_t,
+            try_ridge_solve_woodbury_f32(
+                &mut s.w_t_transpose[..w_t_len],
                 &mut s.sample_chol,
                 &mut s.sample_z,
                 &s.sample_gram,
@@ -2180,11 +2193,11 @@ impl<B: KarcBasis<M>, const D: usize, const M: usize, const K: usize> KarcForeca
                 n,
                 d_h,
                 D,
-            );
+            )
+            .map_err(|_| FitError::Singular)?;
         }
-        // Transpose Wᵀ (d_h × D) → Wout (D × d_h) via a scratch copy.
-        s.w_t_transpose.clear();
-        s.w_t_transpose.extend_from_slice(&self.wout[..w_t_len]);
+        // Commit: transpose Wᵀ (d_h × D) → Wout (D × d_h).
+        self.wout.clear();
         self.wout.resize(D * d_h, 0.0);
         for r in 0..D {
             for c in 0..d_h {
@@ -2639,6 +2652,12 @@ pub enum FitError {
     NoSamples = 0,
     /// `λ ≤ 0` would make the ridge solve singular.
     NonPositiveLambda = 1,
+    /// The f32 sample Gram was not positive definite beyond the relative
+    /// tolerance — the Woodbury factorization refused it (Issue 904: this was
+    /// a `cholesky_f32` panic that bypassed every `tick_karc` caller's
+    /// warn-and-keep arm). `Wout` is left untouched, so the caller keeps
+    /// forecasting with the previous fit.
+    Singular = 2,
 }
 
 impl core::fmt::Display for FitError {
@@ -2647,6 +2666,7 @@ impl core::fmt::Display for FitError {
         match self {
             FitError::NoSamples => write!(f, "no training samples accumulated"),
             FitError::NonPositiveLambda => write!(f, "ridge lambda must be > 0"),
+            FitError::Singular => write!(f, "f32 sample Gram not positive definite"),
         }
     }
 }

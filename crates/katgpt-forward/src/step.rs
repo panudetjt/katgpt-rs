@@ -152,10 +152,8 @@ pub fn speculative_step_rollback(
     let _t_snap_start = Instant::now();
 
     if paths.is_empty() {
-        let fallback = sample_from_distribution(
-            marginals.first().map_or(&[1.0], |m| m.as_slice()),
-            rng,
-        );
+        let fallback =
+            sample_from_distribution(marginals.first().map_or(&[1.0], |m| m.as_slice()), rng);
         #[cfg(feature = "stability_metrics")]
         log::debug!("[stability] step pos={pos}: draft_ns={_draft_ns} (empty paths)");
         return (vec![fallback], 1);

@@ -306,9 +306,9 @@ fn freeze_loops(
             // The forward's gate at loop τ (τ ≥ 2) sees prev = S(τ−1),
             // prev_prev = S(τ−2) — the (r−1, r−2) entries here.
             for tau in 2..R_REF {
-                if let Some(g) = arm
-                    .gate
-                    .conditional_gate_at(tau, &states[tau - 1], &states[tau - 2])
+                if let Some(g) =
+                    arm.gate
+                        .conditional_gate_at(tau, &states[tau - 1], &states[tau - 2])
                     && g > FREEZE_G
                 {
                     return Some(tau);
@@ -411,7 +411,9 @@ fn t698_t8_conditional_gate_ab() {
         let differs = (0..N_PROMPTS).any(|t| {
             let c = run_once(&config, &weights, &arm.gate, &sdpa_gate, t, 8);
             let n = run_once(&config, &weights, &arms[0].gate, &sdpa_gate, t, 8);
-            c.iter().zip(n.iter()).any(|(x, y)| x.to_bits() != y.to_bits())
+            c.iter()
+                .zip(n.iter())
+                .any(|(x, y)| x.to_bits() != y.to_bits())
         });
         assert!(differs, "non-vacuity: {} must differ from nat", arm.name);
     }
@@ -458,18 +460,19 @@ fn t698_t8_conditional_gate_ab() {
     for (arm, res) in arms.iter().zip(results.iter()) {
         println!(
             "  {:<16} {:>8.3e} {:>8.3e} {:>8.3e} {:>8.3e}   {:>8.3e}  {:>8.3e}",
-            arm.name, res.loss[0], res.loss[1], res.loss[2], res.loss[3],
-            res.ref_drift, res.dest_bias
+            arm.name,
+            res.loss[0],
+            res.loss[1],
+            res.loss[2],
+            res.loss[3],
+            res.ref_drift,
+            res.dest_bias
         );
     }
     println!();
-    for (name, prof) in [
-        "cond_a(θ=.99)",
-        "cond_b(θ=.999)",
-        "cond_ah(hard)",
-    ]
-    .iter()
-    .zip(freeze_profiles.iter())
+    for (name, prof) in ["cond_a(θ=.99)", "cond_b(θ=.999)", "cond_ah(hard)"]
+        .iter()
+        .zip(freeze_profiles.iter())
     {
         let mut frozen: Vec<usize> = prof.iter().filter_map(|&f| f).collect();
         let never = prof.iter().filter(|f| f.is_none()).count();
@@ -484,7 +487,13 @@ fn t698_t8_conditional_gate_ab() {
         );
     }
     println!();
-    let (nat, cvx, ca, cb, cah) = (&results[0], &results[1], &results[2], &results[3], &results[4]);
+    let (nat, cvx, ca, cb, cah) = (
+        &results[0],
+        &results[1],
+        &results[2],
+        &results[3],
+        &results[4],
+    );
     println!(
         "  contraction: ref_drift nat {:.3e} → cvx {:.3e} → cond_a {:.3e} → cond_b {:.3e} → cond_ah {:.3e}",
         nat.ref_drift, cvx.ref_drift, ca.ref_drift, cb.ref_drift, cah.ref_drift

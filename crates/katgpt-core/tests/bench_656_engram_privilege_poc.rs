@@ -157,11 +157,13 @@ impl Geometry {
         normalize(&mut w0);
 
         let w1 = if two_class {
-                let mut w1: Vec<f32> = (0..D).map(|_| rng.signed()).collect();
-                orthogonalize(&mut w1, &[&u, &w0]);
-                normalize(&mut w1);
-                w1
-            } else { w0.clone() };
+            let mut w1: Vec<f32> = (0..D).map(|_| rng.signed()).collect();
+            orthogonalize(&mut w1, &[&u, &w0]);
+            normalize(&mut w1);
+            w1
+        } else {
+            w0.clone()
+        };
         Self { u, w: [w0, w1] }
     }
 
@@ -383,7 +385,11 @@ impl Noise {
     }
     #[inline]
     fn perturb(&mut self, delta: f32) -> f32 {
-        if self.amp == 0.0 { delta } else { delta + self.amp * delta.abs() * self.rng.signed() }
+        if self.amp == 0.0 {
+            delta
+        } else {
+            delta + self.amp * delta.abs() * self.rng.signed()
+        }
     }
 }
 
@@ -607,16 +613,14 @@ fn sparsity_sweep(periods: &[usize], noise_amp: f32) -> Vec<SparsityPoint> {
                     // Every round is a retrieval event; only every `period`-th
                     // one pays for counterfactual scoring.
                     if r % period == 0 {
-                            update_exact(
-                                table, &geo, &query, class, &cfg, &mut ledger, &mut s, noise,
-                            );
-                            updates += 1;
-                        } else {
-                            let mut tr = PrivilegeTrace::new();
-                            privileged_score(
-                                table, &geo, &query, class, &cfg, &ledger, &mut tr, &mut s,
-                            );
-                        }
+                        update_exact(table, &geo, &query, class, &cfg, &mut ledger, &mut s, noise);
+                        updates += 1;
+                    } else {
+                        let mut tr = PrivilegeTrace::new();
+                        privileged_score(
+                            table, &geo, &query, class, &cfg, &ledger, &mut tr, &mut s,
+                        );
+                    }
                 }
                 (ledger, updates)
             };
@@ -684,19 +688,31 @@ fn run_regime(regime: Regime) -> RegimeReport {
         ..PrivilegeConfig::for_delta_scale(0.3)
     };
 
-    let mut train = |table: &dyn EngramTable, exact: bool, rounds: usize| -> (PrivilegeLedger, usize) {
-        let mut ledger = PrivilegeLedger::new(table.num_slots(), pcfg);
-        let mut rng = Rng::new(0x6560_0003);
-        let mut calls = 0usize;
-        for r in 0..rounds {
-            let query = make_query(&geo, r, &mut rng);
-            let class = regime.query_class(r);
-            calls += if exact { update_exact(
-                    table, &geo, &query, class, &cfg, &mut ledger, &mut s, &mut Noise::none(),
-                ) } else { update_aggregate(table, &geo, &query, class, &cfg, &mut ledger, &mut s) };
-        }
-        (ledger, calls)
-    };
+    let mut train =
+        |table: &dyn EngramTable, exact: bool, rounds: usize| -> (PrivilegeLedger, usize) {
+            let mut ledger = PrivilegeLedger::new(table.num_slots(), pcfg);
+            let mut rng = Rng::new(0x6560_0003);
+            let mut calls = 0usize;
+            for r in 0..rounds {
+                let query = make_query(&geo, r, &mut rng);
+                let class = regime.query_class(r);
+                calls += if exact {
+                    update_exact(
+                        table,
+                        &geo,
+                        &query,
+                        class,
+                        &cfg,
+                        &mut ledger,
+                        &mut s,
+                        &mut Noise::none(),
+                    )
+                } else {
+                    update_aggregate(table, &geo, &query, class, &cfg, &mut ledger, &mut s)
+                };
+            }
+            (ledger, calls)
+        };
 
     let (led_poisoned_exact, exact_calls) = train(&poisoned, true, TRAIN_ROUNDS);
     let (led_clean_exact, _) = train(&clean, true, TRAIN_ROUNDS);
@@ -707,7 +723,11 @@ fn run_regime(regime: Regime) -> RegimeReport {
 
     let (p_good, p_poison) = privilege_split(&led_poisoned_exact, regime);
     let (_, p_poison_odd) = privilege_split(&led_odd, regime);
-    let recency_latch = if p_poison.is_nan() { 0.0 } else { (p_poison - p_poison_odd).abs() };
+    let recency_latch = if p_poison.is_nan() {
+        0.0
+    } else {
+        (p_poison - p_poison_odd).abs()
+    };
 
     // ── Evaluate ────────────────────────────────────────────────────────────
     let naive = {
@@ -734,7 +754,11 @@ fn run_regime(regime: Regime) -> RegimeReport {
     let priv_aggregate = eval_priv(&led_poisoned_agg, &led_clean_agg);
 
     let recovery = |arm: &ArmResult| -> f64 {
-        if naive.rel_err > 1e-9 { (naive.rel_err - arm.rel_err) / naive.rel_err } else { f64::NAN }
+        if naive.rel_err > 1e-9 {
+            (naive.rel_err - arm.rel_err) / naive.rel_err
+        } else {
+            f64::NAN
+        }
     };
 
     RegimeReport {
@@ -808,10 +832,11 @@ fn measure_cost() -> CostReport {
     // `None` = the plain baseline; `Some(period)` = privileged, updating every
     // `period` events. Index 0 is the baseline, 1 is privileged-with-no-updates,
     // the rest are the cadences.
-    let variants: Vec<Option<Option<usize>>> = std::iter::once(None) // baseline
-        .chain(std::iter::once(Some(None))) // privileged, no updates
-        .chain(PERIODS.iter().map(|&p| Some(Some(p))))
-        .collect();
+    let variants: Vec<Option<Option<usize>>> =
+        std::iter::once(None) // baseline
+            .chain(std::iter::once(Some(None))) // privileged, no updates
+            .chain(PERIODS.iter().map(|&p| Some(Some(p))))
+            .collect();
     let mut best = vec![f64::INFINITY; variants.len()];
 
     for _ in 0..TRIALS {
@@ -823,9 +848,8 @@ fn measure_cost() -> CostReport {
                 match variant {
                     None => acc += naive_score(&table, &geo, q, 0, &cfg, &mut s),
                     Some(period) => {
-                        acc += privileged_score(
-                            &table, &geo, q, 0, &cfg, &ledger, &mut trace, &mut s,
-                        );
+                        acc +=
+                            privileged_score(&table, &geo, q, 0, &cfg, &ledger, &mut trace, &mut s);
                         if let Some(p) = period
                             && i % p == 0
                         {
@@ -901,7 +925,11 @@ fn main() {
         "regime", "p_good", "p_poison", "ratio", "recency_latch"
     );
     for r in &reports {
-        let ratio = if r.p_poison > 1e-9 { format!("{:.1}×", r.p_good / r.p_poison) } else { "∞".to_string() };
+        let ratio = if r.p_poison > 1e-9 {
+            format!("{:.1}×", r.p_good / r.p_poison)
+        } else {
+            "∞".to_string()
+        };
         println!(
             "{:<38} {:>10.4} {:>10.4} {:>10} {:>14.4}",
             r.regime.name(),
@@ -940,7 +968,10 @@ fn main() {
 
     let cost = measure_cost();
     println!("\n── Cost (interleaved min of 5 × 20k reps; wall-clock ratio vs. plain fuse) ──");
-    println!("  fuse only (no updates)        {:.3}×", cost.ratio_fuse_only);
+    println!(
+        "  fuse only (no updates)        {:.3}×",
+        cost.ratio_fuse_only
+    );
     for (p, r) in &cost.ratios {
         println!("  + exact update every {p:>3}      {r:.3}×");
     }
@@ -977,7 +1008,9 @@ fn main() {
     // The sweep above is measured on a NOISE-FREE δ, which is why "7 updates
     // suffice" falls out of it. A host's outcome verification is never that
     // clean, and the honest question is how fast that headline degrades.
-    println!("\n── Outcome-noise sensitivity (regime A; recovery %, noise as a multiple of |δ|) ──");
+    println!(
+        "\n── Outcome-noise sensitivity (regime A; recovery %, noise as a multiple of |δ|) ──"
+    );
     let noisy: Vec<Vec<SparsityPoint>> = [0.0f32, 1.0, 3.0, 8.0]
         .iter()
         .map(|&amp| sparsity_sweep(&PERIODS, amp))
@@ -1060,7 +1093,10 @@ fn main() {
             "G1  clean-table rel_err {:.2e} ≤ 1e-3 (gate is a no-op without poison)",
             c.priv_exact.rel_err
         ),
-        format!("G1: clean-table rel_err {:.2e} > 1e-3", c.priv_exact.rel_err),
+        format!(
+            "G1: clean-table rel_err {:.2e} > 1e-3",
+            c.priv_exact.rel_err
+        ),
     );
 
     // G2 (the issue's wording: "amortized ≤ +20% at retrieval events"). Gate on
@@ -1127,14 +1163,16 @@ fn main() {
         sparse_noisy.map_or(f64::NAN, |sp| sp.recovery) * 100.0
     );
 
-    if failures.is_empty() { println!("\n  ALL GATES PASS\n") } else {
-            println!("\n  FAILURES:");
-            for f in &failures {
-                println!("    · {f}");
-            }
-            println!();
-            std::process::exit(1);
+    if failures.is_empty() {
+        println!("\n  ALL GATES PASS\n")
+    } else {
+        println!("\n  FAILURES:");
+        for f in &failures {
+            println!("    · {f}");
         }
+        println!();
+        std::process::exit(1);
+    }
 }
 
 fn pf(b: bool) -> &'static str {

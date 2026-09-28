@@ -20,11 +20,11 @@
 
 #![cfg(feature = "structured_reads")]
 
+use katgpt_forward::NoConstraint;
 use katgpt_forward::denoise_loop;
 use katgpt_forward::structured_read::{
     MAX_LABELS, SlotReadout, StructuredReadScratch, structured_read_into,
 };
-use katgpt_forward::NoConstraint;
 use katgpt_transformer::TransformerWeights;
 use katgpt_types::{Config, Rng};
 use std::hint::black_box;

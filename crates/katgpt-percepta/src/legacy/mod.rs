@@ -112,18 +112,20 @@ impl KVCache2D {
     /// Standard O(N) attention: linear scan over all keys.
     /// Baseline for correctness verification.
     pub fn linear_attention(&self, query: &Vec2) -> (f32, usize) {
-        if self.keys.is_empty() { (f32::NEG_INFINITY, 0) } else {
-                let mut max_score = f32::NEG_INFINITY;
-                let mut best_idx = 0;
-                for (i, key) in self.keys.iter().enumerate() {
-                    let score = query.dot(key);
-                    if score > max_score {
-                        max_score = score;
-                        best_idx = i;
-                    }
+        if self.keys.is_empty() {
+            (f32::NEG_INFINITY, 0)
+        } else {
+            let mut max_score = f32::NEG_INFINITY;
+            let mut best_idx = 0;
+            for (i, key) in self.keys.iter().enumerate() {
+                let score = query.dot(key);
+                if score > max_score {
+                    max_score = score;
+                    best_idx = i;
                 }
-                (max_score, self.values[best_idx])
             }
+            (max_score, self.values[best_idx])
+        }
     }
 
     /// O(log N) attention via ternary search over the convex hull.
@@ -144,7 +146,11 @@ impl KVCache2D {
                 let idx1 = self.upper_hull[1];
                 let s0 = query.dot(&self.keys[idx0]);
                 let s1 = query.dot(&self.keys[idx1]);
-                if s0 >= s1 { (s0, self.values[idx0]) } else { (s1, self.values[idx1]) }
+                if s0 >= s1 {
+                    (s0, self.values[idx0])
+                } else {
+                    (s1, self.values[idx1])
+                }
             }
             _ => {
                 let mut left = 0usize;

@@ -67,8 +67,8 @@ use katgpt_core::guided_width::belief_host::guided_evolve_belief;
 use katgpt_core::guided_width::hodge_arm::{DivergenceProbe, MassConserving};
 use katgpt_core::guided_width::{
     DirectionFitScratch, DirectionPosterior, DirectionTable, Guidance, GuidedWidthConfig,
-    GuidedWidthScratch, Hooks, StagnationGate, Transversal, TrapReallocConfig,
-    diverse_set_into, guided_width_rollouts,
+    GuidedWidthScratch, Hooks, StagnationGate, Transversal, TrapReallocConfig, diverse_set_into,
+    guided_width_rollouts,
 };
 use katgpt_core::sense::reconstruction::ReconstructionState;
 
@@ -211,7 +211,11 @@ fn make_instances(g: &Graph, gi: usize, multi: bool, seed: u64) -> (Vec<Instance
             });
         }
     }
-    assert_eq!(pool.len(), 2 * PER_SPLIT, "instance pool too small (graph {gi})");
+    assert_eq!(
+        pool.len(),
+        2 * PER_SPLIT,
+        "instance pool too small (graph {gi})"
+    );
     let test = pool.split_off(PER_SPLIT);
     (pool, test)
 }
@@ -580,7 +584,16 @@ fn run_family(
         for (ii, inst) in test.iter().enumerate() {
             let (n, k) = if arm == Arm::Det { (1, NK) } else { (N_W, K_W) };
             let gd = (arm == Arm::Guided).then(|| (&tables[inst.graph], &posts[inst.graph]));
-            outs.push(run_arm(ctx, graphs, inst, arm, n, k, seed_of("test", fam, ii), gd));
+            outs.push(run_arm(
+                ctx,
+                graphs,
+                inst,
+                arm,
+                n,
+                k,
+                seed_of("test", fam, ii),
+                gd,
+            ));
         }
         let col = |f: fn(&Outcome) -> f32| mean(&outs.iter().map(f).collect::<Vec<_>>());
         println!(
@@ -601,7 +614,16 @@ fn run_family(
         let mut any = Vec::new();
         let mut cov = Vec::new();
         for (ii, inst) in test.iter().enumerate() {
-            let o = run_arm(ctx, graphs, inst, Arm::Zero, n, k, seed_of("sweep", fam, ii), None);
+            let o = run_arm(
+                ctx,
+                graphs,
+                inst,
+                Arm::Zero,
+                n,
+                k,
+                seed_of("sweep", fam, ii),
+                None,
+            );
             sel.push(o.sel);
             any.push(o.any);
             cov.push(o.cov);
@@ -805,7 +827,13 @@ fn g3(fails: &mut Vec<String>) {
         a.accumulate(&[true; 6], &base.evidence().kind_activations);
         let mut b = ReconstructionState::new(*base.belief());
         b.accumulate(&[true; 6], &base.evidence().kind_activations);
-        let ra = guided_evolve_belief(&mut a, &cfg, Hooks::default(), &mut Transversal::default(), &mut scratch);
+        let ra = guided_evolve_belief(
+            &mut a,
+            &cfg,
+            Hooks::default(),
+            &mut Transversal::default(),
+            &mut scratch,
+        );
         let rb = guided_evolve_belief(
             &mut b,
             &cfg,
@@ -892,13 +920,25 @@ fn g2(fails: &mut Vec<String>) {
         |i| {
             *sa.belief_mut() = black_box(states[i % states.len()]);
             let cfg = belief_cfg(8, 16, 0.25, i as u64);
-            guided_evolve_belief(&mut sa, black_box(&cfg), Hooks::default(), &mut Transversal::default(), &mut scratch);
+            guided_evolve_belief(
+                &mut sa,
+                black_box(&cfg),
+                Hooks::default(),
+                &mut Transversal::default(),
+                &mut scratch,
+            );
             ka += black_box(sa.belief()[i % 8]);
         },
         |i| {
             *sb.belief_mut() = black_box(states[i % states.len()]);
             let cfg = belief_cfg(1, 128, 0.25, i as u64);
-            guided_evolve_belief(&mut sb, black_box(&cfg), Hooks::default(), &mut Transversal::default(), &mut scratch_b);
+            guided_evolve_belief(
+                &mut sb,
+                black_box(&cfg),
+                Hooks::default(),
+                &mut Transversal::default(),
+                &mut scratch_b,
+            );
             kb += black_box(sb.belief()[i % 8]);
         },
     );
@@ -915,7 +955,13 @@ fn g2(fails: &mut Vec<String>) {
         let cfg = belief_cfg(16, 16, 0.25, i as u64);
         i += 1;
         let t = Instant::now();
-        let rep = guided_evolve_belief(&mut st, black_box(&cfg), Hooks::default(), &mut Transversal::default(), &mut scratch16);
+        let rep = guided_evolve_belief(
+            &mut st,
+            black_box(&cfg),
+            Hooks::default(),
+            &mut Transversal::default(),
+            &mut scratch16,
+        );
         let e = t.elapsed();
         black_box((rep, *st.belief()));
         e
@@ -1003,7 +1049,9 @@ fn g4(fails: &mut Vec<String>) {
     gate(
         "G4 zero allocations",
         n == 0,
-        format!("{n} allocations over 1000 decisions (belief host + table + trap + returned set + mass arm + probe)"),
+        format!(
+            "{n} allocations over 1000 decisions (belief host + table + trap + returned set + mass arm + probe)"
+        ),
         fails,
     );
 }
@@ -1011,9 +1059,15 @@ fn g4(fails: &mut Vec<String>) {
 fn main() {
     let mut fails: Vec<String> = Vec::new();
     println!("Bench 898 — guided width rollouts GOAT (Issue 895 T7; completes Plan 095 G1/G3)");
-    let graphs: Vec<Graph> = (0..N_GRAPHS as u64).map(|s| make_graph(0x898 + s)).collect();
+    let graphs: Vec<Graph> = (0..N_GRAPHS as u64)
+        .map(|s| make_graph(0x898 + s))
+        .collect();
     for (i, g) in graphs.iter().enumerate() {
-        println!("graph {i}: {} edges, {} proper 3-colourings", g.edges.len(), g.solutions.len());
+        println!(
+            "graph {i}: {} edges, {} proper 3-colourings",
+            g.edges.len(),
+            g.solutions.len()
+        );
     }
     let mut ctx = Ctx {
         scratch: GuidedWidthScratch::with_capacity(32, D),
@@ -1045,14 +1099,18 @@ fn main() {
         if v != "TIE" {
             e9_any = true;
         }
-        let dcov = mean(&arm_col(fr, Arm::Zero, |o| o.cov)) - mean(&arm_col(fr, Arm::Det, |o| o.cov));
+        let dcov =
+            mean(&arm_col(fr, Arm::Zero, |o| o.cov)) - mean(&arm_col(fr, Arm::Det, |o| o.cov));
         println!("    E9 signature: coverage delta Z − D = {dcov:+.2} distinct valid solutions");
         let gb = arm_col(fr, Arm::Guided, |o| o.bv);
         let zb = arm_col(fr, Arm::Zero, |o| o.bv);
         let (dg, seg) = paired(&gb, &zb);
         let tv = verdict(dg, seg);
         let (dgs, segs) = paired(&arm_col(fr, Arm::Guided, |o| o.sel), &z);
-        let (dgc, segc) = paired(&arm_col(fr, Arm::Guided, |o| o.cov), &arm_col(fr, Arm::Zero, |o| o.cov));
+        let (dgc, segc) = paired(
+            &arm_col(fr, Arm::Guided, |o| o.cov),
+            &arm_col(fr, Arm::Zero, |o| o.cov),
+        );
         println!(
             "    table G − Z: branch-valid {dg:+.3} ± {seg:.3} → {tv} (decision metric); selected {dgs:+.3} ± {segs:.3}; coverage {dgc:+.2} ± {segc:.2} (reports)"
         );
@@ -1082,7 +1140,12 @@ fn main() {
         format!("no family LOSS: {g1_ok_both}; ≥1 family WIN: {g1_win_any}"),
         &mut fails,
     );
-    gate("E9 measured delta over the deterministic arm", e9_any, format!("non-TIE on ≥1 family: {e9_any}"), &mut fails);
+    gate(
+        "E9 measured delta over the deterministic arm",
+        e9_any,
+        format!("non-TIE on ≥1 family: {e9_any}"),
+        &mut fails,
+    );
     let table_wins_any = table_results.contains(&"WIN");
     println!(
         "DEMOTE-CONDITION (pre-stated): table G vs Z = MULTI {} / SINGLE {} → {}",
@@ -1098,7 +1161,11 @@ fn main() {
         "Plan 095 G1 (width ≥ +10 pp on any domain): {}; Plan 095 G3 (width ≥ depth on ≥2 of 3 domains; 2 measured): {}/2 → {}",
         if p095_g1 { "PASS" } else { "FAIL" },
         p095_width_ge_depth,
-        if p095_width_ge_depth >= 2 { "PASS" } else { "FAIL" }
+        if p095_width_ge_depth >= 2 {
+            "PASS"
+        } else {
+            "FAIL"
+        }
     );
 
     mass_arm(&mut fails);

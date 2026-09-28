@@ -183,12 +183,33 @@ fn g1_horizon_mode_is_deterministic_and_in_range() {
     let m = mixture();
     let cfg = fixed_config();
     let h = RenoiseCeHorizon::DEFAULT;
-    let a = renoise_ce_score_horizon(&BasinProbe, &m.candidates[0], &cfg, &h, &mut fastrand::Rng::with_seed(11));
-    let b = renoise_ce_score_horizon(&BasinProbe, &m.candidates[0], &cfg, &h, &mut fastrand::Rng::with_seed(11));
-    assert_eq!(a.drift.to_bits(), b.drift.to_bits(), "same seed must reproduce");
+    let a = renoise_ce_score_horizon(
+        &BasinProbe,
+        &m.candidates[0],
+        &cfg,
+        &h,
+        &mut fastrand::Rng::with_seed(11),
+    );
+    let b = renoise_ce_score_horizon(
+        &BasinProbe,
+        &m.candidates[0],
+        &cfg,
+        &h,
+        &mut fastrand::Rng::with_seed(11),
+    );
+    assert_eq!(
+        a.drift.to_bits(),
+        b.drift.to_bits(),
+        "same seed must reproduce"
+    );
     assert_eq!(a.per_draw, b.per_draw);
     // Sanity: every per-draw slot populated and finite.
-    assert!(a.per_draw.iter().take(K_DRAWS as usize).all(|&d| d.is_finite()));
+    assert!(
+        a.per_draw
+            .iter()
+            .take(K_DRAWS as usize)
+            .all(|&d| d.is_finite())
+    );
 }
 
 #[test]
@@ -201,25 +222,31 @@ fn g2_quality_horizon_law_wins_the_planted_drift_oracle() {
     let mut unif_scores = Vec::with_capacity(2 * N_EACH);
     let mut horiz_scores = Vec::with_capacity(2 * N_EACH);
     for (i, cand) in m.candidates.iter().enumerate() {
-        fixed_scores.push(renoise_ce_score(
-            &BasinProbe,
-            cand,
-            &cfg,
-            &mut fastrand::Rng::with_seed(1000 + i as u64),
-        ).drift);
+        fixed_scores.push(
+            renoise_ce_score(
+                &BasinProbe,
+                cand,
+                &cfg,
+                &mut fastrand::Rng::with_seed(1000 + i as u64),
+            )
+            .drift,
+        );
         unif_scores.push(score_uniform_range(
             &BasinProbe,
             cand,
             K_DRAWS as usize,
             &mut fastrand::Rng::with_seed(2000 + i as u64),
         ));
-        horiz_scores.push(renoise_ce_score_horizon(
-            &BasinProbe,
-            cand,
-            &cfg,
-            &h,
-            &mut fastrand::Rng::with_seed(3000 + i as u64),
-        ).drift);
+        horiz_scores.push(
+            renoise_ce_score_horizon(
+                &BasinProbe,
+                cand,
+                &cfg,
+                &h,
+                &mut fastrand::Rng::with_seed(3000 + i as u64),
+            )
+            .drift,
+        );
     }
 
     let p_fixed = precision_at_k(&m, &fixed_scores);
@@ -278,7 +305,10 @@ fn g2_latency_horizon_is_unchanged_class_vs_incumbent() {
             sink_b += s.drift;
         },
     );
-    assert!(sink_a.is_finite() && sink_b.is_finite(), "arms must be consumed");
+    assert!(
+        sink_a.is_finite() && sink_b.is_finite(),
+        "arms must be consumed"
+    );
 
     ratio.report("G2 latency incumbent vs horizon");
     println!(

@@ -658,7 +658,8 @@ pub mod head {
                     for (j, row) in rows[a..b].iter().enumerate() {
                         let expect = head.score(row);
                         assert_eq!(
-                            out.preds[a + j], expect,
+                            out.preds[a + j],
+                            expect,
                             "group {g} state {s} option {j}: not the complement refit"
                         );
                     }

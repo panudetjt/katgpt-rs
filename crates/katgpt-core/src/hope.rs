@@ -131,12 +131,12 @@ pub fn normal_cdf(x: f32) -> f32 {
 fn erf_approx(x: f32) -> f32 {
     // Sign handling — the A&S formula is for x ≥ 0.
     const A2: f32 = -0.2844_9636;
-const A3: f32 = 1.421_413_8;
-const A4: f32 = -1.453_152_1;
-const A5: f32 = 1.061_405_4;
-const P: f32 = 0.3275_911;
+    const A3: f32 = 1.421_413_8;
+    const A4: f32 = -1.453_152_1;
+    const A5: f32 = 1.061_405_4;
+    const P: f32 = 0.3275_911;
 
-let sign = if x < 0.0 { -1.0_f32 } else { 1.0_f32 };
+    let sign = if x < 0.0 { -1.0_f32 } else { 1.0_f32 };
     let z = x.abs();
     // A&S 7.1.26 constants
     const A1: f32 = 0.254_829_6;
@@ -408,9 +408,8 @@ pub fn optimal_rank1_parent(
     let mut u_hat = vec![0.0_f32; n];
     let mut v_hat = vec![0.0_f32; m];
     let mut k_self = 0.0_f32;
-    let s_star = optimal_rank1_parent_into_scratch(
-        op_i, op_j, e_rem, &mut u_hat, &mut v_hat, &mut k_self,
-    );
+    let s_star =
+        optimal_rank1_parent_into_scratch(op_i, op_j, e_rem, &mut u_hat, &mut v_hat, &mut k_self);
     Rank1Parent {
         u_hat,
         v_hat,
@@ -454,12 +453,8 @@ pub fn optimal_rank1_parent_into_scratch(
     );
 
     // 1. Principal eigenvector of AᵀA in the 2D span {w̃_in_i, w̃_in_j}.
-    let (c1_pos, c2_pos) = principal_eigenvector_rank2(
-        op_i.w_in(),
-        op_j.w_in(),
-        op_i.w_out(),
-        op_j.w_out(),
-    );
+    let (c1_pos, c2_pos) =
+        principal_eigenvector_rank2(op_i.w_in(), op_j.w_in(), op_i.w_out(), op_j.w_out());
 
     // u_hat = c1·w_in_i + c2·w_in_j (positive polarity)
     for (k, slot) in u_hat_scratch.iter_mut().enumerate().take(n) {
@@ -659,11 +654,7 @@ pub fn hope_capacity(op: &impl Rank1Operator) -> f32 {
 /// total capacity. Returns `+∞` if pruning would extinguish the layer
 /// (`E_a → ‖f_victim‖`).
 #[inline]
-pub fn hope_prune_cost(
-    victim: &impl Rank1Operator,
-    n_active: usize,
-    e_a: f32,
-) -> f32 {
+pub fn hope_prune_cost(victim: &impl Rank1Operator, n_active: usize, e_a: f32) -> f32 {
     let cap = hope_capacity(victim);
     let denom = e_a - cap;
     if denom < 1e-15 {
@@ -997,7 +988,10 @@ mod tests {
         let w_out_j = [1.0_f32];
         let (c1, c2) = principal_eigenvector_rank2(&w_in_i, &w_in_j, &w_out_i, &w_out_j);
         // m11 = 1·1 = 1, m22 = 0.01·1 = 0.01 — diagonal-dominant in axis 0.
-        assert!(c1.abs() > c2.abs(), "(c1, c2) = ({c1}, {c2}), expected |c1| > |c2|");
+        assert!(
+            c1.abs() > c2.abs(),
+            "(c1, c2) = ({c1}, {c2}), expected |c1| > |c2|"
+        );
         assert!((c1.abs() - 1.0).abs() < 1e-5, "c1 = {c1}, expected ±1");
     }
 
@@ -1010,12 +1004,7 @@ mod tests {
         let parent = optimal_rank1_parent(&op, &op, 1.0);
         // u_hat should be parallel to w_in (cosine ≈ 1).
         let dot = simd::simd_dot_f32(&parent.u_hat, &w_in, 4);
-        let norm_u = parent
-            .u_hat
-            .iter()
-            .map(|x| x * x)
-            .sum::<f32>()
-            .sqrt();
+        let norm_u = parent.u_hat.iter().map(|x| x * x).sum::<f32>().sqrt();
         let norm_w = (w_in.iter().map(|x| x * x).sum::<f32>()).sqrt();
         let cos = dot / (norm_u * norm_w).max(1e-15);
         assert!(
@@ -1115,14 +1104,20 @@ mod tests {
         // Two layers, both (N=1, E=2.0), E_identity=4.0:
         // J_evict = (1·2 + 1·2)/4 = 4/4 = 1.0.
         let cost = hope_block_eviction_cost(&[1, 1], &[2.0, 2.0], 4.0);
-        assert!((cost - 1.0).abs() < 1e-6, "J_evict multi = {cost}, expected 1.0");
+        assert!(
+            (cost - 1.0).abs() < 1e-6,
+            "J_evict multi = {cost}, expected 1.0"
+        );
     }
 
     #[test]
     fn g3_hope_block_eviction_cost_zero_identity_infinite() {
         // E_identity = 0 (no skip connection): J_evict = ∞.
         let cost = hope_block_eviction_cost(&[1], &[1.0], 0.0);
-        assert!(cost.is_infinite(), "J_evict identity=0 = {cost}, expected ∞");
+        assert!(
+            cost.is_infinite(),
+            "J_evict identity=0 = {cost}, expected ∞"
+        );
     }
 
     #[test]

@@ -89,11 +89,13 @@ pub fn run_bomber_game(
     let start = Instant::now();
 
     // Build world: procedural maps have destructible walls + powerups for decisive results
-    let mut world = if config.procedural { init_world(rng.u64(..)) } else {
-            let arena = ArenaGrid::fixed(config.arena_template)
-                .unwrap_or_else(|e| panic!("Invalid arena template: {e}"));
-            init_world_with_arena(arena)
-        };
+    let mut world = if config.procedural {
+        init_world(rng.u64(..))
+    } else {
+        let arena = ArenaGrid::fixed(config.arena_template)
+            .unwrap_or_else(|e| panic!("Invalid arena template: {e}"));
+        init_world_with_arena(arena)
+    };
     let entities = spawn_players(&mut world);
 
     // Reset all players for new round

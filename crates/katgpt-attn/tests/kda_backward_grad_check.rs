@@ -18,9 +18,7 @@
 use katgpt_attn::gdn2::kda_backward::{
     KdaGradients, kda_backward_sequence, kda_backward_token, kda_forward_token_with_saved,
 };
-use katgpt_attn::gdn2::kda_forward::{
-    KdaConfig, KdaForwardScratch, KdaLayerCache, KdaWeights,
-};
+use katgpt_attn::gdn2::kda_forward::{KdaConfig, KdaForwardScratch, KdaLayerCache, KdaWeights};
 
 // ─── Config + helpers ───────────────────────────────────────────────────────
 
@@ -43,7 +41,11 @@ fn run_forward_sequence(
     config: &KdaConfig,
     weights: &KdaWeights,
     h_seq: &[Vec<f32>],
-) -> (f32, Vec<katgpt_attn::gdn2::kda_backward::KdaSavedActivations>, Vec<Vec<f32>>) {
+) -> (
+    f32,
+    Vec<katgpt_attn::gdn2::kda_backward::KdaSavedActivations>,
+    Vec<Vec<f32>>,
+) {
     let l = h_seq.len();
     let _d = config.hidden_size;
     let mut cache = KdaLayerCache::new(config);
@@ -113,10 +115,10 @@ fn finite_diff_one(
 fn gradient_check_all_params() {
     let config = grad_check_config();
     let l = 1; // single token — the per-token backward scope (Issue 389 T4).
-                // Multi-token BPTT conv-ring backward is Plan 318 Phase C C5 work.
+    // Multi-token BPTT conv-ring backward is Plan 318 Phase C C5 work.
     let epsilon = 5e-3f32; // larger ε reduces f32 round-off noise in finite-diff
-    let tol = 5e-3f32;     // f32 finite-diff noise floor; standard ML gradcheck uses
-                           // 1e-3 for f64, but f32 re-evaluation adds ~1e-3 noise.
+    let tol = 5e-3f32; // f32 finite-diff noise floor; standard ML gradcheck uses
+    // 1e-3 for f64, but f32 re-evaluation adds ~1e-3 noise.
 
     // Seeded random weights + inputs.
     let weights = KdaWeights::random(&config, 12345);
@@ -279,7 +281,14 @@ fn gradient_check_all_params() {
     }
     // dt_bias [proj=16] — check all
     for idx in 0..weights.dt_bias.len() {
-        check_param!("dt_bias", weights, grads.dt_bias, idx, dt_bias_ref, dt_bias_set);
+        check_param!(
+            "dt_bias",
+            weights,
+            grads.dt_bias,
+            idx,
+            dt_bias_ref,
+            dt_bias_set
+        );
     }
     // beta_proj [n_h=2, d=32]
     for &idx in &[0, 1, 30, 63] {
@@ -459,7 +468,13 @@ fn gradient_check_state_bptt_seam() {
     eprintln!("═══ KDA state-gradient (BPTT seam) check ═══");
     eprintln!(
         "  head={}, entry={} (S[{},{}]): analytic={}, numeric={}, rel_err={:.6}",
-        head, entry, entry / dk, entry % dk, analytic_ds, numeric_ds, err
+        head,
+        entry,
+        entry / dk,
+        entry % dk,
+        analytic_ds,
+        numeric_ds,
+        err
     );
     eprintln!("  tolerance: {tol:.6}");
 
@@ -477,7 +492,7 @@ fn gradient_check_input_hidden() {
     let config = grad_check_config();
     let l = 2; // short
     let epsilon = 5e-3f32; // larger ε reduces f32 round-off noise
-    let tol = 5e-3f32;     // same f32 noise floor as the weight check
+    let tol = 5e-3f32; // same f32 noise floor as the weight check
 
     let weights = KdaWeights::random(&config, 777);
     let h_seq: Vec<Vec<f32>> = (0..l)
@@ -530,14 +545,15 @@ fn gradient_check_input_hidden() {
         if err > max_err {
             max_err = err;
         }
-        eprintln!(
-            "  h[{t_check}][{i}]: analytic={analytic}, numeric={numeric}, rel_err={err:.6}"
-        );
+        eprintln!("  h[{t_check}][{i}]: analytic={analytic}, numeric={numeric}, rel_err={err:.6}");
     }
 
     eprintln!("═══ KDA input-gradient check ═══");
     eprintln!("  max relative error: {max_err:.6}");
-    assert!(max_err < tol, "input-gradient check FAILED: max rel_err = {max_err:.6}");
+    assert!(
+        max_err < tol,
+        "input-gradient check FAILED: max rel_err = {max_err:.6}"
+    );
 }
 
 // ─── Multi-token gradient check (Plan 318 Phase C C5) ───────────────────────
@@ -593,7 +609,14 @@ fn gradient_check_multitoken_all_params() {
     let (_, all_saved, all_d_output) = run_forward_sequence(&config, &weights, &h_seq);
     let mut grads = KdaGradients::zeros_like(&weights);
     let mut all_dh = vec![vec![0.0f32; config.hidden_size]; l];
-    kda_backward_sequence(&config, &weights, &all_saved, &all_d_output, &mut all_dh, &mut grads);
+    kda_backward_sequence(
+        &config,
+        &weights,
+        &all_saved,
+        &all_d_output,
+        &mut all_dh,
+        &mut grads,
+    );
 
     // Compare analytic vs finite-difference for each weight param.
     let mut max_rel_err = 0.0f32;
@@ -688,20 +711,48 @@ fn gradient_check_multitoken_all_params() {
     }
     for &idx in &[0, 1, 50, 100, 255] {
         if idx < weights.f_a_proj.len() {
-            check_param!("f_a_proj", weights, grads.f_a_proj, idx, f_a_proj_ref, f_a_proj_set);
+            check_param!(
+                "f_a_proj",
+                weights,
+                grads.f_a_proj,
+                idx,
+                f_a_proj_ref,
+                f_a_proj_set
+            );
         }
     }
     for &idx in &[0, 1, 50, 127] {
         if idx < weights.f_b_proj.len() {
-            check_param!("f_b_proj", weights, grads.f_b_proj, idx, f_b_proj_ref, f_b_proj_set);
+            check_param!(
+                "f_b_proj",
+                weights,
+                grads.f_b_proj,
+                idx,
+                f_b_proj_ref,
+                f_b_proj_set
+            );
         }
     }
     for idx in 0..weights.dt_bias.len() {
-        check_param!("dt_bias", weights, grads.dt_bias, idx, dt_bias_ref, dt_bias_set);
+        check_param!(
+            "dt_bias",
+            weights,
+            grads.dt_bias,
+            idx,
+            dt_bias_ref,
+            dt_bias_set
+        );
     }
     for &idx in &[0, 1, 30, 63] {
         if idx < weights.beta_proj.len() {
-            check_param!("beta_proj", weights, grads.beta_proj, idx, beta_proj_ref, beta_proj_set);
+            check_param!(
+                "beta_proj",
+                weights,
+                grads.beta_proj,
+                idx,
+                beta_proj_ref,
+                beta_proj_set
+            );
         }
     }
     for &idx in &[0, 1, 100, 255] {
@@ -725,7 +776,10 @@ fn gradient_check_multitoken_all_params() {
         }
     }
 
-    eprintln!("═══ KDA multi-token gradient check (L={}, K={}) ═══", l, config.conv_kernel_size);
+    eprintln!(
+        "═══ KDA multi-token gradient check (L={}, K={}) ═══",
+        l, config.conv_kernel_size
+    );
     eprintln!("  max relative error across checked params: {max_rel_err:.6}");
     eprintln!("  tolerance: {tol:.6}");
     eprintln!("  skipped (noise-dominated): {skipped}");
@@ -766,7 +820,14 @@ fn gradient_check_multitoken_input_hidden() {
     let (_, all_saved, all_d_output) = run_forward_sequence(&config, &weights, &h_seq);
     let mut grads = KdaGradients::zeros_like(&weights);
     let mut all_dh = vec![vec![0.0f32; config.hidden_size]; l];
-    kda_backward_sequence(&config, &weights, &all_saved, &all_d_output, &mut all_dh, &mut grads);
+    kda_backward_sequence(
+        &config,
+        &weights,
+        &all_saved,
+        &all_d_output,
+        &mut all_dh,
+        &mut grads,
+    );
 
     // Check dL/dh for an INTERIOR token (e.g. t=4) — its conv window sees tokens
     // 1..7, so the cross-token conv distribution is fully exercised.
@@ -791,9 +852,7 @@ fn gradient_check_multitoken_input_hidden() {
                 "h[{t_check}][{i}]: analytic={analytic}, numeric={numeric}, rel_err={err:.6}"
             ));
         }
-        eprintln!(
-            "  h[{t_check}][{i}]: analytic={analytic}, numeric={numeric}, rel_err={err:.6}"
-        );
+        eprintln!("  h[{t_check}][{i}]: analytic={analytic}, numeric={numeric}, rel_err={err:.6}");
     }
 
     eprintln!("═══ KDA multi-token input-gradient check (t={t_check}, L={l}) ═══");
@@ -857,11 +916,18 @@ fn sequence_matches_token_shared_gradients() {
     // Sequence backward.
     let mut grads_seq = KdaGradients::zeros_like(&weights);
     let mut all_dh = vec![vec![0.0f32; config.hidden_size]; l];
-    kda_backward_sequence(&config, &weights, &all_saved, &all_d_output, &mut all_dh, &mut grads_seq);
+    kda_backward_sequence(
+        &config,
+        &weights,
+        &all_saved,
+        &all_d_output,
+        &mut all_dh,
+        &mut grads_seq,
+    );
 
     // Gradients that MUST match (shared core backward, no conv dependency).
     let tol = 1e-5f32; // should be bit-identical in theory; small f32 diffs from
-                       // accumulation order are acceptable.
+    // accumulation order are acceptable.
     let mut max_diff = 0.0f32;
     let check = |name: &str, a: &[f32], b: &[f32], max_diff: &mut f32| {
         for (i, (av, bv)) in a.iter().zip(b.iter()).enumerate() {
@@ -875,7 +941,12 @@ fn sequence_matches_token_shared_gradients() {
             );
         }
     };
-    check("o_proj", &grads_tok.o_proj, &grads_seq.o_proj, &mut max_diff);
+    check(
+        "o_proj",
+        &grads_tok.o_proj,
+        &grads_seq.o_proj,
+        &mut max_diff,
+    );
     check(
         "o_norm_weight",
         &grads_tok.o_norm_weight,
@@ -883,8 +954,18 @@ fn sequence_matches_token_shared_gradients() {
         &mut max_diff,
     );
     check("a_log", &grads_tok.a_log, &grads_seq.a_log, &mut max_diff);
-    check("dt_bias", &grads_tok.dt_bias, &grads_seq.dt_bias, &mut max_diff);
-    check("g_proj", &grads_tok.g_proj, &grads_seq.g_proj, &mut max_diff);
+    check(
+        "dt_bias",
+        &grads_tok.dt_bias,
+        &grads_seq.dt_bias,
+        &mut max_diff,
+    );
+    check(
+        "g_proj",
+        &grads_tok.g_proj,
+        &grads_seq.g_proj,
+        &mut max_diff,
+    );
     check(
         "beta_proj",
         &grads_tok.beta_proj,
@@ -968,23 +1049,91 @@ fn sequence_matches_token_for_l1() {
             if diff > *max_diff {
                 *max_diff = diff;
             }
-            assert!(diff < tol, "{name}[{i}] mismatch: {av} vs {bv} (diff {diff})");
+            assert!(
+                diff < tol,
+                "{name}[{i}] mismatch: {av} vs {bv} (diff {diff})"
+            );
         }
     };
-    check("q_proj", &grads_tok.q_proj, &grads_seq.q_proj, &mut max_diff);
-    check("k_proj", &grads_tok.k_proj, &grads_seq.k_proj, &mut max_diff);
-    check("v_proj", &grads_tok.v_proj, &grads_seq.v_proj, &mut max_diff);
-    check("q_conv_weight", &grads_tok.q_conv_weight, &grads_seq.q_conv_weight, &mut max_diff);
-    check("k_conv_weight", &grads_tok.k_conv_weight, &grads_seq.k_conv_weight, &mut max_diff);
-    check("v_conv_weight", &grads_tok.v_conv_weight, &grads_seq.v_conv_weight, &mut max_diff);
+    check(
+        "q_proj",
+        &grads_tok.q_proj,
+        &grads_seq.q_proj,
+        &mut max_diff,
+    );
+    check(
+        "k_proj",
+        &grads_tok.k_proj,
+        &grads_seq.k_proj,
+        &mut max_diff,
+    );
+    check(
+        "v_proj",
+        &grads_tok.v_proj,
+        &grads_seq.v_proj,
+        &mut max_diff,
+    );
+    check(
+        "q_conv_weight",
+        &grads_tok.q_conv_weight,
+        &grads_seq.q_conv_weight,
+        &mut max_diff,
+    );
+    check(
+        "k_conv_weight",
+        &grads_tok.k_conv_weight,
+        &grads_seq.k_conv_weight,
+        &mut max_diff,
+    );
+    check(
+        "v_conv_weight",
+        &grads_tok.v_conv_weight,
+        &grads_seq.v_conv_weight,
+        &mut max_diff,
+    );
     check("a_log", &grads_tok.a_log, &grads_seq.a_log, &mut max_diff);
-    check("f_a_proj", &grads_tok.f_a_proj, &grads_seq.f_a_proj, &mut max_diff);
-    check("f_b_proj", &grads_tok.f_b_proj, &grads_seq.f_b_proj, &mut max_diff);
-    check("dt_bias", &grads_tok.dt_bias, &grads_seq.dt_bias, &mut max_diff);
-    check("beta_proj", &grads_tok.beta_proj, &grads_seq.beta_proj, &mut max_diff);
-    check("g_proj", &grads_tok.g_proj, &grads_seq.g_proj, &mut max_diff);
-    check("o_norm_weight", &grads_tok.o_norm_weight, &grads_seq.o_norm_weight, &mut max_diff);
-    check("o_proj", &grads_tok.o_proj, &grads_seq.o_proj, &mut max_diff);
+    check(
+        "f_a_proj",
+        &grads_tok.f_a_proj,
+        &grads_seq.f_a_proj,
+        &mut max_diff,
+    );
+    check(
+        "f_b_proj",
+        &grads_tok.f_b_proj,
+        &grads_seq.f_b_proj,
+        &mut max_diff,
+    );
+    check(
+        "dt_bias",
+        &grads_tok.dt_bias,
+        &grads_seq.dt_bias,
+        &mut max_diff,
+    );
+    check(
+        "beta_proj",
+        &grads_tok.beta_proj,
+        &grads_seq.beta_proj,
+        &mut max_diff,
+    );
+    check(
+        "g_proj",
+        &grads_tok.g_proj,
+        &grads_seq.g_proj,
+        &mut max_diff,
+    );
+    check(
+        "o_norm_weight",
+        &grads_tok.o_norm_weight,
+        &grads_seq.o_norm_weight,
+        &mut max_diff,
+    );
+    check(
+        "o_proj",
+        &grads_tok.o_proj,
+        &grads_seq.o_proj,
+        &mut max_diff,
+    );
 
     // Compare dh.
     for i in 0..config.hidden_size {
@@ -992,7 +1141,14 @@ fn sequence_matches_token_for_l1() {
         if diff > max_diff {
             max_diff = diff;
         }
-        assert!(diff < tol, "dh[{}] mismatch: {} vs {} (diff {})", i, dh_tok[i], all_dh_seq[0][i], diff);
+        assert!(
+            diff < tol,
+            "dh[{}] mismatch: {} vs {} (diff {})",
+            i,
+            dh_tok[i],
+            all_dh_seq[0][i],
+            diff
+        );
     }
 
     eprintln!("═══ KDA sequence-vs-token L=1 check ═══");

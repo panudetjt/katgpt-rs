@@ -169,9 +169,12 @@ pub fn gdn_tree_post_verify(
         // Bonus token if all accepted.
         if all_accepted && !accepted.is_empty() {
             let last_depth = path.len() - 1;
-            let last_prefix = path.iter().enumerate().fold(TreePath::default(), |acc, (d, &tok)| {
-                acc.push(tok as u32, d)
-            });
+            let last_prefix = path
+                .iter()
+                .enumerate()
+                .fold(TreePath::default(), |acc, (d, &tok)| {
+                    acc.push(tok as u32, d)
+                });
             let bonus_slot = (0..t).find(|&k| {
                 let node = &tree[topo.topo_order[k]];
                 node.depth == last_depth && node.parent_path == last_prefix

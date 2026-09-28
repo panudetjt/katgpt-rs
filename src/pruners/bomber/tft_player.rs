@@ -468,7 +468,8 @@ impl BomberPlayer for TftPlayer {
         // 5. Pick best action
         let best = scores
             .iter()
-            .max_by(|a, b| katgpt_core::float_order::cmp_for_max(a.1, b.1)).map_or(BomberAction::Wait, |(a, _)| *a);
+            .max_by(|a, b| katgpt_core::float_order::cmp_for_max(a.1, b.1))
+            .map_or(BomberAction::Wait, |(a, _)| *a);
 
         // Track own bomb placement
         if best == BomberAction::Bomb {

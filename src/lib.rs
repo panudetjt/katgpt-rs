@@ -68,12 +68,6 @@ pub mod dash_attn {
     pub use katgpt_attn::dash_attn::adaptive_k::compute_derived_k;
     // P2: theorem-backed ALiBi×entmax KV-eviction window (Prop E.2) +
     // P3: Lemma-1 incremental decode entmax (Issue 747 family rows).
-    #[cfg(feature = "asentmax_schedule")]
-    pub use katgpt_attn::dash_attn::entmax_incremental::IncrementalEntmax1p5;
-    #[cfg(feature = "asentmax_schedule")]
-    pub use katgpt_attn::dash_attn::eviction_window::{
-        alibi_entmax_window_1p5, evicted_kv_fraction, kv_within_window,
-    };
     #[cfg(feature = "msa_per_group")]
     pub use katgpt_attn::dash_attn::block_topk::PerGroupTopKRouter;
     #[cfg(feature = "vortex_flow")]
@@ -83,8 +77,14 @@ pub mod dash_attn {
         ChannelAwareCache, ChannelAwareRouter, RoutingChannelDiscovery, RoutingChannelMask,
         simd_dot_f32,
     };
+    #[cfg(feature = "asentmax_schedule")]
+    pub use katgpt_attn::dash_attn::entmax_incremental::IncrementalEntmax1p5;
     #[cfg(feature = "vortex_flow")]
     pub use katgpt_attn::dash_attn::entmax_router::{EntmaxCache, EntmaxRouter};
+    #[cfg(feature = "asentmax_schedule")]
+    pub use katgpt_attn::dash_attn::eviction_window::{
+        alibi_entmax_window_1p5, evicted_kv_fraction, kv_within_window,
+    };
     #[cfg(feature = "msa_kv_outer")]
     pub use katgpt_attn::dash_attn::kv_outer_prefill::{KvOuterIndex, KvOuterPrefill};
     #[cfg(feature = "vortex_flow")]

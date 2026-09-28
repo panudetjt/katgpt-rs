@@ -43,9 +43,9 @@ pub mod checkpoint;
 pub mod model;
 
 pub use decoder_layer::{
-    KimiAttentionConfig, KimiAttentionState, KimiAttentionScratch, KimiAttentionWeights,
-    KimiDecoderLayerConfig, KimiDecoderLayerWeights, KimiFfnConfig, KimiFfnScratch,
-    KimiFfnWeights, kimi_decoder_layer_forward,
+    KimiAttentionConfig, KimiAttentionScratch, KimiAttentionState, KimiAttentionWeights,
+    KimiDecoderLayerConfig, KimiDecoderLayerWeights, KimiFfnConfig, KimiFfnScratch, KimiFfnWeights,
+    kimi_decoder_layer_forward,
 };
 
 #[cfg(feature = "kimi_k3_loader")]

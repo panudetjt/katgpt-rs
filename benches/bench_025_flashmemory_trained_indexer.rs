@@ -55,7 +55,11 @@ fn cosine_sim(a: &[f32], b: &[f32]) -> f32 {
     let dot = simd_dot_f32(a, b, a.len());
     let na = simd_dot_f32(a, a, a.len()).sqrt();
     let nb = simd_dot_f32(b, b, a.len()).sqrt();
-    if na < 1e-12 || nb < 1e-12 { 0.0 } else { dot / (na * nb) }
+    if na < 1e-12 || nb < 1e-12 {
+        0.0
+    } else {
+        dot / (na * nb)
+    }
 }
 
 /// A single training triple: (query projections, block key centroid, label).
@@ -88,20 +92,34 @@ struct IndexerTrainer {
     timestep: usize,
 
     // Q-Indexer weights
-    q_w1: Vec<f32>, q_b1: Vec<f32>, q_w2: Vec<f32>, q_b2: f32,
+    q_w1: Vec<f32>,
+    q_b1: Vec<f32>,
+    q_w2: Vec<f32>,
+    q_b2: f32,
     // K-Indexer weights
-    k_w1: Vec<f32>, k_b1: Vec<f32>, k_w2: Vec<f32>, k_b2: f32,
+    k_w1: Vec<f32>,
+    k_b1: Vec<f32>,
+    k_w2: Vec<f32>,
+    k_b2: f32,
 
     // Adam first moment (m) + second moment (v) buffers
-    q_w1_m: Vec<f32>, q_w1_v: Vec<f32>,
-    q_b1_m: Vec<f32>, q_b1_v: Vec<f32>,
-    q_w2_m: Vec<f32>, q_w2_v: Vec<f32>,
-    q_b2_m: f32, q_b2_v: f32,
+    q_w1_m: Vec<f32>,
+    q_w1_v: Vec<f32>,
+    q_b1_m: Vec<f32>,
+    q_b1_v: Vec<f32>,
+    q_w2_m: Vec<f32>,
+    q_w2_v: Vec<f32>,
+    q_b2_m: f32,
+    q_b2_v: f32,
 
-    k_w1_m: Vec<f32>, k_w1_v: Vec<f32>,
-    k_b1_m: Vec<f32>, k_b1_v: Vec<f32>,
-    k_w2_m: Vec<f32>, k_w2_v: Vec<f32>,
-    k_b2_m: f32, k_b2_v: f32,
+    k_w1_m: Vec<f32>,
+    k_w1_v: Vec<f32>,
+    k_b1_m: Vec<f32>,
+    k_b1_v: Vec<f32>,
+    k_w2_m: Vec<f32>,
+    k_w2_v: Vec<f32>,
+    k_b2_m: f32,
+    k_b2_v: f32,
 
     // Forward scratch
     q_hidden: Vec<f32>,
@@ -117,18 +135,37 @@ impl IndexerTrainer {
         let (qw1, qb1, qw2, qb2, kw1, kb1, kw2, kb2) = indexer.extract_weights();
 
         Self {
-            d_h, hidden, lr,
-            beta1: 0.9, beta2: 0.999, epsilon: 1e-8, timestep: 0,
-            q_w1: qw1.clone(), q_b1: qb1.clone(), q_w2: qw2.clone(), q_b2: qb2,
-            k_w1: kw1.clone(), k_b1: kb1.clone(), k_w2: kw2.clone(), k_b2: kb2,
-            q_w1_m: vec![0.0; hidden * d_h], q_w1_v: vec![0.0; hidden * d_h],
-            q_b1_m: vec![0.0; hidden], q_b1_v: vec![0.0; hidden],
-            q_w2_m: vec![0.0; hidden], q_w2_v: vec![0.0; hidden],
-            q_b2_m: 0.0, q_b2_v: 0.0,
-            k_w1_m: vec![0.0; hidden * d_h], k_w1_v: vec![0.0; hidden * d_h],
-            k_b1_m: vec![0.0; hidden], k_b1_v: vec![0.0; hidden],
-            k_w2_m: vec![0.0; hidden], k_w2_v: vec![0.0; hidden],
-            k_b2_m: 0.0, k_b2_v: 0.0,
+            d_h,
+            hidden,
+            lr,
+            beta1: 0.9,
+            beta2: 0.999,
+            epsilon: 1e-8,
+            timestep: 0,
+            q_w1: qw1.clone(),
+            q_b1: qb1.clone(),
+            q_w2: qw2.clone(),
+            q_b2: qb2,
+            k_w1: kw1.clone(),
+            k_b1: kb1.clone(),
+            k_w2: kw2.clone(),
+            k_b2: kb2,
+            q_w1_m: vec![0.0; hidden * d_h],
+            q_w1_v: vec![0.0; hidden * d_h],
+            q_b1_m: vec![0.0; hidden],
+            q_b1_v: vec![0.0; hidden],
+            q_w2_m: vec![0.0; hidden],
+            q_w2_v: vec![0.0; hidden],
+            q_b2_m: 0.0,
+            q_b2_v: 0.0,
+            k_w1_m: vec![0.0; hidden * d_h],
+            k_w1_v: vec![0.0; hidden * d_h],
+            k_b1_m: vec![0.0; hidden],
+            k_b1_v: vec![0.0; hidden],
+            k_w2_m: vec![0.0; hidden],
+            k_w2_v: vec![0.0; hidden],
+            k_b2_m: 0.0,
+            k_b2_v: 0.0,
             q_hidden: vec![0.0; hidden],
             k_hidden: vec![0.0; hidden],
         }
@@ -144,15 +181,23 @@ impl IndexerTrainer {
 
         // ── Forward: Q-Indexer ──
         simd_matmul_rows(&mut self.q_hidden, &self.q_w1, q_c_h, h, d);
-        for i in 0..h { self.q_hidden[i] = (self.q_hidden[i] + self.q_b1[i]).max(0.0); }
+        for i in 0..h {
+            self.q_hidden[i] = (self.q_hidden[i] + self.q_b1[i]).max(0.0);
+        }
         let mut q_score = self.q_b2;
-        for i in 0..h { q_score += self.q_w2[i] * self.q_hidden[i]; }
+        for i in 0..h {
+            q_score += self.q_w2[i] * self.q_hidden[i];
+        }
 
         // ── Forward: K-Indexer ──
         simd_matmul_rows(&mut self.k_hidden, &self.k_w1, k_centroid_h, h, d);
-        for i in 0..h { self.k_hidden[i] = (self.k_hidden[i] + self.k_b1[i]).max(0.0); }
+        for i in 0..h {
+            self.k_hidden[i] = (self.k_hidden[i] + self.k_b1[i]).max(0.0);
+        }
         let mut k_score = self.k_b2;
-        for i in 0..h { k_score += self.k_w2[i] * self.k_hidden[i]; }
+        for i in 0..h {
+            k_score += self.k_w2[i] * self.k_hidden[i];
+        }
 
         // ── Prediction: σ(q_score · k_score) ──
         let z = (q_score * k_score).clamp(-30.0, 30.0);
@@ -163,7 +208,8 @@ impl IndexerTrainer {
         // Asymmetric BCE: w+ = 8 penalizes false-elimination 8× harder.
         let w_pos = 8.0f32;
         let w_neg = 1.0f32;
-        let loss = -(w_pos * label * p_clamped.ln() + w_neg * (1.0 - label) * (1.0 - p_clamped).ln());
+        let loss =
+            -(w_pos * label * p_clamped.ln() + w_neg * (1.0 - label) * (1.0 - p_clamped).ln());
 
         // ── Backward: dL/dz for asymmetric BCE ──
         let mut dz = w_neg * p + label * (p * (w_pos - w_neg) - w_pos);
@@ -176,25 +222,66 @@ impl IndexerTrainer {
         let mut dq_hidden = vec![0.0f32; h];
         for i in 0..h {
             dq_hidden[i] = dq_score * self.q_w2[i];
-            if self.q_hidden[i] <= 0.0 { dq_hidden[i] = 0.0; }
+            if self.q_hidden[i] <= 0.0 {
+                dq_hidden[i] = 0.0;
+            }
         }
 
         for i in 0..h {
             let grad = dq_score * self.q_hidden[i];
-            Self::adam_vec(self.beta1, self.beta2, self.epsilon, self.lr,
-                &mut self.q_w2, &mut self.q_w2_m, &mut self.q_w2_v, i, grad, t);
+            Self::adam_vec(
+                self.beta1,
+                self.beta2,
+                self.epsilon,
+                self.lr,
+                &mut self.q_w2,
+                &mut self.q_w2_m,
+                &mut self.q_w2_v,
+                i,
+                grad,
+                t,
+            );
         }
-        Self::adam_scalar(self.beta1, self.beta2, self.epsilon, self.lr,
-            &mut self.q_b2, &mut self.q_b2_m, &mut self.q_b2_v, dq_score, t);
+        Self::adam_scalar(
+            self.beta1,
+            self.beta2,
+            self.epsilon,
+            self.lr,
+            &mut self.q_b2,
+            &mut self.q_b2_m,
+            &mut self.q_b2_v,
+            dq_score,
+            t,
+        );
 
         for i in 0..h {
-            Self::adam_vec(self.beta1, self.beta2, self.epsilon, self.lr,
-                &mut self.q_b1, &mut self.q_b1_m, &mut self.q_b1_v, i, dq_hidden[i], t);
+            Self::adam_vec(
+                self.beta1,
+                self.beta2,
+                self.epsilon,
+                self.lr,
+                &mut self.q_b1,
+                &mut self.q_b1_m,
+                &mut self.q_b1_v,
+                i,
+                dq_hidden[i],
+                t,
+            );
             let row_off = i * d;
             for j in 0..d {
                 let grad = dq_hidden[i] * q_c_h[j];
-                Self::adam_vec(self.beta1, self.beta2, self.epsilon, self.lr,
-                    &mut self.q_w1, &mut self.q_w1_m, &mut self.q_w1_v, row_off + j, grad, t);
+                Self::adam_vec(
+                    self.beta1,
+                    self.beta2,
+                    self.epsilon,
+                    self.lr,
+                    &mut self.q_w1,
+                    &mut self.q_w1_m,
+                    &mut self.q_w1_v,
+                    row_off + j,
+                    grad,
+                    t,
+                );
             }
         }
 
@@ -202,25 +289,66 @@ impl IndexerTrainer {
         let mut dk_hidden = vec![0.0f32; h];
         for i in 0..h {
             dk_hidden[i] = dk_score * self.k_w2[i];
-            if self.k_hidden[i] <= 0.0 { dk_hidden[i] = 0.0; }
+            if self.k_hidden[i] <= 0.0 {
+                dk_hidden[i] = 0.0;
+            }
         }
 
         for i in 0..h {
             let grad = dk_score * self.k_hidden[i];
-            Self::adam_vec(self.beta1, self.beta2, self.epsilon, self.lr,
-                &mut self.k_w2, &mut self.k_w2_m, &mut self.k_w2_v, i, grad, t);
+            Self::adam_vec(
+                self.beta1,
+                self.beta2,
+                self.epsilon,
+                self.lr,
+                &mut self.k_w2,
+                &mut self.k_w2_m,
+                &mut self.k_w2_v,
+                i,
+                grad,
+                t,
+            );
         }
-        Self::adam_scalar(self.beta1, self.beta2, self.epsilon, self.lr,
-            &mut self.k_b2, &mut self.k_b2_m, &mut self.k_b2_v, dk_score, t);
+        Self::adam_scalar(
+            self.beta1,
+            self.beta2,
+            self.epsilon,
+            self.lr,
+            &mut self.k_b2,
+            &mut self.k_b2_m,
+            &mut self.k_b2_v,
+            dk_score,
+            t,
+        );
 
         for i in 0..h {
-            Self::adam_vec(self.beta1, self.beta2, self.epsilon, self.lr,
-                &mut self.k_b1, &mut self.k_b1_m, &mut self.k_b1_v, i, dk_hidden[i], t);
+            Self::adam_vec(
+                self.beta1,
+                self.beta2,
+                self.epsilon,
+                self.lr,
+                &mut self.k_b1,
+                &mut self.k_b1_m,
+                &mut self.k_b1_v,
+                i,
+                dk_hidden[i],
+                t,
+            );
             let row_off = i * d;
             for j in 0..d {
                 let grad = dk_hidden[i] * k_centroid_h[j];
-                Self::adam_vec(self.beta1, self.beta2, self.epsilon, self.lr,
-                    &mut self.k_w1, &mut self.k_w1_m, &mut self.k_w1_v, row_off + j, grad, t);
+                Self::adam_vec(
+                    self.beta1,
+                    self.beta2,
+                    self.epsilon,
+                    self.lr,
+                    &mut self.k_w1,
+                    &mut self.k_w1_m,
+                    &mut self.k_w1_v,
+                    row_off + j,
+                    grad,
+                    t,
+                );
             }
         }
 
@@ -232,9 +360,16 @@ impl IndexerTrainer {
     #[inline]
     #[allow(clippy::too_many_arguments)]
     fn adam_vec(
-        beta1: f32, beta2: f32, epsilon: f32, lr: f32,
-        param: &mut [f32], m: &mut [f32], v: &mut [f32],
-        idx: usize, grad: f32, t: f32,
+        beta1: f32,
+        beta2: f32,
+        epsilon: f32,
+        lr: f32,
+        param: &mut [f32],
+        m: &mut [f32],
+        v: &mut [f32],
+        idx: usize,
+        grad: f32,
+        t: f32,
     ) {
         m[idx] = beta1 * m[idx] + (1.0 - beta1) * grad;
         v[idx] = beta2 * v[idx] + (1.0 - beta2) * grad * grad;
@@ -247,9 +382,15 @@ impl IndexerTrainer {
     #[inline]
     #[allow(clippy::too_many_arguments)]
     fn adam_scalar(
-        beta1: f32, beta2: f32, epsilon: f32, lr: f32,
-        param: &mut f32, m: &mut f32, v: &mut f32,
-        grad: f32, t: f32,
+        beta1: f32,
+        beta2: f32,
+        epsilon: f32,
+        lr: f32,
+        param: &mut f32,
+        m: &mut f32,
+        v: &mut f32,
+        grad: f32,
+        t: f32,
     ) {
         *m = beta1 * *m + (1.0 - beta1) * grad;
         *v = beta2 * *v + (1.0 - beta2) * grad * grad;
@@ -259,11 +400,25 @@ impl IndexerTrainer {
     }
 
     /// Build a trained DualEncoderIndexer from the current weights.
-    fn to_indexer(&self, config: FlashMemoryConfig, n_heads: usize, max_blocks: usize) -> DualEncoderIndexer {
+    fn to_indexer(
+        &self,
+        config: FlashMemoryConfig,
+        n_heads: usize,
+        max_blocks: usize,
+    ) -> DualEncoderIndexer {
         DualEncoderIndexer::from_weights(
-            config, self.d_h, n_heads, max_blocks,
-            self.q_w1.clone(), self.q_b1.clone(), self.q_w2.clone(), self.q_b2,
-            self.k_w1.clone(), self.k_b1.clone(), self.k_w2.clone(), self.k_b2,
+            config,
+            self.d_h,
+            n_heads,
+            max_blocks,
+            self.q_w1.clone(),
+            self.q_b1.clone(),
+            self.q_w2.clone(),
+            self.q_b2,
+            self.k_w1.clone(),
+            self.k_b1.clone(),
+            self.k_w2.clone(),
+            self.k_b2,
         )
     }
 }
@@ -276,9 +431,8 @@ fn run_bench() {
     let n_heads = mla_config.n_heads;
 
     // ── Load model ──
-    let model_dir = std::env::var("KIMI_K3_MODEL_DIR").unwrap_or_else(|_| {
-        format!("{}/data/kimi-k3-0.40b", env!("CARGO_MANIFEST_DIR"))
-    });
+    let model_dir = std::env::var("KIMI_K3_MODEL_DIR")
+        .unwrap_or_else(|_| format!("{}/data/kimi-k3-0.40b", env!("CARGO_MANIFEST_DIR")));
     let model_path = format!("{model_dir}/model.safetensors");
     if !std::path::Path::new(&model_path).exists() {
         eprintln!("ERROR: requires model.safetensors at {model_path}");
@@ -301,9 +455,7 @@ fn run_bench() {
     // ── Build hidden states from embeddings ──
     let seq_len: usize = 256; // short context for speed on M3
     let hay_cycle = 128.min(config.vocab_size);
-    let token_ids: Vec<u32> = (0..seq_len)
-        .map(|i| (i % hay_cycle) as u32)
-        .collect();
+    let token_ids: Vec<u32> = (0..seq_len).map(|i| (i % hay_cycle) as u32).collect();
     let hidden_states: Vec<Vec<f32>> = token_ids
         .iter()
         .map(|&tid| weights.embed_weight[(tid as usize) * d..(tid as usize) * d + d].to_vec())
@@ -317,13 +469,24 @@ fn run_bench() {
 
     // Run dense forward on ALL tokens to populate the KV cache.
     for h in &hidden_states {
-        mla_forward_token(&mla_config, &mla_weights, &mut cache, &mut scratch, &mut rope, h);
+        mla_forward_token(
+            &mla_config,
+            &mla_weights,
+            &mut cache,
+            &mut scratch,
+            &mut rope,
+            h,
+        );
     }
     println!("KV cache populated: {seq_len} tokens");
 
     // Build block cache for centroid extraction.
     let block_size = 16usize;
-    let fm_config = FlashMemoryConfig { block_size, refresh_period: 1000, threshold: 0.5 };
+    let fm_config = FlashMemoryConfig {
+        block_size,
+        refresh_period: 1000,
+        threshold: 0.5,
+    };
     let max_blocks = seq_len.div_ceil(block_size);
     let mut block_cache = FlashMemoryBlockCache::new(&mla_config, &fm_config, seq_len + 1);
     block_cache.rebuild_from_cache(&cache, &mla_weights);
@@ -334,7 +497,10 @@ fn run_bench() {
 
     // Sample query positions (every 8th token to keep dataset manageable).
     let query_positions: Vec<usize> = (block_size..seq_len).step_by(8).collect();
-    println!("Query positions: {} (every 8th token from {block_size} to {seq_len})", query_positions.len());
+    println!(
+        "Query positions: {} (every 8th token from {block_size} to {seq_len})",
+        query_positions.len()
+    );
 
     let mut triples: Vec<TrainingTriple> = Vec::new();
     let label_threshold = 1.5 / max_blocks as f32; // attended if mass > 1.5× uniform
@@ -348,13 +514,23 @@ fn run_bench() {
         simd_matmul_rows(&mut c_q, &mla_weights.w_dq, h_q, mla_config.q_lora_rank, d);
         // RMSNorm c_q
         let mut ss = 0.0f32;
-        for &v in &c_q { ss += v * v; }
+        for &v in &c_q {
+            ss += v * v;
+        }
         let rms = (ss / c_q.len() as f32 + 1e-5).sqrt();
-        for i in 0..c_q.len() { c_q[i] = c_q[i] / rms * mla_weights.q_a_norm_weight[i]; }
+        for i in 0..c_q.len() {
+            c_q[i] = c_q[i] / rms * mla_weights.q_a_norm_weight[i];
+        }
 
         // q_c = W_UQ · c_q (n_heads * d_h)
         let mut q_c = vec![0.0; n_heads * d_h];
-        simd_matmul_rows(&mut q_c, &mla_weights.w_uq, &c_q, n_heads * d_h, mla_config.q_lora_rank);
+        simd_matmul_rows(
+            &mut q_c,
+            &mla_weights.w_uq,
+            &c_q,
+            n_heads * d_h,
+            mla_config.q_lora_rank,
+        );
 
         for head in 0..n_heads {
             let q_c_h = &q_c[head * d_h..(head + 1) * d_h];
@@ -367,27 +543,44 @@ fn run_bench() {
                 // k_c_j = W_UK[head] · c_kv_j
                 let mut k_c = vec![0.0; d_h];
                 simd_matmul_rows(
-                    &mut k_c, &mla_weights.w_uk[head * d_h * d_c..(head + 1) * d_h * d_c],
-                    c_kv_j, d_h, d_c,
+                    &mut k_c,
+                    &mla_weights.w_uk[head * d_h * d_c..(head + 1) * d_h * d_c],
+                    c_kv_j,
+                    d_h,
+                    d_c,
                 );
                 let content = simd_dot_f32(q_c_h, &k_c, d_h);
                 // Rope term intentionally skipped — needs q_r, kept simple.
                 scores[j] = content * scale;
-                if scores[j] > max_s { max_s = scores[j]; }
+                if scores[j] > max_s {
+                    max_s = scores[j];
+                }
             }
 
             // Softmax → attention weights.
             let mut sum_exp = 0.0f32;
-            for s in scores.iter_mut() { *s = (*s - max_s).exp(); sum_exp += *s; }
+            for s in scores.iter_mut() {
+                *s = (*s - max_s).exp();
+                sum_exp += *s;
+            }
             let inv = 1.0 / sum_exp;
-            for s in scores.iter_mut() { *s *= inv; }
+            for s in scores.iter_mut() {
+                *s *= inv;
+            }
 
             // Sum per block → block attention mass.
             for block_idx in 0..max_blocks {
-                let (bs, be) = (block_idx * block_size, ((block_idx + 1) * block_size).min(q_pos + 1));
-                if bs >= be { continue; }
+                let (bs, be) = (
+                    block_idx * block_size,
+                    ((block_idx + 1) * block_size).min(q_pos + 1),
+                );
+                if bs >= be {
+                    continue;
+                }
                 let mut mass = 0.0f32;
-                for j in bs..be { mass += scores[j]; }
+                for j in bs..be {
+                    mass += scores[j];
+                }
 
                 let label = if mass > label_threshold { 1.0 } else { 0.0 };
 
@@ -406,16 +599,22 @@ fn run_bench() {
     }
 
     let n_positive = triples.iter().filter(|t| t.label > 0.5).count();
-    println!("Training triples: {} ({} positive = {:.1}%)",
-        triples.len(), n_positive, 100.0 * n_positive as f32 / triples.len() as f32);
+    println!(
+        "Training triples: {} ({} positive = {:.1}%)",
+        triples.len(),
+        n_positive,
+        100.0 * n_positive as f32 / triples.len() as f32
+    );
 
     // ── Phase C: Train the DualEncoderIndexer ──
     println!("\n=== Phase C: Training DualEncoderIndexer ===");
-    let init_indexer = DualEncoderIndexer::new_random(
-        fm_config.clone(), d_h, n_heads, max_blocks, 42,
+    let init_indexer =
+        DualEncoderIndexer::new_random(fm_config.clone(), d_h, n_heads, max_blocks, 42);
+    println!(
+        "Indexer params: {} (d_h={d_h}, hidden={})",
+        init_indexer.param_count(),
+        init_indexer.hidden_dim()
     );
-    println!("Indexer params: {} (d_h={d_h}, hidden={})",
-        init_indexer.param_count(), init_indexer.hidden_dim());
 
     let mut trainer = IndexerTrainer::from_indexer(&init_indexer, 0.001);
 
@@ -448,7 +647,14 @@ fn run_bench() {
     let mut scratch_d = MlaForwardScratch::new(&mla_config, seq_len + 1);
     let mut rope_d = RopeFreqs::new_with_theta(mla_config.qk_rope_head_dim, mla_config.rope_theta);
     for h in &hidden_states {
-        let out = mla_forward_token(&mla_config, &mla_weights, &mut cache_d, &mut scratch_d, &mut rope_d, h);
+        let out = mla_forward_token(
+            &mla_config,
+            &mla_weights,
+            &mut cache_d,
+            &mut scratch_d,
+            &mut rope_d,
+            h,
+        );
         dense_outputs.push(out.to_vec());
     }
 
@@ -460,8 +666,15 @@ fn run_bench() {
     let mut sel_m = FlashMemorySelector::new(fm_config.clone(), n_heads, max_blocks);
     for (step, h) in hidden_states.iter().enumerate() {
         let out = mla_forward_token_flashmemory(
-            &mla_config, &mla_weights, &mut cache_m, &mut scratch_m, &mut rope_m,
-            h, &mut bc_m, &mut sel_m, step,
+            &mla_config,
+            &mla_weights,
+            &mut cache_m,
+            &mut scratch_m,
+            &mut rope_m,
+            h,
+            &mut bc_m,
+            &mut sel_m,
+            step,
         );
         cos_modelless.push(cosine_sim(&dense_outputs[step], out));
     }
@@ -483,11 +696,21 @@ fn run_bench() {
         let mut c_q = vec![0.0; mla_config.q_lora_rank];
         simd_matmul_rows(&mut c_q, &mla_weights.w_dq, h_q, mla_config.q_lora_rank, d);
         let mut ss = 0.0f32;
-        for &v in &c_q { ss += v * v; }
+        for &v in &c_q {
+            ss += v * v;
+        }
         let rms = (ss / c_q.len() as f32 + 1e-5).sqrt();
-        for i in 0..c_q.len() { c_q[i] = c_q[i] / rms * mla_weights.q_a_norm_weight[i]; }
+        for i in 0..c_q.len() {
+            c_q[i] = c_q[i] / rms * mla_weights.q_a_norm_weight[i];
+        }
         let mut q_c = vec![0.0; n_heads * d_h];
-        simd_matmul_rows(&mut q_c, &mla_weights.w_uq, &c_q, n_heads * d_h, mla_config.q_lora_rank);
+        simd_matmul_rows(
+            &mut q_c,
+            &mla_weights.w_uq,
+            &c_q,
+            n_heads * d_h,
+            mla_config.q_lora_rank,
+        );
 
         // Build a fresh block cache for this position.
         // We need a cache populated up to q_pos. Use the dense cache.
@@ -503,7 +726,9 @@ fn run_bench() {
         // Modelless selection.
         let mut sel_m = FlashMemorySelector::new(fm_config.clone(), n_heads, max_blocks);
         sel_m.force_refresh();
-        let sel_m_result = sel_m.select(&q_c, &block_cache, mla_config.attn_scale(), 0).clone();
+        let sel_m_result = sel_m
+            .select(&q_c, &block_cache, mla_config.attn_scale(), 0)
+            .clone();
 
         // Golden blocks: compute which blocks have above-threshold attention for this query.
         for head in 0..n_heads {
@@ -514,33 +739,54 @@ fn run_bench() {
                 let c_kv_j = cache_d.latent_kv_at(j);
                 let mut k_c = vec![0.0; d_h];
                 simd_matmul_rows(
-                    &mut k_c, &mla_weights.w_uk[head * d_h * d_c..(head + 1) * d_h * d_c],
-                    c_kv_j, d_h, d_c,
+                    &mut k_c,
+                    &mla_weights.w_uk[head * d_h * d_c..(head + 1) * d_h * d_c],
+                    c_kv_j,
+                    d_h,
+                    d_c,
                 );
                 scores[j] = simd_dot_f32(q_c_h, &k_c, d_h) * scale;
-                if scores[j] > max_s { max_s = scores[j]; }
+                if scores[j] > max_s {
+                    max_s = scores[j];
+                }
             }
             let mut se = 0.0f32;
-            for s in scores.iter_mut() { *s = (*s - max_s).exp(); se += *s; }
+            for s in scores.iter_mut() {
+                *s = (*s - max_s).exp();
+                se += *s;
+            }
             let inv = 1.0 / se;
-            for s in scores.iter_mut() { *s *= inv; }
+            for s in scores.iter_mut() {
+                *s *= inv;
+            }
 
             // Golden blocks.
             let mut golden: Vec<usize> = Vec::new();
             for block_idx in 0..n_active {
-                let (bs, be) = (block_idx * block_size, ((block_idx + 1) * block_size).min(q_pos + 1));
+                let (bs, be) = (
+                    block_idx * block_size,
+                    ((block_idx + 1) * block_size).min(q_pos + 1),
+                );
                 let mut mass = 0.0f32;
-                for j in bs..be { mass += scores[j]; }
-                if mass > label_threshold { golden.push(block_idx); }
+                for j in bs..be {
+                    mass += scores[j];
+                }
+                if mass > label_threshold {
+                    golden.push(block_idx);
+                }
             }
-            if golden.is_empty() { continue; }
+            if golden.is_empty() {
+                continue;
+            }
             n_queries += 1;
 
             // Trained recall.
             let sel_t_h = &sel_t.blocks_per_head[head];
             let recalled_t = golden.iter().filter(|g| sel_t_h.contains(g)).count();
             trained_recall += recalled_t as f32 / golden.len() as f32;
-            let precision_t = if sel_t_h.is_empty() { 0.0 } else {
+            let precision_t = if sel_t_h.is_empty() {
+                0.0
+            } else {
                 sel_t_h.iter().filter(|s| golden.contains(s)).count() as f32 / sel_t_h.len() as f32
             };
             trained_precision += precision_t;
@@ -572,14 +818,30 @@ fn run_bench() {
     println!("\n=== GOAT Gate ===");
     if n_queries > 0 {
         let trained_beats = trained_recall > modelless_recall;
-        println!("D3 (recall gate): trained recall {trained_recall:.4} vs modelless {modelless_recall:.4}");
-        println!("  → {}", if trained_beats { "✅ TRAINED BEATS MODELESS" } else { "⚠️  TRAINED DOES NOT BEAT MODELESS" });
+        println!(
+            "D3 (recall gate): trained recall {trained_recall:.4} vs modelless {modelless_recall:.4}"
+        );
+        println!(
+            "  → {}",
+            if trained_beats {
+                "✅ TRAINED BEATS MODELESS"
+            } else {
+                "⚠️  TRAINED DOES NOT BEAT MODELESS"
+            }
+        );
     } else {
         println!("D3: no golden blocks found (all attention uniform) — inconclusive");
     }
 
     let cos_m_med = sort_median(&cos_modelless);
-    println!("G1 (modelless correctness): median cos = {cos_m_med:.4} {}", if cos_m_med >= 0.90 { "✅ PASS" } else { "❌ FAIL" });
+    println!(
+        "G1 (modelless correctness): median cos = {cos_m_med:.4} {}",
+        if cos_m_med >= 0.90 {
+            "✅ PASS"
+        } else {
+            "❌ FAIL"
+        }
+    );
 }
 
 fn sort_median(v: &[f32]) -> f32 {

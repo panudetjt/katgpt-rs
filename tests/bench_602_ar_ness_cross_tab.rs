@@ -16,15 +16,17 @@
 
 use katgpt_core::mdlm_gen_steps;
 use katgpt_core::predict_w_from_order_stats;
+use katgpt_core::{ar_order, order_to_gen_steps};
 use katgpt_rs::benchmark::bench_ar_ness_w_sweep;
 use katgpt_rs::dllm::text_corpus::{TEXT_CORPUS, encode_text, slice_blocks};
 use katgpt_rs::dllm::{
     PositionOffsetSchedule, evaluate_set_causal_denoiser_nll_with_gen_steps,
     train_mini_set_causal_denoiser_with_gen_steps,
 };
-use katgpt_rs::speculative::set_diffusion::{CpuSetCausalForward, SetDiffusionConfig, set_diffusion_decode};
+use katgpt_rs::speculative::set_diffusion::{
+    CpuSetCausalForward, SetDiffusionConfig, set_diffusion_decode,
+};
 use katgpt_rs::types::{Config, Rng};
-use katgpt_core::{ar_order, order_to_gen_steps};
 
 /// ln(27) — the uniform-guess floor for micro_dllm's vocab_size = 27
 /// (≈ 3.2958; not const-computable, the range assert below pins it).
@@ -34,7 +36,12 @@ const CHANCE_NELBO: f64 = 3.2958;
 fn cross_tab_spans_the_alr_axis_and_model_learns() {
     let results = bench_ar_ness_w_sweep();
     // 6 w-rows + the mdlm endpoint row.
-    assert_eq!(results.len(), 7, "expected 6 w rows + mdlm, got {}", results.len());
+    assert_eq!(
+        results.len(),
+        7,
+        "expected 6 w rows + mdlm, got {}",
+        results.len()
+    );
 
     // Parse "ALR x.xx/AGR y.yy" back out of the labels (the cross-tab's
     // numeric table is printed; the labels carry the axis for tests).
@@ -130,9 +137,8 @@ fn g3_gap_predictor_matches_or_beats_fixed_on_both_regimes() {
     // loss-on-masked; the clean-token objective degenerates to the
     // identity copy under self-eligibility, measured nelbo→0 on real
     // text — the Bench-809 g5 lesson, reproduced here on the first run) ──
-    let mut ar_reveal = |len: usize, _tokens: &[usize], _rng: &mut Rng| {
-        order_to_gen_steps(&ar_order(len))
-    };
+    let mut ar_reveal =
+        |len: usize, _tokens: &[usize], _rng: &mut Rng| order_to_gen_steps(&ar_order(len));
     let uniform_sched = PositionOffsetSchedule::new(1.0);
     let mut uni_reveal = |len: usize, _tokens: &[usize], rng: &mut Rng| {
         order_to_gen_steps(&uniform_sched.sample_order_with(len, || rng.uniform()))
@@ -145,11 +151,25 @@ fn g3_gap_predictor_matches_or_beats_fixed_on_both_regimes() {
     for k in 0..G3_SEEDS_PER_REGIME {
         let seed = G3_SEED + k as u64;
         let (w_ar_k, _) = train_mini_set_causal_denoiser_with_gen_steps(
-            &config, &train, &eval, G3_EPOCHS, G3_LR, G3_MASK_RATIO, &mut ar_reveal, seed,
+            &config,
+            &train,
+            &eval,
+            G3_EPOCHS,
+            G3_LR,
+            G3_MASK_RATIO,
+            &mut ar_reveal,
+            seed,
         );
         ar_models.push(w_ar_k);
         let (w_uni_k, _) = train_mini_set_causal_denoiser_with_gen_steps(
-            &config, &train, &eval, G3_EPOCHS, G3_LR, G3_MASK_RATIO, &mut uni_reveal, seed,
+            &config,
+            &train,
+            &eval,
+            G3_EPOCHS,
+            G3_LR,
+            G3_MASK_RATIO,
+            &mut uni_reveal,
+            seed,
         );
         uni_models.push(w_uni_k);
     }
@@ -223,16 +243,7 @@ fn g3_gap_predictor_matches_or_beats_fixed_on_both_regimes() {
         let sep = (p_ar.0 - p_uni.0).abs() + (p_ar.1 - p_uni.1).abs();
         println!(
             "{:>6.2} | ({:>5.3},{:>5.3}) {:>5}/{:<4} | ({:>5.3},{:>5.3}) {:>5}/{:<4} | {:>8.3}",
-            tau,
-            p_ar.0,
-            p_ar.1,
-            p_ar.2,
-            p_ar.3,
-            p_uni.0,
-            p_uni.1,
-            p_uni.2,
-            p_uni.3,
-            sep
+            tau, p_ar.0, p_ar.1, p_ar.2, p_ar.3, p_uni.0, p_uni.1, p_uni.2, p_uni.3, sep
         );
         // A τ where either model commits nothing carries no signal — skip.
         let both_commit = p_ar.3 > 0 && p_uni.3 > 0;
@@ -251,9 +262,11 @@ fn g3_gap_predictor_matches_or_beats_fixed_on_both_regimes() {
     println!("\n== Bench 602 G3 — gap-predictor (real-text, both regimes) ==");
     println!("chosen τ={best_tau} (most discriminating over the grid, separation {best_sep:.3})");
     println!(
-        "AR-trained probe:  ALR={alr_ar:.3} AGR={agr_ar:.3} (NFE {nfe_ar}) -> mdlm-w={w_mdlm_ar} (reported: all-ties degeneracy)");
+        "AR-trained probe:  ALR={alr_ar:.3} AGR={agr_ar:.3} (NFE {nfe_ar}) -> mdlm-w={w_mdlm_ar} (reported: all-ties degeneracy)"
+    );
     println!(
-        "UNI-trained probe: ALR={alr_uni:.3} AGR={agr_uni:.3} (NFE {nfe_uni}) -> mdlm-w={w_mdlm_uni} (reported: all-ties degeneracy)");
+        "UNI-trained probe: ALR={alr_uni:.3} AGR={agr_uni:.3} (NFE {nfe_uni}) -> mdlm-w={w_mdlm_uni} (reported: all-ties degeneracy)"
+    );
 
     // ── ALSO measure the residual probe (schedule w=0.5): the model's
     // commit deviation from the calibrated schedule signature (0.589,
@@ -332,9 +345,7 @@ fn g3_gap_predictor_matches_or_beats_fixed_on_both_regimes() {
     // the residual probe carries the signal.
     let w_star_ar = katgpt_core::predict_w_residual(sp_alr_ar, sp_agr_ar, 0.5);
     let w_star_uni = katgpt_core::predict_w_residual(sp_alr_uni, sp_agr_uni, 0.5);
-    println!(
-        "residual w*: AR-trained -> w*={w_star_ar:.3} | UNI-trained -> w*={w_star_uni:.3}"
-    );
+    println!("residual w*: AR-trained -> w*={w_star_ar:.3} | UNI-trained -> w*={w_star_uni:.3}");
     // ── Discrimination: REPORTED, not asserted (2026-09-22, post-T5) ──
     // Measured across training seeds 42-45 and probe-RNG pairings, the
     // AR−UNI ΔALR gap swings ±0.13 around ~+0.03 — the paper's AR-drag
@@ -372,11 +383,19 @@ fn g3_gap_predictor_matches_or_beats_fixed_on_both_regimes() {
         };
         let mut rng = Rng::new(G3_SEED + 1000);
         evaluate_set_causal_denoiser_nll_with_gen_steps(
-            weights, &eval, &config, G3_MASK_RATIO, &mut reveal, &mut rng,
+            weights,
+            &eval,
+            &config,
+            G3_MASK_RATIO,
+            &mut reveal,
+            &mut rng,
         )
     };
     let fixed = [0.1f32, 0.5, 1.0];
-    println!("\n{:>18} {:>8} {:>10} {:>10}", "model", "w", "NLL", "retention");
+    println!(
+        "\n{:>18} {:>8} {:>10} {:>10}",
+        "model", "w", "NLL", "retention"
+    );
     for (label, models, w_star) in [
         ("AR-trained", &ar_models, w_star_ar),
         ("UNI-trained", &uni_models, w_star_uni),

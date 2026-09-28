@@ -65,8 +65,7 @@ use katgpt_rs::transformer::{
     ForwardContext, MultiLayerKVCache, TransformerWeights, forward_looped,
 };
 use katgpt_rs::types::{
-    Config, HlaMode, HybridPattern, LoopMode, LoopStabilityMode, ResidualGate, Rng,
-    SdpaOutputGate,
+    Config, HlaMode, HybridPattern, LoopMode, LoopStabilityMode, ResidualGate, Rng, SdpaOutputGate,
 };
 
 // ── Constants ────────────────────────────────────────────────────
@@ -267,7 +266,10 @@ fn kl(p_logits: &[f32], q_logits: &[f32]) -> f32 {
 
 /// Bit-exact comparison of two logit vectors (raw f32 bits, element-wise).
 fn bits_eq(a: &[f32], b: &[f32]) -> bool {
-    a.len() == b.len() && a.iter().zip(b.iter()).all(|(x, y)| x.to_bits() == y.to_bits())
+    a.len() == b.len()
+        && a.iter()
+            .zip(b.iter())
+            .all(|(x, y)| x.to_bits() == y.to_bits())
 }
 
 /// Mean loss(r) for one arm: mean over all prompts of KL(arm@r ‖ arm@R_REF).
@@ -316,32 +318,21 @@ fn t698_t2_fixed_anchor_ab_ordering() {
         "fixture must match a known platform pin of T1's weights (mode is not part of the hash)"
     );
 
-    let gates: Vec<(Arm, Config, ResidualGate)> = [
-        Arm::Fixed,
-        Arm::Drift,
-        Arm::Zeros,
-        Arm::NoneDefault,
-    ]
-    .iter()
-    .map(|&arm| {
-        let c = make_config(arm);
-        let g = make_gate(arm, &c);
-        (arm, c, g)
-    })
-    .collect();
+    let gates: Vec<(Arm, Config, ResidualGate)> =
+        [Arm::Fixed, Arm::Drift, Arm::Zeros, Arm::NoneDefault]
+            .iter()
+            .map(|&arm| {
+                let c = make_config(arm);
+                let g = make_gate(arm, &c);
+                (arm, c, g)
+            })
+            .collect();
 
     // ── A-priori mechanism pins ──────────────────────────────
     // (1) r=1: no gated iteration runs, so every arm produces the identical
     // h^(0) → identical logits (the anchor is hoisted but never read).
     {
-        let l1_ref = run_once(
-            &gates[0].1,
-            &weights,
-            &gates[0].2,
-            &sdpa_gate,
-            0,
-            1,
-        );
+        let l1_ref = run_once(&gates[0].1, &weights, &gates[0].2, &sdpa_gate, 0, 1);
         for (arm, cfg, gate) in &gates {
             let l1 = run_once(cfg, &weights, gate, &sdpa_gate, 0, 1);
             assert!(
@@ -439,7 +430,10 @@ fn t698_t2_fixed_anchor_ab_ordering() {
             drift += kl(ref_l, &lp);
         }
         ref_drifts[idx] = drift / N_PROMPTS as f32;
-        println!("  ref drift KL({R_REF},{R_REF_PROBE}) [{arm:?}] = {:.3e}", ref_drifts[idx]);
+        println!(
+            "  ref drift KL({R_REF},{R_REF_PROBE}) [{arm:?}] = {:.3e}",
+            ref_drifts[idx]
+        );
         assert!(
             ref_drifts[idx].is_finite() && ref_drifts[idx] >= 0.0,
             "reference drift must be finite: {arm:?}"
@@ -526,11 +520,16 @@ fn t698_t2_fixed_anchor_ab_ordering() {
         table[0][0] < table[1][0] && table[0][1] < table[1][1],
         "the transferred Table-11 direction must hold early: fixed < drift at r=2 and r=4 \
          (fixed {:.3e}/{:.3e} vs drift {:.3e}/{:.3e})",
-        table[0][0], table[0][1], table[1][0], table[1][1]
+        table[0][0],
+        table[0][1],
+        table[1][0],
+        table[1][1]
     );
 
     // ── Measurement dump (bits for the pin consts) ─────────
-    println!("\n═══ Issue 698 T2 — fixed-anchor A/B ordering (mean KL to own loop-32 reference) ═══");
+    println!(
+        "\n═══ Issue 698 T2 — fixed-anchor A/B ordering (mean KL to own loop-32 reference) ═══"
+    );
     println!(
         "  fixture blake3[16] = {hash}  ·  seed {SEED}  ·  R_REF {R_REF}  ·  armed ρ(τ>0) = {GATE_DECAY}"
     );
@@ -546,15 +545,44 @@ fn t698_t2_fixed_anchor_ab_ordering() {
             ref_drifts[idx]
         );
     }
-    println!("  destination bias KL(fixed@32 ‖ drift@32) = {dest_fd:.3e}   KL(drift@32 ‖ fixed@32) = {dest_df:.3e}");
-    println!("  contraction sweep (fixed ref drift vs constant ρ): ρ=0.1 {drift_rho01:.3e} · ρ=0.25 {drift_rho025:.3e} · ρ=0.5 {:.3e}", ref_drifts[0]);
-    println!("  table bits: {:?}", [
-        [table[0][0].to_bits(), table[0][1].to_bits(), table[0][2].to_bits(), table[0][3].to_bits()],
-        [table[1][0].to_bits(), table[1][1].to_bits(), table[1][2].to_bits(), table[1][3].to_bits()],
-        [table[2][0].to_bits(), table[2][1].to_bits(), table[2][2].to_bits(), table[2][3].to_bits()],
-        [table[3][0].to_bits(), table[3][1].to_bits(), table[3][2].to_bits(), table[3][3].to_bits()],
-    ]);
-    println!("  ref-drift bits: {:?}  dest bits: {} {}  sweep bits: {:?}",
+    println!(
+        "  destination bias KL(fixed@32 ‖ drift@32) = {dest_fd:.3e}   KL(drift@32 ‖ fixed@32) = {dest_df:.3e}"
+    );
+    println!(
+        "  contraction sweep (fixed ref drift vs constant ρ): ρ=0.1 {drift_rho01:.3e} · ρ=0.25 {drift_rho025:.3e} · ρ=0.5 {:.3e}",
+        ref_drifts[0]
+    );
+    println!(
+        "  table bits: {:?}",
+        [
+            [
+                table[0][0].to_bits(),
+                table[0][1].to_bits(),
+                table[0][2].to_bits(),
+                table[0][3].to_bits()
+            ],
+            [
+                table[1][0].to_bits(),
+                table[1][1].to_bits(),
+                table[1][2].to_bits(),
+                table[1][3].to_bits()
+            ],
+            [
+                table[2][0].to_bits(),
+                table[2][1].to_bits(),
+                table[2][2].to_bits(),
+                table[2][3].to_bits()
+            ],
+            [
+                table[3][0].to_bits(),
+                table[3][1].to_bits(),
+                table[3][2].to_bits(),
+                table[3][3].to_bits()
+            ],
+        ]
+    );
+    println!(
+        "  ref-drift bits: {:?}  dest bits: {} {}  sweep bits: {:?}",
         [
             ref_drifts[0].to_bits(),
             ref_drifts[1].to_bits(),
@@ -623,6 +651,10 @@ fn t698_t2_fixed_anchor_ab_ordering() {
     println!("  · NoneDefault (un-normed, armed) is worst at every r — the Plan-428 norm story");
     println!("    re-confirmed under armed gates.");
     println!("  Caveats: random weights (anchor is OOD input — the ORDERING is the claim),");
-    println!("  single-position prompts, armed constant gate ρ={GATE_DECAY} (zero-init default would");
-    println!("  hide the anchor entirely), raw-embed arm documented as the p=0 degenerate (not run).");
+    println!(
+        "  single-position prompts, armed constant gate ρ={GATE_DECAY} (zero-init default would"
+    );
+    println!(
+        "  hide the anchor entirely), raw-embed arm documented as the p=0 degenerate (not run)."
+    );
 }

@@ -25,17 +25,16 @@ use katgpt_tokenizer::{BpeTokenizer, BpeTokenizerImpl, BpeTrainer, FastBpeEncode
 
 /// Every Unicode `White_Space` char (25 total).
 const ALL_WS_CHARS: [char; 25] = [
-    '\u{0009}', '\u{000A}', '\u{000B}', '\u{000C}', '\u{000D}', '\u{0020}',
-    '\u{0085}', '\u{00A0}', '\u{1680}',
-    '\u{2000}', '\u{2001}', '\u{2002}', '\u{2003}', '\u{2004}', '\u{2005}',
-    '\u{2006}', '\u{2007}', '\u{2008}', '\u{2009}', '\u{200A}',
-    '\u{2028}', '\u{2029}', '\u{202F}', '\u{205F}', '\u{3000}',
+    '\u{0009}', '\u{000A}', '\u{000B}', '\u{000C}', '\u{000D}', '\u{0020}', '\u{0085}', '\u{00A0}',
+    '\u{1680}', '\u{2000}', '\u{2001}', '\u{2002}', '\u{2003}', '\u{2004}', '\u{2005}', '\u{2006}',
+    '\u{2007}', '\u{2008}', '\u{2009}', '\u{200A}', '\u{2028}', '\u{2029}', '\u{202F}', '\u{205F}',
+    '\u{3000}',
 ];
 
 /// Near-miss chars that are NOT `White_Space` — must stay inside words.
 const NOT_WS_NEAR_MISSES: [char; 9] = [
-    '\u{0008}', '\u{000E}', '\u{007F}', '\u{0084}', '\u{00AD}',
-    '\u{180E}', '\u{200B}', '\u{200C}', '\u{FEFF}',
+    '\u{0008}', '\u{000E}', '\u{007F}', '\u{0084}', '\u{00AD}', '\u{180E}', '\u{200B}', '\u{200C}',
+    '\u{FEFF}',
 ];
 
 fn assert_identity(tokenizer: &BpeTokenizer, text: &str) {
@@ -44,7 +43,8 @@ fn assert_identity(tokenizer: &BpeTokenizer, text: &str) {
     let mut out = Vec::new();
     encoder.encode_into_pretok(text, &mut out);
     assert_eq!(
-        out, reference,
+        out,
+        reference,
         "SIMD pretok divergence vs encode on {text:?} (len={}): first diff at {}",
         text.len(),
         out.iter()

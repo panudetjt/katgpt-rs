@@ -18,7 +18,7 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 use katgpt_core::refinement_marginal::{
-    coarse_grain_first, coarse_grain_step, CoarseGrainScratch, CoarseRecord,
+    CoarseGrainScratch, CoarseRecord, coarse_grain_first, coarse_grain_step,
 };
 use katgpt_rs::refinement_bridge::refinement_table_from_bpe;
 use katgpt_tokenizer::BpeTokenizer;
@@ -95,7 +95,9 @@ fn main() {
         let table = refinement_table_from_bpe(&tok);
         let table_ms = t0.elapsed().as_secs_f64() * 1e3;
 
-        let logits: Vec<f32> = (0..n).map(|i| ((i % 97) as f32).ln() - 0.01 * i as f32).collect();
+        let logits: Vec<f32> = (0..n)
+            .map(|i| ((i % 97) as f32).ln() - 0.01 * i as f32)
+            .collect();
         let mut probs = vec![0.0_f32; n];
 
         // ── softmax baseline ──

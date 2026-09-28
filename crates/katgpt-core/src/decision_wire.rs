@@ -160,7 +160,10 @@ impl Question {
             }
             QuestionKind::Choice | QuestionKind::Score => {
                 if self.options.len() < 2 {
-                    return Err(WireError::TooFewOptions { at, n: self.options.len() });
+                    return Err(WireError::TooFewOptions {
+                        at,
+                        n: self.options.len(),
+                    });
                 }
             }
         }
@@ -333,9 +336,10 @@ impl DecisionRequest {
         }
         for (at, q) in self.questions.iter().enumerate() {
             if let Some(dup) = self.questions.iter().position(|other| other.id == q.id)
-                && dup != at {
-                    return Err(WireError::DuplicateQuestionId { at });
-                }
+                && dup != at
+            {
+                return Err(WireError::DuplicateQuestionId { at });
+            }
         }
         Ok(())
     }
@@ -416,7 +420,12 @@ impl DecisionResponse {
                 questions: request.questions.len(),
             });
         }
-        for (at, (a, q)) in self.answers.iter().zip(request.questions.iter()).enumerate() {
+        for (at, (a, q)) in self
+            .answers
+            .iter()
+            .zip(request.questions.iter())
+            .enumerate()
+        {
             a.validate_against(q, at)?;
         }
         Ok(())
@@ -459,39 +468,70 @@ pub enum WireError {
 impl std::fmt::Display for WireError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            WireError::EmptyPrompt { at } => write!(f, "decision_wire: question {at} has an empty prompt"),
+            WireError::EmptyPrompt { at } => {
+                write!(f, "decision_wire: question {at} has an empty prompt")
+            }
             WireError::NoulCarriesOptions { at } => {
-                write!(f, "decision_wire: noul question {at} must not carry options")
+                write!(
+                    f,
+                    "decision_wire: noul question {at} must not carry options"
+                )
             }
             WireError::TooFewOptions { at, n } => {
-                write!(f, "decision_wire: choice/score question {at} needs ≥2 options, got {n}")
+                write!(
+                    f,
+                    "decision_wire: choice/score question {at} needs ≥2 options, got {n}"
+                )
             }
             WireError::DuplicateQuestionId { at } => {
                 write!(f, "decision_wire: duplicate question id at position {at}")
             }
             WireError::AnswerCountMismatch { answers, questions } => {
-                write!(f, "decision_wire: {answers} answers for {questions} questions")
+                write!(
+                    f,
+                    "decision_wire: {answers} answers for {questions} questions"
+                )
             }
             WireError::AnswerIdMismatch { at } => {
-                write!(f, "decision_wire: answer {at} does not echo its question id")
+                write!(
+                    f,
+                    "decision_wire: answer {at} does not echo its question id"
+                )
             }
             WireError::OutcomeOutOfRange { at, index, options } => {
-                write!(f, "decision_wire: answer {at} outcome index {index} out of range (options {options})")
+                write!(
+                    f,
+                    "decision_wire: answer {at} outcome index {index} out of range (options {options})"
+                )
             }
             WireError::OutcomeKindMismatch { at } => {
-                write!(f, "decision_wire: answer {at} outcome kind disagrees with the question kind")
+                write!(
+                    f,
+                    "decision_wire: answer {at} outcome kind disagrees with the question kind"
+                )
             }
             WireError::ProbabilityArityMismatch { at, got, want } => {
-                write!(f, "decision_wire: answer {at} carries {got} probabilities, want {want}")
+                write!(
+                    f,
+                    "decision_wire: answer {at} carries {got} probabilities, want {want}"
+                )
             }
             WireError::ProbabilityNotFinite { at, option } => {
-                write!(f, "decision_wire: answer {at} probability {option} is not finite")
+                write!(
+                    f,
+                    "decision_wire: answer {at} probability {option} is not finite"
+                )
             }
             WireError::ProbabilityOutOfRange { at, option } => {
-                write!(f, "decision_wire: answer {at} probability {option} outside [0, 1]")
+                write!(
+                    f,
+                    "decision_wire: answer {at} probability {option} outside [0, 1]"
+                )
             }
             WireError::ConfidenceNotFinite => write!(f, "decision_wire: confidence is not finite"),
-            WireError::ConfidenceOutOfRange => write!(f, "decision_wire: confidence outside [0, 1]"),
+            WireError::ConfidenceOutOfRange => {
+                write!(f, "decision_wire: confidence outside [0, 1]")
+            }
         }
     }
 }
@@ -580,20 +620,32 @@ mod tests {
         let req_back: DecisionRequest = postcard::from_bytes(&req_bytes).expect("decode request");
         let resp_back: DecisionResponse =
             postcard::from_bytes(&resp_bytes).expect("decode response");
-        assert_eq!(req_back, req, "postcard request round-trip must be lossless");
-        assert_eq!(resp_back, resp, "postcard response round-trip must be lossless");
+        assert_eq!(
+            req_back, req,
+            "postcard request round-trip must be lossless"
+        );
+        assert_eq!(
+            resp_back, resp,
+            "postcard response round-trip must be lossless"
+        );
     }
 
     #[test]
     fn golden_request_json_is_byte_stable() {
         let text = serde_json::to_string(&golden_request()).expect("serialize request");
-        assert_eq!(text, GOLDEN_REQUEST_JSON, "request wire bytes drifted — a serde/field change moved the wire shape; re-pin deliberately");
+        assert_eq!(
+            text, GOLDEN_REQUEST_JSON,
+            "request wire bytes drifted — a serde/field change moved the wire shape; re-pin deliberately"
+        );
     }
 
     #[test]
     fn golden_response_json_is_byte_stable() {
         let text = serde_json::to_string(&golden_response()).expect("serialize response");
-        assert_eq!(text, GOLDEN_RESPONSE_JSON, "response wire bytes drifted — a serde/field change moved the wire shape; re-pin deliberately");
+        assert_eq!(
+            text, GOLDEN_RESPONSE_JSON,
+            "response wire bytes drifted — a serde/field change moved the wire shape; re-pin deliberately"
+        );
     }
 
     #[test]
@@ -601,7 +653,8 @@ mod tests {
         let req = golden_request();
         let resp = golden_response();
         req.validate().expect("canonical request must validate");
-        resp.validate_against(&req).expect("canonical pair must validate");
+        resp.validate_against(&req)
+            .expect("canonical pair must validate");
     }
 
     #[test]
@@ -629,7 +682,10 @@ mod tests {
         // duplicate ids
         req = golden_request();
         req.questions[2].id = "q1".into();
-        assert_eq!(req.validate(), Err(WireError::DuplicateQuestionId { at: 2 }));
+        assert_eq!(
+            req.validate(),
+            Err(WireError::DuplicateQuestionId { at: 2 })
+        );
     }
 
     #[test]
@@ -646,7 +702,10 @@ mod tests {
         );
         let mut resp = golden_response();
         resp.answers[1].question_id = "qX".into();
-        assert_eq!(resp.validate_against(&req), Err(WireError::AnswerIdMismatch { at: 1 }));
+        assert_eq!(
+            resp.validate_against(&req),
+            Err(WireError::AnswerIdMismatch { at: 1 })
+        );
     }
 
     #[test]
@@ -703,10 +762,16 @@ mod tests {
         // confidence out of range / non-finite
         let mut resp = golden_response();
         resp.answers[0].confidence = 1.5;
-        assert_eq!(resp.validate_against(&req), Err(WireError::ConfidenceOutOfRange));
+        assert_eq!(
+            resp.validate_against(&req),
+            Err(WireError::ConfidenceOutOfRange)
+        );
         let mut resp = golden_response();
         resp.answers[0].confidence = f32::INFINITY;
-        assert_eq!(resp.validate_against(&req), Err(WireError::ConfidenceNotFinite));
+        assert_eq!(
+            resp.validate_against(&req),
+            Err(WireError::ConfidenceNotFinite)
+        );
     }
 
     #[test]

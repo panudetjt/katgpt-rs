@@ -184,7 +184,10 @@ impl CurationResult {
 /// O(N·K) insertion into `out` (cleared first); no allocation after the
 /// first call.
 pub fn select_meis_into(activations: &[f32], top_k: usize, out: &mut Vec<u32>) {
-    debug_assert!(top_k >= 2, "top_k must be >= 2 (threshold undefined at K=1)");
+    debug_assert!(
+        top_k >= 2,
+        "top_k must be >= 2 (threshold undefined at K=1)"
+    );
     debug_assert!(activations.len() >= top_k, "need at least top_k exemplars");
     out.clear();
     for (idx, &act) in activations.iter().enumerate() {
@@ -234,7 +237,10 @@ pub fn select_meis_into(activations: &[f32], top_k: usize, out: &mut Vec<u32>) {
 /// strictly below it. Returns 1.0 when every intruder is below threshold,
 /// 0.0 when none are.
 pub fn ooo_score(meis: &[u32], sim: &[f32], exemplar_count: usize) -> f32 {
-    debug_assert!(meis.len() >= 2, "K >= 2 required (threshold undefined at K=1)");
+    debug_assert!(
+        meis.len() >= 2,
+        "K >= 2 required (threshold undefined at K=1)"
+    );
     let k = meis.len();
     let n = exemplar_count;
     debug_assert!(k < n, "intruder set is empty when K == N");
@@ -280,7 +286,10 @@ pub fn ooo_score(meis: &[u32], sim: &[f32], exemplar_count: usize) -> f32 {
 /// shared MEI still contributes no point (own == other for it), which is
 /// the correct redundancy signal.
 pub fn cross_ooo(meis_a: &[u32], meis_b: &[u32], sim: &[f32], exemplar_count: usize) -> f32 {
-    debug_assert!(meis_a.len() >= 2, "K >= 2 required (own-similarity undefined at K=1)");
+    debug_assert!(
+        meis_a.len() >= 2,
+        "K >= 2 required (own-similarity undefined at K=1)"
+    );
     debug_assert!(meis_b.len() >= 2, "K >= 2 required");
     let n = exemplar_count;
     let ka = meis_a.len();
@@ -417,10 +426,12 @@ pub fn greedy_curate(
             out.dropped_uninterpretable.push(unit);
             continue;
         }
-        let redundant = out
-            .kept
-            .iter()
-            .any(|&k| matches!(audit.cross[unit * u + k].partial_cmp(&cfg.cross_cutoff), Some(CmpOrdering::Less)));
+        let redundant = out.kept.iter().any(|&k| {
+            matches!(
+                audit.cross[unit * u + k].partial_cmp(&cfg.cross_cutoff),
+                Some(CmpOrdering::Less)
+            )
+        });
         if redundant {
             out.pruned_redundant.push(unit);
         } else {
@@ -588,7 +599,15 @@ mod tests {
         // intruder 3: (0.75 + 0.75)/2 = 0.75  < 0.875 → point
         // intruder 4: (0.875 + 1.0)/2 = 0.9375 ≥ 0.875 → no point
         // score = 2/3.
-        let sim = sim5(&[((0, 1), 0.875), ((2, 0), 0.25), ((2, 1), 0.5), ((3, 0), 0.75), ((3, 1), 0.75), ((4, 0), 0.875), ((4, 1), 1.0)]);
+        let sim = sim5(&[
+            ((0, 1), 0.875),
+            ((2, 0), 0.25),
+            ((2, 1), 0.5),
+            ((3, 0), 0.75),
+            ((3, 1), 0.75),
+            ((4, 0), 0.875),
+            ((4, 1), 1.0),
+        ]);
         let score = ooo_score(&[0, 1], &sim, 5);
         assert_eq!(score, 2.0 / 3.0, "hand-computed intruder fraction 2/3");
     }
@@ -693,7 +712,11 @@ mod tests {
         assert_eq!(sim[0], 1.0);
         assert_eq!(sim[3], 1.0);
         let expected = (-2.0f32).exp();
-        assert!((sim[1] - expected).abs() < 1e-6, "e^-2 = {expected}, got {}", sim[1]);
+        assert!(
+            (sim[1] - expected).abs() < 1e-6,
+            "e^-2 = {expected}, got {}",
+            sim[1]
+        );
         assert_eq!(sim[1], sim[2], "symmetric");
     }
 
@@ -805,8 +828,8 @@ mod tests {
     #[cfg(feature = "factorized_action")]
     #[test]
     fn t3_overcomplete_codebook_audit_detects_redundancy() {
-        use crate::factorized_action::fit_codebook_kmeans_into;
         use crate::factorized_action::EffectCodebook;
+        use crate::factorized_action::fit_codebook_kmeans_into;
 
         const G: usize = 4;
         const M: usize = 30; // OOO = (N−M)/(N−K) = 90/112 ≈ 0.804 ≥ 0.8
@@ -928,8 +951,8 @@ mod tests {
     #[cfg(feature = "factorized_action")]
     #[test]
     fn t3_metric_granularity_law_geometric_rbf_resolves_micro_splits() {
-        use crate::factorized_action::fit_codebook_kmeans_into;
         use crate::factorized_action::EffectCodebook;
+        use crate::factorized_action::fit_codebook_kmeans_into;
 
         const G: usize = 4;
         const M: usize = 30;

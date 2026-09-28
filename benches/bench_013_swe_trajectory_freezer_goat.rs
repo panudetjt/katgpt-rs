@@ -69,7 +69,12 @@ fn build_committed_wrong(seed: u64) -> Vec<Vec<f32>> {
     let mut rng = Lcg::new(seed);
     let mut state: Vec<f32> = (0..DIM).map(|_| rng.next_f32() * 0.1).collect();
     let mut direction: Vec<f32> = (0..DIM).map(|_| rng.next_f32()).collect();
-    let norm = direction.iter().map(|x| x * x).sum::<f32>().sqrt().max(1e-6);
+    let norm = direction
+        .iter()
+        .map(|x| x * x)
+        .sum::<f32>()
+        .sqrt()
+        .max(1e-6);
     for x in direction.iter_mut() {
         *x /= norm;
     }
@@ -92,7 +97,11 @@ fn build_oscillation(seed: u64) -> Vec<Vec<f32>> {
     let attractor_b: Vec<f32> = (0..DIM).map(|_| rng.next_f32()).collect();
     let mut traj = Vec::with_capacity(N_STEPS + 1);
     for i in 0..=N_STEPS {
-        let target = if i % 2 == 0 { &attractor_a } else { &attractor_b };
+        let target = if i % 2 == 0 {
+            &attractor_a
+        } else {
+            &attractor_b
+        };
         traj.push(target.clone());
     }
     traj.shrink_to_fit();
@@ -196,9 +205,7 @@ struct ProbeResult {
     correct: bool,
 }
 
-fn run_g3_cross_mode_discrimination(
-    directions: &[[f32; D]; N],
-) -> (Vec<ProbeResult>, f32, bool) {
+fn run_g3_cross_mode_discrimination(directions: &[[f32; D]; N]) -> (Vec<ProbeResult>, f32, bool) {
     let freezer = SweTrajectoryFreezer::<N, D>::new(*directions);
     let fields: [&dyn ArchetypeFieldSource<D>; N] = make_fields();
 
@@ -301,7 +308,7 @@ fn run_g4_zero_alloc(directions: &[[f32; D]; N]) -> (G4Result, G4Result) {
 
     const N_CALLS: usize = 100;
 
-let freezer = SweTrajectoryFreezer::<N, D>::new(*directions);
+    let freezer = SweTrajectoryFreezer::<N, D>::new(*directions);
     let fields: [&dyn ArchetypeFieldSource<D>; N] = make_fields();
     let traj = build_trajectory_for_mode(0, 999);
     let refs = build_refs(&traj);
@@ -334,8 +341,16 @@ let freezer = SweTrajectoryFreezer::<N, D>::new(*directions);
     let pass2 = per_call2 == 0;
 
     (
-        G4Result { per_call: per_call1, pass: pass1, variant: "freeze_attempt" },
-        G4Result { per_call: per_call2, pass: pass2, variant: "freeze_attempt_into" },
+        G4Result {
+            per_call: per_call1,
+            pass: pass1,
+            variant: "freeze_attempt",
+        },
+        G4Result {
+            per_call: per_call2,
+            pass: pass2,
+            variant: "freeze_attempt_into",
+        },
     )
 }
 
@@ -353,8 +368,10 @@ fn main() {
     println!("╚════════════════════════════════════════════════════════════════════╝");
     println!();
     println!("Config: DIM={DIM}, N_STEPS={N_STEPS}, N archetypes={N}, D summary={D}");
-    println!("        {TRAJ_PER_MODE} trajs/mode, {TRAIN_SEEDS} train + {} test",
-        TRAJ_PER_MODE - TRAIN_SEEDS);
+    println!(
+        "        {TRAJ_PER_MODE} trajs/mode, {TRAIN_SEEDS} train + {} test",
+        TRAJ_PER_MODE - TRAIN_SEEDS
+    );
     println!();
 
     // Stage 1: fit — derive directions from labeled training summaries.
@@ -380,8 +397,11 @@ fn main() {
     println!("── Stage 1 (fit): derive_directions ──");
     for k in 0..N {
         let norm_sq: f32 = directions[k].iter().map(|x| x * x).sum();
-        println!("  direction[{k}] ({:>18}): norm = {:.4}",
-            MODE_NAMES[k], norm_sq.sqrt());
+        println!(
+            "  direction[{k}] ({:>18}): norm = {:.4}",
+            MODE_NAMES[k],
+            norm_sq.sqrt()
+        );
     }
     println!();
 
@@ -410,12 +430,16 @@ fn main() {
     // ── G3: cross-mode discrimination ────────────────────────────────────
     println!("── G3: cross-mode discrimination (substrate-level gate) ──");
     let (probes, accuracy, g3_pass) = run_g3_cross_mode_discrimination(&directions);
-    println!("  {:>18}  {:>10}  {:>14}  {:>10}",
-        "mode", "argmax_k", "matching_gate", "correct");
+    println!(
+        "  {:>18}  {:>10}  {:>14}  {:>10}",
+        "mode", "argmax_k", "matching_gate", "correct"
+    );
     println!("  {}", "-".repeat(58));
     for p in &probes {
-        println!("  {:>18}  {:>10}  {:>14.4}  {:>10}",
-            p.mode_name, p.argmax_k, p.matching_gate, p.correct);
+        println!(
+            "  {:>18}  {:>10}  {:>14.4}  {:>10}",
+            p.mode_name, p.argmax_k, p.matching_gate, p.correct
+        );
     }
     println!();
     println!("   accuracy: {accuracy:.2} (target ≥0.80)");
@@ -432,10 +456,14 @@ fn main() {
     // ── G4: zero-alloc steady state ─────────────────────────────────
     println!("── G4: alloc-free steady state ──");
     let (g4_alloc, g4_into) = run_g4_zero_alloc(&directions);
-    println!("   {}: {} allocs/call (target ≤2; from_states substrate)",
-        g4_alloc.variant, g4_alloc.per_call);
-    println!("   {}: {} allocs/call (target 0; from_states_into + reused scratch)",
-        g4_into.variant, g4_into.per_call);
+    println!(
+        "   {}: {} allocs/call (target ≤2; from_states substrate)",
+        g4_alloc.variant, g4_alloc.per_call
+    );
+    println!(
+        "   {}: {} allocs/call (target 0; from_states_into + reused scratch)",
+        g4_into.variant, g4_into.per_call
+    );
     let g4_pass = g4_alloc.pass && g4_into.pass;
     println!("   G4 verdict: {}", if g4_pass { "PASS" } else { "FAIL" });
     println!();
@@ -443,10 +471,22 @@ fn main() {
     // ── Summary ─────────────────────────────────────────────────────────
     println!("══════════════════════════════════════════════════════════════════");
     println!("T5.5 SweTrajectoryFreezer substrate-level gate:");
-    println!("  G1 directions non-degenerate : {}", if g1_pass { "✅ PASS" } else { "❌ FAIL" });
-    println!("  G2 freeze_attempt latency    : {}", if g2_pass { "✅ PASS" } else { "❌ FAIL" });
-    println!("  G3 cross-mode discrimination : {}", if g3_pass { "✅ PASS" } else { "❌ FAIL" });
-    println!("  G4 alloc-free steady state   : {}", if g4_pass { "✅ PASS" } else { "❌ FAIL" });
+    println!(
+        "  G1 directions non-degenerate : {}",
+        if g1_pass { "✅ PASS" } else { "❌ FAIL" }
+    );
+    println!(
+        "  G2 freeze_attempt latency    : {}",
+        if g2_pass { "✅ PASS" } else { "❌ FAIL" }
+    );
+    println!(
+        "  G3 cross-mode discrimination : {}",
+        if g3_pass { "✅ PASS" } else { "❌ FAIL" }
+    );
+    println!(
+        "  G4 alloc-free steady state   : {}",
+        if g4_pass { "✅ PASS" } else { "❌ FAIL" }
+    );
     println!();
     let all_pass = g1_pass && g2_pass && g3_pass && g4_pass;
     if all_pass {

@@ -297,9 +297,8 @@ pub fn detect_linking_into(
     let inv_2pi = 1.0_f32 / (2.0 * std::f32::consts::PI);
     let mut candidates: Vec<usize> = Vec::new();
     for (i, px) in prep_x.iter().enumerate() {
-        let reach = px.bounds.r_sq.sqrt()
-            + max_r_y
-            + (px.bounds.perimeter * max_p_y * inv_2pi).sqrt();
+        let reach =
+            px.bounds.r_sq.sqrt() + max_r_y + (px.bounds.perimeter * max_p_y * inv_2pi).sqrt();
         grid.query(&px.bounds.center, reach, &mut candidates);
         for &j in candidates.iter() {
             if !px.bounds.may_link(&prep_y[j].bounds) {
@@ -842,12 +841,7 @@ fn gauss_linking_integral(
 /// fallback for the pruned integral's ambiguous rounding band.
 fn gauss_linking_integral_soa(seg_x: &Segments, seg_y: &Segments) -> i32 {
     let inv_4pi = 1.0_f32 / (4.0 * std::f32::consts::PI);
-    let total = integrate_ranges(
-        seg_x,
-        0..seg_x.mx_x.len(),
-        seg_y,
-        0..seg_y.mx_x.len(),
-    );
+    let total = integrate_ranges(seg_x, 0..seg_x.mx_x.len(), seg_y, 0..seg_y.mx_x.len());
     (inv_4pi * total).round() as i32
 }
 

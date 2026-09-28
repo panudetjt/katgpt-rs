@@ -87,7 +87,10 @@ impl IncrementalEntmax1p5 {
     /// at-or-below τ; existing probabilities are untouched bit-for-bit and
     /// the entrant is exactly `0.0`).
     pub fn push(&mut self, score: f32) -> bool {
-        debug_assert!(score.is_finite(), "incremental entmax expects finite scores");
+        debug_assert!(
+            score.is_finite(),
+            "incremental entmax expects finite scores"
+        );
         if score <= self.tau {
             // Lemma 1 fast path: x + 0.0 = x keeps the normalization sum
             // bit-identical, so the old normalized probs stay exact.
@@ -296,11 +299,7 @@ mod tests {
         }
         let sum: f32 = inc.probs().iter().sum();
         assert!((sum - 1.0).abs() < 1e-5, "sum {sum}");
-        let zeros = inc
-            .probs()
-            .iter()
-            .filter(|&&p| p == 0.0)
-            .count();
+        let zeros = inc.probs().iter().filter(|&&p| p == 0.0).count();
         assert_eq!(zeros + inc.support_size(), inc.len());
         for (i, &p) in inc.probs().iter().enumerate() {
             assert!(p >= 0.0, "negative prob at {i}");

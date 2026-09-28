@@ -8,7 +8,13 @@ use std::time::Instant;
 fn main() {
     // matmul-row shape: `rows` calls of width `d` — per-call overhead matters
     // most at small d, which is exactly where a per-call check could show up.
-    let cases: &[(usize, usize)] = &[(8, 200_000), (64, 100_000), (256, 50_000), (1024, 20_000), (4096, 5_000)];
+    let cases: &[(usize, usize)] = &[
+        (8, 200_000),
+        (64, 100_000),
+        (256, 50_000),
+        (1024, 20_000),
+        (4096, 5_000),
+    ];
     for &(d, iters) in cases {
         let a = vec![1.000_001f32; d];
         let b = vec![0.999_999f32; d];
@@ -22,6 +28,9 @@ fn main() {
             acc += simd_dot_f32(black_box(&a), black_box(&b), black_box(d));
         }
         let el = t.elapsed();
-        println!("d={d} ns_per_call={:.3} sink={acc}", el.as_nanos() as f64 / iters as f64);
+        println!(
+            "d={d} ns_per_call={:.3} sink={acc}",
+            el.as_nanos() as f64 / iters as f64
+        );
     }
 }

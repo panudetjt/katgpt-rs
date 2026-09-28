@@ -221,9 +221,7 @@ fn run_g2() -> (Vec<G2Row>, bool) {
     println!(
         "│ Halter: tau={TAU}, patience={OSCILLATION_PATIENCE}, l_min={L_MIN}                              │"
     );
-    println!(
-        "│ Target: ≥75% loops saved vs L_max={L_MAX}                              │"
-    );
+    println!("│ Target: ≥75% loops saved vs L_max={L_MAX}                              │");
     println!();
 
     // Sweep decay rates. Lower decay = faster collapse = more savings.
@@ -289,9 +287,7 @@ fn run_g2() -> (Vec<G2Row>, bool) {
 
     if aggregate_pass {
         println!("│");
-        println!(
-            "│ G2 PASS: crowd-NPC regime saves {mean_savings:.1}% on average (target ≥75%) ✓"
-        );
+        println!("│ G2 PASS: crowd-NPC regime saves {mean_savings:.1}% on average (target ≥75%) ✓");
     } else {
         println!("│");
         println!(
@@ -335,9 +331,7 @@ fn run_g3() -> G3Result {
     println!(
         "│ Halter: tau={TAU}, patience={OSCILLATION_PATIENCE}, l_min={L_MIN}                              │"
     );
-    println!(
-        "│ Pass: waste ≤ 1 loop vs L_max={L_MAX} AND no spurious halt              │"
-    );
+    println!("│ Pass: waste ≤ 1 loop vs L_max={L_MAX} AND no spurious halt              │");
     println!();
 
     // Main trace: slow decay (0.95/loop), aligned cos_theta.
@@ -350,9 +344,7 @@ fn run_g3() -> G3Result {
     let loops_used = outcome.loops_used;
     let waste = L_MAX.saturating_sub(loops_used);
 
-    println!(
-        "  Important-NPC trace: loops_used={loops_used}/{L_MAX} (waste={waste})"
-    );
+    println!("  Important-NPC trace: loops_used={loops_used}/{L_MAX} (waste={waste})");
     let reason_str = match outcome.halt_reason {
         Some(HaltReason::GainBelowCost) => "GainBelowCost",
         Some(HaltReason::Oscillation) => "Oscillation",
@@ -541,9 +533,7 @@ fn run_g4() -> G4Result {
         }
     }
     if halter_halt_loop.is_none() {
-        println!(
-            "  GainCostLoopHalter: ran all {L_MAX} loops without halting"
-        );
+        println!("  GainCostLoopHalter: ran all {L_MAX} loops without halting");
     }
 
     // ── PathwayTracker side ──────────────────────────────────────────────
@@ -591,9 +581,7 @@ fn run_g4() -> G4Result {
     } else {
         println!("│ G4 FAIL:");
         if !halter_caught {
-            println!(
-                "│   → GainCostLoopHalter did not halt at L=2 (got {halter_halt_loop:?})"
-            );
+            println!("│   → GainCostLoopHalter did not halt at L=2 (got {halter_halt_loop:?})");
         }
         if !pathway_missed {
             println!(
@@ -646,9 +634,7 @@ fn run_latency_sanity() {
         let _ = black_box(simulate_trace(0.5, CROWD_COST_FLOOR));
     });
     let per_loop = ns / L_MAX as f64;
-    println!(
-        "│ Full 10-loop trace: {ns:.1} ns ({per_loop:.2} ns/loop, harness-incl.)"
-    );
+    println!("│ Full 10-loop trace: {ns:.1} ns ({per_loop:.2} ns/loop, harness-incl.)");
     println!("│ Note: includes Vec allocs in the harness, NOT kernel-only cost.");
     println!("│       Kernel `halt_decision` is ~5 float ops; real cost is in");
     println!("│       `forward_looped`'s hidden-state update, measured elsewhere.");
@@ -728,7 +714,9 @@ fn main() {
         println!("  GOAT gate matrix complete (G1 mechanics + G5 isolation already");
         println!("  shipped in Plan 304 T1.5/T3.5). Recommendation: keep `gain_cost_halt`");
         println!("  opt-in (default-off) — Plan 304 GOAT G1-G5 ALL PASS (2026-06-23); Plan 330");
-        println!("  wired gain_cost_halt into civ via crates/riir-games-civ/src/civ/map_tick/npc_clr.rs");
+        println!(
+            "  wired gain_cost_halt into civ via crates/riir-games-civ/src/civ/map_tick/npc_clr.rs"
+        );
         println!("  the synthetic harness confirms the kernel's savings/regression/");
         println!("  oscillation-detection contract on all reference regimes.");
         std::process::exit(0);

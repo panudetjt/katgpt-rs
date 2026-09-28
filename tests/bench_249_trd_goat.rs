@@ -264,8 +264,7 @@ fn t3_latency_p99() {
     // Baseline: single speculative step (bandit-chosen depth)
     let mut times_baseline: Vec<u64> = Vec::with_capacity(iters);
     for _ in 0..iters {
-        let mut trd =
-            TrajectoryRefinedDraft::new(TrdConfig::default(), &pruner);
+        let mut trd = TrajectoryRefinedDraft::new(TrdConfig::default(), &pruner);
         let start = Instant::now();
         let _ = trd.refine_branch(&raw, &failure, &marginal_slices, &mut rng);
         times_baseline.push(start.elapsed().as_nanos() as u64);
@@ -274,8 +273,7 @@ fn t3_latency_p99() {
     // Worst-case: 2-step refinement (bandit may pick the 2-step arm)
     let mut times_worst: Vec<u64> = Vec::with_capacity(iters);
     for _ in 0..iters {
-        let mut trd =
-            TrajectoryRefinedDraft::new(TrdConfig::default(), &pruner);
+        let mut trd = TrajectoryRefinedDraft::new(TrdConfig::default(), &pruner);
         let start = Instant::now();
         let _ = trd.refine_branch(&raw, &failure, &marginal_slices, &mut rng);
         times_worst.push(start.elapsed().as_nanos() as u64);

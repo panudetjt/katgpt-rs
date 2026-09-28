@@ -1,4 +1,8 @@
-#![cfg(all(feature = "lt2_looped", feature = "cadence_gate", feature = "loop_stability_fix"))]
+#![cfg(all(
+    feature = "lt2_looped",
+    feature = "cadence_gate",
+    feature = "loop_stability_fix"
+))]
 //! Issue 731 T3 — the heterogeneous-depth corpora + the G2 GOAT gate.
 //!
 //! # Why (the T2 implication, verbatim input to this design)
@@ -380,7 +384,9 @@ fn make_corpus_v1() -> Vec<CorpusInput> {
         .collect();
     for &seed in &SEQ_SEEDS {
         let mut rng = Rng::new(seed);
-        let tokens: Vec<usize> = (0..SEQ_LEN).map(|_| (rng.next() as usize) % vocab).collect();
+        let tokens: Vec<usize> = (0..SEQ_LEN)
+            .map(|_| (rng.next() as usize) % vocab)
+            .collect();
         for (p, &t) in tokens.iter().enumerate() {
             corpus.push(CorpusInput {
                 label: format!("Q{seed}p{p}t{t}"),
@@ -460,7 +466,16 @@ fn run_on_prefix(
     probe: Option<&mut LoopResidualExit>,
 ) -> Vec<f32> {
     let Some(tokens) = prefix else {
-        return run_one(config, weights, residual_gate, sdpa_gate, token, pos, elastic, probe);
+        return run_one(
+            config,
+            weights,
+            residual_gate,
+            sdpa_gate,
+            token,
+            pos,
+            elastic,
+            probe,
+        );
     };
     let mut ctx = ForwardContext::new(config);
     let mut cache = MultiLayerKVCache::new(config);
@@ -624,8 +639,15 @@ fn run_g2_harness(
         .iter()
         .map(|c| {
             run_on_prefix(
-                &config, &weights, &residual_gate, &sdpa_gate,
-                c.seq.as_deref(), c.pos, c.token, None, None,
+                &config,
+                &weights,
+                &residual_gate,
+                &sdpa_gate,
+                c.seq.as_deref(),
+                c.pos,
+                c.token,
+                None,
+                None,
             )
         })
         .collect();
@@ -633,10 +655,14 @@ fn run_g2_harness(
     // ── Phase A0 — the finite-reference gate (pre-declared; v3 branch 1).
     // Bit-identity asserts are meaningless on NaN (NaN ≠ NaN would false-red
     // E1), so a diverging fixture is rejected before any invariant runs. ──
-    if let Some((label, i)) = refs.iter().enumerate().find_map(|(i, r)| {
-        (!r.iter().all(|v| v.is_finite())).then(|| (corpus[i].label.clone(), i))
-    }) {
-        println!("\n[Phase A0] reference logits NON-FINITE for {label} (input {i}) — the fixture diverges at full depth. Corpus REJECTED (pre-declared branch 1); the axis is stability-bounded at this scale. Invariants skipped (nothing finite to verify).");
+    if let Some((label, i)) = refs
+        .iter()
+        .enumerate()
+        .find_map(|(i, r)| (!r.iter().all(|v| v.is_finite())).then(|| (corpus[i].label.clone(), i)))
+    {
+        println!(
+            "\n[Phase A0] reference logits NON-FINITE for {label} (input {i}) — the fixture diverges at full depth. Corpus REJECTED (pre-declared branch 1); the axis is stability-bounded at this scale. Invariants skipped (nothing finite to verify)."
+        );
         return G2Report::diverged(n);
     }
 
@@ -648,8 +674,15 @@ fn run_g2_harness(
                 continue;
             }
             let out = run_on_prefix(
-                &config, &weights, &residual_gate, &sdpa_gate,
-                c.seq.as_deref(), c.pos, c.token, Some(k), None,
+                &config,
+                &weights,
+                &residual_gate,
+                &sdpa_gate,
+                c.seq.as_deref(),
+                c.pos,
+                c.token,
+                Some(k),
+                None,
             );
             if cosine_distance(&out, &refs[i]) <= KNEE_BOUND {
                 knees[i] = Some(k);
@@ -662,15 +695,25 @@ fn run_g2_harness(
     let frac_ge12 = defined.iter().filter(|&&k| k >= 12).count() as f32 / n as f32;
     let frac_le8 = defined.iter().filter(|&&k| k <= 8).count() as f32 / n as f32;
     if defined.is_empty() {
-        println!("\n[Phase A] NO input reaches the knee bound by depth 32 (undefined {undefined}/{n}).");
+        println!(
+            "\n[Phase A] NO input reaches the knee bound by depth 32 (undefined {undefined}/{n})."
+        );
     } else {
         defined.sort_unstable();
         let (k_med, _) = percentile_report(&defined, 0.50);
         let (k_q1, _) = percentile_report(&defined, 0.25);
         let (k_q3, _) = percentile_report(&defined, 0.75);
-        println!("\n[Phase A] per-input knees (bound {KNEE_BOUND}): median {k_med}, q1 {k_q1}, q3 {k_q3}, min {}, max {}, undefined {undefined}/{n}", defined.first().unwrap(), defined.last().unwrap());
+        println!(
+            "\n[Phase A] per-input knees (bound {KNEE_BOUND}): median {k_med}, q1 {k_q1}, q3 {k_q3}, min {}, max {}, undefined {undefined}/{n}",
+            defined.first().unwrap(),
+            defined.last().unwrap()
+        );
     }
-    println!("[Phase A] frac(knee ≥ 12) = {:.1}%, frac(knee ≤ 8) = {:.1}% (context — the gate is the margin, see the module doc)", frac_ge12 * 100.0, frac_le8 * 100.0);
+    println!(
+        "[Phase A] frac(knee ≥ 12) = {:.1}%, frac(knee ≤ 8) = {:.1}% (context — the gate is the margin, see the module doc)",
+        frac_ge12 * 100.0,
+        frac_le8 * 100.0
+    );
     if print_inputs {
         for (i, c) in corpus.iter().enumerate() {
             println!("[Phase A]   {} knee = {:?}", c.label, knees[i]);
@@ -682,8 +725,15 @@ fn run_g2_harness(
     for (i, c) in corpus.iter().enumerate() {
         let mut probe = LoopResidualExit::new(PROBE_TAU, usize::MAX);
         let with_probe = run_on_prefix(
-            &config, &weights, &residual_gate, &sdpa_gate,
-            c.seq.as_deref(), c.pos, c.token, None, Some(&mut probe),
+            &config,
+            &weights,
+            &residual_gate,
+            &sdpa_gate,
+            c.seq.as_deref(),
+            c.pos,
+            c.token,
+            None,
+            Some(&mut probe),
         );
         assert_eq!(
             with_probe, refs[i],
@@ -706,8 +756,15 @@ fn run_g2_harness(
             for c in corpus.iter() {
                 let mut probe = LoopResidualExit::new(tau, PROBE_D_MIN);
                 run_on_prefix(
-                    &control_config, &c_weights, &c_residual_gate, &c_sdpa_gate,
-                    c.seq.as_deref(), c.pos, c.token, None, Some(&mut probe),
+                    &control_config,
+                    &c_weights,
+                    &c_residual_gate,
+                    &c_sdpa_gate,
+                    c.seq.as_deref(),
+                    c.pos,
+                    c.token,
+                    None,
+                    Some(&mut probe),
                 );
                 if let Some(k) = probe.fired_at_iteration() {
                     control_fires.push((tau, c.label.clone(), k));
@@ -732,8 +789,15 @@ fn run_g2_harness(
         let mut worst = 0.0f32;
         for (i, c) in corpus.iter().enumerate() {
             let out = run_on_prefix(
-                &config, &weights, &residual_gate, &sdpa_gate,
-                c.seq.as_deref(), c.pos, c.token, Some(k), None,
+                &config,
+                &weights,
+                &residual_gate,
+                &sdpa_gate,
+                c.seq.as_deref(),
+                c.pos,
+                c.token,
+                Some(k),
+                None,
             );
             worst = worst.max(cosine_distance(&out, &refs[i]));
         }
@@ -754,16 +818,30 @@ fn run_g2_harness(
     for (i, c) in corpus.iter().enumerate() {
         let mut probe = LoopResidualExit::new(PROBE_TAU, PROBE_D_MIN);
         let exited = run_on_prefix(
-            &config, &weights, &residual_gate, &sdpa_gate,
-            c.seq.as_deref(), c.pos, c.token, None, Some(&mut probe),
+            &config,
+            &weights,
+            &residual_gate,
+            &sdpa_gate,
+            c.seq.as_deref(),
+            c.pos,
+            c.token,
+            None,
+            Some(&mut probe),
         );
         dist_at_exit.push(cosine_distance(&exited, &refs[i]));
         match probe.fired_at_iteration() {
             Some(k) => {
                 // Phase E2 (hard assert): exit ≡ elastic, bit-identical.
                 let elastic = run_on_prefix(
-                    &config, &weights, &residual_gate, &sdpa_gate,
-                    c.seq.as_deref(), c.pos, c.token, Some(k), None,
+                    &config,
+                    &weights,
+                    &residual_gate,
+                    &sdpa_gate,
+                    c.seq.as_deref(),
+                    c.pos,
+                    c.token,
+                    Some(k),
+                    None,
                 );
                 assert_eq!(
                     exited, elastic,
@@ -784,15 +862,33 @@ fn run_g2_harness(
     let max_exit_dist = dist_at_exit.iter().copied().fold(0.0, f32::max);
     let median_all = median(&mut used);
     let mut fired_sorted = fired.clone();
-    let median_fired = if fired_sorted.is_empty() { 0 } else { median(&mut fired_sorted) };
-    let (p95, sup95) = if fired_sorted.is_empty() { (0, 0) } else { percentile_report(&fired_sorted, 0.95) };
-    let (p99, sup99) = if fired_sorted.is_empty() { (0, 0) } else { percentile_report(&fired_sorted, 0.99) };
+    let median_fired = if fired_sorted.is_empty() {
+        0
+    } else {
+        median(&mut fired_sorted)
+    };
+    let (p95, sup95) = if fired_sorted.is_empty() {
+        (0, 0)
+    } else {
+        percentile_report(&fired_sorted, 0.95)
+    };
+    let (p99, sup99) = if fired_sorted.is_empty() {
+        (0, 0)
+    } else {
+        percentile_report(&fired_sorted, 0.99)
+    };
     let max_fired = fired_sorted.last().copied().unwrap_or(0);
     let cut = R_REF as f32 / median_all as f32;
     let margin = k_star as f32 / median_all as f32;
-    println!("\n[Phase C] probe (τ = {PROBE_TAU}, d_min = {PROBE_D_MIN}): fired {fired_count}/{n} (median-fired {median_fired}, p95 {p95} [support {sup95}], p99 {p99} [support {sup99}], max {max_fired}), ran-to-32 {ran_to_32}");
-    println!("[Phase C] iterations-used median (all inputs) = {median_all} → cut vs default = {cut:.2}×; mean dist at exit = {mean_exit_dist:.6}; max dist at exit = {max_exit_dist:.6}");
-    println!("[Gate] adaptivity margin = K* / median_all = {k_star}/{median_all} = {margin:.2}× (bar ≥ 2×) — the floor-cap: the margin is bounded by K*/{PROBE_D_MIN} under the a-priori d_min");
+    println!(
+        "\n[Phase C] probe (τ = {PROBE_TAU}, d_min = {PROBE_D_MIN}): fired {fired_count}/{n} (median-fired {median_fired}, p95 {p95} [support {sup95}], p99 {p99} [support {sup99}], max {max_fired}), ran-to-32 {ran_to_32}"
+    );
+    println!(
+        "[Phase C] iterations-used median (all inputs) = {median_all} → cut vs default = {cut:.2}×; mean dist at exit = {mean_exit_dist:.6}; max dist at exit = {max_exit_dist:.6}"
+    );
+    println!(
+        "[Gate] adaptivity margin = K* / median_all = {k_star}/{median_all} = {margin:.2}× (bar ≥ 2×) — the floor-cap: the margin is bounded by K*/{PROBE_D_MIN} under the a-priori d_min"
+    );
 
     // ── The margin gate (the corrected sanity bar — module doc record) ───
     let margin_gate = margin >= 2.0 && undefined * 10 <= n;
@@ -813,13 +909,18 @@ fn run_g2_harness(
         control_fires,
     };
     if !margin_gate {
-        println!("\n[VERDICT] corpus REJECTED: adaptivity margin {margin:.2}× < 2× (or undefined {undefined}/{n} > 10%) — the probe cannot demonstrate ≥2× adaptivity over the corpus-safe static on this corpus. G2 not evaluated. Recorded next lever: a d_min reduction (own pre-registration) or a larger fixture family.");
+        println!(
+            "\n[VERDICT] corpus REJECTED: adaptivity margin {margin:.2}× < 2× (or undefined {undefined}/{n} > 10%) — the probe cannot demonstrate ≥2× adaptivity over the corpus-safe static on this corpus. G2 not evaluated. Recorded next lever: a d_min reduction (own pre-registration) or a larger fixture family."
+        );
         return report;
     }
 
     // ── Phase D — the G2 verdict (measured, not asserted) ────────────────
     let g2 = cut >= 2.0 && mean_exit_dist <= KNEE_BOUND;
-    println!("\n[VERDICT] G2 (≥2× median iteration cut at mean dist ≤ {KNEE_BOUND}): {}", if g2 { "PASS" } else { "FAIL" });
+    println!(
+        "\n[VERDICT] G2 (≥2× median iteration cut at mean dist ≤ {KNEE_BOUND}): {}",
+        if g2 { "PASS" } else { "FAIL" }
+    );
     report.g2 = g2;
     report
 }
@@ -831,7 +932,12 @@ fn run_g2_harness(
 /// outcome + a determinism witness (the rerun must print the same knees).
 #[test]
 fn bench_731_t3_corpus_v1_sequences() {
-    let report = run_g2_harness("corpus v1 — sequences", make_corpus_v1(), plain_fixture_of, false);
+    let report = run_g2_harness(
+        "corpus v1 — sequences",
+        make_corpus_v1(),
+        plain_fixture_of,
+        false,
+    );
     // Phase E3 is a GATE, not a measurement (Issue 731 T6 moved the assert
     // out of the harness so a sweep records its whole table).
     assert!(
@@ -1110,9 +1216,8 @@ const T6_HOLDOUT_SEEDS: [u64; 12] = [
 
 /// Every weight seed the v4 scan record names (module doc, waves 1-3) plus
 /// this file's own fixture seeds — the set T6 must not draw from.
-const T6_RECORDED_SCAN_SEEDS: [u64; 12] = [
-    42, 7, 1234, 5, 2, 21, 555, 31337, 271828, 4242, 4243, 4244,
-];
+const T6_RECORDED_SCAN_SEEDS: [u64; 12] =
+    [42, 7, 1234, 5, 2, 21, 555, 31337, 271828, 4242, 4243, 4244];
 
 thread_local! {
     /// The seed the held-out fixture builder reads. `run_g2_harness` calls
@@ -1140,7 +1245,8 @@ fn t6_holdout_seeds_are_disjoint_from_the_recorded_scan_seeds() {
         );
     }
     assert!(
-        !T6_HOLDOUT_SEEDS.contains(&SEED) && !SEQ_SEEDS.iter().any(|s| T6_HOLDOUT_SEEDS.contains(s)),
+        !T6_HOLDOUT_SEEDS.contains(&SEED)
+            && !SEQ_SEEDS.iter().any(|s| T6_HOLDOUT_SEEDS.contains(s)),
         "held-out set overlaps this file's own fixture seeds"
     );
 }
@@ -1170,8 +1276,12 @@ fn bench_731_t6_holdout_replication_of_the_v4_mechanism() {
     T6_SEED.with(|c| c.set(V4_SEED));
 
     // ── The table (one row per held-out fixture) ─────────────────────────
-    println!("\n═══ [T6] held-out replication table (α {V4_ALPHA}, τ {PROBE_TAU}, d_min {PROBE_D_MIN} — none re-tuned) ═══");
-    println!("  seed | status   | knee_max | undef | K* | med_all | margin | cut   | mean_dist | max_dist | fired | E3 control");
+    println!(
+        "\n═══ [T6] held-out replication table (α {V4_ALPHA}, τ {PROBE_TAU}, d_min {PROBE_D_MIN} — none re-tuned) ═══"
+    );
+    println!(
+        "  seed | status   | knee_max | undef | K* | med_all | margin | cut   | mean_dist | max_dist | fired | E3 control"
+    );
     for (seed, r) in &reports {
         let status = match (r.diverged, r.margin_gate, r.g2) {
             (true, _, _) => "DIVERGED",
@@ -1181,14 +1291,33 @@ fn bench_731_t6_holdout_replication_of_the_v4_mechanism() {
         };
         println!(
             "  {:>4} | {} | {:>8} | {:>2}/{:<2} | {:>2} | {:>7} | {:>5.2}× | {:>4.2}× | {:>9.6} | {:>8.6} | {:>2}/{} | {}",
-            seed, status, r.knee_max, r.undefined, r.n, r.k_star, r.median_all, r.margin, r.cut,
-            r.mean_exit_dist, r.max_exit_dist, r.fired, r.n,
-            if r.control_fires.is_empty() { "clean".to_string() } else { format!("{} FIRE(S)", r.control_fires.len()) },
+            seed,
+            status,
+            r.knee_max,
+            r.undefined,
+            r.n,
+            r.k_star,
+            r.median_all,
+            r.margin,
+            r.cut,
+            r.mean_exit_dist,
+            r.max_exit_dist,
+            r.fired,
+            r.n,
+            if r.control_fires.is_empty() {
+                "clean".to_string()
+            } else {
+                format!("{} FIRE(S)", r.control_fires.len())
+            },
         );
     }
 
     // ── P1 — the ceiling claim ───────────────────────────────────────────
-    let live: Vec<&G2Report> = reports.iter().map(|(_, r)| r).filter(|r| !r.diverged).collect();
+    let live: Vec<&G2Report> = reports
+        .iter()
+        .map(|(_, r)| r)
+        .filter(|r| !r.diverged)
+        .collect();
     let diverged = reports.len() - live.len();
     let over_ceiling: Vec<(u64, f32)> = reports
         .iter()
@@ -1198,9 +1327,17 @@ fn bench_731_t6_holdout_replication_of_the_v4_mechanism() {
     let max_margin = live.iter().map(|r| r.margin).fold(0.0f32, f32::max);
     println!(
         "\n[T6][P1] ceiling claim (no held-out fixture exceeds margin 2.0× at mean dist ≤ {KNEE_BOUND}): {} — max held-out margin {max_margin:.2}× over {} live fixture(s) ({diverged} diverged, excluded){}",
-        if over_ceiling.is_empty() { "CORROBORATED" } else { "REFUTED" },
+        if over_ceiling.is_empty() {
+            "CORROBORATED"
+        } else {
+            "REFUTED"
+        },
         live.len(),
-        if over_ceiling.is_empty() { String::new() } else { format!("; over-ceiling: {over_ceiling:?}") }
+        if over_ceiling.is_empty() {
+            String::new()
+        } else {
+            format!("; over-ceiling: {over_ceiling:?}")
+        }
     );
 
     // ── P2 — the rarity claim ────────────────────────────────────────────
@@ -1211,15 +1348,25 @@ fn bench_731_t6_holdout_replication_of_the_v4_mechanism() {
         .collect();
     let n_pass = passes.len();
     let reading = match n_pass {
-        0 => "v4 is a LOTTERY DRAW — the synthetic axis is CLOSED and T4's real-workload defer is CORROBORATED by measurement, not merely asserted",
-        1 | 2 => "consistent with the scan's own base rate — the existence-proof grade STANDS, unchanged",
-        _ => "the one-in-144 caveat is OVERSTATED — the mechanism generalizes across the seed lottery at fixed α; G2's grade upgrades to REPLICATED OUT-OF-SAMPLE on the synthetic axis",
+        0 => {
+            "v4 is a LOTTERY DRAW — the synthetic axis is CLOSED and T4's real-workload defer is CORROBORATED by measurement, not merely asserted"
+        }
+        1 | 2 => {
+            "consistent with the scan's own base rate — the existence-proof grade STANDS, unchanged"
+        }
+        _ => {
+            "the one-in-144 caveat is OVERSTATED — the mechanism generalizes across the seed lottery at fixed α; G2's grade upgrades to REPLICATED OUT-OF-SAMPLE on the synthetic axis"
+        }
     };
     println!(
         "[T6][P2] rarity claim (≤ 2 of {} G2-PASS): {n_pass}/{} pass{} — pre-declared reading: {reading}",
         T6_HOLDOUT_SEEDS.len(),
         T6_HOLDOUT_SEEDS.len(),
-        if passes.is_empty() { String::new() } else { format!(" ({passes:?})") }
+        if passes.is_empty() {
+            String::new()
+        } else {
+            format!(" ({passes:?})")
+        }
     );
 
     // ── P3 — the invariants (asserted inside the harness on every live
@@ -1237,10 +1384,18 @@ fn bench_731_t6_holdout_replication_of_the_v4_mechanism() {
     println!(
         "[T6][P3] InterLoopNorm control (0 fires at all {} τ ≤ 3): {} — {} of {} live fixture(s) violated{}",
         CONTROL_TAUS.len(),
-        if violators.is_empty() { "HELD" } else { "VIOLATED" },
+        if violators.is_empty() {
+            "HELD"
+        } else {
+            "VIOLATED"
+        },
         violators.len(),
         live.len(),
-        if violators.is_empty() { String::new() } else { format!("; (seed, fires, first) = {violators:?}") }
+        if violators.is_empty() {
+            String::new()
+        } else {
+            format!("; (seed, fires, first) = {violators:?}")
+        }
     );
     assert!(
         !live.is_empty(),
@@ -1286,9 +1441,13 @@ fn t6_seed_1003_control_violation_is_pinned_both_directions() {
 
     // The fire is floor-INVARIANT: rule 3 carries no absolute threshold.
     for sf in [0.5f32, 0.05, 1e-3, 1e-5] {
-        let cfg = CadenceConfig { plateau_floor: sf * 2.0, settle_floor: sf, decay_ratio_max: 0.5 };
-        let mut p = LoopResidualExit::with_cadence_config(0.0, PROBE_D_MIN, cfg)
-            .with_shape_persistence(1);
+        let cfg = CadenceConfig {
+            plateau_floor: sf * 2.0,
+            settle_floor: sf,
+            decay_ratio_max: 0.5,
+        };
+        let mut p =
+            LoopResidualExit::with_cadence_config(0.0, PROBE_D_MIN, cfg).with_shape_persistence(1);
         run_on_prefix(&config, &w, &rg, &sg, None, 0, 2, None, Some(&mut p));
         assert_eq!(
             p.fired_at_iteration(),
@@ -1302,9 +1461,13 @@ fn t6_seed_1003_control_violation_is_pinned_both_directions() {
     // test under debug_assertions. A legal drm below the measured [0.3, 0.5)
     // band pins the same mechanism: rule 3 fully suppressed.)
     for (drm, want_fire) in [(0.9f32, true), (0.5, true), (0.3, false), (0.1, false)] {
-        let cfg = CadenceConfig { plateau_floor: 1e-9, settle_floor: 1e-12, decay_ratio_max: drm };
-        let mut p = LoopResidualExit::with_cadence_config(0.0, PROBE_D_MIN, cfg)
-            .with_shape_persistence(1);
+        let cfg = CadenceConfig {
+            plateau_floor: 1e-9,
+            settle_floor: 1e-12,
+            decay_ratio_max: drm,
+        };
+        let mut p =
+            LoopResidualExit::with_cadence_config(0.0, PROBE_D_MIN, cfg).with_shape_persistence(1);
         run_on_prefix(&config, &w, &rg, &sg, None, 0, 2, None, Some(&mut p));
         assert_eq!(
             p.fired_at_iteration().is_some(),

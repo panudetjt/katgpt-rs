@@ -173,7 +173,11 @@ mod tests {
     fn attribution_matches_central_finite_difference() {
         const D: usize = 6;
         const N: usize = 4;
-        const PROBES: usize = if cfg!(debug_assertions) { 1_000 } else { 100_000 };
+        const PROBES: usize = if cfg!(debug_assertions) {
+            1_000
+        } else {
+            100_000
+        };
         let init = seeded_dense::<D, N>(b"fd-probe", 3);
         let mut scratch = DenseScratch::<D>::new();
         let mut rng = Lcg(123);
@@ -214,7 +218,10 @@ mod tests {
         }
         // The seeded init guarantees γk ≥ ½ on the box, so almost every
         // probe is trusted; tolerate only rare near-degeneracies.
-        assert!(skipped_repeated <= PROBES / 10, "{skipped_repeated} untrusted of {PROBES}");
+        assert!(
+            skipped_repeated <= PROBES / 10,
+            "{skipped_repeated} untrusted of {PROBES}"
+        );
     }
 
     /// T6 law: |vᵀAᵢv| ≤ ‖Aᵢ‖₂ always (Lemma 1 with ‖vvᵀ‖* = 1).
@@ -232,9 +239,8 @@ mod tests {
             }
             let rep = attribute(&init.a0, &init.a, &x, 2, 0.0, &mut scratch);
             for (i, &inf) in rep.influence.iter().enumerate() {
-                let norm = crate::spectral_pencil::bounds::norm_jacobi_exact(
-                    &init.a[i], &mut scratch,
-                );
+                let norm =
+                    crate::spectral_pencil::bounds::norm_jacobi_exact(&init.a[i], &mut scratch);
                 assert!(
                     inf.abs() <= norm + 1e-4,
                     "|{inf}| > ‖A{i}‖ = {norm} (Lemma 1 violated)"

@@ -120,12 +120,20 @@ impl DenseMatvecLif {
                 self.refrac[j] -= 1;
                 self.v[j] = p.v_rst;
                 let g_next = self.g[j] * a_s;
-                self.g[j] = if g_next.abs() < p.g_floor { 0.0 } else { g_next };
+                self.g[j] = if g_next.abs() < p.g_floor {
+                    0.0
+                } else {
+                    g_next
+                };
                 continue;
             }
             let v_new = p.v0 + (self.v[j] - p.v0) * a_m + self.g[j] * c_gs;
             let g_next = self.g[j] * a_s;
-            self.g[j] = if g_next.abs() < p.g_floor { 0.0 } else { g_next };
+            self.g[j] = if g_next.abs() < p.g_floor {
+                0.0
+            } else {
+                g_next
+            };
             if v_new >= p.v_th {
                 self.v[j] = p.v_rst;
                 self.refrac[j] = p.refrac_ticks;
@@ -213,17 +221,21 @@ fn bench_cell(c: &mut Criterion, name: &str, n: u32, edges: usize, n_driven: u32
             r.step_dense();
         }
         let mut tick = 2 * PERIOD;
-        c.bench_with_input(BenchmarkId::new(format!("{name}/dense_csr"), n), &n, |b, _| {
-            b.iter(|| {
-                if tick.is_multiple_of(PERIOD) {
-                    for &d in &driven {
-                        r.inject(d, MAG);
+        c.bench_with_input(
+            BenchmarkId::new(format!("{name}/dense_csr"), n),
+            &n,
+            |b, _| {
+                b.iter(|| {
+                    if tick.is_multiple_of(PERIOD) {
+                        for &d in &driven {
+                            r.inject(d, MAG);
+                        }
                     }
-                }
-                tick += 1;
-                black_box(r.step_dense().len())
-            })
-        });
+                    tick += 1;
+                    black_box(r.step_dense().len())
+                })
+            },
+        );
     }
 
     // Arm 3: dense-W matvec baseline. 10k → 400 MB matrix (workstation OK).
@@ -233,7 +245,11 @@ fn bench_cell(c: &mut Criterion, name: &str, n: u32, edges: usize, n_driven: u32
         let mut tick = 0usize;
         c.bench_with_input(BenchmarkId::new(format!("{name}/matvec"), n), &n, |b, _| {
             b.iter(|| {
-                let driven_now: &[u32] = if tick.is_multiple_of(PERIOD) { &driven } else { &[] };
+                let driven_now: &[u32] = if tick.is_multiple_of(PERIOD) {
+                    &driven
+                } else {
+                    &[]
+                };
                 tick += 1;
                 black_box(m.tick(driven_now, MAG))
             })

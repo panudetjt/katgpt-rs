@@ -47,14 +47,12 @@
 //! CPU reference for the GPU training loop (C10). Gated behind `kimi_k3_backward`
 //! alongside the non-checkpointed backward in `backward.rs`.
 
-use katgpt_attn::gdn2::kda_backward::{
-    KdaSavedActivations, kda_backward_sequence,
-};
+use katgpt_attn::gdn2::kda_backward::kda_forward_token_with_saved;
+use katgpt_attn::gdn2::kda_backward::{KdaSavedActivations, kda_backward_sequence};
 use katgpt_attn::mla_backward::{
     MlaSavedActivations, mla_backward_token, mla_forward_token_with_saved,
     rmsnorm_backward as mla_rmsnorm_backward,
 };
-use katgpt_attn::gdn2::kda_backward::kda_forward_token_with_saved;
 use katgpt_core::simd::simd_sum_sq;
 use katgpt_core::types::math::rmsnorm_with_gamma_eps;
 use katgpt_kv::shard_kv::rope::RopeFreqs;
@@ -62,12 +60,10 @@ use katgpt_transformer::attn_res::{AttnResBlockState, apply_attn_res};
 use katgpt_transformer::moe_backward::moe_forward_token_with_saved;
 
 use super::backward::{
-    KimiK3ModelGradients, LayerSavedActivations,
-    ffn_backward, attn_res_backward, dense_situ_ffn_forward_saved,
+    KimiK3ModelGradients, LayerSavedActivations, attn_res_backward, dense_situ_ffn_forward_saved,
+    ffn_backward,
 };
-use super::decoder_layer::{
-    KimiAttentionState, KimiDecoderLayerConfig, KimiDecoderLayerWeights,
-};
+use super::decoder_layer::{KimiAttentionState, KimiDecoderLayerConfig, KimiDecoderLayerWeights};
 use super::loader::KimiK3ModelWeights;
 use super::model::{KimiK3ModelConfig, KimiK3Runtime};
 
@@ -146,7 +142,9 @@ pub fn kimi_k3_forward_token_ckpt(
 
     // Embedding lookup
     let embed_start = (token_id as usize) * d;
-    runtime.hidden.copy_from_slice(&weights.embed_weight[embed_start..embed_start + d]);
+    runtime
+        .hidden
+        .copy_from_slice(&weights.embed_weight[embed_start..embed_start + d]);
 
     // Decoder layers — capture only layer input + block-state snapshots
     for (layer_idx, layer_w) in weights.layers.iter().enumerate() {
@@ -207,7 +205,11 @@ pub fn kimi_k3_forward_token_ckpt(
     // Final RMSNorm
     let sum_sq = simd_sum_sq(&runtime.hidden, d);
     let inv_rms = 1.0 / ((sum_sq / d as f32 + config.rms_eps).sqrt());
-    rmsnorm_with_gamma_eps(&mut runtime.hidden, &weights.final_norm_weight, config.rms_eps as f64);
+    rmsnorm_with_gamma_eps(
+        &mut runtime.hidden,
+        &weights.final_norm_weight,
+        config.rms_eps as f64,
+    );
 
     let final_hidden = runtime.hidden.clone();
 
@@ -411,8 +413,13 @@ pub fn kimi_k3_backward_sequence_ckpt(
             // `ffn_backward` takes `d_output: &[f32]` and never mutates it, so
             // borrow `d_prefix[t]` directly instead of cloning a `[d]` Vec per
             // token per layer.
-            let d_normed_mlp =
-                ffn_backward(&layer_cfg.ffn, &layer_w.ffn, saved, &d_prefix[t], layer_grads);
+            let d_normed_mlp = ffn_backward(
+                &layer_cfg.ffn,
+                &layer_w.ffn,
+                saved,
+                &d_prefix[t],
+                layer_grads,
+            );
 
             let d_mixed_mlp = mla_rmsnorm_backward(
                 &d_normed_mlp,
@@ -472,7 +479,8 @@ pub fn kimi_k3_backward_sequence_ckpt(
             let KimiDecoderLayerWeights {
                 attention: super::decoder_layer::KimiAttentionWeights::Mla(mla_w),
                 ..
-            } = layer_w else {
+            } = layer_w
+            else {
                 panic!("MLA layer but non-MLA weights");
             };
 
@@ -512,7 +520,8 @@ pub fn kimi_k3_backward_sequence_ckpt(
             let KimiDecoderLayerWeights {
                 attention: super::decoder_layer::KimiAttentionWeights::Kda(kda_w),
                 ..
-            } = layer_w else {
+            } = layer_w
+            else {
                 panic!("KDA layer but non-KDA weights");
             };
             let all_saved_kda: Vec<KdaSavedActivations> = (0..l)
@@ -629,7 +638,9 @@ fn recompute_layer_forward_saved(
     scratch_hidden: &mut [f32],
     saved: &mut LayerSavedActivations,
 ) {
-    use super::decoder_layer::{KimiAttentionConfig, KimiAttentionWeights, KimiFfnConfig, KimiFfnWeights};
+    use super::decoder_layer::{
+        KimiAttentionConfig, KimiAttentionWeights, KimiFfnConfig, KimiFfnWeights,
+    };
 
     let d = config.attn_res.d();
     let eps = config.rms_eps;
@@ -670,16 +681,26 @@ fn recompute_layer_forward_saved(
 
     let attn_out: Vec<f32> = match (&config.attention, &weights.attention) {
         (KimiAttentionConfig::Mla(cfg), KimiAttentionWeights::Mla(w)) => {
-            let KimiAttentionState::Mla(cache) = attn_state else { panic!("MLA state mismatch") };
-            let super::decoder_layer::KimiAttentionScratch::Mla(scratch) = attn_scratch else { panic!("MLA scratch mismatch") };
-            let Some(rf) = rope_freqs else { panic!("MLA needs rope") };
+            let KimiAttentionState::Mla(cache) = attn_state else {
+                panic!("MLA state mismatch")
+            };
+            let super::decoder_layer::KimiAttentionScratch::Mla(scratch) = attn_scratch else {
+                panic!("MLA scratch mismatch")
+            };
+            let Some(rf) = rope_freqs else {
+                panic!("MLA needs rope")
+            };
             let (out, s) = mla_forward_token_with_saved(cfg, w, cache, scratch, rf, scratch_hidden);
             saved.mla_saved = Some(s);
             out
         }
         (KimiAttentionConfig::Kda(cfg), KimiAttentionWeights::Kda(w)) => {
-            let KimiAttentionState::Kda(cache) = attn_state else { panic!("KDA state mismatch") };
-            let super::decoder_layer::KimiAttentionScratch::Kda(scratch) = attn_scratch else { panic!("KDA scratch mismatch") };
+            let KimiAttentionState::Kda(cache) = attn_state else {
+                panic!("KDA state mismatch")
+            };
+            let super::decoder_layer::KimiAttentionScratch::Kda(scratch) = attn_scratch else {
+                panic!("KDA scratch mismatch")
+            };
             let (out, s) = kda_forward_token_with_saved(cfg, w, cache, scratch, scratch_hidden);
             saved.kda_saved = Some(s);
             out
@@ -710,18 +731,34 @@ fn recompute_layer_forward_saved(
     let sum_sq = simd_sum_sq(scratch_hidden, d);
     let inv_rms = 1.0 / ((sum_sq / d as f32 + eps).sqrt());
     saved.mlp_inv_rms = inv_rms;
-    rmsnorm_with_gamma_eps(scratch_hidden, &weights.post_attention_layernorm_weight, eps as f64);
+    rmsnorm_with_gamma_eps(
+        scratch_hidden,
+        &weights.post_attention_layernorm_weight,
+        eps as f64,
+    );
 
     let ffn_out: Vec<f32> = match (&config.ffn, &weights.ffn) {
-        (KimiFfnConfig::Dense { situ_beta, situ_linear_beta, .. }, KimiFfnWeights::Dense(expert)) => {
+        (
+            KimiFfnConfig::Dense {
+                situ_beta,
+                situ_linear_beta,
+                ..
+            },
+            KimiFfnWeights::Dense(expert),
+        ) => {
             let (out, s) = dense_situ_ffn_forward_saved(
-                expert, scratch_hidden, ffn_scratch, *situ_beta, *situ_linear_beta,
+                expert,
+                scratch_hidden,
+                ffn_scratch,
+                *situ_beta,
+                *situ_linear_beta,
             );
             saved.dense_saved = Some(s);
             out
         }
         (KimiFfnConfig::Moe(cfg), KimiFfnWeights::Moe(w)) => {
-            let (out, s) = moe_forward_token_with_saved(w, cfg, scratch_hidden, &mut ffn_scratch.moe);
+            let (out, s) =
+                moe_forward_token_with_saved(w, cfg, scratch_hidden, &mut ffn_scratch.moe);
             ffn_scratch.dense_out[..d].copy_from_slice(&out[..d]);
             saved.moe_saved = Some(s);
             out

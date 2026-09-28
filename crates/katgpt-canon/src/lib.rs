@@ -131,7 +131,7 @@ pub use mask_adapter::MaskAdapter;
 #[cfg(feature = "canon_source_features")]
 pub mod source_features;
 #[cfg(feature = "canon_source_features")]
-pub use source_features::{ast_histogram, AstBin, AstHistogram, N_AST_BINS};
+pub use source_features::{AstBin, AstHistogram, N_AST_BINS, ast_histogram};
 
 /// Issue 867 Phase 2 — `SourceFeatureAdapter`: the ridge-fit linear map from
 /// the Phase 1 AST histogram into a model's latent steering space (Proposal

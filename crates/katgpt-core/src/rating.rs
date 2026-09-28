@@ -188,8 +188,14 @@ mod tests {
         // expectation for the favorite) — opposite, conserving, symmetric:
         // a 400-gap favorite (E = 10/11) drops K·(0.5 − 10/11) ≈ −13.09.
         let (a, b) = update_scored(1200.0, 800.0, 0.5, STANDARD_K, 400.0);
-        assert!((a - 1_186.909_090_909).abs() < 1e-6, "favorite drifts down: {a}");
-        assert!((b - 813.090_909_091).abs() < 1e-6, "underdog drifts up: {b}");
+        assert!(
+            (a - 1_186.909_090_909).abs() < 1e-6,
+            "favorite drifts down: {a}"
+        );
+        assert!(
+            (b - 813.090_909_091).abs() < 1e-6,
+            "underdog drifts up: {b}"
+        );
         assert!((a + b - 2000.0).abs() < 1e-9);
     }
 
@@ -197,8 +203,14 @@ mod tests {
     #[allow(clippy::float_cmp)] // binary == scored-extremes bit-identity IS the fixture
     fn update_binary_equals_scored_extremes() {
         for &(ra, rb) in &[(1000.0, 1000.0), (1216.0, 1184.0), (900.0, 1300.0)] {
-            assert_eq!(update(ra, rb, true, 32.0, 400.0), update_scored(ra, rb, 1.0, 32.0, 400.0));
-            assert_eq!(update(ra, rb, false, 32.0, 400.0), update_scored(ra, rb, 0.0, 32.0, 400.0));
+            assert_eq!(
+                update(ra, rb, true, 32.0, 400.0),
+                update_scored(ra, rb, 1.0, 32.0, 400.0)
+            );
+            assert_eq!(
+                update(ra, rb, false, 32.0, 400.0),
+                update_scored(ra, rb, 0.0, 32.0, 400.0)
+            );
         }
     }
 
@@ -269,8 +281,8 @@ mod tests {
         let e = expected(ra, rb, 400.0);
         assert!((e - 0.75).abs() < 0.05, "expected {e} vs win rate 0.75");
         // The same point ON the curve: a λ ratio of 3 maps to the same gap.
-        let on_curve =
-            elo_from_lambda(3.0, STANDARD_BASE, STANDARD_SCALE) - elo_from_lambda(1.0, STANDARD_BASE, STANDARD_SCALE);
+        let on_curve = elo_from_lambda(3.0, STANDARD_BASE, STANDARD_SCALE)
+            - elo_from_lambda(1.0, STANDARD_BASE, STANDARD_SCALE);
         assert!((on_curve - want).abs() < 1e-9);
     }
 }

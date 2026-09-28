@@ -240,7 +240,11 @@ mod tests {
         assert!((phi_pdf(0.0) - 0.398_942_280_401_432_7).abs() < 1e-15);
         assert!((phi_cdf(0.0) - 0.5).abs() < 1e-15);
         // Φ(1.959964) = 0.975 (the two-sided 95% quantile).
-        assert!((phi_cdf(1.959_964) - 0.975).abs() < 1e-9, "got {}", phi_cdf(1.959_964));
+        assert!(
+            (phi_cdf(1.959_964) - 0.975).abs() < 1e-9,
+            "got {}",
+            phi_cdf(1.959_964)
+        );
         // Symmetry.
         assert!((phi_cdf(-1.0) - (1.0 - phi_cdf(1.0))).abs() < 1e-15);
     }

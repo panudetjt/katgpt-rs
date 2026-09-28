@@ -604,7 +604,8 @@ mod tests {
         // 8 tasks × 3 apps, levels 0..=3, all correct.
         let apps: Vec<ApplicationOutcome> = (0..8u32)
             .flat_map(|t| {
-                (0..3u8).map(move |i| ApplicationOutcome::new(true, true, (t + i as u32) as u8 % 4, t))
+                (0..3u8)
+                    .map(move |i| ApplicationOutcome::new(true, true, (t + i as u32) as u8 % 4, t))
             })
             .collect();
         let r = rule_consistency(&apps);
@@ -680,7 +681,11 @@ mod tests {
         assert_eq!(r.regime, ConsistencyRegime::NoisyFlaky);
         // Accuracy stays above the gate floor (0.86 ≥ 0.8) but application
         // is inconsistent → Hold, NOT Promote and NOT SeekExemplar.
-        assert!(r.application_accuracy >= 0.8, "acc {}", r.application_accuracy);
+        assert!(
+            r.application_accuracy >= 0.8,
+            "acc {}",
+            r.application_accuracy
+        );
         assert_eq!(r.cluster_level(), None);
         let v = promotion_verdict(&r, &ConsistencyGateConfig::default());
         assert_eq!(v, PromotionVerdict::Hold);
@@ -709,7 +714,10 @@ mod tests {
         assert_eq!(r.n_applications, 24);
         assert!((r.application_accuracy - 19.0 / 24.0).abs() < 1e-6);
         // Cluster at the boundary level 5.
-        assert_eq!(r.regime, ConsistencyRegime::ComplexityClustered { level: 5 });
+        assert_eq!(
+            r.regime,
+            ConsistencyRegime::ComplexityClustered { level: 5 }
+        );
         // Extrapolation signature: all failures structure-preserving.
         assert!((r.extrapolation_share - 1.0).abs() < 1e-6);
         // Gate: seek one exemplar at level 5 (NOT Reject despite 79% acc).
@@ -758,7 +766,10 @@ mod tests {
         // One failure at level 2 — 1/21 ≈ 4.8% overall (> NOISE_TOL), single.
         apps.push(ApplicationOutcome::new(false, true, 2, task));
         let r = rule_consistency(&apps);
-        assert_ne!(r.regime, ConsistencyRegime::ComplexityClustered { level: 2 });
+        assert_ne!(
+            r.regime,
+            ConsistencyRegime::ComplexityClustered { level: 2 }
+        );
     }
 
     /// Graded degradation (0.0, 0.6, 1.0 failure rates) is honestly Ambiguous.
@@ -809,17 +820,14 @@ mod tests {
     fn gap_shrunk_shrinks_with_sample_size() {
         // SAME raw gap (1/3) at n=2 tasks vs n=20 tasks: the shrunk gap must
         // be materially smaller at n=2 (2/6 of raw) than at n=20 (20/24).
-        let small: Vec<ApplicationOutcome> = [
-            (0u32, [true, true, true]),
-            (1, [true, true, false]),
-        ]
-        .into_iter()
-        .flat_map(|(t, outs)| {
-            outs.into_iter()
-                .map(move |c| ApplicationOutcome::new(c, true, 1, t))
-                .collect::<Vec<_>>()
-        })
-        .collect();
+        let small: Vec<ApplicationOutcome> = [(0u32, [true, true, true]), (1, [true, true, false])]
+            .into_iter()
+            .flat_map(|(t, outs)| {
+                outs.into_iter()
+                    .map(move |c| ApplicationOutcome::new(c, true, 1, t))
+                    .collect::<Vec<_>>()
+            })
+            .collect();
         let mut big = small.clone();
         for t in 2..12u32 {
             for _ in 0..3 {

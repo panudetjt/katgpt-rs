@@ -41,7 +41,9 @@
 //!     block_state.push(hidden.clone())
 //! ```
 
-use katgpt_attn::gdn2::kda_forward::{KdaConfig, KdaForwardScratch, KdaLayerCache, KdaWeights, kda_forward_token};
+use katgpt_attn::gdn2::kda_forward::{
+    KdaConfig, KdaForwardScratch, KdaLayerCache, KdaWeights, kda_forward_token,
+};
 use katgpt_attn::mla::{MlaConfig, MlaForwardScratch, MlaKVCache, MlaWeights, mla_forward_token};
 use katgpt_core::types::math::rmsnorm_with_gamma_eps;
 use katgpt_kv::shard_kv::rope::RopeFreqs;
@@ -318,15 +320,36 @@ pub fn kimi_decoder_layer_forward(
     scratch_hidden.copy_from_slice(mixed);
 
     // ── Step 6: post_attention_layernorm → FFN ────────────────────────────
-    rmsnorm_with_gamma_eps(scratch_hidden, &weights.post_attention_layernorm_weight, eps as f64);
+    rmsnorm_with_gamma_eps(
+        scratch_hidden,
+        &weights.post_attention_layernorm_weight,
+        eps as f64,
+    );
 
     // FFN forward (Dense or MoE)
     let ffn_out: &[f32] = match (&config.ffn, &weights.ffn) {
-        (KimiFfnConfig::Dense { situ_beta, situ_linear_beta, .. }, KimiFfnWeights::Dense(expert)) => {
-            dense_situ_ffn_forward(expert, scratch_hidden, ffn_scratch, *situ_beta, *situ_linear_beta)
-        }
+        (
+            KimiFfnConfig::Dense {
+                situ_beta,
+                situ_linear_beta,
+                ..
+            },
+            KimiFfnWeights::Dense(expert),
+        ) => dense_situ_ffn_forward(
+            expert,
+            scratch_hidden,
+            ffn_scratch,
+            *situ_beta,
+            *situ_linear_beta,
+        ),
         (KimiFfnConfig::Moe(moe_cfg), KimiFfnWeights::Moe(moe_w)) => {
-            moe_forward_token(moe_w, moe_cfg, scratch_hidden, &mut ffn_scratch.dense_out, &mut ffn_scratch.moe);
+            moe_forward_token(
+                moe_w,
+                moe_cfg,
+                scratch_hidden,
+                &mut ffn_scratch.dense_out,
+                &mut ffn_scratch.moe,
+            );
             &ffn_scratch.dense_out[..d]
         }
         _ => panic!("FFN config/weights mismatch"),
@@ -361,13 +384,25 @@ fn dense_situ_ffn_forward<'s>(
     let d_ffn = expert.gate_proj.len() / d_in;
 
     // gate = gate_proj · h  [d_ffn]
-    simd_matmul_rows(&mut scratch.dense_gate, &expert.gate_proj, hidden, d_ffn, d_in);
+    simd_matmul_rows(
+        &mut scratch.dense_gate,
+        &expert.gate_proj,
+        hidden,
+        d_ffn,
+        d_in,
+    );
     // up = up_proj · h  [d_ffn]
     simd_matmul_rows(&mut scratch.dense_up, &expert.up_proj, hidden, d_ffn, d_in);
 
     // SiTU activation: act = SiTU(gate, up, beta, linear_beta)
     // situ(hidden/output, gate, up, beta, linear_beta)
-    situ(&mut scratch.dense_act, &scratch.dense_gate, &scratch.dense_up, beta, linear_beta);
+    situ(
+        &mut scratch.dense_act,
+        &scratch.dense_gate,
+        &scratch.dense_up,
+        beta,
+        linear_beta,
+    );
 
     // out = down_proj · act  [d_in]
     simd_matmul_rows(
@@ -429,9 +464,15 @@ mod tests {
         let d_ffn_dense = 2048;
         let (ffn_cfg, ffn_w, ffn_scratch) = if is_dense {
             let expert = SwiGluExpertWeights {
-                gate_proj: (0..d_ffn_dense * d).map(|i| (i as f32 % 10.0 - 5.0) * 0.01).collect(),
-                up_proj: (0..d_ffn_dense * d).map(|i| (i as f32 % 10.0 - 5.0) * 0.01).collect(),
-                down_proj: (0..d * d_ffn_dense).map(|i| (i as f32 % 10.0 - 5.0) * 0.01).collect(),
+                gate_proj: (0..d_ffn_dense * d)
+                    .map(|i| (i as f32 % 10.0 - 5.0) * 0.01)
+                    .collect(),
+                up_proj: (0..d_ffn_dense * d)
+                    .map(|i| (i as f32 % 10.0 - 5.0) * 0.01)
+                    .collect(),
+                down_proj: (0..d * d_ffn_dense)
+                    .map(|i| (i as f32 % 10.0 - 5.0) * 0.01)
+                    .collect(),
             };
             (
                 KimiFfnConfig::Dense {
@@ -488,7 +529,15 @@ mod tests {
             mlp_attn_res,
         };
 
-        (layer_cfg, layer_w, attn_state, attn_scratch, ffn_scratch, self_scratch, mlp_scratch)
+        (
+            layer_cfg,
+            layer_w,
+            attn_state,
+            attn_scratch,
+            ffn_scratch,
+            self_scratch,
+            mlp_scratch,
+        )
     }
 
     #[test]
@@ -503,9 +552,18 @@ mod tests {
         let mut block_state = AttnResBlockState::new(d);
 
         kimi_decoder_layer_forward(
-            0, &cfg, &w, &mut attn_state, &mut attn_scratch, &mut ffn_scratch,
-            &mut self_res, &mut mlp_res, &mut block_state, None,
-            &mut prefix_sum, &mut scratch_hidden,
+            0,
+            &cfg,
+            &w,
+            &mut attn_state,
+            &mut attn_scratch,
+            &mut ffn_scratch,
+            &mut self_res,
+            &mut mlp_res,
+            &mut block_state,
+            None,
+            &mut prefix_sum,
+            &mut scratch_hidden,
         );
 
         for &v in &prefix_sum {
@@ -532,9 +590,18 @@ mod tests {
         let mut rope = RopeFreqs::new_with_theta(mla_cfg.d_r(), mla_cfg.rope_theta);
 
         kimi_decoder_layer_forward(
-            3, &cfg, &w, &mut attn_state, &mut attn_scratch, &mut ffn_scratch,
-            &mut self_res, &mut mlp_res, &mut block_state, Some(&mut rope),
-            &mut prefix_sum, &mut scratch_hidden,
+            3,
+            &cfg,
+            &w,
+            &mut attn_state,
+            &mut attn_scratch,
+            &mut ffn_scratch,
+            &mut self_res,
+            &mut mlp_res,
+            &mut block_state,
+            Some(&mut rope),
+            &mut prefix_sum,
+            &mut scratch_hidden,
         );
 
         for &v in &prefix_sum {
@@ -557,12 +624,25 @@ mod tests {
         assert_eq!(block_state.len(), 0);
 
         kimi_decoder_layer_forward(
-            0, &cfg, &w, &mut attn_state, &mut attn_scratch, &mut ffn_scratch,
-            &mut self_res, &mut mlp_res, &mut block_state, None,
-            &mut prefix_sum, &mut scratch_hidden,
+            0,
+            &cfg,
+            &w,
+            &mut attn_state,
+            &mut attn_scratch,
+            &mut ffn_scratch,
+            &mut self_res,
+            &mut mlp_res,
+            &mut block_state,
+            None,
+            &mut prefix_sum,
+            &mut scratch_hidden,
         );
 
-        assert_eq!(block_state.len(), 1, "block boundary layer 0 should push 1 entry");
+        assert_eq!(
+            block_state.len(),
+            1,
+            "block boundary layer 0 should push 1 entry"
+        );
     }
 
     #[test]
@@ -577,9 +657,18 @@ mod tests {
         let mut block_state = AttnResBlockState::new(d);
 
         kimi_decoder_layer_forward(
-            1, &cfg, &w, &mut attn_state, &mut attn_scratch, &mut ffn_scratch,
-            &mut self_res, &mut mlp_res, &mut block_state, None,
-            &mut prefix_sum, &mut scratch_hidden,
+            1,
+            &cfg,
+            &w,
+            &mut attn_state,
+            &mut attn_scratch,
+            &mut ffn_scratch,
+            &mut self_res,
+            &mut mlp_res,
+            &mut block_state,
+            None,
+            &mut prefix_sum,
+            &mut scratch_hidden,
         );
 
         assert_eq!(block_state.len(), 0, "non-boundary layer should not push");
@@ -598,9 +687,18 @@ mod tests {
 
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             kimi_decoder_layer_forward(
-                3, &cfg, &w, &mut attn_state, &mut attn_scratch, &mut ffn_scratch,
-                &mut self_res, &mut mlp_res, &mut block_state, None,
-                &mut prefix_sum, &mut scratch_hidden,
+                3,
+                &cfg,
+                &w,
+                &mut attn_state,
+                &mut attn_scratch,
+                &mut ffn_scratch,
+                &mut self_res,
+                &mut mlp_res,
+                &mut block_state,
+                None,
+                &mut prefix_sum,
+                &mut scratch_hidden,
             );
         }));
 
@@ -609,6 +707,9 @@ mod tests {
         // Actually, looking at the code: we only call mla_forward_token when
         // rope_freqs is Some. So passing None to an MLA layer panics with
         // "MLA attention requires rope_freqs".
-        assert!(result.is_err(), "MLA layer with None rope_freqs should panic");
+        assert!(
+            result.is_err(),
+            "MLA layer with None rope_freqs should panic"
+        );
     }
 }

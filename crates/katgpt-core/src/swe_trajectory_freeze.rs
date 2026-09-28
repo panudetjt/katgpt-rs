@@ -209,11 +209,7 @@ impl GeometrySummaryEncoder {
     ///
     /// In debug builds, panics if `out.len() < 4`.
     #[inline]
-    pub fn encode_into<const D: usize>(
-        &self,
-        geom: &LatentTrajectoryGeometry,
-        out: &mut [f32; D],
-    ) {
+    pub fn encode_into<const D: usize>(&self, geom: &LatentTrajectoryGeometry, out: &mut [f32; D]) {
         debug_assert!(D >= 4, "D must be >= 4 to fit one feature block");
 
         // Normalize each feature to roughly [-1, 1] for stable dot products.
@@ -347,12 +343,11 @@ impl StateMagnitudeEncoder {
     ///
     /// In debug builds, panics if `out.len() < 8`.
     #[inline]
-    pub fn encode_into<const D: usize>(
-        &self,
-        trajectory: &[&[f32]],
-        out: &mut [f32; D],
-    ) {
-        debug_assert!(D >= 8, "D must be >= 8 to fit the 8 state-magnitude features");
+    pub fn encode_into<const D: usize>(&self, trajectory: &[&[f32]], out: &mut [f32; D]) {
+        debug_assert!(
+            D >= 8,
+            "D must be >= 8 to fit the 8 state-magnitude features"
+        );
 
         // Zero the output (in case the caller left poison values).
         for v in out.iter_mut() {
@@ -963,10 +958,7 @@ impl<const N: usize, const D: usize> SweTrajectoryFreezer<N, D> {
     ///
     /// The global centroid defaults to all-zeros (no mean-centering). See
     /// [`new`] for why you usually want [`fit`] instead.
-    pub fn with_encoder(
-        directions: [[f32; D]; N],
-        encoder: GeometrySummaryEncoder,
-    ) -> Self {
+    pub fn with_encoder(directions: [[f32; D]; N], encoder: GeometrySummaryEncoder) -> Self {
         Self {
             directions,
             global_centroid: [0.0_f32; D],
@@ -1001,9 +993,7 @@ impl<const N: usize, const D: usize> SweTrajectoryFreezer<N, D> {
     /// Without mean-centering, the FAME sigmoid gate's threshold at 0 may not
     /// align with the natural decision boundary between clusters (the N=2
     /// antiparallel degeneracy makes this especially acute).
-    pub fn fit<const M: usize>(
-        train_summaries: &[[[f32; D]; M]; N],
-    ) -> Self {
+    pub fn fit<const M: usize>(train_summaries: &[[[f32; D]; M]; N]) -> Self {
         let mut directions = [[0.0_f32; D]; N];
         let mut global_centroid = [0.0_f32; D];
         derive_directions_and_centroid(train_summaries, &mut directions, &mut global_centroid);
@@ -1268,7 +1258,12 @@ mod tests {
         let mut rng = Lcg::new(seed);
         let mut state: Vec<f32> = (0..DIM).map(|_| rng.next_f32() * 0.1).collect();
         let mut direction: Vec<f32> = (0..DIM).map(|_| rng.next_f32()).collect();
-        let norm = direction.iter().map(|x| x * x).sum::<f32>().sqrt().max(1e-6);
+        let norm = direction
+            .iter()
+            .map(|x| x * x)
+            .sum::<f32>()
+            .sqrt()
+            .max(1e-6);
         for x in direction.iter_mut() {
             *x /= norm;
         }
@@ -1293,7 +1288,11 @@ mod tests {
         // Alternate between A and B every step (period 2) — matches bench_011.
         // The smoothing variant (0.7/0.3 mix) kills the π-curvature signature.
         for i in 0..=N_STEPS {
-            let target = if i % 2 == 0 { &attractor_a } else { &attractor_b };
+            let target = if i % 2 == 0 {
+                &attractor_a
+            } else {
+                &attractor_b
+            };
             traj.push(target.clone());
         }
         traj.shrink_to_fit();
@@ -1601,7 +1600,7 @@ mod tests {
 
         // Length at the scale boundary → normalized to 1.0.
         let geom = LatentTrajectoryGeometry {
-            length: 25.0, // > 20.0 → clamps to 1.0
+            length: 25.0,                          // > 20.0 → clamps to 1.0
             mean_curvature: core::f32::consts::PI, // = π → normalized to 1.0
             min_adjacent_cosine: -1.0,
             n_steps: 200, // > 100 → clamps to 1.0
@@ -1740,7 +1739,10 @@ mod tests {
 
         // At least one gate should differ.
         let any_diff = (0..N).any(|k| (gates_fit[k] - gates_new[k]).abs() > 1e-6);
-        assert!(any_diff, "fit (mean-centered) gates should differ from new (raw) gates");
+        assert!(
+            any_diff,
+            "fit (mean-centered) gates should differ from new (raw) gates"
+        );
 
         // Both should still classify mode 0 correctly (the synthetic regime
         // is discriminative enough that even without centering it works at
@@ -1770,7 +1772,10 @@ mod tests {
         // Bit-identical geometry.
         assert_eq!(geom_alloc.length, geom_into.length);
         assert_eq!(geom_alloc.mean_curvature, geom_into.mean_curvature);
-        assert_eq!(geom_alloc.min_adjacent_cosine, geom_into.min_adjacent_cosine);
+        assert_eq!(
+            geom_alloc.min_adjacent_cosine,
+            geom_into.min_adjacent_cosine
+        );
         assert_eq!(geom_alloc.n_steps, geom_into.n_steps);
 
         // Second call with same buffers — still identical (reuse works).
@@ -1894,11 +1899,7 @@ mod tests {
         // cos(0,1)  = (18+32)/(5*10) = 50/50 = 1.0
         // cos(1,2)  = denom = (0)*(0) = 0 → skip (denom <= 1e-12)
         // mean_cos  = 1.0 / 1 = 1.0
-        let states: Vec<Vec<f32>> = vec![
-            vec![3.0, 4.0],
-            vec![6.0, 8.0],
-            vec![0.0, 0.0],
-        ];
+        let states: Vec<Vec<f32>> = vec![vec![3.0, 4.0], vec![6.0, 8.0], vec![0.0, 0.0]];
         let refs = build_refs(&states);
         let encoder = StateMagnitudeEncoder::new();
         let mut out = [99.0_f32; D];
@@ -1908,8 +1909,18 @@ mod tests {
         let var_norm = 50.0_f32 / 3.0;
         let std_norm = var_norm.sqrt();
 
-        assert!((out[0] - mean_norm).abs() < 1e-5, "mean_norm: {} vs {}", out[0], mean_norm);
-        assert!((out[1] - std_norm).abs() < 1e-5, "std_norm: {} vs {}", out[1], std_norm);
+        assert!(
+            (out[0] - mean_norm).abs() < 1e-5,
+            "mean_norm: {} vs {}",
+            out[0],
+            mean_norm
+        );
+        assert!(
+            (out[1] - std_norm).abs() < 1e-5,
+            "std_norm: {} vs {}",
+            out[1],
+            std_norm
+        );
         assert!((out[2] - 10.0).abs() < 1e-5, "max_norm: {}", out[2]);
         assert!((out[3] - 0.0).abs() < 1e-5, "min_norm: {}", out[3]);
         assert!((out[4] - 5.0).abs() < 1e-5, "initial_norm: {}", out[4]);
@@ -1919,7 +1930,11 @@ mod tests {
 
         // Trailing slots left at zero (D=32 > 8 features).
         for j in 8..D {
-            assert!(out[j].abs() < 1e-6, "trailing slot {j} should be 0, got {}", out[j]);
+            assert!(
+                out[j].abs() < 1e-6,
+                "trailing slot {j} should be 0, got {}",
+                out[j]
+            );
         }
     }
 
@@ -1934,7 +1949,11 @@ mod tests {
         let mut out = [99.0_f32; D];
         encoder.encode_into(&empty_refs, &mut out);
         for j in 0..D {
-            assert!(out[j].abs() < 1e-6, "empty slot {j} should be 0, got {}", out[j]);
+            assert!(
+                out[j].abs() < 1e-6,
+                "empty slot {j} should be 0, got {}",
+                out[j]
+            );
         }
 
         // Single state → mean/std/max/min/initial/final all equal,

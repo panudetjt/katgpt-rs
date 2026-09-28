@@ -117,9 +117,7 @@ fn bench_perturbed_loss_vector(c: &mut Criterion) {
             perturbed_loss_vector(&kernel, &theta, &z_prefix, &mut out);
         }
     });
-    eprintln!(
-        "G3-alloc: perturbed_loss_vector 100 calls: {allocs} allocs (expected 0)"
-    );
+    eprintln!("G3-alloc: perturbed_loss_vector 100 calls: {allocs} allocs (expected 0)");
     assert_eq!(
         allocs, 0,
         "G3-alloc FAIL: perturbed_loss_vector should be zero-alloc on the hot path"

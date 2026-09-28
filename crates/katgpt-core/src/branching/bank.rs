@@ -196,7 +196,8 @@ impl<E: Clone> BranchBank<E> {
         // empty (dimension 0 is useless for vectorization).
         if self.anchor_dim == 0 && !spawn_anchor.is_empty() {
             self.anchor_dim = spawn_anchor.len();
-            self.anchor_flat.reserve(self.max_branches * self.anchor_dim);
+            self.anchor_flat
+                .reserve(self.max_branches * self.anchor_dim);
         }
 
         self.n_active += 1;
@@ -426,8 +427,7 @@ impl<E: Clone> BranchBank<E> {
         // immutable (read from branches) + mutable (write_anchor_flat) borrow.
         if self.anchor_dim > 0 && final_anchor_len > 0 {
             let copy_len = final_anchor_len.min(self.anchor_dim);
-            let anchor_copy: Vec<f32> =
-                self.branches[ti].spawn_anchor[..copy_len].to_vec();
+            let anchor_copy: Vec<f32> = self.branches[ti].spawn_anchor[..copy_len].to_vec();
             self.write_anchor_flat(ti, &anchor_copy);
         }
 
@@ -468,7 +468,8 @@ impl<E: Clone> BranchBank<E> {
                 continue;
             }
             let i_util = self
-                .get(i).map_or(0, |b| b.stats.n_writes as u64 + b.stats.n_reads as u64);
+                .get(i)
+                .map_or(0, |b| b.stats.n_writes as u64 + b.stats.n_reads as u64);
 
             for &j in &active_ids {
                 if i == j || !available.contains(&j) {

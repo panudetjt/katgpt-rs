@@ -48,8 +48,8 @@
 //! (blocked Cholesky + jitter escalation — consumed, not reimplemented).
 
 use crate::kimi_k3::decoder_layer::{KimiFfnWeights, kimi_decoder_layer_forward};
-use crate::kimi_k3::model::{KimiK3ModelConfig, KimiK3Runtime};
 use crate::kimi_k3::loader::KimiK3ModelWeights;
+use crate::kimi_k3::model::{KimiK3ModelConfig, KimiK3Runtime};
 use katgpt_attn::gdn2::kda_forward::KdaLayerCache;
 use katgpt_attn_match::value_fitter::{ValueFitConfig, fit_cv_least_squares};
 use katgpt_core::stale_residual::SpecOutcome;
@@ -284,7 +284,11 @@ pub fn capture_forward_token(
         );
         runtime.hidden.copy_from_slice(mixed);
     }
-    rmsnorm_with_gamma_eps(&mut runtime.hidden, &weights.final_norm_weight, config.rms_eps as f64);
+    rmsnorm_with_gamma_eps(
+        &mut runtime.hidden,
+        &weights.final_norm_weight,
+        config.rms_eps as f64,
+    );
     katgpt_core::simd::simd_matmul_rows(
         &mut runtime.logits,
         &weights.lm_head_weight,
@@ -355,7 +359,11 @@ pub fn replay_from_layer(
         );
         runtime.hidden.copy_from_slice(mixed);
     }
-    rmsnorm_with_gamma_eps(&mut runtime.hidden, &weights.final_norm_weight, config.rms_eps as f64);
+    rmsnorm_with_gamma_eps(
+        &mut runtime.hidden,
+        &weights.final_norm_weight,
+        config.rms_eps as f64,
+    );
     katgpt_core::simd::simd_matmul_rows(
         &mut runtime.logits,
         &weights.lm_head_weight,
@@ -547,7 +555,11 @@ pub fn router_logit_features(
     // the true forward; here applied to the stale input — the pre-dense
     // routing anchor).
     let mut normed = x_in.to_vec();
-    rmsnorm_with_gamma_eps(&mut normed, &layer_w.post_attention_layernorm_weight, config.rms_eps as f64);
+    rmsnorm_with_gamma_eps(
+        &mut normed,
+        &layer_w.post_attention_layernorm_weight,
+        config.rms_eps as f64,
+    );
     feature_out.clear();
     feature_out.reserve(n_r + 1);
     for e in 0..n_r {
@@ -578,7 +590,14 @@ pub struct DeltaPredictor {
 
 impl DeltaPredictor {
     /// Fit `δ ≈ φ·W` (closed form; no gradient descent — modelless mandate).
-    pub fn fit(features: &[f32], targets: &[f32], n: usize, t: usize, d: usize, ridge: f32) -> Self {
+    pub fn fit(
+        features: &[f32],
+        targets: &[f32],
+        n: usize,
+        t: usize,
+        d: usize,
+        ridge: f32,
+    ) -> Self {
         let fit = fit_cv_least_squares(
             features,
             targets,

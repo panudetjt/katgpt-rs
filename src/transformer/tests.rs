@@ -1,4 +1,3 @@
-
 use super::*;
 use crate::types;
 
@@ -2402,7 +2401,10 @@ fn test_cluster_map_from_embeddings_falls_back_on_identical_rows() {
     // Coverage is the invariant the old assertion was really guarding.
     let mut seen: Vec<usize> = map.iter().flatten().copied().collect();
     seen.sort_unstable();
-    assert!(seen.iter().copied().eq(0..100), "every token must still be covered");
+    assert!(
+        seen.iter().copied().eq(0..100),
+        "every token must still be covered"
+    );
 }
 
 /// A short weight buffer must fall back rather than panic.

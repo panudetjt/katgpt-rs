@@ -103,7 +103,11 @@ impl ActChannelMoments {
     #[inline]
     pub fn observe(&mut self, layer: usize, x: &[f32]) {
         let (lo, hi) = (self.offsets[layer], self.offsets[layer + 1]);
-        assert_eq!(x.len(), hi - lo, "act_channel_moments: width mismatch at layer {layer}");
+        assert_eq!(
+            x.len(),
+            hi - lo,
+            "act_channel_moments: width mismatch at layer {layer}"
+        );
         accumulate(&mut self.sum_abs[lo..hi], &mut self.sum_sq[lo..hi], x);
         self.counts[layer] += 1;
     }
@@ -114,10 +118,17 @@ impl ActChannelMoments {
         let (lo, hi) = (self.offsets[layer], self.offsets[layer + 1]);
         let w = hi - lo;
         if w == 0 {
-            assert!(xs.is_empty(), "act_channel_moments: zero-width layer {layer} got data");
+            assert!(
+                xs.is_empty(),
+                "act_channel_moments: zero-width layer {layer} got data"
+            );
             return;
         }
-        assert_eq!(xs.len() % w, 0, "act_channel_moments: batch not a multiple of width {w}");
+        assert_eq!(
+            xs.len() % w,
+            0,
+            "act_channel_moments: batch not a multiple of width {w}"
+        );
         let (sa, ss) = (&mut self.sum_abs[lo..hi], &mut self.sum_sq[lo..hi]);
         for x in xs.chunks_exact(w) {
             accumulate(sa, ss, x);
@@ -218,7 +229,13 @@ impl ActChannelDiagonal {
         mean_abs: Vec<f32>,
         mean_sq: Vec<f32>,
     ) -> Self {
-        let mut t = Self { offsets, counts, mean_abs, mean_sq, commitment: [0; 32] };
+        let mut t = Self {
+            offsets,
+            counts,
+            mean_abs,
+            mean_sq,
+            commitment: [0; 32],
+        };
         t.commitment = *blake3::hash(&t.canonical_image()).as_bytes();
         t
     }
@@ -350,14 +367,24 @@ impl ActChannelDiagonal {
         if r.pos != bytes.len() {
             return Err(ActDiagonalDecodeError::TrailingBytes);
         }
-        if mean_abs.iter().chain(&mean_sq).any(|v| !(v.is_finite() && *v >= 0.0)) {
+        if mean_abs
+            .iter()
+            .chain(&mean_sq)
+            .any(|v| !(v.is_finite() && *v >= 0.0))
+        {
             return Err(ActDiagonalDecodeError::InvalidMoment);
         }
         let commitment = *blake3::hash(&bytes[..image_len]).as_bytes();
         if commitment[..] != digest[..] {
             return Err(ActDiagonalDecodeError::CommitmentMismatch);
         }
-        Ok(Self { offsets, counts, mean_abs, mean_sq, commitment })
+        Ok(Self {
+            offsets,
+            counts,
+            mean_abs,
+            mean_sq,
+            commitment,
+        })
     }
 }
 
@@ -368,19 +395,31 @@ struct Reader<'a> {
 
 impl<'a> Reader<'a> {
     fn take(&mut self, n: usize) -> Result<&'a [u8], ActDiagonalDecodeError> {
-        let end = self.pos.checked_add(n).ok_or(ActDiagonalDecodeError::Truncated)?;
-        let s = self.b.get(self.pos..end).ok_or(ActDiagonalDecodeError::Truncated)?;
+        let end = self
+            .pos
+            .checked_add(n)
+            .ok_or(ActDiagonalDecodeError::Truncated)?;
+        let s = self
+            .b
+            .get(self.pos..end)
+            .ok_or(ActDiagonalDecodeError::Truncated)?;
         self.pos = end;
         Ok(s)
     }
     fn u32(&mut self) -> Result<u32, ActDiagonalDecodeError> {
-        Ok(u32::from_le_bytes(self.take(4)?.try_into().expect("4 bytes")))
+        Ok(u32::from_le_bytes(
+            self.take(4)?.try_into().expect("4 bytes"),
+        ))
     }
     fn u64(&mut self) -> Result<u64, ActDiagonalDecodeError> {
-        Ok(u64::from_le_bytes(self.take(8)?.try_into().expect("8 bytes")))
+        Ok(u64::from_le_bytes(
+            self.take(8)?.try_into().expect("8 bytes"),
+        ))
     }
     fn f32(&mut self) -> Result<f32, ActDiagonalDecodeError> {
-        Ok(f32::from_le_bytes(self.take(4)?.try_into().expect("4 bytes")))
+        Ok(f32::from_le_bytes(
+            self.take(4)?.try_into().expect("4 bytes"),
+        ))
     }
 }
 
@@ -460,7 +499,10 @@ mod tests {
         for i in 0..bytes.len() {
             let mut bad = bytes.clone();
             bad[i] ^= 0x01;
-            assert!(ActChannelDiagonal::from_bytes(&bad).is_err(), "flip at {i} accepted");
+            assert!(
+                ActChannelDiagonal::from_bytes(&bad).is_err(),
+                "flip at {i} accepted"
+            );
         }
         assert_eq!(
             ActChannelDiagonal::from_bytes(&bytes[..bytes.len() - 1]),
@@ -468,7 +510,10 @@ mod tests {
         );
         let mut long = bytes.clone();
         long.push(0);
-        assert_eq!(ActChannelDiagonal::from_bytes(&long), Err(ActDiagonalDecodeError::TrailingBytes));
+        assert_eq!(
+            ActChannelDiagonal::from_bytes(&long),
+            Err(ActDiagonalDecodeError::TrailingBytes)
+        );
     }
 
     /// Pinned digest of a fixed fixture — the canonical image is a format;

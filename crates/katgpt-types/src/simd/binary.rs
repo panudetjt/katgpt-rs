@@ -494,17 +494,13 @@ pub fn simd_binary_matmul_batch(w: &BinaryWeights, x: &[f32], batch: usize, y: &
 
     use rayon::prelude::*;
 
-if batch < PARALLEL_BATCH_MIN {
+    if batch < PARALLEL_BATCH_MIN {
         for b in 0..batch {
             let x_off = b * w.cols;
             let y_off = b * w.rows;
             // Slice EXACTLY — see the note in simd_ternary_matmul_batch. The
             // open-ended form panics the length assert for 2 <= batch < 4.
-            simd_binary_matvec(
-                w,
-                &x[x_off..x_off + w.cols],
-                &mut y[y_off..y_off + w.rows],
-            );
+            simd_binary_matvec(w, &x[x_off..x_off + w.cols], &mut y[y_off..y_off + w.rows]);
         }
         return;
     }

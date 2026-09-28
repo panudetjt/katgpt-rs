@@ -155,7 +155,9 @@ fn main() {
 
     if !std::path::Path::new(&tiktoken_path).exists() {
         eprintln!("ERROR: requires tiktoken.model at {tiktoken_path}");
-        eprintln!("Download: curl -L https://huggingface.co/inference-optimization/Kimi-K3-0.40B/resolve/main/tiktoken.model -o {tiktoken_path}");
+        eprintln!(
+            "Download: curl -L https://huggingface.co/inference-optimization/Kimi-K3-0.40B/resolve/main/tiktoken.model -o {tiktoken_path}"
+        );
         std::process::exit(1);
     }
     if !std::path::Path::new(&model_path).exists() {
@@ -186,8 +188,7 @@ fn main() {
     // ── Build NIAH prompt ──────────────────────────────────────────────────
     let target_seq = env_or("FLASHMEMORY_NIAH_SEQ", 512);
     let needle_depth = env_or_f32("FLASHMEMORY_NIAH_DEPTH", 0.5);
-    let (prompt, needle_char_start, needle_char_end) =
-        build_niah_prompt(needle_depth, target_seq);
+    let (prompt, needle_char_start, needle_char_end) = build_niah_prompt(needle_depth, target_seq);
 
     let token_ids = tokenizer.encode(&prompt);
     let seq_len = token_ids.len();
@@ -195,11 +196,15 @@ fn main() {
         find_needle_token_range(&tokenizer, &prompt, needle_char_start, needle_char_end);
 
     println!("\nPrompt: {seq_len} tokens (target was {target_seq})");
-    println!("Needle: tokens [{needle_tok_start}, {needle_tok_end}) — {n_needle} tokens",
-        n_needle = needle_tok_end.saturating_sub(needle_tok_start));
+    println!(
+        "Needle: tokens [{needle_tok_start}, {needle_tok_end}) — {n_needle} tokens",
+        n_needle = needle_tok_end.saturating_sub(needle_tok_start)
+    );
     if needle_tok_start >= seq_len {
         eprintln!("ERROR: needle position {needle_tok_start} >= seq_len {seq_len}");
-        eprintln!("       Try increasing FLASHMEMORY_NIAH_SEQ or decreasing FLASHMEMORY_NIAH_DEPTH");
+        eprintln!(
+            "       Try increasing FLASHMEMORY_NIAH_SEQ or decreasing FLASHMEMORY_NIAH_DEPTH"
+        );
         std::process::exit(1);
     }
 
@@ -223,17 +228,20 @@ fn main() {
     };
     let max_blocks = seq_len.div_ceil(block_size);
     let needle_block = needle_tok_start / block_size;
-    println!("FlashMemory: block_size={block_size}, threshold={threshold}, max_blocks={max_blocks}");
-    println!("Needle is in block {needle_block} (tokens {}-{}/{seq_len})",
-        needle_block * block_size, (needle_block + 1) * block_size);
+    println!(
+        "FlashMemory: block_size={block_size}, threshold={threshold}, max_blocks={max_blocks}"
+    );
+    println!(
+        "Needle is in block {needle_block} (tokens {}-{}/{seq_len})",
+        needle_block * block_size,
+        (needle_block + 1) * block_size
+    );
 
     // ── Run sparse forward + track needle block selection ──────────────────
     let mut cache_sparse = MlaKVCache::new(mla_config, seq_len + 1);
     let mut scratch_sparse = MlaForwardScratch::new(mla_config, seq_len + 1);
-    let mut rope_sparse = RopeFreqs::new_with_theta(
-        mla_config.qk_rope_head_dim,
-        mla_config.rope_theta,
-    );
+    let mut rope_sparse =
+        RopeFreqs::new_with_theta(mla_config.qk_rope_head_dim, mla_config.rope_theta);
     let mut block_cache = FlashMemoryBlockCache::new(mla_config, &fm_config, seq_len + 1);
     let mut selector = FlashMemorySelector::new(fm_config.clone(), mla_config.n_heads, max_blocks);
 
@@ -243,7 +251,7 @@ fn main() {
 
     // Track per-step: did each head select the needle block?
     let mut needle_selected_count = 0usize; // (step, head) pairs where needle block selected
-    let mut total_query_steps = 0usize;    // steps where needle block exists
+    let mut total_query_steps = 0usize; // steps where needle block exists
     let mut needle_score_ranks: Vec<usize> = Vec::new(); // rank of needle block per (step, head)
 
     // Also track the LAST token's attention scores per head (for dense comparison).
@@ -276,11 +284,8 @@ fn main() {
 
                 // Compute the needle block's score rank among all blocks.
                 let q_c_h = &scratch_sparse.q_c_view()[head * d_h..(head + 1) * d_h];
-                let needle_score = simd_dot_f32(
-                    q_c_h,
-                    block_cache.key_centroid(needle_block, head),
-                    d_h,
-                ) * scale;
+                let needle_score =
+                    simd_dot_f32(q_c_h, block_cache.key_centroid(needle_block, head), d_h) * scale;
 
                 let mut rank = 1;
                 for b in 0..current_blocks {
@@ -313,10 +318,8 @@ fn main() {
     // ── Dense forward for comparison (last-token attention) ────────────────
     let mut cache_dense = MlaKVCache::new(mla_config, seq_len + 1);
     let mut scratch_dense = MlaForwardScratch::new(mla_config, seq_len + 1);
-    let mut rope_dense = RopeFreqs::new_with_theta(
-        mla_config.qk_rope_head_dim,
-        mla_config.rope_theta,
-    );
+    let mut rope_dense =
+        RopeFreqs::new_with_theta(mla_config.qk_rope_head_dim, mla_config.rope_theta);
     for h in &hidden_states {
         let _ = mla_forward_token(
             mla_config,
@@ -377,23 +380,30 @@ fn main() {
         0.0
     };
     println!("Sparse (FlashMemory):");
-    println!("  Needle block selected : {needle_selected_count}/{total_head_steps} (step,head) pairs = {selection_rate:.1}%");
+    println!(
+        "  Needle block selected : {needle_selected_count}/{total_head_steps} (step,head) pairs = {selection_rate:.1}%"
+    );
 
     // Needle score rank (sparse scoring = same formula as dense).
     if !needle_score_ranks.is_empty() {
         needle_score_ranks.sort();
         let median_rank = needle_score_ranks[needle_score_ranks.len() / 2];
-        let mean_rank: f64 =
-            needle_score_ranks.iter().map(|&r| r as f64).sum::<f64>() / needle_score_ranks.len() as f64;
+        let mean_rank: f64 = needle_score_ranks.iter().map(|&r| r as f64).sum::<f64>()
+            / needle_score_ranks.len() as f64;
         let max_blocks_actual = seq_len.div_ceil(block_size);
-        println!("  Needle block score rank: median={median_rank}, mean={mean_rank:.1} (out of {max_blocks_actual} blocks)");
+        println!(
+            "  Needle block score rank: median={median_rank}, mean={mean_rank:.1} (out of {max_blocks_actual} blocks)"
+        );
     }
 
     // Dense: attention mass on needle block at the LAST token (the query).
     println!();
     println!("Dense (ground truth, last token = query):");
     for head in 0..n_heads {
-        let mass = dense_block_attn[head].get(needle_block).copied().unwrap_or(0.0);
+        let mass = dense_block_attn[head]
+            .get(needle_block)
+            .copied()
+            .unwrap_or(0.0);
         // Rank the needle block by dense attention mass.
         let mut dense_rank = 1;
         for &m in &dense_block_attn[head] {
@@ -401,14 +411,20 @@ fn main() {
                 dense_rank += 1;
             }
         }
-        println!("  Head {head}: needle block attention mass = {mass:.4} (rank {dense_rank}/{})", dense_block_attn[head].len());
+        println!(
+            "  Head {head}: needle block attention mass = {mass:.4} (rank {dense_rank}/{})",
+            dense_block_attn[head].len()
+        );
     }
 
     // Sparse block attention at last token.
     println!();
     println!("Sparse (FlashMemory, last token = query):");
     for head in 0..n_heads {
-        let mass = last_token_block_scores[head].get(needle_block).copied().unwrap_or(0.0);
+        let mass = last_token_block_scores[head]
+            .get(needle_block)
+            .copied()
+            .unwrap_or(0.0);
         println!("  Head {head}: needle block attention mass = {mass:.4}");
     }
 
@@ -459,7 +475,9 @@ fn main() {
     println!();
     println!("── Verdict ──");
     println!();
-    println!("  Needle block selection rate: {selection_rate:.1}% (needle block is near-uniform in dense)");
+    println!(
+        "  Needle block selection rate: {selection_rate:.1}% (needle block is near-uniform in dense)"
+    );
     println!();
 
     // Criterion: median per-head correlation ≥ 0.85. The centroid score is a
@@ -478,7 +496,11 @@ fn main() {
     let pattern_pass = median_corr >= 0.85;
     println!(
         "  Centroid selection quality (median r ≥ 0.85) : {}",
-        if pattern_pass { "✅ PASS (diagnostic)" } else { "⚠️  low — indexer training may improve" }
+        if pattern_pass {
+            "✅ PASS (diagnostic)"
+        } else {
+            "⚠️  low — indexer training may improve"
+        }
     );
     println!("    (Diagnostic, not a gate — output accuracy is measured by Bench 021)");
 

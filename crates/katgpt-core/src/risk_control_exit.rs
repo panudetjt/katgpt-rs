@@ -128,9 +128,18 @@ impl DualExitPolicy {
     pub const fn new(lambda_plus: f32, c: f32, s: f32, l: f32, u: f32) -> Self {
         // const-friendly checks would need const_float_ops; the debug_assert
         // form covers the intended dev-time catching.
-        debug_assert!(l >= 0.0 && u >= l && lambda_plus > u, "mutual exclusivity: 0 <= l <= u < lambda_plus");
+        debug_assert!(
+            l >= 0.0 && u >= l && lambda_plus > u,
+            "mutual exclusivity: 0 <= l <= u < lambda_plus"
+        );
         debug_assert!(c >= 0.0, "schedule steepness c must be >= 0");
-        Self { lambda_plus, c, s, l, u }
+        Self {
+            lambda_plus,
+            c,
+            s,
+            l,
+            u,
+        }
     }
 
     /// The lower (stop-when-not-progressing) threshold at progress `ωt`
@@ -166,21 +175,39 @@ impl DualExitPolicy {
     /// `u = λ+/2` keeps the mutual-exclusivity invariant by construction.
     #[inline]
     pub fn linear(lambda_plus: f32, budget: u32) -> Self {
-        Self::new(lambda_plus, 0.1 / budget.max(1) as f32, 0.5, 0.0, 0.5 * lambda_plus)
+        Self::new(
+            lambda_plus,
+            0.1 / budget.max(1) as f32,
+            0.5,
+            0.0,
+            0.5 * lambda_plus,
+        )
     }
 
     /// **Exponential** shape: `s > 1` puts the sigmoid center beyond the
     /// horizon — within `[0, B]` only the convex rising limb is visible.
     #[inline]
     pub fn exponential(lambda_plus: f32, budget: u32) -> Self {
-        Self::new(lambda_plus, 8.0 / budget.max(1) as f32, 1.5, 0.0, 0.5 * lambda_plus)
+        Self::new(
+            lambda_plus,
+            8.0 / budget.max(1) as f32,
+            1.5,
+            0.0,
+            0.5 * lambda_plus,
+        )
     }
 
     /// **Log** shape: `s < 0` puts the sigmoid center before the horizon —
     /// within `[0, B]` only the concave saturating limb is visible.
     #[inline]
     pub fn log(lambda_plus: f32, budget: u32) -> Self {
-        Self::new(lambda_plus, 8.0 / budget.max(1) as f32, -0.5, 0.0, 0.5 * lambda_plus)
+        Self::new(
+            lambda_plus,
+            8.0 / budget.max(1) as f32,
+            -0.5,
+            0.0,
+            0.5 * lambda_plus,
+        )
     }
 
     /// **Constant** shape: `c → 0` collapses the schedule to its midpoint
@@ -220,15 +247,24 @@ pub fn run_policy(policy: &DualExitPolicy, s_tilde: &[f32]) -> ExitTrace {
     for (t, &s) in s_tilde.iter().enumerate() {
         match policy.exit(s, (t + 1) as u32, budget) {
             ExitVerdict::Commit => {
-                return ExitTrace { verdict: TerminalVerdict::Commit, tick: t }
+                return ExitTrace {
+                    verdict: TerminalVerdict::Commit,
+                    tick: t,
+                };
             }
             ExitVerdict::Abandon => {
-                return ExitTrace { verdict: TerminalVerdict::Abandon, tick: t }
+                return ExitTrace {
+                    verdict: TerminalVerdict::Abandon,
+                    tick: t,
+                };
             }
             ExitVerdict::Continue => {}
         }
     }
-    ExitTrace { verdict: TerminalVerdict::Exhausted, tick: t_len - 1 }
+    ExitTrace {
+        verdict: TerminalVerdict::Exhausted,
+        tick: t_len - 1,
+    }
 }
 
 /// **Eq. 8 — false-positive loss of the upper threshold**, per instance:
@@ -336,11 +372,7 @@ pub struct MonotoneViolation {
 /// Verifies an empirical risk curve is weakly monotone in `dir` within
 /// `tol` (tolerance absorbs binomial sampling noise — the recommended scale
 /// is half the UCB correction). Returns the FIRST violation, if any.
-pub fn verify_monotone(
-    values: &[f32],
-    dir: MonotoneDir,
-    tol: f32,
-) -> Option<MonotoneViolation> {
+pub fn verify_monotone(values: &[f32], dir: MonotoneDir, tol: f32) -> Option<MonotoneViolation> {
     for i in 0..values.len().saturating_sub(1) {
         let (prev, next) = (values[i], values[i + 1]);
         let violates = match dir {
@@ -348,7 +380,11 @@ pub fn verify_monotone(
             MonotoneDir::Decreasing => next > prev + tol,
         };
         if violates {
-            return Some(MonotoneViolation { index: i, prev, next });
+            return Some(MonotoneViolation {
+                index: i,
+                prev,
+                next,
+            });
         }
     }
     None
@@ -369,7 +405,11 @@ impl<'a> TrajectorySample<'a> {
     /// a caller wiring bug).
     #[inline]
     pub fn new(s_tilde: &'a [f32], correct: &'a [bool]) -> Self {
-        debug_assert_eq!(s_tilde.len(), correct.len(), "s_tilde/correct length mismatch");
+        debug_assert_eq!(
+            s_tilde.len(),
+            correct.len(),
+            "s_tilde/correct length mismatch"
+        );
         Self { s_tilde, correct }
     }
 
@@ -515,9 +555,12 @@ impl CalibrateScratch {
 
     /// Grows capacity (never shrinks) to cover the given grid lengths.
     pub fn reserve(&mut self, upper_len: usize, lower_len: usize) {
-        self.upper_risks.reserve(upper_len.saturating_sub(self.upper_risks.capacity()));
-        self.lower_risks.reserve(lower_len.saturating_sub(self.lower_risks.capacity()));
-        self.computes.reserve(lower_len.saturating_sub(self.computes.capacity()));
+        self.upper_risks
+            .reserve(upper_len.saturating_sub(self.upper_risks.capacity()));
+        self.lower_risks
+            .reserve(lower_len.saturating_sub(self.lower_risks.capacity()));
+        self.computes
+            .reserve(lower_len.saturating_sub(self.computes.capacity()));
     }
 }
 
@@ -929,21 +972,45 @@ mod tests {
         let correct = [false, false, true, true];
         // Commit at tick 2 where correct → 0.
         assert_eq!(
-            fp_loss(&correct, ExitTrace { verdict: TerminalVerdict::Commit, tick: 2 }),
+            fp_loss(
+                &correct,
+                ExitTrace {
+                    verdict: TerminalVerdict::Commit,
+                    tick: 2
+                }
+            ),
             0.0
         );
         // Commit at tick 1 where wrong → 1.
         assert_eq!(
-            fp_loss(&correct, ExitTrace { verdict: TerminalVerdict::Commit, tick: 1 }),
+            fp_loss(
+                &correct,
+                ExitTrace {
+                    verdict: TerminalVerdict::Commit,
+                    tick: 1
+                }
+            ),
             1.0
         );
         // Abandon / exhausted never count (other losses own them).
         assert_eq!(
-            fp_loss(&correct, ExitTrace { verdict: TerminalVerdict::Abandon, tick: 1 }),
+            fp_loss(
+                &correct,
+                ExitTrace {
+                    verdict: TerminalVerdict::Abandon,
+                    tick: 1
+                }
+            ),
             0.0
         );
         assert_eq!(
-            fp_loss(&correct, ExitTrace { verdict: TerminalVerdict::Exhausted, tick: 3 }),
+            fp_loss(
+                &correct,
+                ExitTrace {
+                    verdict: TerminalVerdict::Exhausted,
+                    tick: 3
+                }
+            ),
             0.0
         );
     }
@@ -952,22 +1019,37 @@ mod tests {
     fn farsighted_loss_weights_future_correctness() {
         // 8 steps; correct at steps {5, 6}; abandon at tick 2.
         let correct = [false, false, false, false, false, true, true, false];
-        let trace = ExitTrace { verdict: TerminalVerdict::Abandon, tick: 2 };
+        let trace = ExitTrace {
+            verdict: TerminalVerdict::Abandon,
+            tick: 2,
+        };
         // Future-correct from tick 2: steps 2..8 → {5,6} → 2 correct;
         // denominator T − τ = 6 → 2/6.
         assert!((farsighted_loss(&correct, trace) - 2.0 / 6.0).abs() < 1e-6);
         // Abandon at the last step: slice [7..8) = [false] → 0.
-        let last = ExitTrace { verdict: TerminalVerdict::Abandon, tick: 7 };
+        let last = ExitTrace {
+            verdict: TerminalVerdict::Abandon,
+            tick: 7,
+        };
         assert!((farsighted_loss(&correct, last) - 0.0).abs() < 1e-6);
         // Inclusive exit step: abandon at tick 6 → slice [6..8) = [t, f]
         // → 1 correct of 2 (denominator T − τ = 2).
-        let at6 = ExitTrace { verdict: TerminalVerdict::Abandon, tick: 6 };
+        let at6 = ExitTrace {
+            verdict: TerminalVerdict::Abandon,
+            tick: 6,
+        };
         assert!((farsighted_loss(&correct, at6) - 0.5).abs() < 1e-6);
         // Abandon at tick 5 → slice [5..8) = [t, t, f] → 2/3.
-        let at5 = ExitTrace { verdict: TerminalVerdict::Abandon, tick: 5 };
+        let at5 = ExitTrace {
+            verdict: TerminalVerdict::Abandon,
+            tick: 5,
+        };
         assert!((farsighted_loss(&correct, at5) - 2.0 / 3.0).abs() < 1e-6);
         // Never-abandon traces carry zero.
-        let commit = ExitTrace { verdict: TerminalVerdict::Commit, tick: 0 };
+        let commit = ExitTrace {
+            verdict: TerminalVerdict::Commit,
+            tick: 0,
+        };
         assert_eq!(farsighted_loss(&correct, commit), 0.0);
     }
 
@@ -975,24 +1057,45 @@ mod tests {
     fn regret_loss_is_wasted_compute_after_first_correct() {
         let correct = [false, false, true, true, false];
         // First correct at t'=2; exit at τ=4 → (4−2)/5.
-        let t4 = ExitTrace { verdict: TerminalVerdict::Commit, tick: 4 };
+        let t4 = ExitTrace {
+            verdict: TerminalVerdict::Commit,
+            tick: 4,
+        };
         assert!((regret_loss(&correct, t4) - 2.0 / 5.0).abs() < 1e-6);
         // Exit exactly at first correct → 0.
-        let t2 = ExitTrace { verdict: TerminalVerdict::Commit, tick: 2 };
+        let t2 = ExitTrace {
+            verdict: TerminalVerdict::Commit,
+            tick: 2,
+        };
         assert_eq!(regret_loss(&correct, t2), 0.0);
         // Never correct → 0 (nothing to waste).
         let never = [false, false, false];
-        assert_eq!(regret_loss(&never, ExitTrace { verdict: TerminalVerdict::Exhausted, tick: 2 }), 0.0);
+        assert_eq!(
+            regret_loss(
+                &never,
+                ExitTrace {
+                    verdict: TerminalVerdict::Exhausted,
+                    tick: 2
+                }
+            ),
+            0.0
+        );
     }
 
     #[test]
     fn past_wrongness_counts_wrong_steps_up_to_exit() {
         let correct = [false, true, false, true, true];
         // Exit at τ=2: wrong steps in 0..=2 → {0, 2} → 2/5.
-        let t2 = ExitTrace { verdict: TerminalVerdict::Commit, tick: 2 };
+        let t2 = ExitTrace {
+            verdict: TerminalVerdict::Commit,
+            tick: 2,
+        };
         assert!((past_wrongness(&correct, t2) - 2.0 / 5.0).abs() < 1e-6);
         // Exit at τ=0: 1/5.
-        let t0 = ExitTrace { verdict: TerminalVerdict::Abandon, tick: 0 };
+        let t0 = ExitTrace {
+            verdict: TerminalVerdict::Abandon,
+            tick: 0,
+        };
         assert!((past_wrongness(&correct, t0) - 1.0 / 5.0).abs() < 1e-6);
     }
 
@@ -1003,20 +1106,29 @@ mod tests {
         let s = [0.2, 0.4, 0.6, 0.95, 0.99];
         assert_eq!(
             run_policy(&p, &s),
-            ExitTrace { verdict: TerminalVerdict::Commit, tick: 3 }
+            ExitTrace {
+                verdict: TerminalVerdict::Commit,
+                tick: 3
+            }
         );
         // Nothing fires → exhausted at the last tick.
         let s2 = [0.2, 0.3, 0.4];
         assert_eq!(
             run_policy(&p, &s2),
-            ExitTrace { verdict: TerminalVerdict::Exhausted, tick: 2 }
+            ExitTrace {
+                verdict: TerminalVerdict::Exhausted,
+                tick: 2
+            }
         );
         // Lower fires when confidence stalls below the rising schedule.
         let p2 = DualExitPolicy::new(0.95, 40.0 / B as f32, 0.5, 0.0, 0.9);
         let stall = vec![0.62f32; B as usize];
         let tr = run_policy(&p2, &stall);
         assert_eq!(tr.verdict, TerminalVerdict::Abandon);
-        assert!(tr.tick < B as usize - 1, "stalled run must abandon before budget");
+        assert!(
+            tr.tick < B as usize - 1,
+            "stalled run must abandon before budget"
+        );
     }
 
     // ── Hoeffding bound numerics (T1.4) ─────────────────────────────────
@@ -1084,7 +1196,12 @@ mod tests {
             }
         }
         let grid = [0.55f32, 0.65, 0.75, 0.85];
-        let lower = [ScheduleParams { c: 0.0, s: 0.5, l: 0.0, u: 0.3 }];
+        let lower = [ScheduleParams {
+            c: 0.0,
+            s: 0.5,
+            l: 0.0,
+            u: 0.3,
+        }];
         let cfg = CalibrateConfig::new(0.4, 0.5, 0.05);
         let mut scratch = CalibrateScratch::new();
         let out = calibrate_into(&samples, &cfg, &grid, &lower, &mut scratch);
@@ -1096,7 +1213,10 @@ mod tests {
         // Trusted prefix = grid[0] alone; it is feasible (0.25 + 0.122 ≤
         // 0.4) so it is the selection. The risk-0 point at index 3 would
         // ALSO be feasible — the refusal is what excludes it.
-        assert_eq!(out.upper_index, 0, "selection confined to the trusted prefix");
+        assert_eq!(
+            out.upper_index, 0,
+            "selection confined to the trusted prefix"
+        );
         assert!(out.feasible);
         assert!((out.fp_risk_hat - 0.25).abs() < 1e-6);
 
@@ -1109,7 +1229,10 @@ mod tests {
             }
         }
         let out2 = calibrate_into(&clean, &cfg, &grid, &lower, &mut scratch);
-        assert!(out2.upper_monotonicity.is_none(), "clean curve must not refuse");
+        assert!(
+            out2.upper_monotonicity.is_none(),
+            "clean curve must not refuse"
+        );
     }
 
     #[test]
@@ -1121,7 +1244,12 @@ mod tests {
             TrajectorySample::new(&[0.5, 0.5], &[false, false]),
         ];
         let grid = [0.6f32, 0.7, 0.8, 0.95];
-        let lower = [ScheduleParams { c: 0.0, s: 0.5, l: 0.0, u: 0.3 }];
+        let lower = [ScheduleParams {
+            c: 0.0,
+            s: 0.5,
+            l: 0.0,
+            u: 0.3,
+        }];
         let cfg = CalibrateConfig::new(0.0, 0.5, 0.05);
         let out = calibrate(&samples, &cfg, &grid, &lower);
         assert!(out.fell_back);
@@ -1139,10 +1267,22 @@ mod tests {
             c: Vec<bool>,
         }
         let owned = [
-            Owned { s: vec![0.5, 0.62, 0.62, 0.62], c: vec![false, false, false, false] }, // crosses 0.55 wrong (tick 1)
-            Owned { s: vec![0.5, 0.72, 0.72, 0.72], c: vec![false, false, false, false] }, // crosses 0.55 AND 0.7 wrong
-            Owned { s: vec![0.5, 0.5, 0.82, 0.82], c: vec![false, false, false, true] },  // crosses 0.8 at a CORRECT step only
-            Owned { s: vec![0.5, 0.5, 0.5, 0.5], c: vec![false, false, false, false] },   // stalls — the lower-exit case
+            Owned {
+                s: vec![0.5, 0.62, 0.62, 0.62],
+                c: vec![false, false, false, false],
+            }, // crosses 0.55 wrong (tick 1)
+            Owned {
+                s: vec![0.5, 0.72, 0.72, 0.72],
+                c: vec![false, false, false, false],
+            }, // crosses 0.55 AND 0.7 wrong
+            Owned {
+                s: vec![0.5, 0.5, 0.82, 0.82],
+                c: vec![false, false, false, true],
+            }, // crosses 0.8 at a CORRECT step only
+            Owned {
+                s: vec![0.5, 0.5, 0.5, 0.5],
+                c: vec![false, false, false, false],
+            }, // stalls — the lower-exit case
         ];
         // Empirical FP risk by λ+ (n = 4 archetypes): 0.55 → 2/4 (first two
         // commit wrong at tick 1), 0.7 → 1/4 (only the 0.72 instance),
@@ -1164,19 +1304,35 @@ mod tests {
         // (c=4, u=0.55) crosses it at tick 2 — z = 4·(t+1 − 2) → σ(4)·0.55
         // = 0.54 ≥ 0.5 → Abandon at tick 2, saving 1 of 4 steps.
         let lower = [
-            ScheduleParams { c: 0.0, s: 0.5, l: 0.0, u: 0.3 },
-            ScheduleParams { c: 4.0, s: 0.5, l: 0.0, u: 0.55 },
+            ScheduleParams {
+                c: 0.0,
+                s: 0.5,
+                l: 0.0,
+                u: 0.3,
+            },
+            ScheduleParams {
+                c: 4.0,
+                s: 0.5,
+                l: 0.0,
+                u: 0.55,
+            },
         ];
         let cfg = CalibrateConfig::new(0.25, 0.5, 0.05);
         let out = calibrate(&samples, &cfg, &grid, &lower);
-        assert!(out.feasible, "ε+=0.25 with ucb 0.216 admits the risk-0 point");
+        assert!(
+            out.feasible,
+            "ε+=0.25 with ucb 0.216 admits the risk-0 point"
+        );
         assert_eq!(out.upper_index, 2, "smallest feasible λ+ = 0.85 (risk 0)");
         assert!((out.policy.lambda_plus - 0.85).abs() < 1e-6);
         assert!((out.fp_risk_hat - 0.0).abs() < 1e-6);
         // Step 2 must also be feasible (FN risk 0 on this population: no
         // solvable instance stalls under the schedule) and pick the
         // cheaper schedule among feasible points.
-        assert!(out.lower_index == 1, "the steeper schedule saves compute on the stalled instance");
+        assert!(
+            out.lower_index == 1,
+            "the steeper schedule saves compute on the stalled instance"
+        );
     }
 
     // ── Tripwire (T1.6 / App. C) ────────────────────────────────────────
@@ -1252,12 +1408,24 @@ mod tests {
                 (s, c)
             })
             .collect();
-        let samples: Vec<TrajectorySample<'_>> =
-            owned.iter().map(|(s, c)| TrajectorySample::new(s, c)).collect();
+        let samples: Vec<TrajectorySample<'_>> = owned
+            .iter()
+            .map(|(s, c)| TrajectorySample::new(s, c))
+            .collect();
         let grid = [0.6f32, 0.7, 0.8];
         let lower = [
-            ScheduleParams { c: 0.0, s: 0.5, l: 0.0, u: 0.3 },
-            ScheduleParams { c: 1.0, s: 0.5, l: 0.0, u: 0.3 },
+            ScheduleParams {
+                c: 0.0,
+                s: 0.5,
+                l: 0.0,
+                u: 0.3,
+            },
+            ScheduleParams {
+                c: 1.0,
+                s: 0.5,
+                l: 0.0,
+                u: 0.3,
+            },
         ];
         let cfg = CalibrateConfig::new(0.2, 0.2, 0.05);
         let mut scratch = CalibrateScratch::with_capacity(grid.len(), lower.len());

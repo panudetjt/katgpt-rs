@@ -197,8 +197,10 @@ fn gate_g2_capacity() -> GateResult {
             None => "> sweep".to_string(),
         };
         let shadow = curve.points[curve.points.len() / 2].mean_overlap;
-        println!("    spread {spread:.1} rad -> α_c {ac:>8}   (m̄ at α={:.2}: {shadow:.3})",
-            ALPHA_SWEEP[ALPHA_SWEEP.len() / 2]);
+        println!(
+            "    spread {spread:.1} rad -> α_c {ac:>8}   (m̄ at α={:.2}: {shadow:.3})",
+            ALPHA_SWEEP[ALPHA_SWEEP.len() / 2]
+        );
     }
 
     // The gate is a measurement, so it passes as long as the mechanism ranks the
@@ -235,7 +237,10 @@ fn gate_g2_capacity() -> GateResult {
 fn gate_g7_bbp_gap(alpha_c_d3: f32) -> GateResult {
     println!("\n--- G7: BBP relative gap (λ_max − λ_2)/λ_max at the operating point ---");
     println!("    d=3, using measured α_c = {alpha_c_d3:.3}");
-    println!("\n    {:>6} {:>8} {:>10} {:>10}", "N", "α", "α/α_c", "rel. gap");
+    println!(
+        "\n    {:>6} {:>8} {:>10} {:>10}",
+        "N", "α", "α/α_c", "rel. gap"
+    );
 
     let mut worst_at_quarter = f32::INFINITY;
     for &n in &[8usize, 64] {

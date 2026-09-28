@@ -206,7 +206,9 @@ pub fn bench_ar_ness_w_sweep() -> Vec<BenchResult> {
         PositionOffsetSchedule, evaluate_set_causal_nelbo, generate_pattern_dataset,
         train_mini_set_causal,
     };
-    use crate::speculative::set_diffusion::{CpuSetCausalForward, SetDiffusionConfig, set_diffusion_decode};
+    use crate::speculative::set_diffusion::{
+        CpuSetCausalForward, SetDiffusionConfig, set_diffusion_decode,
+    };
     use katgpt_core::order_to_gen_steps;
 
     // L=8/V=8 — the validated GOAT-fixture shape (src/speculative/
@@ -309,14 +311,7 @@ pub fn bench_ar_ness_w_sweep() -> Vec<BenchResult> {
 
         println!(
             "   {:>6.2} {:>7.3} {:>7.3} {:>9.4} {:>5.1} {:>4}/{} {:>10.1}",
-            w,
-            alr,
-            agr,
-            nelbo,
-            nfe,
-            converged_n,
-            n_decodes,
-            us_per_decode
+            w, alr, agr, nelbo, nfe, converged_n, n_decodes, us_per_decode
         );
         results.push(BenchResult {
             label: format!("AR-ness w={w:.2} (ALR {alr:.2}/AGR {agr:.2})"),
@@ -377,16 +372,11 @@ pub fn bench_ar_ness_w_sweep() -> Vec<BenchResult> {
         );
         println!(
             "   {:>6} {:>7.3} {:>7.3} {:>9.4} {:>5.1} {:>4}/{} {:>10.1}",
-            "mdlm",
-            alr,
-            agr,
-            nelbo,
-            nfe,
-            converged_n,
-            n_decodes,
-            us_per_decode
+            "mdlm", alr, agr, nelbo, nfe, converged_n, n_decodes, us_per_decode
         );
-        println!("   (mdlm NELBO = the degenerate identity-copy floor — Bench 809; never a quality claim)");
+        println!(
+            "   (mdlm NELBO = the degenerate identity-copy floor — Bench 809; never a quality claim)"
+        );
         results.push(BenchResult {
             label: format!("AR-ness mdlm (ALR {alr:.2}/AGR {agr:.2})"),
             throughput: (n_decodes * seq_len) as f64 / elapsed.as_secs_f64(),

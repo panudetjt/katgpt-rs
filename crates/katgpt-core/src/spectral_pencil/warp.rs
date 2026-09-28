@@ -80,7 +80,12 @@ impl<const D: usize> MonotoneWarp<D> {
             }
         }
         let b_inv_sqrt = SymPacked::pack_from_full(&bis);
-        Self { a, b, b_inv_sqrt, k: k.min(D - 1) }
+        Self {
+            a,
+            b,
+            b_inv_sqrt,
+            k: k.min(D - 1),
+        }
     }
 
     /// The forward map `g(x) = λk(A + xB)` — one Jacobi solve.
@@ -154,7 +159,11 @@ mod tests {
     #[allow(clippy::needless_range_loop)] // symmetric matrix fill — both indices index `af`
     fn warp_round_trip_holds() {
         const D: usize = 6;
-        const TRIALS: usize = if cfg!(debug_assertions) { 1_000 } else { 100_000 };
+        const TRIALS: usize = if cfg!(debug_assertions) {
+            1_000
+        } else {
+            100_000
+        };
         let mut scratch = DenseScratch::<D>::new();
         let mut rng = Lcg(2026);
         for t in 0..TRIALS {
@@ -210,9 +219,7 @@ mod tests {
             }
         }
         for k in [0_usize, 1, D / 2, D - 1] {
-            let warp = MonotoneWarp::<D>::from_directions(
-                init.a0, &betas, &dirs, k, &mut scratch,
-            );
+            let warp = MonotoneWarp::<D>::from_directions(init.a0, &betas, &dirs, k, &mut scratch);
             let mut prev = f32::NEG_INFINITY;
             for step in 0..50 {
                 let x = -3.0 + 6.0 * (step as f32) / 49.0;

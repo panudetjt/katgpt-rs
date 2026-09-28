@@ -110,9 +110,11 @@ pub(crate) fn is_in_single_blast(
             let step = dx.signum();
             let mut x = bx + step;
             while x != pos.x {
-                if let Cell::FixedWall | Cell::DestructibleWall | Cell::PowerUpHidden(_) = grid.get(x, by) {
-                        return false;
-                    }
+                if let Cell::FixedWall | Cell::DestructibleWall | Cell::PowerUpHidden(_) =
+                    grid.get(x, by)
+                {
+                    return false;
+                }
                 x += step;
             }
             return true;
@@ -126,9 +128,11 @@ pub(crate) fn is_in_single_blast(
             let step = dy.signum();
             let mut y = by + step;
             while y != pos.y {
-                if let Cell::FixedWall | Cell::DestructibleWall | Cell::PowerUpHidden(_) = grid.get(bx, y) {
-                        return false;
-                    }
+                if let Cell::FixedWall | Cell::DestructibleWall | Cell::PowerUpHidden(_) =
+                    grid.get(bx, y)
+                {
+                    return false;
+                }
                 y += step;
             }
             return true;
@@ -506,7 +510,9 @@ pub(crate) fn wall_density(grid: &ArenaGrid, pos: GridPos, range: i32) -> i32 {
             if skip_center && x0 + i as i32 == pos.x {
                 continue;
             }
-            if let Cell::DestructibleWall | Cell::PowerUpHidden(_) = cell { count += 1 }
+            if let Cell::DestructibleWall | Cell::PowerUpHidden(_) = cell {
+                count += 1
+            }
         }
     }
     count

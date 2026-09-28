@@ -362,10 +362,22 @@ fn g1_bias_changes_selection() {
 
     let mut scratch = MoeForwardScratch::new(&config);
     let mut out = vec![0.0; config.d()];
-    moe_forward_token(&weights_zero_bias, &config, &hidden_in, &mut out, &mut scratch);
+    moe_forward_token(
+        &weights_zero_bias,
+        &config,
+        &hidden_in,
+        &mut out,
+        &mut scratch,
+    );
     let idx_zero = scratch.topk_indices.clone();
 
-    moe_forward_token(&weights_with_bias, &config, &hidden_in, &mut out, &mut scratch);
+    moe_forward_token(
+        &weights_with_bias,
+        &config,
+        &hidden_in,
+        &mut out,
+        &mut scratch,
+    );
     let idx_biased = scratch.topk_indices.clone();
 
     // With the strong bias, experts {0, 2} should be selected (vs whatever the
@@ -380,7 +392,8 @@ fn g1_bias_changes_selection() {
     let mut sorted = idx_biased.clone();
     sorted.sort();
     assert_eq!(
-        sorted, vec![0, 2],
+        sorted,
+        vec![0, 2],
         "with bias [+0.9, -0.9, +0.9, -0.9], experts {{0, 2}} must be selected, got {idx_biased:?}"
     );
 }

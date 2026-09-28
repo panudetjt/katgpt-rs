@@ -56,10 +56,8 @@ pub fn speculative_step_rollback_paged(
     let paths = crate::speculative::step::extract_ddtree_paths(&tree);
 
     if paths.is_empty() {
-        let fallback = sample_from_distribution(
-            marginals.first().map_or(&[1.0], |m| m.as_slice()),
-            rng,
-        );
+        let fallback =
+            sample_from_distribution(marginals.first().map_or(&[1.0], |m| m.as_slice()), rng);
         return (vec![fallback], 1);
     }
 

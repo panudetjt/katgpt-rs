@@ -56,8 +56,7 @@ fn thread_alloc_count() -> usize {
 const PERIOD: usize = 1404;
 const MAG: f32 = 14.0;
 const DRIVEN: [u32; 20] = [
-    7, 93, 134, 208, 317, 429, 555, 666, 777, 888, 41, 172, 259, 380, 501, 612, 733, 844, 921,
-    975,
+    7, 93, 134, 208, 317, 429, 555, 666, 777, 888, 41, 172, 259, 380, 501, 612, 733, 844, 921, 975,
 ];
 
 fn drive_periodic(r: &mut LifReservoir, tick: usize) {

@@ -156,7 +156,11 @@ pub(crate) fn fill_cluster_exact(
             continue;
         }
         let row_off = token_idx * n_embd;
-        let dot = simd_dot_f32(&lm_head[row_off..row_off + n_embd], &hidden[..n_embd], n_embd);
+        let dot = simd_dot_f32(
+            &lm_head[row_off..row_off + n_embd],
+            &hidden[..n_embd],
+            n_embd,
+        );
         // SAFETY: `token_idx < vocab_size` and `logits` is `vocab_size` wide.
         unsafe {
             *logits.get_unchecked_mut(token_idx) = dot;
@@ -240,12 +244,18 @@ fn rank_clusters(
     // cluster.
     let h_norm = match radii {
         None => 0.0,
-        Some(_) => simd_dot_f32(&hidden[..n_embd], &hidden[..n_embd], n_embd).max(0.0).sqrt(),
+        Some(_) => simd_dot_f32(&hidden[..n_embd], &hidden[..n_embd], n_embd)
+            .max(0.0)
+            .sqrt(),
     };
 
     for (c, score) in scores.iter_mut().enumerate() {
         let row_off = c * n_embd;
-        let mean = simd_dot_f32(&classifier[row_off..row_off + n_embd], &hidden[..n_embd], n_embd);
+        let mean = simd_dot_f32(
+            &classifier[row_off..row_off + n_embd],
+            &hidden[..n_embd],
+            n_embd,
+        );
         *score = match radii {
             None => mean,
             Some(radii) => mean + h_norm * radii[c],
@@ -299,7 +309,14 @@ pub fn clustered_lm_head_bounded(
     mut scratch: ClusterScratch<'_>,
 ) -> ClusterCost {
     let num_clusters = head.map.len();
-    rank_clusters(hidden, head.classifier, head.radii, num_clusters, n_embd, &mut scratch);
+    rank_clusters(
+        hidden,
+        head.classifier,
+        head.radii,
+        num_clusters,
+        n_embd,
+        &mut scratch,
+    );
 
     logits.fill(f32::NEG_INFINITY);
     scratch.selected.clear();
@@ -323,7 +340,9 @@ pub fn clustered_lm_head_bounded(
         scratch.gathered.clear();
         for &(cluster_idx, _) in &scratch.indexed[visited..end] {
             let tokens = &head.map[cluster_idx];
-            scratch.gathered.extend(tokens.iter().copied().filter(|&t| t < vocab_size));
+            scratch
+                .gathered
+                .extend(tokens.iter().copied().filter(|&t| t < vocab_size));
             scratch.selected.push(cluster_idx);
         }
         cost.clusters += end - visited;
@@ -334,15 +353,17 @@ pub fn clustered_lm_head_bounded(
             let off = t * n_embd;
             simd_dot_f32(&lm_head[off..off + n_embd], &hidden[..n_embd], n_embd)
         };
-        if scratch.gathered.len() >= PARALLEL_MIN_TOKENS { scratch
+        if scratch.gathered.len() >= PARALLEL_MIN_TOKENS {
+            scratch
                 .gathered
                 .par_iter()
                 .zip(scratch.dots.par_iter_mut())
-                .for_each(|(&t, d)| *d = row(t)); } else {
-                for (&t, d) in scratch.gathered.iter().zip(scratch.dots.iter_mut()) {
-                    *d = row(t);
-                }
+                .for_each(|(&t, d)| *d = row(t));
+        } else {
+            for (&t, d) in scratch.gathered.iter().zip(scratch.dots.iter_mut()) {
+                *d = row(t);
             }
+        }
 
         // Scatter is serial and memory-bound only — the dots are already
         // computed. Token IDs are unique across clusters, so no write races
@@ -401,7 +422,14 @@ pub fn clustered_lm_head_packed(
 ) -> ClusterCost {
     let layout = head.layout;
     let num_clusters = layout.offsets.len();
-    rank_clusters(hidden, head.classifier, head.radii, num_clusters, n_embd, &mut scratch);
+    rank_clusters(
+        hidden,
+        head.classifier,
+        head.radii,
+        num_clusters,
+        n_embd,
+        &mut scratch,
+    );
 
     logits.fill(f32::NEG_INFINITY);
     scratch.selected.clear();
@@ -423,8 +451,10 @@ pub fn clustered_lm_head_packed(
 
         // Total width first, so `dots` is sized once per wave rather than
         // grown per cluster.
-        let total: usize =
-            scratch.indexed[visited..end].iter().map(|&(c, _)| layout.offsets[c].1).sum();
+        let total: usize = scratch.indexed[visited..end]
+            .iter()
+            .map(|&(c, _)| layout.offsets[c].1)
+            .sum();
         scratch.dots.resize(total, 0.0);
         cost.clusters += end - visited;
         cost.tokens += total;
@@ -490,7 +520,10 @@ mod tests {
 
     impl Lcg {
         fn next_f32(&mut self) -> f32 {
-            self.0 = self.0.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            self.0 = self
+                .0
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
             ((self.0 >> 33) as f32 / (1u64 << 31) as f32) - 1.0
         }
     }
@@ -554,7 +587,11 @@ mod tests {
                 &mut logits,
                 &hidden,
                 &w,
-                ClusterHeadView { classifier: &cls, radii: Some(&radii), map: &map },
+                ClusterHeadView {
+                    classifier: &cls,
+                    radii: Some(&radii),
+                    map: &map,
+                },
                 vocab,
                 n_embd,
                 ClusterStop::Admissible { wave: 1 },
@@ -601,7 +638,11 @@ mod tests {
                     &mut logits,
                     &hidden,
                     &w,
-                    ClusterHeadView { classifier: &cls, radii: Some(&radii), map: &map },
+                    ClusterHeadView {
+                        classifier: &cls,
+                        radii: Some(&radii),
+                        map: &map,
+                    },
                     vocab,
                     n_embd,
                     ClusterStop::Admissible { wave },
@@ -644,27 +685,51 @@ mod tests {
         let (mut gathered, mut dots) = (Vec::new(), Vec::new());
 
         let run = |wave: usize,
-                       scores: &mut Vec<f32>,
-                       indexed: &mut Vec<(usize, f32)>,
-                       selected: &mut Vec<usize>,
-                       gathered: &mut Vec<usize>,
-                       dots: &mut Vec<f32>| {
+                   scores: &mut Vec<f32>,
+                   indexed: &mut Vec<(usize, f32)>,
+                   selected: &mut Vec<usize>,
+                   gathered: &mut Vec<usize>,
+                   dots: &mut Vec<f32>| {
             let mut logits = vec![0.0f32; vocab];
             clustered_lm_head_bounded(
                 &mut logits,
                 &hidden,
                 &w,
-                ClusterHeadView { classifier: &cls, radii: Some(&radii), map: &map },
+                ClusterHeadView {
+                    classifier: &cls,
+                    radii: Some(&radii),
+                    map: &map,
+                },
                 vocab,
                 n_embd,
                 ClusterStop::TopK(wave),
-                ClusterScratch { scores, indexed, selected, gathered, dots },
+                ClusterScratch {
+                    scores,
+                    indexed,
+                    selected,
+                    gathered,
+                    dots,
+                },
             );
             logits
         };
 
-        let serial = run(1, &mut scores, &mut indexed, &mut selected, &mut gathered, &mut dots);
-        let parallel = run(8, &mut scores, &mut indexed, &mut selected, &mut gathered, &mut dots);
+        let serial = run(
+            1,
+            &mut scores,
+            &mut indexed,
+            &mut selected,
+            &mut gathered,
+            &mut dots,
+        );
+        let parallel = run(
+            8,
+            &mut scores,
+            &mut indexed,
+            &mut selected,
+            &mut gathered,
+            &mut dots,
+        );
 
         // The parallel run is a superset: every finite logit the serial run
         // produced must be present and identical.
@@ -675,7 +740,10 @@ mod tests {
                 shared += 1;
             }
         }
-        assert!(shared >= PARALLEL_MIN_TOKENS, "fixture must cross the parallel cutoff");
+        assert!(
+            shared >= PARALLEL_MIN_TOKENS,
+            "fixture must cross the parallel cutoff"
+        );
     }
 
     /// **The Issue 666 obligation.** The packed layout may only change *where*
@@ -707,7 +775,11 @@ mod tests {
                     &mut scattered,
                     &hidden,
                     &w,
-                    ClusterHeadView { classifier: &cls, radii: Some(&radii), map: &map },
+                    ClusterHeadView {
+                        classifier: &cls,
+                        radii: Some(&radii),
+                        map: &map,
+                    },
                     vocab,
                     n_embd,
                     stop,
@@ -725,7 +797,11 @@ mod tests {
                 let cost_p = clustered_lm_head_packed(
                     &mut packed,
                     &hidden,
-                    PackedHeadView { classifier: &cls, radii: Some(&radii), layout: &layout },
+                    PackedHeadView {
+                        classifier: &cls,
+                        radii: Some(&radii),
+                        layout: &layout,
+                    },
                     vocab,
                     n_embd,
                     stop,
@@ -758,7 +834,10 @@ mod tests {
         for &t in &layout.token_of_row {
             seen[t] += 1;
         }
-        assert!(seen.iter().all(|&c| c == 1), "every token must occupy exactly one row");
+        assert!(
+            seen.iter().all(|&c| c == 1),
+            "every token must occupy exactly one row"
+        );
 
         // Spans must tile the row space with no gap or overlap.
         let mut next = 0usize;
@@ -787,7 +866,8 @@ mod tests {
         let map = cluster_map_from_embeddings(&w, vocab, n_embd, 32);
 
         // Tied: `lm_head` and `wte` are the same storage.
-        let refused = cluster_layout_from_map(&w, &map, vocab, n_embd, TiedPolicy::Refuse { wte: &w });
+        let refused =
+            cluster_layout_from_map(&w, &map, vocab, n_embd, TiedPolicy::Refuse { wte: &w });
         match refused {
             Err(LayoutRefusal::TiedEmbeddings { extra_bytes }) => assert_eq!(
                 extra_bytes,
@@ -828,7 +908,11 @@ mod tests {
             &mut logits,
             &hidden,
             &w,
-            ClusterHeadView { classifier: &cls, radii: Some(&radii), map: &map },
+            ClusterHeadView {
+                classifier: &cls,
+                radii: Some(&radii),
+                map: &map,
+            },
             vocab,
             n_embd,
             ClusterStop::TopK(4),
@@ -848,7 +932,10 @@ mod tests {
                 checked += 1;
             }
         }
-        assert!(checked > 0, "top-4 clusters must produce some finite logits");
+        assert!(
+            checked > 0,
+            "top-4 clusters must produce some finite logits"
+        );
     }
 
     /// `radii: None` must reproduce the shipped mean-logit ranking, so the
@@ -864,7 +951,16 @@ mod tests {
         let mut scores = vec![0.0f32; map.len()];
         let (mut idx_buf, mut out_buf) = (Vec::new(), Vec::new());
         crate::forward::clustered_lm_head(
-            &mut want, &hidden, &w, &cls, &map, vocab, n_embd, 3, &mut scores, &mut idx_buf,
+            &mut want,
+            &hidden,
+            &w,
+            &cls,
+            &map,
+            vocab,
+            n_embd,
+            3,
+            &mut scores,
+            &mut idx_buf,
             &mut out_buf,
         );
 
@@ -875,7 +971,11 @@ mod tests {
             &mut got,
             &hidden,
             &w,
-            ClusterHeadView { classifier: &cls, radii: None, map: &map },
+            ClusterHeadView {
+                classifier: &cls,
+                radii: None,
+                map: &map,
+            },
             vocab,
             n_embd,
             ClusterStop::TopK(3),
@@ -926,7 +1026,10 @@ mod restricted_tests {
     struct Lcg(u64);
     impl Lcg {
         fn next_f32(&mut self) -> f32 {
-            self.0 = self.0.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            self.0 = self
+                .0
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
             ((self.0 >> 33) as f32 / (1u64 << 31) as f32) - 1.0
         }
     }
@@ -963,7 +1066,10 @@ mod restricted_tests {
                 dense[t]
             );
         }
-        let expect_best = tokens.iter().map(|&t| dense[t]).fold(f32::NEG_INFINITY, f32::max);
+        let expect_best = tokens
+            .iter()
+            .map(|&t| dense[t])
+            .fold(f32::NEG_INFINITY, f32::max);
         assert_eq!(best.to_bits(), expect_best.to_bits());
     }
 
@@ -1022,7 +1128,14 @@ mod restricted_tests {
         let (lm_head, hidden) = fixture();
         let mut a = vec![0.0f32; VOCAB];
         let mut b = vec![0.0f32; VOCAB];
-        restricted_lm_head(&mut a, &hidden, &lm_head, &[9, VOCAB, VOCAB + 5], VOCAB, N_EMBD);
+        restricted_lm_head(
+            &mut a,
+            &hidden,
+            &lm_head,
+            &[9, VOCAB, VOCAB + 5],
+            VOCAB,
+            N_EMBD,
+        );
         restricted_lm_head(&mut b, &hidden, &lm_head, &[9], VOCAB, N_EMBD);
         assert_eq!(a, b);
         assert_eq!(a[VOCAB - 1], f32::NEG_INFINITY);

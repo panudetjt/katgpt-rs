@@ -227,18 +227,12 @@ mod bound {
         /// fitted and wrong for one that was: the cold start has no claim to
         /// be wrong about, a stale head does, and silently substituting the
         /// identity hides a refit that somebody owes.
-        fn get_scale_checked(&self, current: SnapshotId, layer: usize, head: usize)
-            -> Option<f32>;
+        fn get_scale_checked(&self, current: SnapshotId, layer: usize, head: usize) -> Option<f32>;
     }
 
     impl BoundStaticCal for SnapshotBound<StaticCalTable> {
         #[inline]
-        fn get_scale_checked(
-            &self,
-            current: SnapshotId,
-            layer: usize,
-            head: usize,
-        ) -> Option<f32> {
+        fn get_scale_checked(&self, current: SnapshotId, layer: usize, head: usize) -> Option<f32> {
             self.get(current).map(|t| t.get_scale(layer, head))
         }
     }
@@ -400,7 +394,10 @@ mod tests {
 
             let still = bound.peek_unchecked();
             assert!(still.verify(), "the table itself was never corrupted");
-            assert_eq!(still.commitment, commitment_before, "its own identity is unmoved");
+            assert_eq!(
+                still.commitment, commitment_before,
+                "its own identity is unmoved"
+            );
         }
 
         /// The mirror: RECALIBRATING moves the table's own commitment and
@@ -414,7 +411,10 @@ mod tests {
             let before = t.commitment;
             t.set_scale(0, 0, 1.25);
             t.commit();
-            assert_ne!(t.commitment, before, "recalibration must move the table hash");
+            assert_ne!(
+                t.commitment, before,
+                "recalibration must move the table hash"
+            );
 
             let bound = t.bound_to(fitted);
             assert_eq!(bound.staleness(fitted), Staleness::Fresh);
@@ -443,7 +443,10 @@ mod tests {
                 1.0,
                 "the neutral scale is what a refusal would otherwise look like"
             );
-            assert_eq!(bound.staleness(SnapshotId::UNVERSIONED), Staleness::Unversioned);
+            assert_eq!(
+                bound.staleness(SnapshotId::UNVERSIONED),
+                Staleness::Unversioned
+            );
             assert_eq!(bound.get_scale_checked(SnapshotId::UNVERSIONED, 0, 0), None);
         }
     }

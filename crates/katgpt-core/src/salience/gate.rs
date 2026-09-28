@@ -484,7 +484,11 @@ impl<A: Clone, const D: usize> SalienceTriGate<A, D> {
             n,
             "decide_batch_with_nudges: payloads length mismatch"
         );
-        debug_assert_eq!(out.len(), n, "decide_batch_with_nudges: out length mismatch");
+        debug_assert_eq!(
+            out.len(),
+            n,
+            "decide_batch_with_nudges: out length mismatch"
+        );
 
         // Reslice to `n` once, then zip — same rationale as `decide_batch`.
         let (z, c, speak_nudges, delegate_nudges, payloads, out) = (
@@ -1059,42 +1063,57 @@ mod tests {
         // score_speak = sigmoid(2*(0.3-0.5)) = sigmoid(-0.4) ≈ 0.401
         // floor_speak = 0.45 → 0.401 < 0.45 → Silent (without nudge)
         // With speak_nudge=0.1: effective = 0.401 + 0.1 = 0.501 > 0.45 → Speak.
-        let gate: SalienceTriGate<u32, D> =
-            SalienceTriGate::new(D_SPEAK, D_DELEGATE, 0.0, 0.0, 2.0, 10.0, 0.5, 0.5, 0.45, 0.9);
+        let gate: SalienceTriGate<u32, D> = SalienceTriGate::new(
+            D_SPEAK, D_DELEGATE, 0.0, 0.0, 2.0, 10.0, 0.5, 0.5, 0.45, 0.9,
+        );
         let a = [0.3, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
 
         // Sanity: without nudge it's Silent.
         let d_plain = gate.decide(&a, 0.0, 0.0, 42, 0);
-        assert!(matches!(d_plain, SalienceDecision::Silent), "got {d_plain:?}");
+        assert!(
+            matches!(d_plain, SalienceDecision::Silent),
+            "got {d_plain:?}"
+        );
 
         // With speak_nudge it flips to Speak.
         let d_nudged = gate.decide_with_nudges(&a, 0.0, 0.0, 0.1, 0.0, 42, 0);
-        assert!(matches!(d_nudged, SalienceDecision::Speak), "got {d_nudged:?}");
+        assert!(
+            matches!(d_nudged, SalienceDecision::Speak),
+            "got {d_nudged:?}"
+        );
     }
 
     #[test]
     fn test_speak_nudge_negative_can_flip_speak_to_silent() {
         // The inverse: a negative speak_nudge can force Silent even when the
         // activation would normally Speak.
-        let gate: SalienceTriGate<u32, D> =
-            SalienceTriGate::new(D_SPEAK, D_DELEGATE, 0.0, 0.0, 10.0, 10.0, 0.5, 0.5, 0.4, 0.9);
+        let gate: SalienceTriGate<u32, D> = SalienceTriGate::new(
+            D_SPEAK, D_DELEGATE, 0.0, 0.0, 10.0, 10.0, 0.5, 0.5, 0.4, 0.9,
+        );
         let a = [0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         // salience = 0.8, score_speak = sigmoid(10*(0.8-0.5)) = sigmoid(3) ≈ 0.953
         // 0.953 > 0.4 → Speak without nudge.
         let d_plain = gate.decide(&a, 0.0, 0.0, 42, 0);
-        assert!(matches!(d_plain, SalienceDecision::Speak), "got {d_plain:?}");
+        assert!(
+            matches!(d_plain, SalienceDecision::Speak),
+            "got {d_plain:?}"
+        );
 
         // With a large negative speak_nudge: 0.953 - 0.6 = 0.353 < 0.4 → Silent.
         let d_nudged = gate.decide_with_nudges(&a, 0.0, 0.0, -0.6, 0.0, 42, 0);
-        assert!(matches!(d_nudged, SalienceDecision::Silent), "got {d_nudged:?}");
+        assert!(
+            matches!(d_nudged, SalienceDecision::Silent),
+            "got {d_nudged:?}"
+        );
     }
 
     #[test]
     fn test_speak_nudge_monotone_in_speak() {
         // Sweeping speak_nudge from -1 → +1 with score_speak near the floor
         // should produce at most one Silent→Speak transition.
-        let gate: SalienceTriGate<u32, D> =
-            SalienceTriGate::new(D_SPEAK, D_DELEGATE, 0.0, 0.0, 10.0, 10.0, 0.5, 0.5, 0.5, 0.9);
+        let gate: SalienceTriGate<u32, D> = SalienceTriGate::new(
+            D_SPEAK, D_DELEGATE, 0.0, 0.0, 10.0, 10.0, 0.5, 0.5, 0.5, 0.9,
+        );
         let a = [0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         // salience = 0.5, score_speak = sigmoid(10*(0.5-0.5)) = sigmoid(0) = 0.5
         // floor = 0.5 → exactly at threshold (0.5 < 0.5 is false → Speak).
@@ -1163,13 +1182,28 @@ mod tests {
         ];
 
         gate.decide_batch_with_nudges(
-            &activations, &z, &c, &speak_nudges, &delegate_nudges, &payloads, 0, &mut out,
+            &activations,
+            &z,
+            &c,
+            &speak_nudges,
+            &delegate_nudges,
+            &payloads,
+            0,
+            &mut out,
         );
 
         // Row 0: effective_speak = 0.5 - 0.1 = 0.4 < 0.5 → Silent.
-        assert!(matches!(out[0], SalienceDecision::Silent), "got {:?}", out[0]);
+        assert!(
+            matches!(out[0], SalienceDecision::Silent),
+            "got {:?}",
+            out[0]
+        );
         // Row 1: Speak.
-        assert!(matches!(out[1], SalienceDecision::Speak), "got {:?}", out[1]);
+        assert!(
+            matches!(out[1], SalienceDecision::Speak),
+            "got {:?}",
+            out[1]
+        );
         // Row 2: Delegate(12).
         match &out[2] {
             SalienceDecision::Delegate(p) => assert_eq!(*p, 12),

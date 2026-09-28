@@ -101,14 +101,14 @@ pub use wave_kernel::{
 
 pub use backend::{DecBackend, select_backend};
 pub use cache::{DecCache, DirtyRegion, affected_vertices, hodge_decompose_cached};
+#[cfg(feature = "coulomb_flow")]
+pub use coulomb::{CoulombFlowField, CrowdRouter, RouterStep};
 pub use flow::{DecFlowField, coexact_flow, exact_flow, harmonic_flow};
 pub use hodge::{
     HodgeComponents, PoissonScratch, PoissonStats, betti_numbers, dec_relevance_score,
     harmonic_projector, hodge_decompose, hodge_energy, hodge_residual, hodge_spectrum,
     poisson_solve, poisson_solve_into,
 };
-#[cfg(feature = "coulomb_flow")]
-pub use coulomb::{CoulombFlowField, CrowdRouter, RouterStep};
 pub use operators::{
     codifferential, codifferential_into, exterior_derivative, exterior_derivative_into,
     graph_laplacian, graph_laplacian_into, hodge_laplacian, hodge_laplacian_into, hodge_star,
@@ -142,8 +142,8 @@ pub use birth_death::{
 // promote to default only on the Phase 3 GOAT pass.
 #[cfg(feature = "pca_global")]
 pub use pca::{
-    GlobalScalars, GlobalTargetGate, PcaDecision, PcaGlobalFn, PcaScratch, StopWhen, step_pca_async,
-    step_pca_sync,
+    GlobalScalars, GlobalTargetGate, PcaDecision, PcaGlobalFn, PcaScratch, StopWhen,
+    step_pca_async, step_pca_sync,
 };
 
 // Plan 560 — SE(2)-equivariant lifting layer (Smets §3.4.1).

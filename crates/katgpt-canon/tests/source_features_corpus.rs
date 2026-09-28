@@ -6,7 +6,7 @@
 //! stay green without the private checkout — a skip prints a named reason
 //! line, never a silent pass. Inline assertions always run.
 
-use katgpt_canon::source_features::{ast_histogram, AstBin, AstHistogram, N_AST_BINS};
+use katgpt_canon::source_features::{AstBin, AstHistogram, N_AST_BINS, ast_histogram};
 use std::path::PathBuf;
 
 fn bin_of(h: &AstHistogram, bin: AstBin) -> u32 {
@@ -57,9 +57,15 @@ fn inline_idiom_pairs_separate() {
         "fn show(shapes: &[Box<dyn S>]) -> f64 {\n    shapes.iter().map(|s| s.area()).sum()\n}",
     )
     .expect("trait parses");
-    assert!(bin_of(&traitful, AstBin::Trait) == 0, "no trait def in the consumer fn");
+    assert!(
+        bin_of(&traitful, AstBin::Trait) == 0,
+        "no trait def in the consumer fn"
+    );
     assert!(bin_of(&traitful, AstBin::MethodCall) > bin_of(&tag_dispatch, AstBin::MethodCall));
-    assert!(bin_of(&tag_dispatch, AstBin::If) >= 1, "if/else is one ExprIf node");
+    assert!(
+        bin_of(&tag_dispatch, AstBin::If) >= 1,
+        "if/else is one ExprIf node"
+    );
 }
 
 #[test]
@@ -84,7 +90,8 @@ fn sibling_corpus_histograms_parse_and_carry_signal() {
         // data.
         eprintln!(
             "SKIP sibling-corpus arms: riir-train checkout not present at {} (bare-clone posture)",
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../riir-train")
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../../riir-train")
                 .display()
         );
         return;
@@ -114,16 +121,26 @@ fn sibling_corpus_histograms_parse_and_carry_signal() {
         let h_a = ast_histogram(idiomatic).expect("corpus items are syn-validated (issue 567 T1)");
         let h_b =
             ast_histogram(non_idiomatic).expect("corpus items are syn-validated (issue 567 T1)");
-        assert!(h_a.total() > 0 && h_b.total() > 0, "corpus item histograms are non-empty");
-        idio_loop += (bin_of(&h_a, AstBin::ForLoop) + bin_of(&h_a, AstBin::While) + bin_of(&h_a, AstBin::WhileLet)) as u64;
-        non_loop += (bin_of(&h_b, AstBin::ForLoop) + bin_of(&h_b, AstBin::While) + bin_of(&h_b, AstBin::WhileLet)) as u64;
+        assert!(
+            h_a.total() > 0 && h_b.total() > 0,
+            "corpus item histograms are non-empty"
+        );
+        idio_loop += (bin_of(&h_a, AstBin::ForLoop)
+            + bin_of(&h_a, AstBin::While)
+            + bin_of(&h_a, AstBin::WhileLet)) as u64;
+        non_loop += (bin_of(&h_b, AstBin::ForLoop)
+            + bin_of(&h_b, AstBin::While)
+            + bin_of(&h_b, AstBin::WhileLet)) as u64;
         idio_index += bin_of(&h_a, AstBin::Index) as u64;
         non_index += bin_of(&h_b, AstBin::Index) as u64;
         idio_try += bin_of(&h_a, AstBin::Try) as u64;
         non_try += bin_of(&h_b, AstBin::Try) as u64;
         n_pairs += 1;
     }
-    assert!(n_pairs >= 100, "corpus scale target: ≥100 pairs, got {n_pairs}");
+    assert!(
+        n_pairs >= 100,
+        "corpus scale target: ≥100 pairs, got {n_pairs}"
+    );
     eprintln!(
         "sibling corpus: {n_pairs} pairs — loops idio {idio_loop} vs non {non_loop}; \
          index idio {idio_index} vs non {non_index}; try idio {idio_try} vs non {non_try}"

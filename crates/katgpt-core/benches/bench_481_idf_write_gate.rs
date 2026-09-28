@@ -240,10 +240,22 @@ fn write_fact(
             store.write_idf(q, target, gate, ScoreFn::Dot, POOL, T, stats, out, scratch);
         }
         Arm::Tf => {
-            store.write_idf(q, target, gate, ScoreFn::Dot, POOL, T, tf_stats, out, scratch);
+            store.write_idf(
+                q,
+                target,
+                gate,
+                ScoreFn::Dot,
+                POOL,
+                T,
+                tf_stats,
+                out,
+                scratch,
+            );
         }
         Arm::Random => {
-            let n = store.working().query_into(q, ScoreFn::Dot, POOL, out, scratch);
+            let n = store
+                .working()
+                .query_into(q, ScoreFn::Dot, POOL, out, scratch);
             let mut picked = [(0usize, 0.0f32); T];
             for p in picked.iter_mut() {
                 *p = out[rng.next_below(n)];
@@ -274,12 +286,34 @@ fn run_arm(
     tf_stats.record_batch(&[]);
 
     for (q, target) in &facts_a {
-        write_fact(arm, gate, &mut store, &mut rng, q, target, stats, &tf_stats, &mut out, &mut scratch);
+        write_fact(
+            arm,
+            gate,
+            &mut store,
+            &mut rng,
+            q,
+            target,
+            stats,
+            &tf_stats,
+            &mut out,
+            &mut scratch,
+        );
     }
     let recall_a_pre = recall(&store, &facts_a);
 
     for (q, target) in &facts_b {
-        write_fact(arm, gate, &mut store, &mut rng, q, target, stats, &tf_stats, &mut out, &mut scratch);
+        write_fact(
+            arm,
+            gate,
+            &mut store,
+            &mut rng,
+            q,
+            target,
+            stats,
+            &tf_stats,
+            &mut out,
+            &mut scratch,
+        );
     }
     let recall_a_post = recall(&store, &facts_a);
     let recall_b = recall(&store, &facts_b);
@@ -323,15 +357,15 @@ fn main() {
     println!("═══ Issue 650 / Research 481 — TF-IDF Write-Gate GOAT ═══");
     println!();
     println!("Configuration:");
-    println!(
-        "  PKM:      SQRT_N={SQRT_N} (N={N_SLOTS} slots), D_K={D_K}, D_V={D_V}, K={K}"
-    );
+    println!("  PKM:      SQRT_N={SQRT_N} (N={N_SLOTS} slots), D_K={D_K}, D_V={D_V}, K={K}");
     println!(
         "  Write:    pool={POOL}, t={T} (smallest write-set regime — the paper's widest-gap regime)"
     );
     println!(
         "  Background: {} queries × batch {} → |B|={} batches",
-        N_BG, BG_BATCH, N_BG / BG_BATCH
+        N_BG,
+        BG_BATCH,
+        N_BG / BG_BATCH
     );
     println!(
         "  Facts:    A={N_FACTS} then B={N_FACTS} (same broad distribution — overlapping pools)"
@@ -380,7 +414,13 @@ fn main() {
             idf_max = idf_max.max(stats.idf(i));
         }
         println!("── Regime: {} ──", regime.label());
-        println!("  stats built in {:?}: |B|={}, idf range [{:.3}, {:.3}]", stats_build, stats.n_batches(), idf_min, idf_max);
+        println!(
+            "  stats built in {:?}: |B|={}, idf range [{:.3}, {:.3}]",
+            stats_build,
+            stats.n_batches(),
+            idf_min,
+            idf_max
+        );
         println!("  slot count histogram (count/|B| buckets 0,⅛,…,1): {hist:?}");
         println!();
 
@@ -404,7 +444,9 @@ fn main() {
 
     // ── G1 verdict per regime ─────────────────────────────────────────────
     println!("── G1 Interference/Retention Gate ───────────────────────────────────");
-    println!("  target: IDF recall(A)_post − TF recall(A)_post ≥ +{G1_MARGIN_TARGET:.2} at matched recall(B)");
+    println!(
+        "  target: IDF recall(A)_post − TF recall(A)_post ≥ +{G1_MARGIN_TARGET:.2} at matched recall(B)"
+    );
     let mut g1_verdicts = [false; 2];
     for (ri, &regime) in regimes.iter().enumerate() {
         // Matched-learning target: min(0.85, TF's best recall(B)).
@@ -431,10 +473,10 @@ fn main() {
                 regime_short(regime),
                 arm.label(),
                 chosen[ai].0,
-                chosen[ai].1 .2,
+                chosen[ai].1.2,
                 target_rb,
-                chosen[ai].1 .0,
-                chosen[ai].1 .1
+                chosen[ai].1.0,
+                chosen[ai].1.1
             );
         }
         let (_, idf_m) = chosen[0];
@@ -473,7 +515,10 @@ fn main() {
     let g1_pass = g1_verdicts[0];
     // Recompute the ramp margin for the final verdict line.
     let ramp_margin = {
-        let tf_best_rb = results[0][1].iter().map(|m| m.2).fold(f32::NEG_INFINITY, f32::max);
+        let tf_best_rb = results[0][1]
+            .iter()
+            .map(|m| m.2)
+            .fold(f32::NEG_INFINITY, f32::max);
         let target_rb = 0.85f32.min(tf_best_rb);
         let pick = |ai: usize| {
             let mut best_gi = 0usize;
@@ -500,14 +545,34 @@ fn main() {
 
     // Warm up both paths.
     for (q, target) in facts.iter().take(64) {
-        store.write_idf(q, target, 0.8, ScoreFn::Dot, POOL, T, stats, &mut out, &mut scratch);
+        store.write_idf(
+            q,
+            target,
+            0.8,
+            ScoreFn::Dot,
+            POOL,
+            T,
+            stats,
+            &mut out,
+            &mut scratch,
+        );
         store.write(q, target, 0.8, ScoreFn::Dot, T, &mut out, &mut scratch);
     }
 
     let mut t_idf = std::time::Duration::ZERO;
     for (q, target) in black_box(facts.iter().take(1000)) {
         let t0 = Instant::now();
-        black_box(store.write_idf(q, target, 0.8, ScoreFn::Dot, POOL, T, stats, &mut out, &mut scratch));
+        black_box(store.write_idf(
+            q,
+            target,
+            0.8,
+            ScoreFn::Dot,
+            POOL,
+            T,
+            stats,
+            &mut out,
+            &mut scratch,
+        ));
         t_idf += t0.elapsed();
     }
     let ns_idf = t_idf.as_nanos() as f64 / 1000.0;
@@ -521,38 +586,54 @@ fn main() {
     let ns_plain = t_plain.as_nanos() as f64 / 1000.0;
 
     let overhead = ns_idf - ns_plain;
-    println!(
-        "  write_idf (pool={POOL}, t={T}): {ns_idf:>8.0} ns/write"
-    );
-    println!(
-        "  write     (k={T} plain):   {ns_plain:>8.0} ns/write"
-    );
+    println!("  write_idf (pool={POOL}, t={T}): {ns_idf:>8.0} ns/write");
+    println!("  write     (k={T} plain):   {ns_plain:>8.0} ns/write");
     println!(
         "  idf-fold overhead:        {:>8.0} ns/write ({:.1}× plain)",
         overhead,
         ns_idf / ns_plain.max(1e-9)
     );
-    println!("  G2 verdict: {} (µs-scale; informational — O(k) multiplies + one top-t selection)", if overhead < 5000.0 { "✅ PASS" } else { "❌ FAIL" });
+    println!(
+        "  G2 verdict: {} (µs-scale; informational — O(k) multiplies + one top-t selection)",
+        if overhead < 5000.0 {
+            "✅ PASS"
+        } else {
+            "❌ FAIL"
+        }
+    );
     println!();
 
     // ── G4: alloc-free steady state ───────────────────────────────────────
     println!("── G4 Alloc-Free Gate ───────────────────────────────────────────────");
     let (_, allocs) = alloc_delta(|| {
         for (q, target) in facts.iter().take(1000) {
-            black_box(store.write_idf(q, target, 0.8, ScoreFn::Dot, POOL, T, stats, &mut out, &mut scratch));
+            black_box(store.write_idf(
+                q,
+                target,
+                0.8,
+                ScoreFn::Dot,
+                POOL,
+                T,
+                stats,
+                &mut out,
+                &mut scratch,
+            ));
         }
     });
-    println!(
-        "  allocations across 1000 steady-state write_idf calls: {allocs}"
-    );
+    println!("  allocations across 1000 steady-state write_idf calls: {allocs}");
     let g4_pass = allocs == 0;
-    println!("  G4 verdict: {}", if g4_pass { "✅ PASS" } else { "❌ FAIL" });
+    println!(
+        "  G4 verdict: {}",
+        if g4_pass { "✅ PASS" } else { "❌ FAIL" }
+    );
     println!();
 
     // ── Final ─────────────────────────────────────────────────────────────
     let pass = g1_pass && g4_pass;
     if pass {
-        println!("═══ Issue 650 GOAT: ✅ PASS — G1 (norm-ramp) margin {ramp_margin:+.3}, G4 {allocs} allocs ═══");
+        println!(
+            "═══ Issue 650 GOAT: ✅ PASS — G1 (norm-ramp) margin {ramp_margin:+.3}, G4 {allocs} allocs ═══"
+        );
     } else {
         println!(
             "═══ Issue 650 GOAT: ❌ FAIL — G1 {} (norm-ramp margin {:+.3}), G4 {} allocs ═══",

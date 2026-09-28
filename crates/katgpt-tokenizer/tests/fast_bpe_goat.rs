@@ -36,7 +36,7 @@
 
 #![cfg(feature = "fast_bpe")]
 
-use katgpt_tokenizer::{BpeTrainer, BpeTokenizerImpl, FastBpeEncoder};
+use katgpt_tokenizer::{BpeTokenizerImpl, BpeTrainer, FastBpeEncoder};
 
 // ---------------------------------------------------------------------------
 // G1 — bit-identical to encode
@@ -91,15 +91,20 @@ fn g1_bit_identical_to_encode_medium_vocab() {
         let slow = BpeTokenizerImpl::encode(&tokenizer, text);
         let fast = BpeTokenizerImpl::encode_fast(&tokenizer, text);
         assert_eq!(
-            slow, fast,
+            slow,
+            fast,
             "G1 bit-identical failure on medium vocab (len={}): first divergence at idx {}",
             text.len(),
-            slow.iter().zip(fast.iter()).position(|(a, b)| a != b).unwrap_or(slow.len())
+            slow.iter()
+                .zip(fast.iter())
+                .position(|(a, b)| a != b)
+                .unwrap_or(slow.len())
         );
         let mut enc = FastBpeEncoder::from_tokenizer(&tokenizer);
         let amortized = enc.encode(text);
         assert_eq!(
-            slow, amortized,
+            slow,
+            amortized,
             "G1 FastBpeEncoder divergence on medium vocab (len={})",
             text.len()
         );
@@ -121,13 +126,20 @@ fn g1_bit_identical_to_encode_with_table_fallback() {
     // catches it.
     let corpus = "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu";
     let tokenizer = BpeTrainer::train(corpus, 128);
-    for text in ["alpha beta", "gamma delta epsilon", "zeta eta theta iota kappa lambda mu"] {
+    for text in [
+        "alpha beta",
+        "gamma delta epsilon",
+        "zeta eta theta iota kappa lambda mu",
+    ] {
         let slow = BpeTokenizerImpl::encode(&tokenizer, text);
         let fast = BpeTokenizerImpl::encode_fast(&tokenizer, text);
         assert_eq!(slow, fast, "G1 fallback path divergence on: {text}");
         let mut enc = FastBpeEncoder::from_tokenizer(&tokenizer);
         let amortized = enc.encode(text);
-        assert_eq!(slow, amortized, "G1 FastBpeEncoder fallback divergence on: {text}");
+        assert_eq!(
+            slow, amortized,
+            "G1 FastBpeEncoder fallback divergence on: {text}"
+        );
     }
 }
 
@@ -316,7 +328,8 @@ fn g4_encode_into_bit_identical_to_encode() {
         let reference = BpeTokenizerImpl::encode(&tokenizer, text);
         encoder.encode_into(text, &mut out);
         assert_eq!(
-            out, reference,
+            out,
+            reference,
             "G4 encode_into divergence (len={}): first diff at {}",
             text.len(),
             out.iter()

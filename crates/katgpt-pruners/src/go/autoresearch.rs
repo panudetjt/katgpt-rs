@@ -772,7 +772,10 @@ pub fn run_autoresearch(config: &AutoResearchConfig, rng: &mut Rng) -> AutoResea
         let arm_idx = active_indices
             .iter()
             .max_by(|&&a, &&b| {
-                katgpt_core::float_order::cmp_for_max(arms[a].ucb1(total_pulls), arms[b].ucb1(total_pulls))
+                katgpt_core::float_order::cmp_for_max(
+                    arms[a].ucb1(total_pulls),
+                    arms[b].ucb1(total_pulls),
+                )
             })
             .copied()
             .unwrap_or(active_indices[0]);
@@ -829,9 +832,10 @@ pub fn run_autoresearch(config: &AutoResearchConfig, rng: &mut Rng) -> AutoResea
     }
 
     // Find best arm by cumulative mean reward
-    let best_arm = arms.iter().filter(|a| a.pulls > 0).max_by(|a, b| {
-        katgpt_core::float_order::cmp_for_max(a.mean_reward(), b.mean_reward())
-    });
+    let best_arm = arms
+        .iter()
+        .filter(|a| a.pulls > 0)
+        .max_by(|a, b| katgpt_core::float_order::cmp_for_max(a.mean_reward(), b.mean_reward()));
 
     let (best_config, best_win_rate) = match best_arm {
         Some(arm) => (arm.config, arm.mean_reward()),

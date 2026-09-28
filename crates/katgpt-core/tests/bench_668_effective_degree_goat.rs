@@ -193,7 +193,10 @@ fn g1b_order_survives_a_legendre_basis_swap() {
         leg[slot] = legendre_ed_norm(&outputs, &nodes, n_terms, cfg.damping);
     }
     println!("G1b chebyshev={cheb:?} legendre={leg:?}");
-    assert!(cheb[0] < cheb[1] && cheb[1] < cheb[2], "chebyshev order broke");
+    assert!(
+        cheb[0] < cheb[1] && cheb[1] < cheb[2],
+        "chebyshev order broke"
+    );
     assert!(leg[0] < leg[1] && leg[1] < leg[2], "legendre order broke");
 }
 
@@ -222,7 +225,10 @@ fn g1c_ed_scales_with_output_magnitude_ed_norm_does_not() {
         r2.ed_norm
     );
     assert!((r2.ed / r1.ed - 2.0).abs() < 1e-3, "ED must scale ×2");
-    assert!((r2.ed_norm - r1.ed_norm).abs() < 1e-4, "ED_norm must not scale");
+    assert!(
+        (r2.ed_norm - r1.ed_norm).abs() < 1e-4,
+        "ED_norm must not scale"
+    );
 }
 
 #[test]
@@ -310,9 +316,13 @@ fn g2_per_path_latency_and_pair_scaling() {
     let cfg = EdConfig::cheap();
     let mut nodes = vec![0.0f32; cfg.resolution];
     let ns = best_of_3(500_000, || {
-        randomized_cosine_nodes(black_box(cfg.resolution), black_box(cfg.seed), &mut nodes).unwrap();
+        randomized_cosine_nodes(black_box(cfg.resolution), black_box(cfg.seed), &mut nodes)
+            .unwrap();
     });
-    println!("G2 randomized_cosine_nodes r={}: {ns:.1} ns", cfg.resolution);
+    println!(
+        "G2 randomized_cosine_nodes r={}: {ns:.1} ns",
+        cfg.resolution
+    );
     assert!(ns < 200.0, "node sampling {ns} ns");
 
     // Pair-count scaling of the full driver (decode = one multiply-add chain).
@@ -337,7 +347,10 @@ fn g2_per_path_latency_and_pair_scaling() {
                 .unwrap(),
             );
         });
-        println!("G2 ed_over_pairs n_pairs={n_pairs}: {ns:.1} ns ({:.1} ns/pair)", ns / n_pairs as f64);
+        println!(
+            "G2 ed_over_pairs n_pairs={n_pairs}: {ns:.1} ns ({:.1} ns/pair)",
+            ns / n_pairs as f64
+        );
         if let Some((pn, pns)) = prev {
             let ratio = ns / pns;
             let expected = n_pairs as f64 / pn as f64;

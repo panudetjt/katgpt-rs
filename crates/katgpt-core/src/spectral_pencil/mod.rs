@@ -108,7 +108,11 @@ impl<const D: usize, const N: usize> DensePencil<D, N> {
         let jacobi = jacobi_eigen(&a, false, scratch);
         let value = scratch.values[k.min(D - 1)];
         let eigengap = eigengap_at(&scratch.values, k.min(D - 1));
-        PencilEval { value, eigengap, jacobi }
+        PencilEval {
+            value,
+            eigengap,
+            jacobi,
+        }
     }
 
     /// Evaluate with eigenvectors (needed for T6 attribution): leaves
@@ -125,7 +129,11 @@ impl<const D: usize, const N: usize> DensePencil<D, N> {
         let jacobi = jacobi_eigen(&a, true, scratch);
         let value = scratch.values[k.min(D - 1)];
         let eigengap = eigengap_at(&scratch.values, k.min(D - 1));
-        PencilEval { value, eigengap, jacobi }
+        PencilEval {
+            value,
+            eigengap,
+            jacobi,
+        }
     }
 }
 
@@ -148,8 +156,16 @@ pub fn eigengap_at(values: &[f32], k: usize) -> Option<f32> {
     while s + 1 < d && values[s + 1] == alpha {
         s += 1;
     }
-    let below = if r == 0 { f32::INFINITY } else { alpha - values[r - 1] };
-    let above = if s + 1 == d { f32::INFINITY } else { values[s + 1] - alpha };
+    let below = if r == 0 {
+        f32::INFINITY
+    } else {
+        alpha - values[r - 1]
+    };
+    let above = if s + 1 == d {
+        f32::INFINITY
+    } else {
+        values[s + 1] - alpha
+    };
     Some(below.min(above))
 }
 
@@ -165,9 +181,12 @@ impl<const D: usize, const N: usize> TridiagPencil<D, N> {
     #[must_use]
     pub fn eval(&self, x: &[f32; N], k: usize, scratch: &mut TriScratch<D>) -> f32 {
         tridiag::fuse_into(
-            &self.a0.diag, &self.a0.off,
-            &self.a.map(|m| m.diag), &self.a.map(|m| m.off),
-            x, scratch,
+            &self.a0.diag,
+            &self.a0.off,
+            &self.a.map(|m| m.diag),
+            &self.a.map(|m| m.off),
+            x,
+            scratch,
         );
         // Copy out to avoid the overlapping &/&mut borrow on scratch.
         let diag = scratch.diag;
@@ -180,9 +199,12 @@ impl<const D: usize, const N: usize> TridiagPencil<D, N> {
     #[must_use]
     pub fn count_below(&self, x: &[f32; N], mu: f32, scratch: &mut TriScratch<D>) -> u32 {
         tridiag::fuse_into(
-            &self.a0.diag, &self.a0.off,
-            &self.a.map(|m| m.diag), &self.a.map(|m| m.off),
-            x, scratch,
+            &self.a0.diag,
+            &self.a0.off,
+            &self.a.map(|m| m.diag),
+            &self.a.map(|m| m.off),
+            x,
+            scratch,
         );
         let diag = scratch.diag;
         let off = scratch.off;

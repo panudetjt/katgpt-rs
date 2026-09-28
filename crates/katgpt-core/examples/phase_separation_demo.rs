@@ -66,7 +66,10 @@ fn main() {
     println!("Orbit period P = lcm(1..=7) = {PERIOD}");
     println!("LRC bound: 1/N = 1/{n} ≈ {BOUND:.6} (eps slack ±{EPS:.6})");
     println!();
-    println!("{:<10}{:<16}{:<16}MaxSeparation", "Entity", "Speed", "LoneliestTick");
+    println!(
+        "{:<10}{:<16}{:<16}MaxSeparation",
+        "Entity", "Speed", "LoneliestTick"
+    );
     println!("{}", "-".repeat(58));
 
     let mut all_hit_bound = true;
@@ -90,7 +93,8 @@ fn main() {
     if all_hit_bound {
         println!(
             "✓ LRC CONFIRMED: all {} entities reached phase_separation ≥ {:.6}",
-            n, BOUND - EPS
+            n,
+            BOUND - EPS
         );
     } else {
         println!(

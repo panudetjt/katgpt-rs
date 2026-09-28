@@ -134,7 +134,10 @@ struct DualParams {
 }
 
 impl DualParams {
-    const SELF_CALIBRATED: Self = Self { alpha: 1.0, rho: 1.0 };
+    const SELF_CALIBRATED: Self = Self {
+        alpha: 1.0,
+        rho: 1.0,
+    };
 }
 
 /// The prototype: incumbent `ReconstructionState` + dual accumulator +
@@ -314,7 +317,10 @@ fn run_transient(amp: f32, burst: usize, ticks_after: usize, p: &DualParams) -> 
 fn gate1_bit_identity() -> (bool, usize, usize) {
     let mut inc = ReconstructionState::new([0.0; 8]);
     let mut dual = BeliefDual::new();
-    let p = DualParams { alpha: 0.0, rho: 1.0 };
+    let p = DualParams {
+        alpha: 0.0,
+        rho: 1.0,
+    };
     let selected = [true; 6];
     let mut mismatches = 0usize;
     let mut lambda_nonzero = 0usize;
@@ -348,7 +354,11 @@ fn gate1_bit_identity() -> (bool, usize, usize) {
             lambda_nonzero += 1;
         }
     }
-    (mismatches == 0 && lambda_nonzero == 0, mismatches, lambda_nonzero)
+    (
+        mismatches == 0 && lambda_nonzero == 0,
+        mismatches,
+        lambda_nonzero,
+    )
 }
 
 /// G4 allocator: count allocations across the dual tick loop (bench_013 /
@@ -502,7 +512,9 @@ fn run_arm(
     settle: usize,
 ) -> (bool, Option<(f32, f32)>) {
     println!("\n═══ {label} (ON {ticks_on} / OFF {ticks_off} / hold {hold} / burst {burst}) ═══");
-    println!("  α    ρ   | S1(0.3) S2(0.6) S3(1.2) S4(2.0) | T2end pk  | S3 band(hold/plateau) clr  | inf");
+    println!(
+        "  α    ρ   | S1(0.3) S2(0.6) S3(1.2) S4(2.0) | T2end pk  | S3 band(hold/plateau) clr  | inf"
+    );
     let cells = sweep_h(alphas, rhos, ticks_on, ticks_off, hold, burst, settle);
     for c in &cells {
         println!(
@@ -536,13 +548,20 @@ fn run_arm(
     });
 
     let p_judge = recommended
-        .map(|c| DualParams { alpha: c.alpha, rho: c.rho })
+        .map(|c| DualParams {
+            alpha: c.alpha,
+            rho: c.rho,
+        })
         .unwrap_or(DualParams::SELF_CALIBRATED);
     println!(
         "── judged at α={:.2}, ρ={:.1} ({}) ──",
         p_judge.alpha,
         p_judge.rho,
-        if recommended.is_some() { "recommended operating point" } else { "self-calibrated fallback — NO cell passed" }
+        if recommended.is_some() {
+            "recommended operating point"
+        } else {
+            "self-calibrated fallback — NO cell passed"
+        }
     );
 
     let s1 = run_sustained_h(0.3, ticks_on, ticks_off, hold, &p_judge);
@@ -557,11 +576,31 @@ fn run_arm(
     let g2c = s3.readout_cleared <= 0.60;
     let g2d = t2.peak_readout >= 0.50;
     let g2e = t2.end_readout <= 0.60;
-    println!("G2a S3 anomaly-end readout ≥ 0.90        : {}  ({:.4})", verdict(g2a), s3.readout_anomaly_end);
-    println!("G2b S3 hold band ≤ 0.05 (last {hold} ticks): {}  ({:.4})", verdict(g2b), s3.hold_band);
-    println!("G2c S3 clears after removal (≤ 0.60)     : {}  ({:.4})", verdict(g2c), s3.readout_cleared);
-    println!("G2d T2 burst fires (peak ≥ 0.50)         : {}  ({:.4})", verdict(g2d), t2.peak_readout);
-    println!("G2e T2 clears (end ≤ 0.60)               : {}  ({:.4})", verdict(g2e), t2.end_readout);
+    println!(
+        "G2a S3 anomaly-end readout ≥ 0.90        : {}  ({:.4})",
+        verdict(g2a),
+        s3.readout_anomaly_end
+    );
+    println!(
+        "G2b S3 hold band ≤ 0.05 (last {hold} ticks): {}  ({:.4})",
+        verdict(g2b),
+        s3.hold_band
+    );
+    println!(
+        "G2c S3 clears after removal (≤ 0.60)     : {}  ({:.4})",
+        verdict(g2c),
+        s3.readout_cleared
+    );
+    println!(
+        "G2d T2 burst fires (peak ≥ 0.50)         : {}  ({:.4})",
+        verdict(g2d),
+        t2.peak_readout
+    );
+    println!(
+        "G2e T2 clears (end ≤ 0.60)               : {}  ({:.4})",
+        verdict(g2e),
+        t2.end_readout
+    );
 
     let ladder = [
         s4.readout_anomaly_end,
@@ -584,8 +623,9 @@ fn run_arm(
     let g3_strict_total = expected_order.windows(2).all(|w| w[0].1 > w[1].1);
     // v3.1 amendment: the law Issue 952 §B specifies — sustained ladder
     // strictly monotone + transients strictly below the weakest sustained.
-    let g3_ok =
-        ladder.windows(2).all(|w| w[0] > w[1]) && t2.end_readout < ladder[3] && t1.end_readout < ladder[3];
+    let g3_ok = ladder.windows(2).all(|w| w[0] > w[1])
+        && t2.end_readout < ladder[3]
+        && t1.end_readout < ladder[3];
     println!(
         "G3  sustained ladder monotone + T < S1   : {}  [{}]",
         verdict(g3_ok),
@@ -595,7 +635,9 @@ fn run_arm(
         "G3' strict total order (v1-specified)    : {}  — the T2>T1 edge is the aftermath-dip semantic, recorded not gated",
         verdict(g3_strict_total)
     );
-    println!("    (S read at anomaly end; T read at sim end — the sustained/transient discriminator)");
+    println!(
+        "    (S read at anomaly end; T read at sim end — the sustained/transient discriminator)"
+    );
 
     let g5_conv = s3.plateau_band <= 0.05 * s3.lambda_anomaly_end.abs().max(1.0);
     let g5_bounded = [&s1, &s2, &s3, &s4]
@@ -614,7 +656,9 @@ fn run_arm(
 }
 
 fn main() {
-    println!("══ Issue 952 §B T3 — belief dual state POC v3 (arming + one-sided per-tick demotion) ══");
+    println!(
+        "══ Issue 952 §B T3 — belief dual state POC v3 (arming + one-sided per-tick demotion) ══"
+    );
     println!(
         "β = {EXPECTATION_BETA} (shipped slow default) · arming = {ARMING_TICKS} ticks · λ_max = {LAMBDA_MAX} (path-operator bound)\n"
     );
@@ -672,8 +716,16 @@ fn main() {
     println!("\n── T3 gate table ──");
     println!("  {:<62} {}", "G1 α=0 bit-identical", verdict(g1_ok));
     println!("  {:<62} {}", "G4 alloc-free", verdict(g4_ok));
-    println!("  {:<62} {}", "G2+G3+G5 at the operational horizon (Arm A)", verdict(arm_a));
-    println!("  {:<62} {}", "G2+G3+G5 at the equilibrium horizon (Arm B)", verdict(arm_b));
+    println!(
+        "  {:<62} {}",
+        "G2+G3+G5 at the operational horizon (Arm A)",
+        verdict(arm_a)
+    );
+    println!(
+        "  {:<62} {}",
+        "G2+G3+G5 at the equilibrium horizon (Arm B)",
+        verdict(arm_b)
+    );
     let cell_note = cell_b
         .map(|(a, r)| format!("α={a}, ρ={r}"))
         .unwrap_or_else(|| "none".to_string());

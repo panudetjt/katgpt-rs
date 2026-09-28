@@ -194,7 +194,8 @@ impl ChunkedCompactor {
 
             let recon = result
                 .report
-                .as_ref().map_or(0.0, |r| r.relative_attn_output_error);
+                .as_ref()
+                .map_or(0.0, |r| r.relative_attn_output_error);
 
             out.compact_keys.extend_from_slice(&result.compact_keys);
             out.beta.extend_from_slice(&result.beta);
@@ -301,7 +302,8 @@ impl ChunkedCompactor {
                 let rerotated = pf.re_rotate_f32(&result.compact_keys, new_pos);
                 let recon = result
                     .report
-                    .as_ref().map_or(0.0, |r| r.relative_attn_output_error);
+                    .as_ref()
+                    .map_or(0.0, |r| r.relative_attn_output_error);
                 out.compact_keys.extend_from_slice(&rerotated);
                 out.beta.extend_from_slice(&result.beta);
                 out.compact_values.extend_from_slice(&result.compact_values);
@@ -329,7 +331,8 @@ impl ChunkedCompactor {
                 )?;
                 let recon = result
                     .report
-                    .as_ref().map_or(0.0, |r| r.relative_attn_output_error);
+                    .as_ref()
+                    .map_or(0.0, |r| r.relative_attn_output_error);
                 out.compact_keys.extend_from_slice(&result.compact_keys);
                 out.beta.extend_from_slice(&result.beta);
                 out.compact_values.extend_from_slice(&result.compact_values);
@@ -897,7 +900,10 @@ mod tests {
         let compacted = compactor
             .compact_text_based(&[chunk], std::slice::from_ref(&queries), &cfg)
             .expect("compact");
-        assert!(compacted.total_compact_len > 0, "should compact some tokens");
+        assert!(
+            compacted.total_compact_len > 0,
+            "should compact some tokens"
+        );
 
         // Full attention output with RoVE values (the reference).
         let full_out = simple_attention(&queries, &keys, &values_rove, n, t_len, d);
@@ -980,7 +986,13 @@ mod tests {
 
         // 3. Inverse-rotate the compacted attention output.
         let mut y_compact = vec![0.0f32; n * d];
-        batch_inverse_rotate_output_into(&action, &q_positions, &attn_out_compact, &mut y_compact, d);
+        batch_inverse_rotate_output_into(
+            &action,
+            &q_positions,
+            &attn_out_compact,
+            &mut y_compact,
+            d,
+        );
 
         let cos = cosine_sim(&y_full, &y_compact);
         assert!(

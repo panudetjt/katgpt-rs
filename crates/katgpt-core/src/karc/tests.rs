@@ -126,6 +126,18 @@ fn forecaster_rejects_no_samples() {
 }
 
 #[test]
+fn fit_error_singular_display_pin() {
+    // Issue 904: the Woodbury path degrades to FitError::Singular on an
+    // indefinite f32 sample Gram (previously a cholesky_f32 panic through the
+    // real tick path). This Display feeds the engine's
+    // "fit_ridge failed: {e}; keeping previous fit" warn line.
+    assert_eq!(
+        FitError::Singular.to_string(),
+        "f32 sample Gram not positive definite"
+    );
+}
+
+#[test]
 fn forecaster_fit_woodbury_path_forecasts_linear_map() {
     // Force the Woodbury sample-space path: d_h (D*M*K = 2*3*1 = 6) > n (4).
     // Verifies the reused scratch buffers (sample_gram/sample_chol/sample_z/

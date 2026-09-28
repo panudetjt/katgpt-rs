@@ -282,7 +282,11 @@ pub fn logsumexp_parts(logits: &[f32]) -> (f32, f32, f32) {
         }
     }
     let ln_z = sum_exp.ln();
-    let mean_shift = if sum_exp > 0.0 { sum_shift / sum_exp } else { 0.0 };
+    let mean_shift = if sum_exp > 0.0 {
+        sum_shift / sum_exp
+    } else {
+        0.0
+    };
     (max_val, ln_z, mean_shift)
 }
 
@@ -1838,7 +1842,9 @@ mod exact_sigmoid_tests {
 
     /// Monotone ULP distance over the f32 bit pattern (two's-complement map).
     fn ulp_diff(a: f32, b: f32) -> u32 {
-        (a.to_bits() as i32).wrapping_sub(b.to_bits() as i32).unsigned_abs()
+        (a.to_bits() as i32)
+            .wrapping_sub(b.to_bits() as i32)
+            .unsigned_abs()
     }
 
     /// The f64-computed sigmoid, narrowed — the highest-precision reference
@@ -1912,7 +1918,10 @@ mod exact_sigmoid_tests {
             }
             x += 1.0;
         }
-        assert!(differing > 0, "variants must not be bit-identical everywhere");
+        assert!(
+            differing > 0,
+            "variants must not be bit-identical everywhere"
+        );
     }
 
     #[test]

@@ -145,7 +145,7 @@ fn bench_sigmoid_fuse_into(c: &mut Criterion) {
     let cfg = SigmoidFusionConfig {
         tau: (d as f32).sqrt(),
         rmsnorm_eps: 1e-6,
-            logit_bias: 0.0,
+        logit_bias: 0.0,
     };
 
     let q: Vec<f32> = (0..d).map(|i| (i as f32 * 0.1).sin()).collect();

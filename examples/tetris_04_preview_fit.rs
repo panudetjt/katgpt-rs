@@ -28,19 +28,19 @@
 use katgpt_tetris::sim as tetris_sim;
 #[path = "common/flappy_sim.rs"]
 mod flappy_sim;
+#[path = "common/grammar_tables.rs"]
+mod grammar_tables;
 #[path = "common/lanes_sim.rs"]
 mod lanes_sim;
 #[path = "common/micro_dump.rs"]
 mod micro_dump;
 #[path = "common/micro_fit.rs"]
 mod micro_fit;
-#[path = "common/grammar_tables.rs"]
-mod grammar_tables;
 
 use katgpt_core::state_option_scoring::head::{HeadFitter, loo_group_select};
 use micro_fit::RIDGE_GRID;
 
-use tetris_sim::{Board, OutcomeFeatures, Placement, Piece};
+use tetris_sim::{Board, OutcomeFeatures, Piece, Placement};
 
 const F_SPOT: usize = 5;
 const D_SPOT: usize = F_SPOT + 1; // + intercept
@@ -123,7 +123,10 @@ fn load_v4(path: &std::path::Path) -> V4Loaded {
         let mut fs = Vec::with_capacity(opts.len());
         for (p, fo) in opts.iter().zip(&st.options) {
             assert!(
-                p.rot == fo.rot && p.col == fo.col && p.row == fo.row && p.cells[..] == fo.cells[..],
+                p.rot == fo.rot
+                    && p.col == fo.col
+                    && p.row == fo.row
+                    && p.cells[..] == fo.cells[..],
                 "{}: placement drifted at rot {} col {}",
                 st.state_id,
                 fo.rot,
@@ -156,8 +159,7 @@ fn load_baseline_argmaxes(path: &std::path::Path) -> std::collections::HashMap<S
     let raw = std::fs::read_to_string(path).expect("read v3 baseline fixture");
     let mut out = std::collections::HashMap::new();
     for line in raw.lines() {
-        let v: serde_json::Value =
-            serde_json::from_str(line).expect("parse baseline JSONL line");
+        let v: serde_json::Value = serde_json::from_str(line).expect("parse baseline JSONL line");
         if v["state_id"] == "_meta" {
             continue;
         }
@@ -244,7 +246,11 @@ fn run_head<const F: usize, const D: usize>(
         .zip(argmaxes.iter())
         .filter(|(p, a)| p == a)
         .count();
-    let distinct = out.picks.iter().collect::<std::collections::HashSet<_>>().len();
+    let distinct = out
+        .picks
+        .iter()
+        .collect::<std::collections::HashSet<_>>()
+        .len();
 
     // Pairwise concordance within each state (head scores vs oracle
     // p_clean ordering; exact ties in either → the pair is skipped).
@@ -316,16 +322,23 @@ fn pct(n: usize, d: usize) -> String {
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let v4_path = std::path::PathBuf::from(
-        args.first().map(String::as_str).unwrap_or("tests/fixtures/tetris_oracle_laya_en_v4.jsonl"),
+        args.first()
+            .map(String::as_str)
+            .unwrap_or("tests/fixtures/tetris_oracle_laya_en_v4.jsonl"),
     );
     let v3_path = std::path::PathBuf::from(
-        args.get(1).map(String::as_str).unwrap_or("tests/fixtures/tetris_oracle_laya_en_v3.jsonl"),
+        args.get(1)
+            .map(String::as_str)
+            .unwrap_or("tests/fixtures/tetris_oracle_laya_en_v3.jsonl"),
     );
 
     let v4 = load_v4(&v4_path);
     let baseline = load_baseline_argmaxes(&v3_path);
     let n_states = v4.states.len();
-    assert_eq!(n_states, 840, "the paired corpus is 120 boards × 7 previews");
+    assert_eq!(
+        n_states, 840,
+        "the paired corpus is 120 boards × 7 previews"
+    );
     let (group_off, _group_of) = board_groups(&v4.parents);
     let n_boards = group_off.len() - 1;
     assert_eq!(n_boards, 120);
@@ -470,9 +483,15 @@ fn main() {
 
     // ── Gates ───────────────────────────────────────────────────────────
     // The comparator's defining property (harness sanity).
-    assert_eq!(spot.boards_flipped, 0, "the spot-only head must rank all 7 previews of a board identically");
+    assert_eq!(
+        spot.boards_flipped, 0,
+        "the spot-only head must rank all 7 previews of a board identically"
+    );
     // Discrimination floor (G1: never constant).
-    assert!(spot.distinct >= 2 && crossed.distinct >= 2, "discrimination floor");
+    assert!(
+        spot.distinct >= 2 && crossed.distinct >= 2,
+        "discrimination floor"
+    );
     // The verdict (printed, never asserted — the record decides).
     let g1 = crossed.loo_agree > spot.loo_agree
         && crossed.concord as f64 / crossed.pairs.max(1) as f64

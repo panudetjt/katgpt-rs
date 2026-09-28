@@ -7,8 +7,8 @@
 //! sketch. G4: zero-alloc by construction (fixed arrays only) — asserted in
 //! the unit gates, not re-asserted here.
 
-use criterion::{criterion_group, criterion_main, Criterion};
-use katgpt_core::lthash::{Element, LtHash, DEFAULT_LANES};
+use criterion::{Criterion, criterion_group, criterion_main};
+use katgpt_core::lthash::{DEFAULT_LANES, Element, LtHash};
 use std::hint::black_box;
 
 const DOMAIN: &str = "katgpt-lthash-bench-v1";
@@ -30,7 +30,10 @@ fn bench_ops(c: &mut Criterion) {
     });
     group.bench_function("element_derive/128", |b| {
         b.iter(|| {
-            Element::<128>::derive(black_box(DOMAIN), black_box(&[b"account-key-0", b"value-0"]))
+            Element::<128>::derive(
+                black_box(DOMAIN),
+                black_box(&[b"account-key-0", b"value-0"]),
+            )
         })
     });
 

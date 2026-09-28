@@ -177,7 +177,13 @@ impl DirectionTable {
             scratch.m_cap = rows_n;
             scratch.d_cap = d;
         }
-        thin_svd_into(&scratch.rows, rows_n, d, &mut scratch.svd, &mut scratch.work);
+        thin_svd_into(
+            &scratch.rows,
+            rows_n,
+            d,
+            &mut scratch.svd,
+            &mut scratch.work,
+        );
         let s0 = scratch.svd.singular_value(0);
         if !(s0.is_finite() && s0 > 0.0) {
             return None;
@@ -263,7 +269,8 @@ impl DirectionTable {
         if bytes.len() < 12 + 32 || bytes[..4] != MAGIC {
             return Err(ThawError::Malformed);
         }
-        let rd = |o: usize| u32::from_le_bytes([bytes[o], bytes[o + 1], bytes[o + 2], bytes[o + 3]]);
+        let rd =
+            |o: usize| u32::from_le_bytes([bytes[o], bytes[o + 1], bytes[o + 2], bytes[o + 3]]);
         let d = rd(4) as usize;
         let r = rd(8) as usize;
         if d == 0 || r > MAX_DIRECTIONS {
@@ -381,7 +388,10 @@ mod tests {
         let tab = DirectionTable::fit(&deltas, &w, d, 3, &mut s).unwrap();
         let d0 = tab.direction(0);
         let want = [1.0f32 / 1.25f32.sqrt(), 0.5 / 1.25f32.sqrt()];
-        assert!((d0[0] - want[0]).abs() < 0.02 && (d0[1] - want[1]).abs() < 0.02, "{d0:?}");
+        assert!(
+            (d0[0] - want[0]).abs() < 0.02 && (d0[1] - want[1]).abs() < 0.02,
+            "{d0:?}"
+        );
         assert!(tab.bias(0) > 0.95, "one-sided successes ⇒ bias ≈ 1");
     }
 
@@ -401,21 +411,26 @@ mod tests {
 
     #[test]
     fn freeze_thaw_roundtrip_and_tamper_refusal() {
-        let tab =
-            DirectionTable::from_parts(3, vec![1.0, 0.0, 0.0, 0.0, 3.0, 4.0], vec![0.9, 0.2])
-                .unwrap();
+        let tab = DirectionTable::from_parts(3, vec![1.0, 0.0, 0.0, 0.0, 3.0, 4.0], vec![0.9, 0.2])
+            .unwrap();
         assert!((tab.direction(1)[1] - 0.6).abs() < 1e-6);
         let bytes = tab.freeze();
         let back = DirectionTable::thaw(&bytes, Some(tab.commitment())).unwrap();
         assert_eq!(back, tab);
         let mut bad = bytes.clone();
         bad[14] ^= 1;
-        assert_eq!(DirectionTable::thaw(&bad, None), Err(ThawError::CommitmentMismatch));
+        assert_eq!(
+            DirectionTable::thaw(&bad, None),
+            Err(ThawError::CommitmentMismatch)
+        );
         assert_eq!(
             DirectionTable::thaw(&bytes, Some([7u8; 32])),
             Err(ThawError::CommitmentMismatch)
         );
-        assert_eq!(DirectionTable::thaw(&bytes[..10], None), Err(ThawError::Malformed));
+        assert_eq!(
+            DirectionTable::thaw(&bytes[..10], None),
+            Err(ThawError::Malformed)
+        );
     }
 
     #[test]

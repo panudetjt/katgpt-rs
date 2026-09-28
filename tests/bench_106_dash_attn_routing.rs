@@ -160,7 +160,10 @@ fn bench_chunk_summary_vs_mean_k() {
             .iter()
             .copied()
             .max_by(|&a, &b| {
-                katgpt_core::float_order::cmp_for_max(learned_result.probs[a], learned_result.probs[b])
+                katgpt_core::float_order::cmp_for_max(
+                    learned_result.probs[a],
+                    learned_result.probs[b],
+                )
             });
 
         match (mean_top, learned_top) {

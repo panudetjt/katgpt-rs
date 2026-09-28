@@ -374,11 +374,7 @@ impl CceLp {
     ///
     /// Returns the same shape as [`solve_heterogeneous`]. The result passes
     /// [`is_heterogeneous_cce`] at convergence.
-    pub fn solve_heterogeneous_cg<
-        const N: usize,
-        const A: usize,
-        H: HeterogeneousPayoff<N, A>,
-    >(
+    pub fn solve_heterogeneous_cg<const N: usize, const A: usize, H: HeterogeneousPayoff<N, A>>(
         &self,
         game: &H,
     ) -> Result<OccupationMeasure<N, A>, CceLpError> {
@@ -405,7 +401,9 @@ impl CceLp {
         }
 
         // Upper bound on iterations: every (player, κ) pair could become active.
-        let max_total_devs: usize = (0..n_players).map(|i| game.deviations_for_player(i).len()).sum();
+        let max_total_devs: usize = (0..n_players)
+            .map(|i| game.deviations_for_player(i).len())
+            .sum();
         let max_iters = max_total_devs + 1;
 
         // Active constraints: (player_idx, deviation_idx_within_player) pairs.
@@ -452,14 +450,13 @@ impl CceLp {
             obj[..na].copy_from_slice(&obj_full);
 
             // Solve the relaxed LP.
-            let rho_entries = solve_lp_auto(&mat, &rhs, &obj, n_vars, na)
-                .ok_or(CceLpError::Infeasible)?;
+            let rho_entries =
+                solve_lp_auto(&mat, &rhs, &obj, n_vars, na).ok_or(CceLpError::Infeasible)?;
 
             // Convert to OccupationMeasure for the separation oracle.
             let sum: f32 = rho_entries.iter().map(|&v| v as f32).sum();
             let inv = if sum > 1e-9 { 1.0 / sum } else { 1.0 };
-            let entries_f32: Vec<f32> =
-                rho_entries.iter().map(|&v| (v as f32) * inv).collect();
+            let entries_f32: Vec<f32> = rho_entries.iter().map(|&v| (v as f32) * inv).collect();
             let rho = OccupationMeasure::from_entries_trusted(entries_f32);
 
             // Separation oracle: find the most-violated (player, κ) not yet active.
@@ -484,15 +481,17 @@ impl CceLp {
             }
 
             if let Some((i, di, _v)) = worst {
-                    active.push((i, di));
-                } else {
-                    // No violated constraint found — converged.
-                    return Ok(rho);
-                }
+                active.push((i, di));
+            } else {
+                // No violated constraint found — converged.
+                return Ok(rho);
+            }
         }
 
         // Exhausted iteration budget without convergence — numerical failure.
-        Err(CceLpError::NumericalError("constraint generation did not converge"))
+        Err(CceLpError::NumericalError(
+            "constraint generation did not converge",
+        ))
     }
 }
 
@@ -999,14 +998,20 @@ mod tests {
             let p = MdpGame;
             let rho = CceLp::new().solve(&d, &p).expect("unconstrained feasible");
             // Artifact: all mass on (HIGH, WAIT), γ₀ = 0.
-            assert!((rho.at(HIGH, WAIT) - 1.0).abs() < 0.05, "expected all mass on (HIGH, WAIT)");
+            assert!(
+                (rho.at(HIGH, WAIT) - 1.0).abs() < 0.05,
+                "expected all mass on (HIGH, WAIT)"
+            );
             let mut gamma0 = 0.0_f64;
             for (s, cost_s) in COST.iter().enumerate() {
                 for (a, &cost_sa) in cost_s.iter().enumerate() {
                     gamma0 += rho.at(s, a) as f64 * cost_sa;
                 }
             }
-            assert!(gamma0.abs() < 0.05, "unconstrained γ₀ should be ≈ 0 (artifact), got {gamma0}");
+            assert!(
+                gamma0.abs() < 0.05,
+                "unconstrained γ₀ should be ≈ 0 (artifact), got {gamma0}"
+            );
         }
 
         /// G1: constrained CCE matches the true MDP optimum (5/6).
@@ -1074,7 +1079,10 @@ mod tests {
                         inflow += rho.at(s, a) as f64 * TRANSITION[s][a][s_prime];
                     }
                 }
-                assert!((marginal - inflow).abs() < 1e-4, "balance violated for s'={s_prime}: ν={marginal}, inflow={inflow}");
+                assert!(
+                    (marginal - inflow).abs() < 1e-4,
+                    "balance violated for s'={s_prime}: ν={marginal}, inflow={inflow}"
+                );
             }
         }
     }
@@ -1160,7 +1168,7 @@ mod tests {
         }
         use crate::cce::heterogeneous::PerPlayerGame;
 
-let d = TwoDevs {
+        let d = TwoDevs {
             v: vec![
                 Deviation::<2, 2>::constant(0, 0),
                 Deviation::<2, 2>::constant(1, 1),

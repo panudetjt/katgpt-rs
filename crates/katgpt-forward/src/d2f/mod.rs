@@ -25,9 +25,9 @@
 // `crate::transformer::TransformerWeights` → `katgpt_transformer::*`,
 // `crate::types::*` → `katgpt_types::*`.
 
-use crate::d2f_context::{D2fContext, denoising_accuracy, forward_block_causal_with};
 #[cfg(feature = "probe_guidance")]
 use crate::d2f_context::apply_probe_guidance;
+use crate::d2f_context::{D2fContext, denoising_accuracy, forward_block_causal_with};
 use katgpt_core::simd::{simd_add_scalar_inplace, simd_exp_inplace, simd_max_f32};
 use katgpt_core::traits::{ConstraintPruner, ScreeningPruner};
 use katgpt_transformer::TransformerWeights;
@@ -1555,7 +1555,11 @@ impl<'a> D2fPipeline<'a> {
     /// a [`crate::d2f_context::WeakLogitProbe`] (T2 trains the artifact;
     /// tests use fixture probes).
     #[cfg(feature = "probe_guidance")]
-    pub fn set_guidance(mut self, lambda: f32, probe: Box<dyn crate::d2f_context::WeakLogitProbe>) -> Self {
+    pub fn set_guidance(
+        mut self,
+        lambda: f32,
+        probe: Box<dyn crate::d2f_context::WeakLogitProbe>,
+    ) -> Self {
         self.guidance = Some((lambda, probe));
         self
     }

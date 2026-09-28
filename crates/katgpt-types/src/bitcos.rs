@@ -138,12 +138,12 @@ fn push_bits(buf: &mut Vec<u64>, cursor: &mut usize, bits: u64, n: u32) {
 pub struct BitcosWeights {
     pub rows: usize,
     pub cols: usize,
-    pub words_per_row: usize,   // cols.div_ceil(64)
-    pub groups_per_row: usize,  // cols.div_ceil(GROUP_SIZE)
-    pub presence: Vec<u64>,     // [rows * words_per_row]
-    pub signs: Vec<u64>,        // compacted stream + 1 sentinel zero word
+    pub words_per_row: usize,      // cols.div_ceil(64)
+    pub groups_per_row: usize,     // cols.div_ceil(GROUP_SIZE)
+    pub presence: Vec<u64>,        // [rows * words_per_row]
+    pub signs: Vec<u64>,           // compacted stream + 1 sentinel zero word
     pub row_sign_offset: Vec<u64>, // bit offset of row r's first sign bit
-    pub group_scale: Vec<f16>,  // [rows * groups_per_row]
+    pub group_scale: Vec<f16>,     // [rows * groups_per_row]
 }
 
 /// Per-tensor zero-density measurement (Issue 864 T2 — the z-meter).
@@ -468,9 +468,7 @@ impl BitcosWeights {
         let tail_bits = self.cols % 64;
         for r in 0..self.rows {
             let last = r * self.words_per_row + self.words_per_row - 1;
-            if tail_bits != 0
-                && (self.presence[last] >> tail_bits) != 0
-            {
+            if tail_bits != 0 && (self.presence[last] >> tail_bits) != 0 {
                 return false;
             }
         }
@@ -625,7 +623,11 @@ mod tests {
 
     #[test]
     fn unpack_row_matches_get_and_zero_pads_are_implicit() {
-        let gw = group_from_pairs(&[(0, 1), (3, -1), (5, 1), (70, -1), (71, -1), (129, 1)], 2, 130);
+        let gw = group_from_pairs(
+            &[(0, 1), (3, -1), (5, 1), (70, -1), (71, -1), (129, 1)],
+            2,
+            130,
+        );
         let bc = BitcosWeights::pack_from_group(&gw);
         for r in 0..2 {
             let mut out = vec![7i8; 130];

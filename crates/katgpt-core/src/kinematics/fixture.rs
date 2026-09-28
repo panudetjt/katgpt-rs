@@ -33,7 +33,7 @@
 //! in the bench doc).
 
 use crate::kinematics::perception::Regime;
-use crate::kinematics::{Sched, kinematic_extrapolate_into, KinState};
+use crate::kinematics::{KinState, Sched, kinematic_extrapolate_into};
 
 /// Paper clip length per segment.
 pub const T: usize = 31;
@@ -374,9 +374,7 @@ pub fn extrapolation_errors(fix: &Fixture, seg: usize, ks: &[u32], sched: &Sched
             }
             kinematic_extrapolate_into(&state, k, sched, &mut predicted)
                 .expect("in-lattice horizon");
-            for (pi, fp) in predicted.iter().zip(
-                fix.frames[target].pos.iter(),
-            ) {
+            for (pi, fp) in predicted.iter().zip(fix.frames[target].pos.iter()) {
                 worst[ki] = worst[ki].max((pi - fp).abs());
             }
         }

@@ -347,7 +347,10 @@ impl Frontier {
             }
             s.push('\n');
         }
-        let _ = write!(s, "  legend: '#' certified-correct  'X' VIOLATION  '.' valid-uncertified");
+        let _ = write!(
+            s,
+            "  legend: '#' certified-correct  'X' VIOLATION  '.' valid-uncertified"
+        );
         s
     }
 }
@@ -378,7 +381,8 @@ fn run(w: World, n: usize, strategy: Strategy, budget: usize, seed: u64, delta: 
 
     // Seed set: one known-valid cell, per the plan. Give it enough queries
     // to clear the bound so the frontier has somewhere to stand.
-    let seed_cell = (0..f.cells()).fold(0usize, |b, c| if f.p_true[c] > f.p_true[b] { c } else { b });
+    let seed_cell =
+        (0..f.cells()).fold(0usize, |b, c| if f.p_true[c] > f.p_true[b] { c } else { b });
     for t in 1..=40 {
         f.observe(seed_cell, &mut rng, t, delta);
     }
@@ -437,7 +441,14 @@ fn main() {
 
     // ── T0.1: dense world, soundness + growth ──────────────────────────────
     println!("--- T0.1  dense (smooth block checkerboard), grid {N0}x{N0} ---");
-    let d = run(World::Checkerboard, N0, Strategy::Frontier, BUDGET, 0xC0FFEE, DELTA);
+    let d = run(
+        World::Checkerboard,
+        N0,
+        Strategy::Frontier,
+        BUDGET,
+        0xC0FFEE,
+        DELTA,
+    );
     println!(
         "certified {}/{} truly-valid | violations {} | by-cause: direct {} dilated {} | monotone {}",
         d.certified, d.truly_valid, d.violations, d.cert_direct, d.cert_dilated, d.monotone_ok
@@ -465,7 +476,11 @@ fn main() {
     println!(
         "\n  mean certified @ {BUDGET}: passive {pass_avg:.1}  frontier {front_avg:.1}  \
          separation {:.1}x",
-        if pass_avg > 0.0 { front_avg / pass_avg } else { f32::INFINITY }
+        if pass_avg > 0.0 {
+            front_avg / pass_avg
+        } else {
+            f32::INFINITY
+        }
     );
     println!("  total violations: passive {pv}, frontier {fv}");
 
@@ -482,9 +497,19 @@ fn main() {
     // and L*spacing is just the largest adjacent |dp| on the grid — so it
     // shrinks with resolution while the headroom does not.
     println!("\n--- T0.3  resolution sweep: is dilation feasible? ---");
-    println!("  {:>7} {:>10} {:>10} {:>10} {:>8} {:>9} {:>6}", "grid", "hop_decr", "headroom", "certified", "direct", "dilated", "viol");
+    println!(
+        "  {:>7} {:>10} {:>10} {:>10} {:>8} {:>9} {:>6}",
+        "grid", "hop_decr", "headroom", "certified", "direct", "dilated", "viol"
+    );
     for &n in &[16usize, 32, 64, 96] {
-        let r = run(World::Checkerboard, n, Strategy::Frontier, BUDGET, 0xC0FFEE, DELTA);
+        let r = run(
+            World::Checkerboard,
+            n,
+            Strategy::Frontier,
+            BUDGET,
+            0xC0FFEE,
+            DELTA,
+        );
         println!(
             "  {:>7} {:>10.4} {:>10.4} {:>10} {:>8} {:>9} {:>6}",
             format!("{n}x{n}"),
@@ -500,10 +525,17 @@ fn main() {
     // ── the Phase 0 exit criterion, evaluated ──────────────────────────────
     println!("\n=== Phase 0 exit criterion (plan-stated) ===");
     let sound = d.violations == 0 && fv == 0 && pv == 0;
-    println!("  zero violations ............. {}", if sound { "PASS" } else { "FAIL" });
+    println!(
+        "  zero violations ............. {}",
+        if sound { "PASS" } else { "FAIL" }
+    );
     println!(
         "  certified growth, monotone .. {}",
-        if d.certified > 1 && d.monotone_ok { "PASS" } else { "FAIL" }
+        if d.certified > 1 && d.monotone_ok {
+            "PASS"
+        } else {
+            "FAIL"
+        }
     );
     println!(
         "  passive/frontier separation . {}",

@@ -1780,7 +1780,9 @@ pub fn train_mini_dllm(
 ) -> (TransformerWeights, Vec<f32>) {
     let mut rng = Rng::new(seed);
     let weights = TransformerWeights::new(config, &mut rng);
-    train_mini_dllm_epochs(config, weights, train_data, test_data, n_epochs, lr, mask_ratio, rng)
+    train_mini_dllm_epochs(
+        config, weights, train_data, test_data, n_epochs, lr, mask_ratio, rng,
+    )
 }
 
 /// Continue-train mini dLLM from EXISTING weights (riir-train Plan 416 T1.2:

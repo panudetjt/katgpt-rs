@@ -46,9 +46,9 @@ pub struct LayerWeightsF16 {
 /// model load time.
 #[derive(Clone)]
 pub struct TransformerWeightsF16 {
-    pub wte: Vec<f32>,             // [vocab_size, n_embd] — f32 (embedding lookup)
-    pub wpe: Vec<f32>,             // [block_size, n_embd] — f32 (embedding lookup)
-    pub lm_head: Vec<f32>,         // [vocab_size, n_embd] — f32 (logit precision)
+    pub wte: Vec<f32>,                // [vocab_size, n_embd] — f32 (embedding lookup)
+    pub wpe: Vec<f32>,                // [block_size, n_embd] — f32 (embedding lookup)
+    pub lm_head: Vec<f32>,            // [vocab_size, n_embd] — f32 (logit precision)
     pub layers: Vec<LayerWeightsF16>, // [n_layer]
 }
 
@@ -98,12 +98,12 @@ impl LayerWeights {
     /// The optional fields are left EMPTY (not ones-init): callers that enable
     /// their features construct them through this crate's own paths.
     pub fn from_parts(
-        attn_wq: Vec<f32>,   // [outs, ins]
-        attn_wk: Vec<f32>,   // [kv_dim, ins]
-        attn_wv: Vec<f32>,   // [kv_dim, ins]
-        attn_wo: Vec<f32>,   // [ins, outs]
-        mlp_w1: Vec<f32>,    // [mlp_hidden, ins]
-        mlp_w2: Vec<f32>,    // [ins, mlp_hidden]
+        attn_wq: Vec<f32>, // [outs, ins]
+        attn_wk: Vec<f32>, // [kv_dim, ins]
+        attn_wv: Vec<f32>, // [kv_dim, ins]
+        attn_wo: Vec<f32>, // [ins, outs]
+        mlp_w1: Vec<f32>,  // [mlp_hidden, ins]
+        mlp_w2: Vec<f32>,  // [ins, mlp_hidden]
     ) -> Self {
         Self {
             attn_wq,

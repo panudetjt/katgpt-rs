@@ -134,7 +134,10 @@ pub trait TernaryFfnHook: Send + Sync {
 /// Output slices MUST NOT alias each other or `x`. The forward path ensures
 /// this by writing into pre-allocated scratch buffers.
 #[cfg(feature = "ternary_group_scale")]
-#[allow(clippy::too_many_arguments, reason = "Fused GPU dispatch interface: 4 weight matrices + 1 input + 4 outputs is inherent to the DeltaNet input projection block")]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "Fused GPU dispatch interface: 4 weight matrices + 1 input + 4 outputs is inherent to the DeltaNet input projection block"
+)]
 pub trait TernaryInputProjHook: Send + Sync {
     /// Fused DeltaNet input projections — all 4 sharing input `x`.
     ///
@@ -160,8 +163,6 @@ pub trait TernaryInputProjHook: Send + Sync {
         b_out: &mut [f32],
     );
 }
-
-
 
 #[cfg(feature = "ternary_group_scale")]
 impl TernaryGroupWeights {
@@ -336,7 +337,11 @@ impl TernaryGroupWeights {
     where
         F: FnMut(usize, &[f32]) -> f32,
     {
-        assert_eq!(weights.len(), rows * cols, "weights slice must be rows*cols");
+        assert_eq!(
+            weights.len(),
+            rows * cols,
+            "weights slice must be rows*cols"
+        );
         let mut out = Self::new(rows, cols);
 
         for r in 0..rows {
@@ -472,7 +477,11 @@ impl TernaryGroupWeights {
 #[inline]
 pub(crate) fn mean_abs_scale(group: &[f32]) -> f32 {
     let abs_sum: f32 = group.iter().map(|v| v.abs()).sum();
-    if abs_sum > 0.0 { abs_sum / group.len() as f32 } else { 1.0 }
+    if abs_sum > 0.0 {
+        abs_sum / group.len() as f32
+    } else {
+        1.0
+    }
 }
 
 /// Snap a positive f32 to the nearest power of two, clamped into the
@@ -599,11 +608,7 @@ pub struct TernaryBlockContiguousWeights {
 #[cfg(feature = "ternary_group_scale")]
 impl TernaryBlockContiguousWeights {
     /// Construct from a `Vec<TernaryBlockAoS>` + shape metadata.
-    pub fn from_blocks(
-        blocks: Vec<TernaryBlockAoS>,
-        rows: usize,
-        cols: usize,
-    ) -> Self {
+    pub fn from_blocks(blocks: Vec<TernaryBlockAoS>, rows: usize, cols: usize) -> Self {
         let groups_per_row = cols.div_ceil(GROUP_SIZE);
         assert_eq!(
             blocks.len(),
@@ -690,21 +695,18 @@ mod tests {
     fn block_contiguous_matvec_matches_soa() {
         // Test multiple shapes including Bonsai-relevant dimensions.
         let shapes: &[(usize, usize)] = &[
-            (1, 128),      // single group
-            (3, 256),      // multi-group
-            (48, 512),     // ssm_alpha/beta shape
-            (1024, 512),   // attn_k/v shape
-            (128, 4096),   // small Bonsai projection
-            (512, 17408),  // ffn_gate shape (large, multi-group)
+            (1, 128),     // single group
+            (3, 256),     // multi-group
+            (48, 512),    // ssm_alpha/beta shape
+            (1024, 512),  // attn_k/v shape
+            (128, 4096),  // small Bonsai projection
+            (512, 17408), // ffn_gate shape (large, multi-group)
         ];
 
         for &(rows, cols) in shapes {
             let w = filled(rows, cols, 42 + rows as u64);
-            let w_bc = TernaryBlockContiguousWeights::from_blocks(
-                w.to_block_contiguous(),
-                rows,
-                cols,
-            );
+            let w_bc =
+                TernaryBlockContiguousWeights::from_blocks(w.to_block_contiguous(), rows, cols);
 
             // Random input vector.
             let mut seed = 100 + rows as u64;
@@ -939,7 +941,10 @@ mod pot_tests {
 
         // Uniform [-1, 1).
         let mut s = 0x1111_u64;
-        cases.push(("uniform", (0..rows * cols).map(|_| pseudo(&mut s)).collect()));
+        cases.push((
+            "uniform",
+            (0..rows * cols).map(|_| pseudo(&mut s)).collect(),
+        ));
 
         // Gaussian-ish (sum of three uniforms → bell-shaped).
         let mut s = 0x2222_u64;
@@ -956,7 +961,13 @@ mod pot_tests {
         cases.push((
             "sparse70",
             (0..rows * cols)
-                .map(|_| if pseudo(&mut s) > -0.7 { 0.0 } else { pseudo(&mut s) })
+                .map(|_| {
+                    if pseudo(&mut s) > -0.7 {
+                        0.0
+                    } else {
+                        pseudo(&mut s)
+                    }
+                })
                 .collect(),
         ));
 

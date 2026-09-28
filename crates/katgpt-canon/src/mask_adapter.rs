@@ -100,7 +100,11 @@ impl MaskAdapter {
     /// Returns true if latent `i` participates (bit set).
     #[inline]
     pub fn participates(&self, i: usize) -> bool {
-        debug_assert!(i < self.target_dim, "index {i} >= target_dim {}", self.target_dim);
+        debug_assert!(
+            i < self.target_dim,
+            "index {i} >= target_dim {}",
+            self.target_dim
+        );
         if i >= self.target_dim {
             return false;
         }

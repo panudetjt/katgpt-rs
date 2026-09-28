@@ -332,15 +332,18 @@ fn run_poc(n_entities: usize, cfg: Option<(f32, f32, usize)>) -> PocMetrics {
     for entity in 0..n_entities {
         let trace = gen_trace(ENTITY_SEED_BASE + entity as u64);
         let mut det = match cfg {
-            Some((tf, tc, win)) => {
-                SupportInstabilityDetector::with_params(tf, tc, win)
-            }
+            Some((tf, tc, win)) => SupportInstabilityDetector::with_params(tf, tc, win),
             None => SupportInstabilityDetector::new(),
         };
         let mut entity_fires: Vec<usize> = Vec::new();
         let mut inst_stream: Vec<f32> = Vec::with_capacity(TICKS);
 
-        project_into(&mut z_prev, &w[trace.zones[0] as usize], trace.xs[0], trace.ys[0]);
+        project_into(
+            &mut z_prev,
+            &w[trace.zones[0] as usize],
+            trace.xs[0],
+            trace.ys[0],
+        );
         inst_stream.push(0.0); // tick 0: no previous state.
         for t in 1..trace.xs.len() {
             project_into(
@@ -425,17 +428,40 @@ fn t3_poc_pre_registered_run() {
     println!("│ entities           : {POC_ENTITIES} × {TICKS} ticks");
     println!("│ detector           : θ_fire={THETA_FIRE} θ_calm={THETA_CALM} window=3 (defaults)");
     println!("│ episodes           : {}", m.episodes);
-    println!("│ detected (≤2 ticks): {} / {} = {:.1}%", m.episodes_detected, m.episodes, 100.0 * detect_rate);
+    println!(
+        "│ detected (≤2 ticks): {} / {} = {:.1}%",
+        m.episodes_detected,
+        m.episodes,
+        100.0 * detect_rate
+    );
     println!("│ mean latency       : {mean_latency:.2} ticks");
-    println!("│ raw signal >0.5 @ flip (diagnostic, not the gate): {:.1}%", 100.0 * raw_rate);
-    println!("│ fires              : {} (false {} → {:.2}%)", m.fires, m.false_fires, 100.0 * false_rate);
-    println!("│ GATE detect ≥ 90%  : {}", if detect_rate >= 0.90 { "PASS" } else { "FAIL" });
-    println!("│ GATE false-fire ≤10%: {}", if false_rate <= 0.10 { "PASS" } else { "FAIL" });
+    println!(
+        "│ raw signal >0.5 @ flip (diagnostic, not the gate): {:.1}%",
+        100.0 * raw_rate
+    );
+    println!(
+        "│ fires              : {} (false {} → {:.2}%)",
+        m.fires,
+        m.false_fires,
+        100.0 * false_rate
+    );
+    println!(
+        "│ GATE detect ≥ 90%  : {}",
+        if detect_rate >= 0.90 { "PASS" } else { "FAIL" }
+    );
+    println!(
+        "│ GATE false-fire ≤10%: {}",
+        if false_rate <= 0.10 { "PASS" } else { "FAIL" }
+    );
     println!("└─────────────────────────────────────────────────────────────");
 
     // Structural sanity (generator invariants — NOT quality verdicts).
     assert_eq!(POC_ENTITIES, 32, "pre-registered population");
-    assert!(m.episodes >= POC_ENTITIES * 5, "expected ≥5 episodes/entity, got {}", m.episodes);
+    assert!(
+        m.episodes >= POC_ENTITIES * 5,
+        "expected ≥5 episodes/entity, got {}",
+        m.episodes
+    );
     assert!(
         m.episodes <= POC_ENTITIES * 20,
         "expected ≤20 episodes/entity, got {}",
@@ -455,7 +481,10 @@ fn t3_poc_pre_registered_run() {
 #[test]
 fn t3_post_hoc_sensitivity_table() {
     println!("┌─ post-hoc sensitivity (NOT the gate verdict) ───────────────");
-    println!("│ {:<22} {:>9} {:>9} {:>8}", "config", "detect%", "false%", "fires");
+    println!(
+        "│ {:<22} {:>9} {:>9} {:>8}",
+        "config", "detect%", "false%", "fires"
+    );
     for (tf, tc, win) in [
         (THETA_FIRE, THETA_CALM, 3usize),
         (0.30, 0.15, 3),
@@ -545,24 +574,23 @@ fn g2_support_regime_under_100ns_per_entity_tick() {
 
     // Per pass: every entity, ticks 1..TICKS (tick 0 has no previous).
     let per_pass = total_ticks - G2_ENTITIES;
-    let ns_per_entity_tick =
-        best_of_3(1, || {
-            for d in dets.iter_mut() {
-                *d = SupportInstabilityDetector::new();
+    let ns_per_entity_tick = best_of_3(1, || {
+        for d in dets.iter_mut() {
+            *d = SupportInstabilityDetector::new();
+        }
+        let mut local = 0u64;
+        for (e, det) in dets.iter_mut().enumerate() {
+            let base = e * TICKS;
+            for t in 1..TICKS {
+                let inst = support_instability(
+                    black_box(&streams[base + t - 1]),
+                    black_box(&streams[base + t]),
+                );
+                local += det.push(inst) as u8 as u64;
             }
-            let mut local = 0u64;
-            for (e, det) in dets.iter_mut().enumerate() {
-                let base = e * TICKS;
-                for t in 1..TICKS {
-                    let inst = support_instability(
-                        black_box(&streams[base + t - 1]),
-                        black_box(&streams[base + t]),
-                    );
-                    local += det.push(inst) as u8 as u64;
-                }
-            }
-            sink = sink.wrapping_add(local);
-        }) / per_pass as f64;
+        }
+        sink = sink.wrapping_add(local);
+    }) / per_pass as f64;
 
     black_box(&sink);
     println!(
@@ -665,7 +693,12 @@ mod cousin {
             let trace = gen_trace(ENTITY_SEED_BASE + e as u64);
             let mut s = Vec::with_capacity(trace.xs.len());
             for t in 0..trace.xs.len() {
-                project_into(&mut z, &w[trace.zones[t] as usize], trace.xs[t], trace.ys[t]);
+                project_into(
+                    &mut z,
+                    &w[trace.zones[t] as usize],
+                    trace.xs[t],
+                    trace.ys[t],
+                );
                 s.push(z);
             }
             streams64.push(s);
@@ -680,9 +713,7 @@ mod cousin {
         // Arm (a): support-instability over the same D=64 streams.
         {
             let per = TICKS - 1;
-            let mut dets: Vec<_> = (0..N)
-                .map(|_| SupportInstabilityDetector::new())
-                .collect();
+            let mut dets: Vec<_> = (0..N).map(|_| SupportInstabilityDetector::new()).collect();
             let t0 = Instant::now();
             let mut sink = 0u64;
             for (i, s) in streams64.iter().enumerate() {
@@ -719,7 +750,11 @@ mod cousin {
         // Arm (d) + (e): cited-not-measured rows — katgpt-spectral is a
         // DOWNSTREAM crate (no dev-dep here); its own GOAT (bench 037) is
         // correctness-only with no per-tick latency. ICT lives in riir-ai.
-        println!("cousin │ stiff_anomaly (katgpt-spectral): cited-not-measured — eigendecomp + window vs frozen baseline (bench 037 has no latency axis)");
-        println!("cousin │ ICT branching (riir-ai)        : cited-not-measured — JS-divergence over K sampled action dists, K samples/tick (R513 §Path-0)");
+        println!(
+            "cousin │ stiff_anomaly (katgpt-spectral): cited-not-measured — eigendecomp + window vs frozen baseline (bench 037 has no latency axis)"
+        );
+        println!(
+            "cousin │ ICT branching (riir-ai)        : cited-not-measured — JS-divergence over K sampled action dists, K samples/tick (R513 §Path-0)"
+        );
     }
 }

@@ -147,7 +147,12 @@ pub enum PcaGlobalFn {
 impl PcaGlobalFn {
     /// Evaluate this global against the PRE-tick state. Does not mutate
     /// `field`; all scratch goes through `scratch` (zero-alloc).
-    pub fn evaluate(&self, cx: &CellComplex, field: &CochainField, scratch: &mut PcaScratch) -> f32 {
+    pub fn evaluate(
+        &self,
+        cx: &CellComplex,
+        field: &CochainField,
+        scratch: &mut PcaScratch,
+    ) -> f32 {
         match self {
             Self::Betti0 => support_components(cx, field, scratch).0 as f32,
             Self::LargestComponentSize => support_components(cx, field, scratch).1 as f32,
@@ -266,11 +271,22 @@ fn morphogen_edge_lift(cx: &CellComplex, field: &CochainField, scratch: &mut Pca
 /// explains why there is no closed form). `count` starts at the alive-cell
 /// count and drops once per successful union; `size` accumulates per root and
 /// the max is read off the surviving roots after the scan.
-fn support_components(cx: &CellComplex, field: &CochainField, scratch: &mut PcaScratch) -> (u32, u32) {
+fn support_components(
+    cx: &CellComplex,
+    field: &CochainField,
+    scratch: &mut PcaScratch,
+) -> (u32, u32) {
     let n = cx.n_cells(0);
-    debug_assert_eq!(field.rank, 0, "support_components needs the rank-0 state cochain");
+    debug_assert_eq!(
+        field.rank, 0,
+        "support_components needs the rank-0 state cochain"
+    );
     debug_assert_eq!(scratch.parent.len(), n, "PcaScratch built for this cx?");
-    debug_assert_eq!(scratch.component_size.len(), n, "PcaScratch built for this cx?");
+    debug_assert_eq!(
+        scratch.component_size.len(),
+        n,
+        "PcaScratch built for this cx?"
+    );
     debug_assert!(
         scratch.first_alive_of_edge.len() >= cx.n_cells(1),
         "PcaScratch built for this cx?"
@@ -484,13 +500,24 @@ pub fn step_pca_sync(
     let dim = field.dim;
     debug_assert_eq!(field.rank, 0, "step_pca_sync needs the rank-0 state");
     debug_assert!(dim >= 2, "state needs alive + morphogen channels");
-    debug_assert_eq!(scratch.alive_before.len(), n, "PcaScratch built for this cx?");
+    debug_assert_eq!(
+        scratch.alive_before.len(),
+        n,
+        "PcaScratch built for this cx?"
+    );
     for (v, slot) in scratch.alive_before.iter_mut().enumerate().take(n) {
         *slot = alive_at(field, v) as u8;
     }
 
     // 3. Local kernel tick — Plan 454's tested code, UNTOUCHED.
-    stochastic_birth_death_step(cx, field, params, rng, &mut scratch.lap, &mut scratch.dropout);
+    stochastic_birth_death_step(
+        cx,
+        field,
+        params,
+        rng,
+        &mut scratch.lap,
+        &mut scratch.dropout,
+    );
 
     // 4. Per-cell decision pass over newborns, vertex-index order.
     for v in 0..n {
@@ -569,11 +596,22 @@ pub fn step_pca_async(
     let dim = field.dim;
     debug_assert_eq!(field.rank, 0, "step_pca_async needs the rank-0 state");
     debug_assert!(dim >= 2, "state needs alive + morphogen channels");
-    debug_assert_eq!(scratch.alive_before.len(), n, "PcaScratch built for this cx?");
+    debug_assert_eq!(
+        scratch.alive_before.len(),
+        n,
+        "PcaScratch built for this cx?"
+    );
     for (v, slot) in scratch.alive_before.iter_mut().enumerate().take(n) {
         *slot = alive_at(field, v) as u8;
     }
-    stochastic_birth_death_step(cx, field, params, rng, &mut scratch.lap, &mut scratch.dropout);
+    stochastic_birth_death_step(
+        cx,
+        field,
+        params,
+        rng,
+        &mut scratch.lap,
+        &mut scratch.dropout,
+    );
 
     // 3. Fixed row-major pass with the live counter. Only AliveCount is
     //    incrementable (enum doc); other arms keep the frozen value.
@@ -723,7 +761,10 @@ mod tests {
         //   top row    (y=4, sign −1): −25
         //   left col   (x=0, sign −1): −Σ 0 = 0
         //   right col  (x=5, sign +1): 4 edges × 10 = +40
-        assert!((boundary - 40.0).abs() < 1e-4, "boundary flux {boundary} != 40");
+        assert!(
+            (boundary - 40.0).abs() < 1e-4,
+            "boundary flux {boundary} != 40"
+        );
 
         // Volume side: the lift, then d₁ edges→faces, summed over ALL faces.
         morphogen_edge_lift(&cx, &field, &mut scratch);
@@ -769,9 +810,18 @@ mod tests {
         for v in 0..cx.n_cells(0) {
             field.data[v * 2 + 1] = 2.5;
         }
-        assert_eq!(PcaGlobalFn::BoundaryFluxMass.evaluate(&cx, &field, &mut scratch), 0.0);
-        assert_eq!(PcaGlobalFn::BeliefMassDivergence.evaluate(&cx, &field, &mut scratch), 0.0);
-        assert_eq!(PcaGlobalFn::Codifferential.evaluate(&cx, &field, &mut scratch), 0.0);
+        assert_eq!(
+            PcaGlobalFn::BoundaryFluxMass.evaluate(&cx, &field, &mut scratch),
+            0.0
+        );
+        assert_eq!(
+            PcaGlobalFn::BeliefMassDivergence.evaluate(&cx, &field, &mut scratch),
+            0.0
+        );
+        assert_eq!(
+            PcaGlobalFn::Codifferential.evaluate(&cx, &field, &mut scratch),
+            0.0
+        );
     }
 
     #[test]
@@ -793,7 +843,10 @@ mod tests {
         }
         let flow = crate::operators::exterior_derivative(&cx, &morph);
         let want = belief_mass_divergence(&cx, &flow);
-        assert_eq!(got, want, "L1 divergence drifted from the shipped definition");
+        assert_eq!(
+            got, want,
+            "L1 divergence drifted from the shipped definition"
+        );
     }
 
     #[test]
@@ -859,7 +912,9 @@ mod tests {
     }
     impl RecordingDecision {
         fn new() -> Self {
-            Self { calls: std::cell::RefCell::new(Vec::new()) }
+            Self {
+                calls: std::cell::RefCell::new(Vec::new()),
+            }
         }
     }
     impl PcaDecision for RecordingDecision {
@@ -883,7 +938,10 @@ mod tests {
         let mut probe_scratch = PcaScratch::for_complex(&cx, 2);
         let expected_global = PcaGlobalFn::Betti0.evaluate(&cx, &pre, &mut probe_scratch);
 
-        let params = BirthDeathParams { dropout_prob: 0.0, ..BirthDeathParams::paper_defaults() };
+        let params = BirthDeathParams {
+            dropout_prob: 0.0,
+            ..BirthDeathParams::paper_defaults()
+        };
         let probe = RecordingDecision::new();
         let mut scratch = PcaScratch::for_complex(&cx, 2);
         let returned = step_pca_sync(
@@ -895,13 +953,23 @@ mod tests {
             &probe,
             &mut scratch,
         );
-        assert_eq!(returned, expected_global, "step must return the pre-tick global");
+        assert_eq!(
+            returned, expected_global,
+            "step must return the pre-tick global"
+        );
 
         let calls = probe.calls.borrow();
         assert!(!calls.is_empty(), "the seed tick must birth neighbors");
         for (local, value) in calls.iter() {
-            assert_eq!(value, &expected_global, "decision saw a non-pre-tick global");
-            assert_eq!(local.len(), 2, "decision slice must be the cell's channel row");
+            assert_eq!(
+                value, &expected_global,
+                "decision saw a non-pre-tick global"
+            );
+            assert_eq!(
+                local.len(),
+                2,
+                "decision slice must be the cell's channel row"
+            );
         }
 
         // The recorded slices must be exactly the newborns' post-kernel rows,
@@ -926,7 +994,10 @@ mod tests {
     #[test]
     fn target_gate_stops_births_but_not_local_dynamics() {
         let cx = CellComplex::grid_2d(4, 4);
-        let params = BirthDeathParams { dropout_prob: 0.0, ..BirthDeathParams::paper_defaults() };
+        let params = BirthDeathParams {
+            dropout_prob: 0.0,
+            ..BirthDeathParams::paper_defaults()
+        };
 
         let mk = || {
             let mut f = make_field(&cx, 2);
@@ -952,8 +1023,13 @@ mod tests {
             &Allow,
             &mut scratch,
         );
-        let grown_alive = (0..cx.n_cells(0)).filter(|&v| grown.data[v * 2] > 0.5).count();
-        assert!(grown_alive > 1, "kernel must birth neighbors for this test to bite");
+        let grown_alive = (0..cx.n_cells(0))
+            .filter(|&v| grown.data[v * 2] > 0.5)
+            .count();
+        assert!(
+            grown_alive > 1,
+            "kernel must birth neighbors for this test to bite"
+        );
 
         // Already-tripped gate (Betti0 ≤ 5 is true at the seed's 1 component):
         // NO new births — alive count stays exactly 1 (the seed is untouched —
@@ -974,19 +1050,39 @@ mod tests {
             &StopAll,
             &mut scratch,
         );
-        let stopped_alive = (0..cx.n_cells(0)).filter(|&v| stopped.data[v * 2] > 0.5).count();
+        let stopped_alive = (0..cx.n_cells(0))
+            .filter(|&v| stopped.data[v * 2] > 0.5)
+            .count();
         assert_eq!(stopped_alive, 1, "a tripped gate must refuse every birth");
     }
 
     #[test]
     fn global_target_gate_direction_semantics() {
         let g = GlobalScalars { value: 3.0 };
-        let above = GlobalTargetGate { target: 5.0, stop_when: StopWhen::Above };
-        let below = GlobalTargetGate { target: 5.0, stop_when: StopWhen::Below };
-        assert_eq!(above.decide(&[], &g), 1.0, "3 < 5: count task keeps placing");
-        assert_eq!(below.decide(&[], &g), 0.0, "3 <= 5: connectivity task already done");
+        let above = GlobalTargetGate {
+            target: 5.0,
+            stop_when: StopWhen::Above,
+        };
+        let below = GlobalTargetGate {
+            target: 5.0,
+            stop_when: StopWhen::Below,
+        };
+        assert_eq!(
+            above.decide(&[], &g),
+            1.0,
+            "3 < 5: count task keeps placing"
+        );
+        assert_eq!(
+            below.decide(&[], &g),
+            0.0,
+            "3 <= 5: connectivity task already done"
+        );
         let at = GlobalScalars { value: 5.0 };
-        assert_eq!(above.decide(&[], &at), 0.0, "value == target counts as reached");
+        assert_eq!(
+            above.decide(&[], &at),
+            0.0,
+            "value == target counts as reached"
+        );
         assert_eq!(below.decide(&[], &at), 0.0);
     }
 
@@ -999,7 +1095,10 @@ mod tests {
                 let mut field = make_field(&cx, 2);
                 seed_alive_morph(&mut field, &[0, 40], 1.0, 2);
                 let mut scratch = PcaScratch::for_complex(&cx, 2);
-                let gate = GlobalTargetGate { target: 1.0, stop_when: StopWhen::Below };
+                let gate = GlobalTargetGate {
+                    target: 1.0,
+                    stop_when: StopWhen::Below,
+                };
                 for _ in 0..5 {
                     step_pca_sync(
                         &cx,
@@ -1013,7 +1112,11 @@ mod tests {
                 }
                 field.data.clone()
             };
-            assert_eq!(run(), run(), "seed {seed}: same inputs must be bit-identical");
+            assert_eq!(
+                run(),
+                run(),
+                "seed {seed}: same inputs must be bit-identical"
+            );
         }
     }
 
@@ -1022,9 +1125,15 @@ mod tests {
         let cx = CellComplex::grid_2d(5, 5);
         let mut field = make_field(&cx, 2);
         let mut scratch = PcaScratch::for_complex(&cx, 2);
-        assert_eq!(PcaGlobalFn::AliveCount.evaluate(&cx, &field, &mut scratch), 0.0);
+        assert_eq!(
+            PcaGlobalFn::AliveCount.evaluate(&cx, &field, &mut scratch),
+            0.0
+        );
         seed_alive_morph(&mut field, &[0, 1, 12], 1.0, 2);
-        assert_eq!(PcaGlobalFn::AliveCount.evaluate(&cx, &field, &mut scratch), 3.0);
+        assert_eq!(
+            PcaGlobalFn::AliveCount.evaluate(&cx, &field, &mut scratch),
+            3.0
+        );
     }
 
     #[test]
@@ -1033,7 +1142,10 @@ mod tests {
         // the WHOLE batch against the pre-tick count → overshoot; async's
         // live counter stops placements EXACTLY at k.
         let cx = CellComplex::grid_2d(5, 5);
-        let params = BirthDeathParams { dropout_prob: 0.0, ..BirthDeathParams::paper_defaults() };
+        let params = BirthDeathParams {
+            dropout_prob: 0.0,
+            ..BirthDeathParams::paper_defaults()
+        };
         let k = 5.0f32;
 
         // Two far-apart interior seeds (v7 row 1, v17 row 3 on the 5×5):
@@ -1064,7 +1176,10 @@ mod tests {
             &mut scratch,
         );
         let sync_alive = synced.data.iter().step_by(2).filter(|&&a| a > 0.5).count();
-        assert!(sync_alive as f32 > k, "sync must overshoot k={k} (stale-count batch), got {sync_alive}");
+        assert!(
+            sync_alive as f32 > k,
+            "sync must overshoot k={k} (stale-count batch), got {sync_alive}"
+        );
 
         // ASYNC: the counter goes live — births stop EXACTLY at k.
         let mut asynced = mk();
@@ -1094,8 +1209,14 @@ mod tests {
         // Documented contract: non-incremental arms freeze the pre-tick value
         // — same results as sync (same seed).
         let cx = CellComplex::grid_2d(5, 5);
-        let params = BirthDeathParams { dropout_prob: 0.0, ..BirthDeathParams::paper_defaults() };
-        let gate = GlobalTargetGate { target: 1.0, stop_when: StopWhen::Below };
+        let params = BirthDeathParams {
+            dropout_prob: 0.0,
+            ..BirthDeathParams::paper_defaults()
+        };
+        let gate = GlobalTargetGate {
+            target: 1.0,
+            stop_when: StopWhen::Below,
+        };
         let mk = || {
             let mut f = make_field(&cx, 2);
             seed_alive_morph(&mut f, &[0, 24], 1.0, 2);
@@ -1131,7 +1252,10 @@ mod tests {
         // property-tested at ≥100 seeds.
         let cx = CellComplex::grid_2d(6, 6);
         let params = BirthDeathParams::paper_defaults();
-        let gate = GlobalTargetGate { target: 4.0, stop_when: StopWhen::Above };
+        let gate = GlobalTargetGate {
+            target: 4.0,
+            stop_when: StopWhen::Above,
+        };
         for seed in 0..100u64 {
             let run = || {
                 let mut field = make_field(&cx, 2);
@@ -1160,8 +1284,14 @@ mod tests {
         // the global gate must then HOLD the line — the alive count freezes
         // after termination (no runaway filling, no die-off).
         let cx = CellComplex::grid_2d(6, 3);
-        let params = BirthDeathParams { dropout_prob: 0.0, ..BirthDeathParams::paper_defaults() };
-        let gate = GlobalTargetGate { target: 1.0, stop_when: StopWhen::Below };
+        let params = BirthDeathParams {
+            dropout_prob: 0.0,
+            ..BirthDeathParams::paper_defaults()
+        };
+        let gate = GlobalTargetGate {
+            target: 1.0,
+            stop_when: StopWhen::Below,
+        };
         let mut field = make_field(&cx, 2);
         seed_alive_morph(&mut field, &[0, 17], 1.0, 2);
         let mut scratch = PcaScratch::for_complex(&cx, 2);
@@ -1205,7 +1335,10 @@ mod tests {
         }
         let alive_before = frozen.iter().step_by(2).filter(|&&a| a > 0.5).count();
         let alive_after = field.data.iter().step_by(2).filter(|&&a| a > 0.5).count();
-        assert_eq!(alive_after, alive_before, "a tripped b0==1 gate must freeze the alive set");
+        assert_eq!(
+            alive_after, alive_before,
+            "a tripped b0==1 gate must freeze the alive set"
+        );
         assert!(alive_before > 2, "the merge must have grown past the seeds");
     }
 
@@ -1218,20 +1351,32 @@ mod tests {
         let mut scratch = PcaScratch::for_complex(&cx, 2);
 
         // Empty support → 0 (the b0 companion would report 0 components too).
-        assert_eq!(PcaGlobalFn::LargestComponentSize.evaluate(&cx, &field, &mut scratch), 0.0);
+        assert_eq!(
+            PcaGlobalFn::LargestComponentSize.evaluate(&cx, &field, &mut scratch),
+            0.0
+        );
 
         // One run {0,1,2} (row 0) → size 3.
         seed_alive_morph(&mut field, &[0, 1, 2], 1.0, 2);
-        assert_eq!(PcaGlobalFn::LargestComponentSize.evaluate(&cx, &field, &mut scratch), 3.0);
+        assert_eq!(
+            PcaGlobalFn::LargestComponentSize.evaluate(&cx, &field, &mut scratch),
+            3.0
+        );
 
         // A second, smaller run {12,13} (row 2) → max stays 3.
         seed_alive_morph(&mut field, &[12, 13], 1.0, 2);
-        assert_eq!(PcaGlobalFn::LargestComponentSize.evaluate(&cx, &field, &mut scratch), 3.0);
+        assert_eq!(
+            PcaGlobalFn::LargestComponentSize.evaluate(&cx, &field, &mut scratch),
+            3.0
+        );
         assert_eq!(PcaGlobalFn::Betti0.evaluate(&cx, &field, &mut scratch), 2.0);
 
         // v7 (row 1, col 2) bridges both runs → one component of 6.
         field.data[7 * 2] = 1.0;
-        assert_eq!(PcaGlobalFn::LargestComponentSize.evaluate(&cx, &field, &mut scratch), 6.0);
+        assert_eq!(
+            PcaGlobalFn::LargestComponentSize.evaluate(&cx, &field, &mut scratch),
+            6.0
+        );
         assert_eq!(PcaGlobalFn::Betti0.evaluate(&cx, &field, &mut scratch), 1.0);
     }
 
@@ -1242,7 +1387,10 @@ mod tests {
         let mut scratch = PcaScratch::for_complex(&cx, 2);
         // {0} alone (size 1) + row-2 run {12,13,14} (size 3) → 3 wins.
         seed_alive_morph(&mut field, &[0, 12, 13, 14], 1.0, 2);
-        assert_eq!(PcaGlobalFn::LargestComponentSize.evaluate(&cx, &field, &mut scratch), 3.0);
+        assert_eq!(
+            PcaGlobalFn::LargestComponentSize.evaluate(&cx, &field, &mut scratch),
+            3.0
+        );
         assert_eq!(PcaGlobalFn::Betti0.evaluate(&cx, &field, &mut scratch), 2.0);
     }
 
@@ -1264,7 +1412,10 @@ mod tests {
             let (want_count, want_max) = components_reference(&cx, &field);
             let got_count = PcaGlobalFn::Betti0.evaluate(&cx, &field, &mut scratch);
             let got_max = PcaGlobalFn::LargestComponentSize.evaluate(&cx, &field, &mut scratch);
-            assert_eq!(got_count as usize, want_count, "count axis disagrees with BFS");
+            assert_eq!(
+                got_count as usize, want_count,
+                "count axis disagrees with BFS"
+            );
             assert_eq!(got_max as usize, want_max, "size axis disagrees with BFS");
         }
     }
@@ -1286,7 +1437,10 @@ mod tests {
         assert_eq!(count, 3);
         assert_eq!(max, 4);
         assert_eq!(PcaGlobalFn::Betti0.evaluate(&cx, &field, &mut scratch), 3.0);
-        assert_eq!(PcaGlobalFn::LargestComponentSize.evaluate(&cx, &field, &mut scratch), 4.0);
+        assert_eq!(
+            PcaGlobalFn::LargestComponentSize.evaluate(&cx, &field, &mut scratch),
+            4.0
+        );
     }
 
     #[test]
@@ -1325,17 +1479,29 @@ mod tests {
             PcaGlobalFn::BoundaryFluxMass.evaluate(&cx, &field, &mut scratch)
         };
 
-        assert_eq!(flux_of(&vec![1.0; w * h]), 0.0, "fully-covered rim must cancel to exact 0");
+        assert_eq!(
+            flux_of(&vec![1.0; w * h]),
+            0.0,
+            "fully-covered rim must cancel to exact 0"
+        );
 
         let mut bottom = vec![0.0; w * h];
         bottom[..w].fill(1.0);
-        assert_eq!(flux_of(&bottom), 2.0 * (w as f32 - 1.0), "bottom band: factor 2 = endpoint sum");
+        assert_eq!(
+            flux_of(&bottom),
+            2.0 * (w as f32 - 1.0),
+            "bottom band: factor 2 = endpoint sum"
+        );
 
         let mut left = vec![0.0; w * h];
         for row in left.chunks_exact_mut(w) {
             row[0] = 1.0;
         }
-        assert_eq!(flux_of(&left), -2.0 * (h as f32 - 1.0), "left band: signed, σ = −1");
+        assert_eq!(
+            flux_of(&left),
+            -2.0 * (h as f32 - 1.0),
+            "left band: signed, σ = −1"
+        );
 
         let mut blob = vec![0.0; w * h];
         for y in 1..h - 1 {
@@ -1367,7 +1533,10 @@ mod tests {
         }
         let identity: f32 = (0..cx.n_cells(1)).map(|e| coeff[e] as f32 * lift[e]).sum();
         let got = PcaGlobalFn::BoundaryFluxMass.evaluate(&cx, &field, &mut scratch);
-        assert!((got - identity).abs() < 1e-3, "flux {got} != rim identity {identity}");
+        assert!(
+            (got - identity).abs() < 1e-3,
+            "flux {got} != rim identity {identity}"
+        );
     }
 
     #[test]
@@ -1446,6 +1615,9 @@ mod tests {
         let flow = crate::operators::exterior_derivative(&cx, &morph);
         let div = crate::operators::codifferential(&cx, &flow);
         let total: f32 = div.data.iter().sum();
-        assert!(total.abs() < 1e-5, "signed divergence must sum to ~0, got {total}");
+        assert!(
+            total.abs() < 1e-5,
+            "signed divergence must sum to ~0, got {total}"
+        );
     }
 }

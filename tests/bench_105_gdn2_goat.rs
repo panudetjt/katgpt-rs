@@ -381,22 +381,16 @@ fn goat_6_context_scaling_flat_o1() {
     // Measure ONLY the single step at target_pos (each state keeps its
     // position's recurrent state resident across rounds — the per-call
     // semantics are unchanged, only the sampling order interleaves).
-    let gdn2_us_per_step: Vec<f64> = ab_timing::best_of_arms(
-        positions.len(),
-        1,
-        SPREAD_ROUNDS,
-        |arm| {
+    let gdn2_us_per_step: Vec<f64> =
+        ab_timing::best_of_arms(positions.len(), 1, SPREAD_ROUNDS, |arm| {
             let (ctx, cache) = &mut gdn2_states[arm];
             let target_pos = positions[arm];
             let start = Instant::now();
             for _ in 0..single_step_iters {
-                black_box(forward_gdn2(
-                    ctx, &weights, cache, 0, target_pos, &config,
-                ));
+                black_box(forward_gdn2(ctx, &weights, cache, 0, target_pos, &config));
             }
             start.elapsed()
-        },
-    );
+        });
 
     // ── Flat KV scaling (should grow linearly with position) ──
     let mut flat_us_per_step: Vec<f64> = Vec::new();

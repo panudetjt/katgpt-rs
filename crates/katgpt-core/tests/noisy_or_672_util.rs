@@ -56,7 +56,10 @@ fn bit_identical_to_civ_two_term_formula() {
             }
         }
     }
-    assert_eq!(failures, 0, "noisy_or must be bit-identical to the civ formula");
+    assert_eq!(
+        failures, 0,
+        "noisy_or must be bit-identical to the civ formula"
+    );
 }
 
 /// The log1p-stable variant: both forms agree with an f64 ground truth
@@ -82,7 +85,10 @@ fn stable_variant_matches_and_keeps_resolution() {
         // regime): stable's relative error ≤ direct's ×3, or both tiny.
         let rel_d = (d - truth).abs() / truth.max(1e-12);
         let rel_s = (s - truth).abs() / truth.max(1e-12);
-        assert!(rel_s <= rel_d * 3.0 + 1e-6, "stable rel {rel_s} vs direct rel {rel_d}");
+        assert!(
+            rel_s <= rel_d * 3.0 + 1e-6,
+            "stable rel {rel_s} vs direct rel {rel_d}"
+        );
     }
     // Boundary identities hold for the stable form too.
     assert!(noisy_or_stable(&[0.0, 0.0]).abs() < 1e-7);
@@ -90,7 +96,10 @@ fn stable_variant_matches_and_keeps_resolution() {
     // Resolution: 1000 terms of 0.001 → true ≈ 1 − e⁻¹ ≈ 0.632.
     let many = [0.001f32; 1000];
     let s = noisy_or_stable(&many);
-    assert!((s - 1.0 + std::f32::consts::E.recip()).abs() < 1e-3, "stable {s}");
+    assert!(
+        (s - 1.0 + std::f32::consts::E.recip()).abs() < 1e-3,
+        "stable {s}"
+    );
     // The direct form agrees here too (no underflow yet at these
     // magnitudes) — the stable form is a strict generalization, not a
     // behavior change, on spans where direct is numerically fine.

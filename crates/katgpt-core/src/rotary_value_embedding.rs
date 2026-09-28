@@ -124,12 +124,7 @@ impl RoVeConfig {
 ///
 /// **Zero allocation.** Caller-owned `out` buffer (length `dim`).
 #[inline]
-pub fn rotate_values_into(
-    action: &RopeAction,
-    pos: usize,
-    values: &[f32],
-    out: &mut [f32],
-) {
+pub fn rotate_values_into(action: &RopeAction, pos: usize, values: &[f32], out: &mut [f32]) {
     action.apply_at(pos as f32, values, out);
 }
 
@@ -172,11 +167,24 @@ pub fn batch_rotate_values_into(
     out: &mut [f32],
     dim: usize,
 ) {
-    debug_assert_eq!(values.len(), positions.len() * dim, "values buffer length mismatch");
-    debug_assert_eq!(out.len(), positions.len() * dim, "out buffer length mismatch");
+    debug_assert_eq!(
+        values.len(),
+        positions.len() * dim,
+        "values buffer length mismatch"
+    );
+    debug_assert_eq!(
+        out.len(),
+        positions.len() * dim,
+        "out buffer length mismatch"
+    );
     for (t, &pos) in positions.iter().enumerate() {
         let start = t * dim;
-        rotate_values_into(action, pos, &values[start..start + dim], &mut out[start..start + dim]);
+        rotate_values_into(
+            action,
+            pos,
+            &values[start..start + dim],
+            &mut out[start..start + dim],
+        );
     }
 }
 
@@ -199,7 +207,11 @@ pub fn batch_inverse_rotate_output_into(
         positions.len() * dim,
         "aggregated buffer length mismatch"
     );
-    debug_assert_eq!(out.len(), positions.len() * dim, "out buffer length mismatch");
+    debug_assert_eq!(
+        out.len(),
+        positions.len() * dim,
+        "out buffer length mismatch"
+    );
     for (t, &pos) in positions.iter().enumerate() {
         let start = t * dim;
         inverse_rotate_output_into(
@@ -289,7 +301,11 @@ impl RoVeRotationTable {
             }
         }
 
-        Self { table, dim, max_pos }
+        Self {
+            table,
+            dim,
+            max_pos,
+        }
     }
 
     /// Dimension of the vectors being rotated.
@@ -330,13 +346,25 @@ pub fn batch_rotate_values_into_fast(
     out: &mut [f32],
 ) {
     let dim = table.dim();
-    debug_assert_eq!(values.len(), positions.len() * dim, "values buffer length mismatch");
-    debug_assert_eq!(out.len(), positions.len() * dim, "out buffer length mismatch");
+    debug_assert_eq!(
+        values.len(),
+        positions.len() * dim,
+        "values buffer length mismatch"
+    );
+    debug_assert_eq!(
+        out.len(),
+        positions.len() * dim,
+        "out buffer length mismatch"
+    );
     let half = dim / 2;
     let tbl = table.as_slice();
 
     for (t, &pos) in positions.iter().enumerate() {
-        assert!(pos < table.max_pos(), "position {pos} >= table.max_pos() {}", table.max_pos());
+        assert!(
+            pos < table.max_pos(),
+            "position {pos} >= table.max_pos() {}",
+            table.max_pos()
+        );
         let in_start = t * dim;
         let out_start = t * dim;
         let tbl_start = pos * dim;
@@ -385,12 +413,20 @@ pub fn batch_inverse_rotate_output_into_fast(
         positions.len() * dim,
         "aggregated buffer length mismatch"
     );
-    debug_assert_eq!(out.len(), positions.len() * dim, "out buffer length mismatch");
+    debug_assert_eq!(
+        out.len(),
+        positions.len() * dim,
+        "out buffer length mismatch"
+    );
     let half = dim / 2;
     let tbl = table.as_slice();
 
     for (t, &pos) in positions.iter().enumerate() {
-        assert!(pos < table.max_pos(), "position {pos} >= table.max_pos() {}", table.max_pos());
+        assert!(
+            pos < table.max_pos(),
+            "position {pos} >= table.max_pos() {}",
+            table.max_pos()
+        );
         let in_start = t * dim;
         let out_start = t * dim;
         let tbl_start = pos * dim;

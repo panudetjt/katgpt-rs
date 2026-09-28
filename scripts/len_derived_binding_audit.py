@@ -112,7 +112,7 @@ LEN_USE_RE = re.compile(r"\b(?P<buf>\w+)\.len\(\)")
 
 LAUNCH_RE = re.compile(r"\b(?P<kernel>\w+)::launch_unchecked\b")
 FROM_RAW_RE = re.compile(
-    r"BufferArg::from_raw_parts\(\s*(?P<handle>[^,]+?),\s*(?P<length>[^,)]+?)\s*\)"
+    r"BufferArg::from_raw_parts\(\s*(?P<handle>[^,]+?),\s*(?P<length>[^,)]+?(?:\([^()]*\)[^,)]*?)*?)\s*\)"
 )
 # Creation shapes at/near a bind: `client.empty(N)`, `create_from_slice(&v)`,
 # `create_buffer(N)`.
@@ -120,6 +120,24 @@ EMPTY_CALL_RE = re.compile(r"\.empty\(\s*(?P<n>[^)]+?)\s*\)")
 SLICE_CALL_RE = re.compile(r"create_from_slice\(\s*(?:f32::as_bytes\(\s*)?(?:&\s*)?(?P<v>[\w.\[\]]+)")
 
 CAPACITY_WORDS = ("block_size", "capacity", "max_seq", "n_ctx", "max_positions")
+
+
+def length_from_handle_size_method(handle: str, length_expr: str) -> str | None:
+    """The receiver of a size-method call that IS the whole `length_expr`,
+    when that receiver is `handle` (or `handle` is a member path of it) —
+    allocation-as-length, the compact_temp shape. Returns the receiver, or
+    None.
+
+    ONE rule shared by the depth-1 (classify) and upstream (classify_pair)
+    classifiers. Two copies drifted once: the depth-1 copy flagged any
+    `.len(` in a bind-length position, so `rows_host.len()` — a HOST slice
+    param whose len IS the live row count — read as the bound handle's
+    allocation (riir-infer 020, encoder_lane_cubecl gather_rows)."""
+    h = handle.strip()
+    sm = SIZE_METHOD_RE.match(length_expr)
+    if sm and (h == sm.group("recv") or h.startswith(sm.group("recv") + ".")):
+        return sm.group("recv")
+    return None
 
 
 @dataclass
@@ -270,9 +288,12 @@ def classify(handle_expr: str, length_expr: str, line_src: str) -> tuple[str, st
         return "TRIMMED", "offset_end/slice view — declared size is the live range"
     # Length taken from a handle's own size METHOD — allocation-as-length,
     # the direct shape of the compact_temp bug. (Identifier substrings like
-    # `vocab_size` / `as usize` are NOT this: only member calls are.)
-    if re.search(r"\.\s*(len|size|size_in_bytes)\s*\(", length_expr):
-        return "CAPACITY", f"bind length from a handle size method: {length_expr.strip()}"
+    # `vocab_size` / `as usize` are NOT this, and neither is a size method
+    # on a DIFFERENT name — a host slice param's `.len()` is the live
+    # count, not an allocation: the rule is the receiver, shared with
+    # classify_pair.)
+    if (recv := length_from_handle_size_method(h, length_expr)) is not None:
+        return "CAPACITY", f"bind length from a handle size method ({recv}): {length_expr.strip()}"
     # A capacity constant naming the bind length directly.
     if any(w in length_expr for w in ("block_size", "max_seq", "n_ctx", "max_positions")):
         return "CAPACITY", f"bind length names a capacity constant: {length_expr.strip()}"
@@ -605,8 +626,7 @@ def classify_pair(h: str, length: str | None) -> tuple[str, str]:
     bind-length expression at the caller, or None when unresolvable.
     Never returns a clean verdict on an unprovable pair."""
     if length is not None:
-        sm = SIZE_METHOD_RE.match(length)
-        if sm and (h == sm.group("recv") or h.startswith(sm.group("recv") + ".")):
+        if length_from_handle_size_method(h, length) is not None:
             return "CAPACITY-UPSTREAM", f"bind length {length} sourced from the handle's own size method"
     if ".slice(" in h:
         return "TRIMMED-UPSTREAM", "slice view — declared size is the live range"
@@ -815,6 +835,12 @@ fn attention_decode_f32(query: &[f32], kv: &[f32]) {
     assert classify("h", "h.size()", "")[0] == "CAPACITY"
     assert classify("h", "h.size_in_bytes()", "")[0] == "CAPACITY"
     assert classify("h", "block_size * 4", "")[0] == "CAPACITY"
+    # The size-method receiver must BE the bound handle: `rows_host` is a
+    # HOST slice param whose `.len()` is the live row count, not the
+    # handle's allocation (riir-infer 020, gather_rows rows_handle). The
+    # prefix branch stays armed — `h.clone()` is still the handle.
+    assert classify("rows_handle", "rows_host.len()", "")[0] == "UNRESOLVED"
+    assert classify("h.clone()", "h.len()", "")[0] == "CAPACITY"
     # Identifier substrings are NOT size methods — pinned after the first run
     # flagged all 7 CAPACITY rows off `vocab_size` / `as usize` substrings.
     assert classify("input", "vocab_size", "")[0] == "UNRESOLVED"
@@ -853,6 +879,9 @@ fn attention_decode_f32(query: &[f32], kv: &[f32]) {
     assert classify_pair("bufs.qkv_expanded", None)[0] == "PERSISTENT-UPSTREAM"
     assert classify_pair("h", "h.len()")[0] == "CAPACITY-UPSTREAM"
     assert classify_pair("h.clone()", "h.size()")[0] == "CAPACITY-UPSTREAM"
+    # Same shared rule, upstream side: a size method on a DIFFERENT name is
+    # not the handle's allocation (riir-infer 020).
+    assert classify_pair("rows_handle", "rows_host.len()")[0] == "UNRESOLVED"
     assert classify_pair("client.empty(max_seq)", "max_seq")[0] == "CAPACITY-UPSTREAM"
     assert classify_pair("client.empty(k)", "k")[0] == "EXACT-UPSTREAM"
     assert classify_pair("client.empty(k)", "m")[0] == "UNRESOLVED"

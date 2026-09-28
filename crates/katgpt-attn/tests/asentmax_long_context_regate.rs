@@ -59,17 +59,38 @@ fn long_fixture_shape_and_provenance() {
     let fx = parse_fixture(FIXTURE);
     assert_eq!(fx.head_dim, 128, "qwen3 head_dim");
     assert_eq!(fx.block, 64, "DashAttnConfig default chunk_size");
-    assert!(fx.n_tokens >= 10_000, "long-context prefill, got {} tokens", fx.n_tokens);
+    assert!(
+        fx.n_tokens >= 10_000,
+        "long-context prefill, got {} tokens",
+        fx.n_tokens
+    );
 
     // long capture profile: 8 layers × kv-heads {0,2,4,7} streams
-    assert_eq!(fx.streams.len(), 32, "8 layers × 4 kv-heads, got {}", fx.streams.len());
+    assert_eq!(
+        fx.streams.len(),
+        32,
+        "8 layers × 4 kv-heads, got {}",
+        fx.streams.len()
+    );
     let layers: std::collections::HashSet<usize> = fx.streams.iter().map(|s| s.layer).collect();
-    assert_eq!(layers, [1, 5, 10, 14, 19, 23, 28, 33].into_iter().collect(), "layer sample");
+    assert_eq!(
+        layers,
+        [1, 5, 10, 14, 19, 23, 28, 33].into_iter().collect(),
+        "layer sample"
+    );
 
     // rows: 8 layers × 4 q-heads × log-spaced k-ends
     let q_heads: std::collections::HashSet<usize> = fx.rows.iter().map(|r| r.q_head).collect();
-    assert_eq!(q_heads, [0, 9, 17, 31].into_iter().collect(), "gqa-spread q-head sample");
-    assert!(fx.rows.len() >= 2_000, "routing rows, got {}", fx.rows.len());
+    assert_eq!(
+        q_heads,
+        [0, 9, 17, 31].into_iter().collect(),
+        "gqa-spread q-head sample"
+    );
+    assert!(
+        fx.rows.len() >= 2_000,
+        "routing rows, got {}",
+        fx.rows.len()
+    );
 
     // n-axis: log-spaced ends reach the full context
     let n_max = fx.rows.iter().map(|r| r.n_blocks).max().unwrap_or(0);
@@ -77,9 +98,16 @@ fn long_fixture_shape_and_provenance() {
     let mut ns: Vec<usize> = fx.rows.iter().map(|r| r.n_blocks).collect();
     ns.sort_unstable();
     ns.dedup();
-    assert!(ns.len() >= 60, "n-axis coverage (log-spaced), got {} points", ns.len());
+    assert!(
+        ns.len() >= 60,
+        "n-axis coverage (log-spaced), got {} points",
+        ns.len()
+    );
     // the first 29 ends are every-4 dense (the baseline-comparable prefix)
-    assert!((4..=32usize).step_by(4).all(|n| ns.contains(&n)), "dense n≤32 prefix for baseline comparison");
+    assert!(
+        (4..=32usize).step_by(4).all(|n| ns.contains(&n)),
+        "dense n≤32 prefix for baseline comparison"
+    );
 
     // provenance: captured from THIS committed prompt
     let prompt: &str = include_str!("data/asentmax_long_context_prompt.txt");
@@ -88,7 +116,10 @@ fn long_fixture_shape_and_provenance() {
         h ^= b as u64;
         h = h.wrapping_mul(0x100000001b3);
     }
-    assert_eq!(fx.prompt_fnv, h, "long fixture prompt provenance drifted — regenerate");
+    assert_eq!(
+        fx.prompt_fnv, h,
+        "long fixture prompt provenance drifted — regenerate"
+    );
 
     // needle planted at ~60% depth (its own paragraph at the 549/489 boundary)
     assert!(
@@ -117,7 +148,10 @@ fn long_sigma_hat_trend_per_n() {
     let fx = parse_fixture(FIXTURE);
     let n_max = fx.rows.iter().map(|r| r.n_blocks).max().unwrap_or(0);
     let present: std::collections::HashSet<usize> = fx.rows.iter().map(|r| r.n_blocks).collect();
-    let mut buckets: Vec<usize> = [8, 16, 32, 64, 126].into_iter().filter(|&n| present.contains(&n)).collect();
+    let mut buckets: Vec<usize> = [8, 16, 32, 64, 126]
+        .into_iter()
+        .filter(|&n| present.contains(&n))
+        .collect();
     if n_max > 128 {
         buckets.push(n_max);
     }
@@ -138,10 +172,16 @@ fn long_sigma_hat_trend_per_n() {
         for &i in &idx {
             let row = &fx.rows[i];
             let key = (row.layer, row.kv_head);
-            let cache = caches
-                .entry(key)
-                .or_insert_with(|| cache_for(&fx, row.layer, row.kv_head, stream_n_blocks(&fx, row.layer, row.kv_head)));
-            let _ = router.forward_indexer(&row.query, cache, row.n_blocks, row.n_blocks, &mut scratch);
+            let cache = caches.entry(key).or_insert_with(|| {
+                cache_for(
+                    &fx,
+                    row.layer,
+                    row.kv_head,
+                    stream_n_blocks(&fx, row.layer, row.kv_head),
+                )
+            });
+            let _ =
+                router.forward_indexer(&row.query, cache, row.n_blocks, row.n_blocks, &mut scratch);
         }
         let sigma = est.resolve_sigma();
         println!("{n:5} |{sigma:6.3} |{}", idx.len());
@@ -150,7 +190,10 @@ fn long_sigma_hat_trend_per_n() {
             "σ̂({n}) = {sigma} outside the measured long-context band [0.05, 0.6] (climb-and-saturate below the σ≥1 regime)"
         );
         // the estimator observed real rows (not the virgin warm start)
-        assert!(sigma.to_bits() != 1.0f32.to_bits(), "σ̂({n}) never left the warm start");
+        assert!(
+            sigma.to_bits() != 1.0f32.to_bits(),
+            "σ̂({n}) never left the warm start"
+        );
     }
 }
 
@@ -187,20 +230,35 @@ fn long_g2_support_vs_n() {
         .collect();
     println!("n     |rawS |schdS |raw mass |schd mass");
     for &n in &report {
-        let idx: Vec<usize> = fx.rows.iter().enumerate().filter(|(_, r)| r.n_blocks == n).map(|(i, _)| i).collect();
+        let idx: Vec<usize> = fx
+            .rows
+            .iter()
+            .enumerate()
+            .filter(|(_, r)| r.n_blocks == n)
+            .map(|(i, _)| i)
+            .collect();
         let rs: Vec<f32> = idx.iter().map(|&i| raw[i].blocks.len() as f32).collect();
         let ss: Vec<f32> = idx.iter().map(|&i| sched[i].blocks.len() as f32).collect();
         let mass = |arm: &Vec<common::Decision>| -> f32 {
             idx.iter()
                 .map(|&i| {
                     let row = &fx.rows[i];
-                    row.masses.iter().enumerate().filter(|(b, _)| arm[i].blocks.contains(b)).map(|(_, m)| m).sum::<f32>()
+                    row.masses
+                        .iter()
+                        .enumerate()
+                        .filter(|(b, _)| arm[i].blocks.contains(b))
+                        .map(|(_, m)| m)
+                        .sum::<f32>()
                 })
                 .sum::<f32>()
                 / idx.len() as f32
         };
         let (rm, sm) = (mass(&raw), mass(&sched));
-        println!("{n:5} |{:5.1}|{:5.1} |{rm:8.4} |{sm:8.4}", mean(&rs), mean(&ss));
+        println!(
+            "{n:5} |{:5.1}|{:5.1} |{rm:8.4} |{sm:8.4}",
+            mean(&rs),
+            mean(&ss)
+        );
     }
 
     // 1. no raw support collapse: n=32 → n_max (allow a small dip; the claim
@@ -208,8 +266,13 @@ fn long_g2_support_vs_n() {
     let raw32 = support_at(&raw, 32);
     let raw_max = support_at(&raw, n_max);
     let sched_max = support_at(&sched, n_max);
-    println!("raw support: n=32 {raw32:.2} → n={n_max} {raw_max:.2}; scheduled at n_max {sched_max:.2}");
-    assert!(raw_max >= raw32 - 1.0, "raw support collapses: {raw32:.2} at n=32 → {raw_max:.2} at n={n_max}");
+    println!(
+        "raw support: n=32 {raw32:.2} → n={n_max} {raw_max:.2}; scheduled at n_max {sched_max:.2}"
+    );
+    assert!(
+        raw_max >= raw32 - 1.0,
+        "raw support collapses: {raw32:.2} at n=32 → {raw_max:.2} at n={n_max}"
+    );
     assert!(raw_max >= 1.0, "raw support degenerate at n={n_max}");
     // 2. the schedule must not lose support vs raw at the full context
     assert!(
@@ -221,14 +284,28 @@ fn long_g2_support_vs_n() {
         .rows
         .iter()
         .zip(raw.iter())
-        .map(|(row, dec)| row.masses.iter().enumerate().filter(|(b, _)| dec.blocks.contains(b)).map(|(_, m)| m).sum::<f32>())
+        .map(|(row, dec)| {
+            row.masses
+                .iter()
+                .enumerate()
+                .filter(|(b, _)| dec.blocks.contains(b))
+                .map(|(_, m)| m)
+                .sum::<f32>()
+        })
         .sum::<f32>()
         / fx.rows.len() as f32;
     let sched_mean_mass: f32 = fx
         .rows
         .iter()
         .zip(sched.iter())
-        .map(|(row, dec)| row.masses.iter().enumerate().filter(|(b, _)| dec.blocks.contains(b)).map(|(_, m)| m).sum::<f32>())
+        .map(|(row, dec)| {
+            row.masses
+                .iter()
+                .enumerate()
+                .filter(|(b, _)| dec.blocks.contains(b))
+                .map(|(_, m)| m)
+                .sum::<f32>()
+        })
         .sum::<f32>()
         / fx.rows.len() as f32;
     println!(
@@ -335,7 +412,10 @@ fn long_g2_deep_needle_oracle_limited() {
     // 2. the oracle-limited verdict itself: top-1 concentration does not
     //    materialize at depth on this model/content — pinning it prevents a
     //    future regen from silently changing the axis's meaning.
-    assert!(top8 >= 8, "needle never reaches oracle top-8 either ({top8} rows) — axis fully vacuous, re-pin");
+    assert!(
+        top8 >= 8,
+        "needle never reaches oracle top-8 either ({top8} rows) — axis fully vacuous, re-pin"
+    );
     // 3. the retention axis, pinned on the deterministic fixture (measured:
     //    raw 8/27 = 29.6% vs random 4.8%; sched 16/27 = 59.3% vs random
     //    9.6%) — both arms key on needle-relevant summaries far above
@@ -360,8 +440,15 @@ fn long_g2_deep_needle_oracle_limited() {
 fn long_g3_latency_at_large_n() {
     let fx = parse_fixture(FIXTURE);
     let rows: Vec<&common::Row> = fx.rows.iter().filter(|r| r.n_blocks >= 96).collect();
-    assert!(rows.len() >= 200, "large-n latency rows, got {}", rows.len());
-    let caches: Vec<EntmaxCache> = rows.iter().map(|r| cache_for(&fx, r.layer, r.kv_head, r.n_blocks)).collect();
+    assert!(
+        rows.len() >= 200,
+        "large-n latency rows, got {}",
+        rows.len()
+    );
+    let caches: Vec<EntmaxCache> = rows
+        .iter()
+        .map(|r| cache_for(&fx, r.layer, r.kv_head, r.n_blocks))
+        .collect();
 
     let run = |scheduled: bool| -> f64 {
         let router = if scheduled {
@@ -371,20 +458,30 @@ fn long_g3_latency_at_large_n() {
         };
         let mut scratch = VortexScratch::new(256);
         for (row, cache) in rows.iter().zip(caches.iter()) {
-            let _ = router.forward_indexer(&row.query, cache, row.n_blocks, row.n_blocks, &mut scratch);
+            let _ =
+                router.forward_indexer(&row.query, cache, row.n_blocks, row.n_blocks, &mut scratch);
         }
         let iters = 20;
         let t0 = Instant::now();
         for _ in 0..iters {
             for (row, cache) in rows.iter().zip(caches.iter()) {
-                let _ = router.forward_indexer(&row.query, cache, row.n_blocks, row.n_blocks, &mut scratch);
+                let _ = router.forward_indexer(
+                    &row.query,
+                    cache,
+                    row.n_blocks,
+                    row.n_blocks,
+                    &mut scratch,
+                );
             }
         }
         t0.elapsed().as_secs_f64() / (iters * rows.len()) as f64
     };
     let raw_us = run(false) * 1e6;
     let sched_us = run(true) * 1e6;
-    println!("router latency/row at n≥96: raw {raw_us:.2} µs, scheduled {sched_us:.2} µs (ratio {:.3})", sched_us / raw_us);
+    println!(
+        "router latency/row at n≥96: raw {raw_us:.2} µs, scheduled {sched_us:.2} µs (ratio {:.3})",
+        sched_us / raw_us
+    );
     assert!(
         sched_us <= raw_us * 1.5 + 2.0,
         "scheduled arm latency {sched_us:.2} µs vs raw {raw_us:.2} µs at n≥96"

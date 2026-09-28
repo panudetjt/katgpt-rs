@@ -51,9 +51,7 @@
 //!   §3.5 + App. F Prop. 4.
 //! - Research: `katgpt-rs/.research/320_Red_Queen_Godel_Machine_Selective_Erasure_Best_Belief.md`
 
-use katgpt_core::{
-    best_belief_score, best_belief_scores, select_best_belief,
-};
+use katgpt_core::{best_belief_score, best_belief_scores, select_best_belief};
 
 // ─────────────────────────────────────────────────────────────────────────
 // Section 1: The core formula — monotonicity invariants.
@@ -76,7 +74,10 @@ fn section_1_monotonicity() {
 
     let epsilons = [0.01_f32, 0.05, 0.1, 0.25, 0.5];
     println!("  BB_ε(S, F) at fixed F=2, sweeping S (monotone-increasing in S):");
-    println!("  {:>6} │ {:>8} {:>8} {:>8} {:>8} {:>8}", "S", "ε=0.01", "ε=0.05", "ε=0.10", "ε=0.25", "ε=0.50");
+    println!(
+        "  {:>6} │ {:>8} {:>8} {:>8} {:>8} {:>8}",
+        "S", "ε=0.01", "ε=0.05", "ε=0.10", "ε=0.25", "ε=0.50"
+    );
     println!("  ──────┼────────────────────────────────────────────────────────────────");
     for &s in &[0_u32, 1, 2, 4, 8, 16, 31] {
         print!("  {s:>6} │");
@@ -91,7 +92,10 @@ fn section_1_monotonicity() {
     println!();
 
     println!("  BB_ε(S, F) at fixed S=8, sweeping F (monotone-decreasing in F):");
-    println!("  {:>6} │ {:>8} {:>8} {:>8} {:>8} {:>8}", "F", "ε=0.01", "ε=0.05", "ε=0.10", "ε=0.25", "ε=0.50");
+    println!(
+        "  {:>6} │ {:>8} {:>8} {:>8} {:>8} {:>8}",
+        "F", "ε=0.01", "ε=0.05", "ε=0.10", "ε=0.25", "ε=0.50"
+    );
     println!("  ──────┼────────────────────────────────────────────────────────────────");
     for &f in &[0_u32, 1, 2, 4, 8, 16, 31] {
         print!("  {f:>6} │");
@@ -132,7 +136,12 @@ fn section_2_explore_vs_exploit() {
         (40, 10), // heavily tested, 80% empirical rate
         (0, 0),   // no evidence (uniform prior)
     ];
-    let labels = ["well-tested (8,2)", "lucky-one (1,0)", "heavy (40,10)", "unknown (0,0)"];
+    let labels = [
+        "well-tested (8,2)",
+        "lucky-one (1,0)",
+        "heavy (40,10)",
+        "unknown (0,0)",
+    ];
 
     println!("  Candidates (S, F) and their best_belief floors at ε=0.05:");
     println!();
@@ -192,18 +201,17 @@ fn section_3_freeze_thaw_scenario() {
 
     println!("  Candidate evaluation at ε={eps} (95% confidence floor):");
     println!();
-    println!("  {:>4} {:>12} {:>10} {:>10} {:>14}", "idx", "label", "empirical", "BB floor", "floor/empirical");
+    println!(
+        "  {:>4} {:>12} {:>10} {:>10} {:>14}",
+        "idx", "label", "empirical", "BB floor", "floor/empirical"
+    );
     println!("  ──── ──────────── ────────── ────────── ──────────────");
     for (i, &(s, f)) in candidates.iter().enumerate() {
         let empirical = s as f32 / (s + f) as f32;
         let ratio = scores[i] / empirical;
         println!(
             "  {:>4} {:>12} {:>10.4} {:>10.4} {:>14.3}",
-            i,
-            labels[i],
-            empirical,
-            scores[i],
-            ratio
+            i, labels[i], empirical, scores[i], ratio
         );
     }
     println!();
@@ -269,7 +277,10 @@ fn section_4_incumbent_tie_preference() {
     println!("  Two candidates with identical (S, F) = (10, 2):");
     println!("    [0] {}: BB={:.6}", labels[0], scores[0]);
     println!("    [1] {}: BB={:.6}", labels[1], scores[1]);
-    println!("    → scores are bit-identical: {}", scores[0].to_bits() == scores[1].to_bits());
+    println!(
+        "    → scores are bit-identical: {}",
+        scores[0].to_bits() == scores[1].to_bits()
+    );
     println!();
 
     // Without incumbent preference: argmax picks the FIRST (lowest index).
@@ -312,11 +323,15 @@ fn section_5_lut_vs_closed_form() {
 
     // Out-of-LUT case: large S (falls back to closed form).
     let cold_path_large = best_belief_score(100, 50, 0.05);
-    println!("  Cold path (S=100, F=50, ε=0.05): BB = {cold_path_large:.8}  (S ≥ 32 → closed form)");
+    println!(
+        "  Cold path (S=100, F=50, ε=0.05): BB = {cold_path_large:.8}  (S ≥ 32 → closed form)"
+    );
 
     // Out-of-LUT case: non-standard ε (falls back to closed form).
     let cold_path_eps = best_belief_score(10, 5, 0.07);
-    println!("  Cold path (S=10, F=5, ε=0.07):  BB = {cold_path_eps:.8}  (non-standard ε → closed form)");
+    println!(
+        "  Cold path (S=10, F=5, ε=0.07):  BB = {cold_path_eps:.8}  (non-standard ε → closed form)"
+    );
 
     // Edge: uniform prior.
     let uniform = best_belief_score(0, 0, 0.05);

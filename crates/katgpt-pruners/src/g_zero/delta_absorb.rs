@@ -25,7 +25,6 @@
 //! layer.observe_delta(1, 0.01);  // NOT absorbed (below threshold)
 //! ```
 
-
 use crate::absorb_compress::{AbsorbCompress, AbsorbCompressLayer};
 use crate::review_metrics::ReviewMetrics;
 use katgpt_speculative::ScreeningPruner;

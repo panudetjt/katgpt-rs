@@ -245,9 +245,11 @@ impl DecisionExplanation {
             }
 
             // Sensitivity insight line
-            if let Some(max_attr) = choice.pruner_attributions.iter().max_by(|a, b| {
-                katgpt_core::float_order::cmp_for_max(a.sensitivity, b.sensitivity)
-            }) {
+            if let Some(max_attr) = choice
+                .pruner_attributions
+                .iter()
+                .max_by(|a, b| katgpt_core::float_order::cmp_for_max(a.sensitivity, b.sensitivity))
+            {
                 let second_best = choice
                     .pruner_attributions
                     .iter()
@@ -704,9 +706,7 @@ mod tests {
         let primary = choice
             .pruner_attributions
             .iter()
-            .max_by(|a, b| {
-                katgpt_core::float_order::cmp_for_max(a.sensitivity, b.sensitivity)
-            })
+            .max_by(|a, b| katgpt_core::float_order::cmp_for_max(a.sensitivity, b.sensitivity))
             .expect("should have at least one attribution");
 
         assert!(

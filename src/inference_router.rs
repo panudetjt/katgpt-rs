@@ -331,24 +331,28 @@ impl InferenceRouter {
         let tier_after_trust = if self.trust_signal < 0.4 && tier == ComputeTier::CpuOnly {
             // Low trust on CPU → tier up to GPU if available
             if self.gpu.is_some() {
-                    log::info!(
-                        "Router trust-triggered tier-up: trust={:.2}, CPU→CPU+GPU",
-                        self.trust_signal
-                    );
-                    ComputeTier::CpuGpu
-                } else { tier }
+                log::info!(
+                    "Router trust-triggered tier-up: trust={:.2}, CPU→CPU+GPU",
+                    self.trust_signal
+                );
+                ComputeTier::CpuGpu
+            } else {
+                tier
+            }
         } else if self.trust_signal > 0.8 && tier == ComputeTier::CpuGpu {
             // High trust on GPU → allow tier down to CPU.
             // Snapshot gate config once to avoid repeated method calls.
             let cfg = self.gate.config();
             let low_load = self.gate.estimated_qps() < cfg.gpu_activate_qps * cfg.hysteresis_factor;
             if low_load {
-                    log::info!(
-                        "Router trust-triggered tier-down: trust={:.2}, CPU+GPU→CPU",
-                        self.trust_signal
-                    );
-                    ComputeTier::CpuOnly
-                } else { tier }
+                log::info!(
+                    "Router trust-triggered tier-down: trust={:.2}, CPU+GPU→CPU",
+                    self.trust_signal
+                );
+                ComputeTier::CpuOnly
+            } else {
+                tier
+            }
         } else {
             tier
         };

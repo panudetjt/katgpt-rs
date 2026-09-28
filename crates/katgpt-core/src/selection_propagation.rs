@@ -242,7 +242,10 @@ pub fn propagate_selection_to_fixpoint_into(
     debug_assert_eq!(seed.len(), n, "seed must be n");
     debug_assert_eq!(scores_out.len(), n, "scores_out must be n");
     if n == 0 {
-        return PropagationOutcome { iters: 0, stable: true };
+        return PropagationOutcome {
+            iters: 0,
+            stable: true,
+        };
     }
     scratch.reset(n, budget);
     let words = n.div_ceil(64);
@@ -260,7 +263,10 @@ pub fn propagate_selection_to_fixpoint_into(
 
     if budget == 0 {
         scores_out.copy_from_slice(&scores[..n]);
-        return PropagationOutcome { iters: 0, stable: true };
+        return PropagationOutcome {
+            iters: 0,
+            stable: true,
+        };
     }
 
     let mut iters = 0usize;
@@ -277,13 +283,19 @@ pub fn propagate_selection_to_fixpoint_into(
         // 3. Membership fixpoint check.
         if iters > 0 && membership[..words] == prev_membership[..words] {
             scores_out.copy_from_slice(&scores[..n]);
-            return PropagationOutcome { iters, stable: true };
+            return PropagationOutcome {
+                iters,
+                stable: true,
+            };
         }
         prev_membership[..words].copy_from_slice(&membership[..words]);
 
         if iters >= cfg.max_iters {
             scores_out.copy_from_slice(&scores[..n]);
-            return PropagationOutcome { iters, stable: false };
+            return PropagationOutcome {
+                iters,
+                stable: false,
+            };
         }
 
         // 4. Propagate: each selected j pushes sigmoid-gated reliability
@@ -341,10 +353,7 @@ mod tests {
 
     fn top_k(scores: &[f32], k: usize) -> Vec<usize> {
         let mut idx: Vec<usize> = (0..scores.len()).collect();
-        idx.sort_by(|&a, &b| {
-            scores[b].total_cmp(&scores[a])
-                .then(a.cmp(&b))
-        });
+        idx.sort_by(|&a, &b| scores[b].total_cmp(&scores[a]).then(a.cmp(&b)));
         idx.truncate(k);
         idx
     }
@@ -356,17 +365,28 @@ mod tests {
         let mut out = [0.0f32; 5];
         let mut scratch = SelectionPropagationScratch::with_capacity(5, 4);
         let outcome = propagate_selection_to_fixpoint_into(
-            &offsets, &targets, &weights, &seed, 5, 4, &PropagationConfig::default(),
-            &mut out, &mut scratch,
+            &offsets,
+            &targets,
+            &weights,
+            &seed,
+            5,
+            4,
+            &PropagationConfig::default(),
+            &mut out,
+            &mut scratch,
         );
         // The whole chain {0,1,2} must outrank the distractors {3,4} at
         // budget 4: selection = {0,1,2,+1 of 3/4}.
         let top4 = top_k(&out, 4);
-        assert!(top4.contains(&1) && top4.contains(&2),
-            "chain tail must enter the budget: top4 = {top4:?}, scores = {out:?}");
+        assert!(
+            top4.contains(&1) && top4.contains(&2),
+            "chain tail must enter the budget: top4 = {top4:?}, scores = {out:?}"
+        );
         // Distractor scores must sit below the chain tail under Mass blend.
-        assert!(out[1] > out[3] && out[1] > out[4],
-            "chain successor (w=0.9) must outrank distractors (w=0.3): {out:?}");
+        assert!(
+            out[1] > out[3] && out[1] > out[4],
+            "chain successor (w=0.9) must outrank distractors (w=0.3): {out:?}"
+        );
         assert!(outcome.stable);
         assert!(outcome.iters > 0 && outcome.iters <= 16);
     }
@@ -387,9 +407,20 @@ mod tests {
             ..Default::default()
         };
         let _ = propagate_selection_to_fixpoint_into(
-            &offsets, &targets, &weights, &seed, 5, 4, &cfg, &mut out, &mut scratch,
+            &offsets,
+            &targets,
+            &weights,
+            &seed,
+            5,
+            4,
+            &cfg,
+            &mut out,
+            &mut scratch,
         );
-        assert!((out[1] - out[3]).abs() < 1e-6, "mean blend cancels w: {out:?}");
+        assert!(
+            (out[1] - out[3]).abs() < 1e-6,
+            "mean blend cancels w: {out:?}"
+        );
 
         let cfg = PropagationConfig {
             blend: PropagationBlend::Mass,
@@ -397,7 +428,15 @@ mod tests {
             ..Default::default()
         };
         let _ = propagate_selection_to_fixpoint_into(
-            &offsets, &targets, &weights, &seed, 5, 4, &cfg, &mut out, &mut scratch,
+            &offsets,
+            &targets,
+            &weights,
+            &seed,
+            5,
+            4,
+            &cfg,
+            &mut out,
+            &mut scratch,
         );
         assert!(
             out[1] - out[3] > 0.3,
@@ -411,13 +450,28 @@ mod tests {
         let seed = [0.98f32, 0.5, 0.5, 0.9, 0.9];
         let mut out = [0.0f32; 5];
         let mut scratch = SelectionPropagationScratch::with_capacity(5, 4);
-        let cfg = PropagationConfig { max_iters: 64, ..Default::default() };
+        let cfg = PropagationConfig {
+            max_iters: 64,
+            ..Default::default()
+        };
         let outcome = propagate_selection_to_fixpoint_into(
-            &offsets, &targets, &weights, &seed, 5, 4, &cfg, &mut out, &mut scratch,
+            &offsets,
+            &targets,
+            &weights,
+            &seed,
+            5,
+            4,
+            &cfg,
+            &mut out,
+            &mut scratch,
         );
         // A 2-hop chain stabilizes in a handful of iterations, not 64.
         assert!(outcome.stable, "toy chain must reach membership fixpoint");
-        assert!(outcome.iters < 8, "2-hop chain should stop in <8 iters, got {}", outcome.iters);
+        assert!(
+            outcome.iters < 8,
+            "2-hop chain should stop in <8 iters, got {}",
+            outcome.iters
+        );
     }
 
     #[test]
@@ -431,9 +485,20 @@ mod tests {
         let seed = [0.9f32, 0.0, 0.0, 0.8, 0.8];
         let mut out = [0.0f32; 5];
         let mut scratch = SelectionPropagationScratch::with_capacity(5, 1);
-        let cfg = PropagationConfig { max_iters: 8, ..Default::default() };
+        let cfg = PropagationConfig {
+            max_iters: 8,
+            ..Default::default()
+        };
         let outcome = propagate_selection_to_fixpoint_into(
-            &offsets, &targets, &weights, &seed, 5, 1, &cfg, &mut out, &mut scratch,
+            &offsets,
+            &targets,
+            &weights,
+            &seed,
+            5,
+            1,
+            &cfg,
+            &mut out,
+            &mut scratch,
         );
         // Whichever way it lands, the run must terminate at the bound without
         // reporting a membership fixpoint (or stabilize at the tie — both are
@@ -453,11 +518,25 @@ mod tests {
         let seed = [0.9f32, 0.8];
         let mut out = [0.0f32; 2];
         let mut scratch = SelectionPropagationScratch::with_capacity(2, 1);
-        let cfg = PropagationConfig { max_iters: 6, ..Default::default() };
+        let cfg = PropagationConfig {
+            max_iters: 6,
+            ..Default::default()
+        };
         let outcome = propagate_selection_to_fixpoint_into(
-            &offsets, &targets, &weights, &seed, 2, 1, &cfg, &mut out, &mut scratch,
+            &offsets,
+            &targets,
+            &weights,
+            &seed,
+            2,
+            1,
+            &cfg,
+            &mut out,
+            &mut scratch,
         );
-        assert!(!outcome.stable, "oscillating selection must NOT report stable");
+        assert!(
+            !outcome.stable,
+            "oscillating selection must NOT report stable"
+        );
         assert_eq!(outcome.iters, 6);
     }
 
@@ -470,10 +549,26 @@ mod tests {
         let mut scratch = SelectionPropagationScratch::with_capacity(5, 4);
         let cfg = PropagationConfig::default();
         let a = propagate_selection_to_fixpoint_into(
-            &offsets, &targets, &weights, &seed, 5, 4, &cfg, &mut out_a, &mut scratch,
+            &offsets,
+            &targets,
+            &weights,
+            &seed,
+            5,
+            4,
+            &cfg,
+            &mut out_a,
+            &mut scratch,
         );
         let b = propagate_selection_to_fixpoint_into(
-            &offsets, &targets, &weights, &seed, 5, 4, &cfg, &mut out_b, &mut scratch,
+            &offsets,
+            &targets,
+            &weights,
+            &seed,
+            5,
+            4,
+            &cfg,
+            &mut out_b,
+            &mut scratch,
         );
         assert_eq!(out_a, out_b, "two runs must be bit-identical");
         assert_eq!(a, b);
@@ -488,11 +583,25 @@ mod tests {
         let seed = [0.7f32, 0.7];
         let mut out = [0.0f32; 2];
         let mut scratch = SelectionPropagationScratch::with_capacity(2, 1);
-        let cfg = PropagationConfig { max_iters: 1, ..Default::default() };
+        let cfg = PropagationConfig {
+            max_iters: 1,
+            ..Default::default()
+        };
         let outcome = propagate_selection_to_fixpoint_into(
-            &offsets, &targets, &weights, &seed, 2, 1, &cfg, &mut out, &mut scratch,
+            &offsets,
+            &targets,
+            &weights,
+            &seed,
+            2,
+            1,
+            &cfg,
+            &mut out,
+            &mut scratch,
         );
-        assert!(outcome.stable, "selection with no edges is stable after one propagation");
+        assert!(
+            outcome.stable,
+            "selection with no edges is stable after one propagation"
+        );
         assert_eq!(outcome.iters, 1);
     }
 
@@ -501,18 +610,45 @@ mod tests {
         let mut out: [f32; 0] = [];
         let mut scratch = SelectionPropagationScratch::new();
         let o = propagate_selection_to_fixpoint_into(
-            &[0], &[], &[], &[], 0, 0, &PropagationConfig::default(), &mut out, &mut scratch,
+            &[0],
+            &[],
+            &[],
+            &[],
+            0,
+            0,
+            &PropagationConfig::default(),
+            &mut out,
+            &mut scratch,
         );
-        assert_eq!(o, PropagationOutcome { iters: 0, stable: true });
+        assert_eq!(
+            o,
+            PropagationOutcome {
+                iters: 0,
+                stable: true
+            }
+        );
 
         let (offsets, targets, weights) = toy_graph();
         let seed = [0.9f32, 0.5, 0.5, 0.8, 0.8];
         let mut out5 = [0.0f32; 5];
         let o = propagate_selection_to_fixpoint_into(
-            &offsets, &targets, &weights, &seed, 5, 0, &PropagationConfig::default(),
-            &mut out5, &mut scratch,
+            &offsets,
+            &targets,
+            &weights,
+            &seed,
+            5,
+            0,
+            &PropagationConfig::default(),
+            &mut out5,
+            &mut scratch,
         );
-        assert_eq!(o, PropagationOutcome { iters: 0, stable: true });
+        assert_eq!(
+            o,
+            PropagationOutcome {
+                iters: 0,
+                stable: true
+            }
+        );
         assert_eq!(out5, seed, "budget=0 returns the seed unchanged");
     }
 
@@ -523,11 +659,22 @@ mod tests {
         let mut out = [0.0f32; 5];
         let mut scratch = SelectionPropagationScratch::with_capacity(5, 8);
         let outcome = propagate_selection_to_fixpoint_into(
-            &offsets, &targets, &weights, &seed, 5, 8, &PropagationConfig::default(),
-            &mut out, &mut scratch,
+            &offsets,
+            &targets,
+            &weights,
+            &seed,
+            5,
+            8,
+            &PropagationConfig::default(),
+            &mut out,
+            &mut scratch,
         );
         // Everyone is selected at iter 0 and again at iter 1 → stable.
         assert!(outcome.stable);
-        assert!(outcome.iters <= 2, "budget >= n stabilizes immediately, got {}", outcome.iters);
+        assert!(
+            outcome.iters <= 2,
+            "budget >= n stabilizes immediately, got {}",
+            outcome.iters
+        );
     }
 }

@@ -413,10 +413,7 @@ fn g2c_loop_latency() {
     let per_call_us = elapsed.as_nanos() as f64 / iters as f64 / 1000.0;
 
     if per_call_us > 50.0 {
-        fail(
-            "G2c",
-            &format!("10-round loop = {per_call_us:.2}µs > 50µs"),
-        );
+        fail("G2c", &format!("10-round loop = {per_call_us:.2}µs > 50µs"));
     }
     pass(&format!("G2c 10-round loop: {per_call_us:.2}µs (< 50µs)"));
 }
@@ -528,9 +525,7 @@ fn g6_ablation_mance_vs_unconstrained() {
     if mance_orth < uncon_orth - 1e-6 {
         fail(
             "G6",
-            &format!(
-                "MANCE orthogonal energy {mance_orth:.6} < unconstrained {uncon_orth:.6}"
-            ),
+            &format!("MANCE orthogonal energy {mance_orth:.6} < unconstrained {uncon_orth:.6}"),
         );
     }
     pass(&format!(
@@ -599,9 +594,7 @@ fn g2d_cached_loop_latency() {
     if per_call_us > 25.0 {
         fail(
             "G2d",
-            &format!(
-                "cached 10-round loop = {per_call_us:.2}µs > 25µs (50% of 50µs gate)"
-            ),
+            &format!("cached 10-round loop = {per_call_us:.2}µs > 25µs (50% of 50µs gate)"),
         );
     }
     pass(&format!(

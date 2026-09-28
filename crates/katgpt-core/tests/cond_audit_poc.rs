@@ -18,7 +18,7 @@
 
 #![cfg(feature = "cond_audit")]
 
-use katgpt_core::cond_audit::{audit_conditioning, pinsker_tv_bound, AuditReport, CondAuditConfig};
+use katgpt_core::cond_audit::{AuditReport, CondAuditConfig, audit_conditioning, pinsker_tv_bound};
 
 const VOCAB: usize = 512;
 /// Hidden width of the fixture's vocab projection (see `teacher_forward`).
@@ -131,7 +131,11 @@ fn g8_planted_corruption_exceeds_threshold_calibrated_stays_zero() {
     let treated = run(deficit_student(), &cfg);
     println!(
         "deficit arm: eps_kl = {:.6} nats, tv_bound = {:.6}, tv_chain = {:.6}, flips = {}/{}",
-        treated.eps_kl, treated.tv_bound, treated.tv_bound_chain, treated.greedy_flips, treated.junctions
+        treated.eps_kl,
+        treated.tv_bound,
+        treated.tv_bound_chain,
+        treated.greedy_flips,
+        treated.junctions
     );
     assert!(
         treated.eps_kl > 0.1,
@@ -145,7 +149,10 @@ fn g8_planted_corruption_exceeds_threshold_calibrated_stays_zero() {
         treated.tv_bound,
         cfg.tv_threshold
     );
-    assert!(!treated.verdict_pass, "G8: verdict must flip to FAIL under corruption");
+    assert!(
+        !treated.verdict_pass,
+        "G8: verdict must flip to FAIL under corruption"
+    );
     assert!(
         treated.greedy_flips >= 1,
         "a 12-nat argmax deficit must move at least one greedy argmax"
@@ -162,7 +169,10 @@ fn kl_is_monotone_in_corruption_magnitude() {
     let mut observed = Vec::with_capacity(scales.len());
     for &s in &scales {
         let r = run(noisy_student(s), &cfg);
-        println!("noise {s:>4}: eps_kl = {:.6} nats, tv_bound = {:.6}", r.eps_kl, r.tv_bound);
+        println!(
+            "noise {s:>4}: eps_kl = {:.6} nats, tv_bound = {:.6}",
+            r.eps_kl, r.tv_bound
+        );
         assert!(
             r.eps_kl > prev,
             "eps_kl must increase with noise scale: scale {s} gave {} after {prev}",
@@ -172,7 +182,10 @@ fn kl_is_monotone_in_corruption_magnitude() {
         observed.push(r.eps_kl);
     }
     assert!(observed[0] == 0.0, "zero noise is the calibrated arm");
-    assert!(prev > 0.5, "the loudest arm must be clearly nonzero, got {prev}");
+    assert!(
+        prev > 0.5,
+        "the loudest arm must be clearly nonzero, got {prev}"
+    );
 }
 
 /// Same inputs → bit-identical outputs across 3 runs (Issue 719 T1).
@@ -182,8 +195,16 @@ fn deterministic_bit_identical_x3() {
     let r1 = run(deficit_student(), &cfg);
     for run_idx in 0..2 {
         let r = run(deficit_student(), &cfg);
-        assert_eq!(r.eps_kl.to_bits(), r1.eps_kl.to_bits(), "run {run_idx}: eps_kl");
-        assert_eq!(r.tv_bound.to_bits(), r1.tv_bound.to_bits(), "run {run_idx}: tv_bound");
+        assert_eq!(
+            r.eps_kl.to_bits(),
+            r1.eps_kl.to_bits(),
+            "run {run_idx}: eps_kl"
+        );
+        assert_eq!(
+            r.tv_bound.to_bits(),
+            r1.tv_bound.to_bits(),
+            "run {run_idx}: tv_bound"
+        );
         assert_eq!(
             r.tv_bound_chain.to_bits(),
             r1.tv_bound_chain.to_bits(),
@@ -197,7 +218,12 @@ fn deterministic_bit_identical_x3() {
         assert_eq!(r.greedy_flips, r1.greedy_flips, "run {run_idx}: flips");
         assert_eq!(r.junctions, r1.junctions);
         assert_eq!(r.per_junction_kl.len(), r1.per_junction_kl.len());
-        for (i, (a, b)) in r.per_junction_kl.iter().zip(&r1.per_junction_kl).enumerate() {
+        for (i, (a, b)) in r
+            .per_junction_kl
+            .iter()
+            .zip(&r1.per_junction_kl)
+            .enumerate()
+        {
             assert_eq!(a.to_bits(), b.to_bits(), "run {run_idx} junction {i}");
         }
     }
@@ -213,7 +239,11 @@ fn report_internal_consistency_and_pinsker_math() {
     assert_eq!(r.per_junction_kl.len(), POSITIONS.len());
 
     let sum: f32 = r.per_junction_kl.iter().sum();
-    assert_eq!(sum.to_bits(), r.eps_kl.to_bits(), "eps_kl is the ordered junction sum");
+    assert_eq!(
+        sum.to_bits(),
+        r.eps_kl.to_bits(),
+        "eps_kl is the ordered junction sum"
+    );
     let mx = r.per_junction_kl.iter().copied().fold(0.0f32, f32::max);
     assert_eq!(mx.to_bits(), r.max_junction_kl.to_bits());
 
@@ -285,7 +315,8 @@ fn g2_audit_overhead_ratio_measured() {
         let t1 = Instant::now();
         let mut eps = 0.0f32;
         for _ in 0..INNER {
-            let r = audit_conditioning(&POSITIONS, VOCAB, noisy_student(1.0), teacher_forward, &cfg);
+            let r =
+                audit_conditioning(&POSITIONS, VOCAB, noisy_student(1.0), teacher_forward, &cfg);
             eps += r.eps_kl;
         }
         black_box(eps);

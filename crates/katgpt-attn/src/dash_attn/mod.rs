@@ -61,9 +61,9 @@ pub mod sat_analysis;
 pub mod value_energy;
 pub mod vortex_flow;
 
-pub use chunk_summary::{ChunkSummaryCache, ChunkSummaryQuery, summarize_chunk_with_entropy};
 #[cfg(feature = "asentmax_schedule")]
 pub use asentmax::{AsentmaxSchedule, RollingSigmaEstimator, apply_asentmax_inplace};
+pub use chunk_summary::{ChunkSummaryCache, ChunkSummaryQuery, summarize_chunk_with_entropy};
 pub use entmax::{entmax_1p5, entmax_gqa_aggregate, entmax_support};
 // Issue 747 P3: Lemma-1 incremental decode entmax.
 #[cfg(feature = "asentmax_schedule")]
@@ -72,6 +72,6 @@ pub use entmax_incremental::IncrementalEntmax1p5;
 #[cfg(feature = "asentmax_schedule")]
 pub use eviction_window::{alibi_entmax_window_1p5, evicted_kv_fraction, kv_within_window};
 pub use forward::{forward_dash_attn_decode, forward_dash_attn_prefill};
-pub use routing::{compute_routing_bias, score_blocks_entmax, score_blocks_entmax_with_entropy};
 #[cfg(feature = "asentmax_schedule")]
 pub use routing::score_blocks_entmax_with_schedule_into;
+pub use routing::{compute_routing_bias, score_blocks_entmax, score_blocks_entmax_with_entropy};

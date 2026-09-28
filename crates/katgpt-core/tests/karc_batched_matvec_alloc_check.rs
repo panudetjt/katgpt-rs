@@ -19,10 +19,7 @@ const N: usize = 8;
 /// Fit N single forecasters with different seed offsets (deterministic — same
 /// as the bench). Returns the forecasters (for Wout reuse) + their seed delay
 /// states.
-fn make_n_fitted_singles() -> (
-    Vec<KarcForecaster<FourierBasis<M>, D, M, K>>,
-    Vec<Vec<f32>>,
-) {
+fn make_n_fitted_singles() -> (Vec<KarcForecaster<FourierBasis<M>, D, M, K>>, Vec<Vec<f32>>) {
     let mut singles: Vec<KarcForecaster<FourierBasis<M>, D, M, K>> = Vec::with_capacity(N);
     let mut seeds: Vec<Vec<f32>> = Vec::with_capacity(N);
     for i in 0..N {
@@ -73,7 +70,7 @@ fn make_n_fitted_singles() -> (
 fn g4_batched_forecast_into_zero_alloc_after_warmup() {
     const N_CALLS: usize = 1000;
 
-let (singles, seeds) = make_n_fitted_singles();
+    let (singles, seeds) = make_n_fitted_singles();
 
     let mut batch =
         KarcBatchForecaster::<FourierBasis<M>, D, M, K>::with_capacity(FourierBasis::new(4.0), N);

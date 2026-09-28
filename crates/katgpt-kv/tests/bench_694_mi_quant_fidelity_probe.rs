@@ -165,7 +165,11 @@ fn mi_probe_orders_information_retention_by_bit_width() {
     // Retention: significant at every production width (2-bit + VarNorm is
     // the shipped setting).
     for r in &recs {
-        assert!(r.p < 0.05, "bits={}: dependence lost unexpectedly: {r:?}", r.bits);
+        assert!(
+            r.p < 0.05,
+            "bits={}: dependence lost unexpectedly: {r:?}",
+            r.bits
+        );
     }
     // Ordering: strict monotone dependence magnitude (dCor², not DV — the
     // DV gauge is population/noise-dependent; see the module doc).

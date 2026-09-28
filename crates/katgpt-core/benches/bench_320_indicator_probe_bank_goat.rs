@@ -270,9 +270,7 @@ fn gate_g1_indicator_au_roc() -> GateResult {
             .join(", ");
         GateResult::pass(
             "G1",
-            format!(
-                "all 8 indicators AU-ROC ≥ {threshold:.2}; worst = {worst:.3}; {detail}"
-            ),
+            format!("all 8 indicators AU-ROC ≥ {threshold:.2}; worst = {worst:.3}; {detail}"),
         )
     } else {
         let detail = per_indicator
@@ -588,9 +586,7 @@ fn gate_g4_hot_path_latency_and_alloc() -> GateResult {
             reasons.push(format!("{ns_per_call:.1} ns/call ≥ 200ns"));
         }
         if !alloc_pass {
-            reasons.push(format!(
-                "{allocs} allocs / {ALLOC_ITERS} calls (need 0)"
-            ));
+            reasons.push(format!("{allocs} allocs / {ALLOC_ITERS} calls (need 0)"));
         }
         GateResult::fail("G4", reasons.join("; "))
     }
@@ -696,16 +692,12 @@ fn gate_g5_similarity_block_recovery() -> GateResult {
     if ari >= 0.9 {
         GateResult::pass(
             "G5",
-            format!(
-                "cluster(0.6, 0.6) ARI = {ari:.3} ≥ 0.9 vs planted 4×2 blocks"
-            ),
+            format!("cluster(0.6, 0.6) ARI = {ari:.3} ≥ 0.9 vs planted 4×2 blocks"),
         )
     } else {
         GateResult::fail(
             "G5",
-            format!(
-                "cluster(0.6, 0.6) ARI = {ari:.3} < 0.9; clusters = {clusters:?}"
-            ),
+            format!("cluster(0.6, 0.6) ARI = {ari:.3} < 0.9; clusters = {clusters:?}"),
         )
     }
 }

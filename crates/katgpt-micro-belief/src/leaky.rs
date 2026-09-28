@@ -231,7 +231,10 @@ mod tests {
         // Actual: through the kernel.
         k.step(&mut state_actual, &input);
 
-        assert_eq!(state_actual, state_ref, "kernel must match evolve_belief math");
+        assert_eq!(
+            state_actual, state_ref,
+            "kernel must match evolve_belief math"
+        );
     }
 
     #[test]

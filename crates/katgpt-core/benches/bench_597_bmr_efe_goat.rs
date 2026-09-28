@@ -117,7 +117,11 @@ fn g1_correctness() -> bool {
             let f = bmr::bmr_log_evidence(&prior, &post, &reduced);
             let mut ln_m = 0.0;
             for (c, u) in units.iter().enumerate() {
-                let alpha: Vec<f64> = reduced.col(c).iter().map(|v| v.max(bmr::SHRINKAGE)).collect();
+                let alpha: Vec<f64> = reduced
+                    .col(c)
+                    .iter()
+                    .map(|v| v.max(bmr::SHRINKAGE))
+                    .collect();
                 ln_m += chained_ln_evidence_col(&alpha, u);
             }
             worst = worst.max((ln_full - f - ln_m).abs());
@@ -302,7 +306,9 @@ fn main() {
     let all_pass = g1 && g2 && g4;
     println!();
     if all_pass {
-        println!("ALL GATES PASS — primitive is GOAT-validated (promotion is the coordinator's call).");
+        println!(
+            "ALL GATES PASS — primitive is GOAT-validated (promotion is the coordinator's call)."
+        );
     } else {
         println!("ONE OR MORE GATES FAILED — stays opt-in; record in the bench doc.");
         std::process::exit(1);

@@ -1206,7 +1206,10 @@ mod tests {
             // τ exactly at a confidence includes it (≥, not >).
             assert_eq!(confidence_threshold_eligible(&conf, 0.5), vec![0, 2]);
             // τ above everything / below everything.
-            assert_eq!(confidence_threshold_eligible(&conf, 0.6), Vec::<usize>::new());
+            assert_eq!(
+                confidence_threshold_eligible(&conf, 0.6),
+                Vec::<usize>::new()
+            );
             assert_eq!(confidence_threshold_eligible(&conf, 0.0), vec![0, 1, 2]);
         }
 
@@ -1253,10 +1256,16 @@ mod tests {
                     );
                     // Zeros only ever trail (surplus passes idle at the END).
                     if let Some(first_zero) = c.iter().position(|&x| x == 0) {
-                        assert!(c[first_zero..].iter().all(|&x| x == 0), "interior zero l={l} steps={steps}: {c:?}");
+                        assert!(
+                            c[first_zero..].iter().all(|&x| x == 0),
+                            "interior zero l={l} steps={steps}: {c:?}"
+                        );
                     }
                     // Active passes commit ≥ 1.
-                    assert!(c[..active].iter().all(|&x| x >= 1), "l={l} steps={steps}: {c:?}");
+                    assert!(
+                        c[..active].iter().all(|&x| x >= 1),
+                        "l={l} steps={steps}: {c:?}"
+                    );
                 }
             }
         }
@@ -1317,7 +1326,10 @@ mod tests {
             // out-of-order, globally LTR) maps to the mid table, never the
             // sequential or fully-parallel endpoints.
             let w = predict_w_from_order_stats(0.60, 0.90);
-            assert!((0.3..=0.5).contains(&w), "hybrid-band signature mapped to w={w}");
+            assert!(
+                (0.3..=0.5).contains(&w),
+                "hybrid-band signature mapped to w={w}"
+            );
         }
 
         #[test]

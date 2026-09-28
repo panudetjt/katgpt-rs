@@ -62,16 +62,13 @@ pub fn symmetric_eig_par(
     scratch.ensure_capacity(n);
 
     // Initialize eigvecs = I (row-parallel — each row is independent).
-    eigvecs
-        .par_chunks_mut(n)
-        .enumerate()
-        .for_each(|(i, row)| {
-            // memset the row + one diagonal store, instead of n branchy writes.
-            row.fill(0.0);
-            if i < row.len() {
-                row[i] = 1.0;
-            }
-        });
+    eigvecs.par_chunks_mut(n).enumerate().for_each(|(i, row)| {
+        // memset the row + one diagonal store, instead of n branchy writes.
+        row.fill(0.0);
+        if i < row.len() {
+            row[i] = 1.0;
+        }
+    });
 
     // Copy A into the working buffer (serial — single memcpy).
     scratch.a_work[..n * n].copy_from_slice(&a_in[..n * n]);
@@ -195,19 +192,17 @@ fn tridiagonalize_par(
         let w_block = &w[..block_size];
         let bs = block_start;
         let bz = block_size;
-        a.par_chunks_mut(n)
-            .enumerate()
-            .for_each(|(i, row)| {
-                if i < bs || i >= bs + bz {
-                    return;
-                }
-                let vi = v_block[i - bs];
-                let wi = w_block[i - bs];
-                let row_sub = &mut row[bs..bs + bz];
-                for j in 0..bz {
-                    row_sub[j] -= vi * w_block[j] + wi * v_block[j];
-                }
-            });
+        a.par_chunks_mut(n).enumerate().for_each(|(i, row)| {
+            if i < bs || i >= bs + bz {
+                return;
+            }
+            let vi = v_block[i - bs];
+            let wi = w_block[i - bs];
+            let row_sub = &mut row[bs..bs + bz];
+            for j in 0..bz {
+                row_sub[j] -= vi * w_block[j] + wi * v_block[j];
+            }
+        });
 
         // Set the new subdiagonal + zero the rest of column k (serial — O(n)).
         a[block_start * n + k] = alpha;
@@ -221,18 +216,17 @@ fn tridiagonalize_par(
         // Row-parallel: each row computes its own s = β·(Q[i,:]·v), then
         // updates only its own slice. No cross-row dependency.
         let v_block_q = &v[..block_size];
-        q.par_chunks_mut(n)
-            .for_each(|q_row| {
-                let row_slice = &mut q_row[block_start..block_start + block_size];
-                let mut s = 0.0_f64;
-                for (j, q_ij) in row_slice.iter().enumerate() {
-                    s += q_ij * v_block_q[j];
-                }
-                s *= beta;
-                for (j, slot) in row_slice.iter_mut().enumerate() {
-                    *slot -= s * v_block_q[j];
-                }
-            });
+        q.par_chunks_mut(n).for_each(|q_row| {
+            let row_slice = &mut q_row[block_start..block_start + block_size];
+            let mut s = 0.0_f64;
+            for (j, q_ij) in row_slice.iter().enumerate() {
+                s += q_ij * v_block_q[j];
+            }
+            s *= beta;
+            for (j, slot) in row_slice.iter_mut().enumerate() {
+                *slot -= s * v_block_q[j];
+            }
+        });
     }
 }
 

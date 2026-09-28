@@ -26,14 +26,18 @@
 //! this benchmark with `--test-threads=1` when G4 is in the same crate.**
 //! (Recorded as a pre-existing harness flakiness, not a kernel bug.)
 
-#![cfg(all(feature = "ternary_group_scale", feature = "plasma_path", target_arch = "x86_64"))]
+#![cfg(all(
+    feature = "ternary_group_scale",
+    feature = "plasma_path",
+    target_arch = "x86_64"
+))]
 
 use std::time::Instant;
 
-use katgpt_types::simd::{
-    simd_level, simd_ternary_group_matvec, ternary_group_matvec_scalar, SimdLevel,
-};
 use katgpt_types::TernaryGroupWeights;
+use katgpt_types::simd::{
+    SimdLevel, simd_level, simd_ternary_group_matvec, ternary_group_matvec_scalar,
+};
 
 /// Deterministic pseudo-random f32 in [-1, 1). No rand dep, reproducible.
 fn pseudo(seed: &mut u64) -> f32 {
@@ -100,9 +104,7 @@ fn g2_avx2_vs_scalar_speedup() {
 
         let speedup = t_scalar / t_avx2;
         min_speedup = min_speedup.min(speedup);
-        println!(
-            "{rows:>5}x{cols:<6} {t_avx2:>14.0} {t_scalar:>14.0} {speedup:>13.2}x"
-        );
+        println!("{rows:>5}x{cols:<6} {t_avx2:>14.0} {t_scalar:>14.0} {speedup:>13.2}x");
 
         // THE GATE: AVX2 must beat scalar by ≥ 2×. The scalar loop is simple
         // enough that LLVM's auto-vectorizer is already competitive, so the

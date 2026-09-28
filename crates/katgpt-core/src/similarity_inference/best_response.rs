@@ -49,12 +49,13 @@ impl PayoffMatrix {
         if n_actions == 0 {
             return Err(SimilarityError::EmptyActionSet);
         }
-        let expected = n_actions
-            .checked_mul(n_actions)
-            .ok_or(SimilarityError::PayoffShapeMismatch {
-                expected: 0,
-                got: values.len(),
-            })?;
+        let expected =
+            n_actions
+                .checked_mul(n_actions)
+                .ok_or(SimilarityError::PayoffShapeMismatch {
+                    expected: 0,
+                    got: values.len(),
+                })?;
         if values.len() != expected {
             return Err(SimilarityError::PayoffShapeMismatch {
                 expected,

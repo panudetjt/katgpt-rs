@@ -191,7 +191,11 @@ impl Cursor<'_> {
 fn read_gguf(path: &std::path::Path) -> Result<Gguf, String> {
     let t0 = Instant::now();
     let data = std::fs::read(path).map_err(|e| format!("read {}: {e}", path.display()))?;
-    eprintln!("[gguf] read {} bytes in {:.1}s", data.len(), t0.elapsed().as_secs_f32());
+    eprintln!(
+        "[gguf] read {} bytes in {:.1}s",
+        data.len(),
+        t0.elapsed().as_secs_f32()
+    );
     let mut c = Cursor { b: &data, p: 0 };
     if c.u32() != 0x46554747 {
         return Err("not a GGUF file".into());
@@ -318,7 +322,10 @@ impl Gguf {
     /// fastest-varying = input dim). Supports f32 (0), f16 (1), Q2_0_g128
     /// (42/142: 34 B per 128 weights, `(q-1)·d`, LSB-first 2-bit codes).
     fn tensor_f32(&self, name: &str) -> Result<(usize, usize, Vec<f32>), String> {
-        let info = self.tensors.get(name).ok_or(format!("tensor {name} missing"))?;
+        let info = self
+            .tensors
+            .get(name)
+            .ok_or(format!("tensor {name} missing"))?;
         let cols = info.ne[0] as usize;
         let rows = info.ne[1] as usize;
         let base = self.data_start + info.offset as usize;
@@ -329,7 +336,11 @@ impl Gguf {
                 }
                 let mut v = vec![0f32; rows * cols];
                 for (i, slot) in v.iter_mut().enumerate() {
-                    *slot = f32::from_le_bytes(self.data[base + i * 4..base + i * 4 + 4].try_into().unwrap());
+                    *slot = f32::from_le_bytes(
+                        self.data[base + i * 4..base + i * 4 + 4]
+                            .try_into()
+                            .unwrap(),
+                    );
                 }
                 Ok((rows, cols, v))
             }
@@ -337,7 +348,9 @@ impl Gguf {
                 let mut v = vec![0f32; rows * cols];
                 for (i, slot) in v.iter_mut().enumerate() {
                     *slot = f16_to_f32(u16::from_le_bytes(
-                        self.data[base + i * 2..base + i * 2 + 2].try_into().unwrap(),
+                        self.data[base + i * 2..base + i * 2 + 2]
+                            .try_into()
+                            .unwrap(),
                     ));
                 }
                 Ok((rows, cols, v))
@@ -355,7 +368,8 @@ impl Gguf {
                 for r in 0..rows {
                     for g in 0..bpr {
                         let off = base + (r * bpr + g) * 34;
-                        let d = f16_to_f32(u16::from_le_bytes([self.data[off], self.data[off + 1]]));
+                        let d =
+                            f16_to_f32(u16::from_le_bytes([self.data[off], self.data[off + 1]]));
                         let qs = &self.data[off + 2..off + 34];
                         let dst = &mut v[r * cols + g * 128..r * cols + g * 128 + 128];
                         for (j, slot) in dst.iter_mut().enumerate() {
@@ -409,7 +423,11 @@ impl Bpe {
         for (r, pair) in gg.merges.iter().enumerate() {
             merge_rank.insert(pair.clone(), r);
         }
-        Self { token_id, merge_rank, byte_char }
+        Self {
+            token_id,
+            merge_rank,
+            byte_char,
+        }
     }
 
     /// ASCII arm of llama.cpp's qwen2 pre-tokenizer:
@@ -432,10 +450,12 @@ impl Bpe {
                 let three = i + 2 < b.len()
                     && matches!(n1, b'r' | b'R' | b'v' | b'V')
                     && matches!(b[i + 2], b'e' | b'E');
-                let three_ll = i + 2 < b.len()
-                    && matches!(n1, b'l' | b'L')
-                    && matches!(b[i + 2], b'l' | b'L');
-                if matches!(n1, b's' | b'S' | b't' | b'T' | b'm' | b'M' | b'd' | b'D') || three || three_ll {
+                let three_ll =
+                    i + 2 < b.len() && matches!(n1, b'l' | b'L') && matches!(b[i + 2], b'l' | b'L');
+                if matches!(n1, b's' | b'S' | b't' | b'T' | b'm' | b'M' | b'd' | b'D')
+                    || three
+                    || three_ll
+                {
                     let end = if three || three_ll { i + 3 } else { i + 2 };
                     out.push(&text[i..end]);
                     i = end;
@@ -464,7 +484,11 @@ impl Bpe {
             }
             // ` ?[^\s L N]+[\r\n]*` — optional space + punctuation run
             let mut p = i;
-            if b[p] == b' ' && p + 1 < b.len() && !b[p + 1].is_ascii_alphanumeric() && !space(b[p + 1]) {
+            if b[p] == b' '
+                && p + 1 < b.len()
+                && !b[p + 1].is_ascii_alphanumeric()
+                && !space(b[p + 1])
+            {
                 p += 1;
             }
             if p < b.len() && !b[p].is_ascii_alphanumeric() && !space(b[p]) {
@@ -504,7 +528,10 @@ impl Bpe {
     fn encode(&self, text: &str) -> Vec<u32> {
         let mut ids = Vec::new();
         for pre in self.pretokenize(text) {
-            let mut sym: Vec<String> = pre.bytes().map(|b| self.byte_char[b as usize].to_string()).collect();
+            let mut sym: Vec<String> = pre
+                .bytes()
+                .map(|b| self.byte_char[b as usize].to_string())
+                .collect();
             loop {
                 let mut best: Option<(usize, usize)> = None;
                 for w in 0..sym.len().saturating_sub(1) {
@@ -534,15 +561,15 @@ impl Bpe {
 
 struct Q3Layer {
     attn_norm: Vec<f32>,
-    q_w: Vec<f32>,   // [hidden, hidden] row-major, rows = out
+    q_w: Vec<f32>,    // [hidden, hidden] row-major, rows = out
     q_norm: Vec<f32>, // [head_dim]
-    k_w: Vec<f32>,   // [kv_dim, hidden]
+    k_w: Vec<f32>,    // [kv_dim, hidden]
     k_norm: Vec<f32>,
-    v_w: Vec<f32>,   // [kv_dim, hidden]
-    o_w: Vec<f32>,   // [hidden, hidden]
+    v_w: Vec<f32>, // [kv_dim, hidden]
+    o_w: Vec<f32>, // [hidden, hidden]
     post_norm: Vec<f32>,
     gate_w: Vec<f32>, // [ffn, hidden]
-    up_w: Vec<f32>,  // [ffn, hidden]
+    up_w: Vec<f32>,   // [ffn, hidden]
     down_w: Vec<f32>, // [hidden, ffn]
 }
 
@@ -564,10 +591,18 @@ fn load_qwen3(gg: &Gguf) -> Result<Qwen3, String> {
     let hidden = gg.meta_u32("qwen3.embedding_length").ok_or("emb")? as usize;
     let ffn = gg.meta_u32("qwen3.feed_forward_length").ok_or("ffn")? as usize;
     let n_head = gg.meta_u32("qwen3.attention.head_count").ok_or("heads")? as usize;
-    let n_kv = gg.meta_u32("qwen3.attention.head_count_kv").unwrap_or(n_head as u32) as usize;
-    let head_dim = gg.meta_u32("qwen3.attention.key_length").unwrap_or((hidden / n_head) as u32) as usize;
-    let rms_eps = gg.meta_f32("qwen3.attention.layer_norm_rms_epsilon").unwrap_or(1e-6);
-    eprintln!("[model] layers={n_layer} hidden={hidden} ffn={ffn} heads={n_head} kv={n_kv} hd={head_dim} eps={rms_eps}");
+    let n_kv = gg
+        .meta_u32("qwen3.attention.head_count_kv")
+        .unwrap_or(n_head as u32) as usize;
+    let head_dim = gg
+        .meta_u32("qwen3.attention.key_length")
+        .unwrap_or((hidden / n_head) as u32) as usize;
+    let rms_eps = gg
+        .meta_f32("qwen3.attention.layer_norm_rms_epsilon")
+        .unwrap_or(1e-6);
+    eprintln!(
+        "[model] layers={n_layer} hidden={hidden} ffn={ffn} heads={n_head} kv={n_kv} hd={head_dim} eps={rms_eps}"
+    );
 
     let t0 = Instant::now();
     let (vr, _vc, embed) = gg.tensor_f32("token_embd.weight")?;
@@ -589,7 +624,10 @@ fn load_qwen3(gg: &Gguf) -> Result<Qwen3, String> {
             down_w: g(&format!("blk.{l}.ffn_down.weight"))?,
         });
         if l % 8 == 0 {
-            eprintln!("[model] layer {l}/{n_layer} ({:.1}s)", t0.elapsed().as_secs_f32());
+            eprintln!(
+                "[model] layer {l}/{n_layer} ({:.1}s)",
+                t0.elapsed().as_secs_f32()
+            );
         }
     }
     let out_norm = g("output_norm.weight")?;
@@ -598,7 +636,10 @@ fn load_qwen3(gg: &Gguf) -> Result<Qwen3, String> {
     } else {
         embed.clone()
     };
-    eprintln!("[model] vocab={vocab}, loaded in {:.1}s", t0.elapsed().as_secs_f32());
+    eprintln!(
+        "[model] vocab={vocab}, loaded in {:.1}s",
+        t0.elapsed().as_secs_f32()
+    );
     Ok(Qwen3 {
         embed,
         layers,
@@ -623,7 +664,9 @@ fn rope_table(m: &Qwen3, gg_meta: &Gguf, t_len: usize) -> RopeTable {
     let d = m.head_dim;
     let base = gg_meta.meta_f32("qwen3.rope.freq_base").unwrap_or(10000.0);
     let factor = gg_meta.meta_f32("qwen3.rope.scaling.factor").unwrap_or(1.0);
-    let orig = gg_meta.meta_u32("qwen3.rope.scaling.original_context_length").unwrap_or(0) as usize;
+    let orig = gg_meta
+        .meta_u32("qwen3.rope.scaling.original_context_length")
+        .unwrap_or(0) as usize;
     // Debug toggles (P0.7 bring-up only; the validated combo is the default):
     //   ASE_P07_NO_YARN=1   plain rope (no remap, no mscale)
     //   ASE_P07_NO_MSCALE=1 yarn remap without the 1+0.1·ln(factor) magnitude
@@ -642,7 +685,11 @@ fn rope_table(m: &Qwen3, gg_meta: &Gguf, t_len: usize) -> RopeTable {
     };
     let start = corr_dim(32.0).floor().max(0.0);
     let end = corr_dim(1.0).ceil().min(d as f32 - 1.0);
-    let mscale = if factor > 1.0 { 1.0 + 0.1 * factor.ln() } else { 1.0 };
+    let mscale = if factor > 1.0 {
+        1.0 + 0.1 * factor.ln()
+    } else {
+        1.0
+    };
     let mut cs = Vec::with_capacity(t_len * d / 2);
     for t in 0..t_len {
         for p in 0..d / 2 {
@@ -655,7 +702,10 @@ fn rope_table(m: &Qwen3, gg_meta: &Gguf, t_len: usize) -> RopeTable {
             let (theta, ms) = if factor > 1.0 && !no_yarn && !mscale_only {
                 let y = ((p as f32 - start) / (end - start).max(0.001)).clamp(0.0, 1.0);
                 let ramp = 1.0 - y;
-                (freq_scale * theta_extrap * (1.0 - ramp) + theta_extrap * ramp, if no_mscale { 1.0 } else { mscale })
+                (
+                    freq_scale * theta_extrap * (1.0 - ramp) + theta_extrap * ramp,
+                    if no_mscale { 1.0 } else { mscale },
+                )
             } else if mscale_only {
                 (theta_extrap, mscale)
             } else {
@@ -692,7 +742,14 @@ mod debug_flags {
 /// Row-parallel GEMM: `Y[T×out] = X[T×in] · W[out×in]^T`. Each thread owns
 /// disjoint output-column ranges; every output element sums in one fixed
 /// order regardless of scheduling — reproducible.
-fn gemm(x: &[f32], t_len: usize, w: &[f32], out_dim: usize, in_dim: usize, n_threads: usize) -> Vec<f32> {
+fn gemm(
+    x: &[f32],
+    t_len: usize,
+    w: &[f32],
+    out_dim: usize,
+    in_dim: usize,
+    n_threads: usize,
+) -> Vec<f32> {
     let mut y = vec![0f32; t_len * out_dim];
     let chunk = out_dim.div_ceil(n_threads);
     let n_parts = out_dim.div_ceil(chunk);
@@ -708,7 +765,8 @@ fn gemm(x: &[f32], t_len: usize, w: &[f32], out_dim: usize, in_dim: usize, n_thr
                 let mut part = vec![0f32; t_len * width];
                 for (di, wrow) in wrows.chunks_exact(in_dim).enumerate() {
                     for t in 0..t_len {
-                        part[t * width + di] = simd_dot_f32(&x[t * in_dim..(t + 1) * in_dim], wrow, in_dim);
+                        part[t * width + di] =
+                            simd_dot_f32(&x[t * in_dim..(t + 1) * in_dim], wrow, in_dim);
                     }
                 }
                 part
@@ -722,7 +780,8 @@ fn gemm(x: &[f32], t_len: usize, w: &[f32], out_dim: usize, in_dim: usize, n_thr
         let o0 = ti * chunk;
         let width = part.len() / t_len;
         for t in 0..t_len {
-            y[t * out_dim + o0..t * out_dim + o0 + width].copy_from_slice(&part[t * width..(t + 1) * width]);
+            y[t * out_dim + o0..t * out_dim + o0 + width]
+                .copy_from_slice(&part[t * width..(t + 1) * width]);
         }
     }
     y
@@ -841,7 +900,12 @@ fn prefill_capture(
         let t0 = Instant::now();
         let sampled = cap.layers.contains(&li);
         for t in 0..t_len {
-            rmsnorm_into(&x[t * hidden..(t + 1) * hidden], &layer.attn_norm, m.rms_eps, &mut xn[t * hidden..(t + 1) * hidden]);
+            rmsnorm_into(
+                &x[t * hidden..(t + 1) * hidden],
+                &layer.attn_norm,
+                m.rms_eps,
+                &mut xn[t * hidden..(t + 1) * hidden],
+            );
         }
         let q = gemm(&xn, t_len, &layer.q_w, hidden, hidden, n_threads);
         let k = gemm(&xn, t_len, &layer.k_w, kvd, hidden, n_threads);
@@ -899,12 +963,10 @@ fn prefill_capture(
                     z += *sc;
                 }
                 let invz = 1.0 / z;
-                let want_capture = sampled
-                    && cap.q_heads.contains(&h)
-                    && {
-                        let n_done = (t + 1) / BLOCK;
-                        t + 1 == n_done * BLOCK && cap.k_ends.contains(&n_done)
-                    };
+                let want_capture = sampled && cap.q_heads.contains(&h) && {
+                    let n_done = (t + 1) / BLOCK;
+                    t + 1 == n_done * BLOCK && cap.k_ends.contains(&n_done)
+                };
                 if want_capture {
                     let n_blocks = (t + 1) / BLOCK;
                     let mut masses = vec![0f32; n_blocks];
@@ -925,7 +987,10 @@ fn prefill_capture(
                         continue;
                     }
                     let wgt = e * invz;
-                    for (d, ov) in v[j * kvd + kvh * hd..j * kvd + (kvh + 1) * hd].iter().enumerate() {
+                    for (d, ov) in v[j * kvd + kvh * hd..j * kvd + (kvh + 1) * hd]
+                        .iter()
+                        .enumerate()
+                    {
                         attn_out[t * hidden + h * hd + d] += wgt * ov;
                     }
                 }
@@ -941,7 +1006,10 @@ fn prefill_capture(
                 let mut sums = vec![0f32; n_blocks * hd];
                 for b in 0..n_blocks {
                     for t in b * BLOCK..(b + 1) * BLOCK {
-                        for (d, sv) in kr[t * kvd + kvh * hd..t * kvd + (kvh + 1) * hd].iter().enumerate() {
+                        for (d, sv) in kr[t * kvd + kvh * hd..t * kvd + (kvh + 1) * hd]
+                            .iter()
+                            .enumerate()
+                        {
                             sums[b * hd + d] += sv;
                         }
                     }
@@ -949,7 +1017,12 @@ fn prefill_capture(
                         sums[b * hd + d] /= BLOCK as f32;
                     }
                 }
-                summaries.push(Summaries { layer: li, kv_head: kvh, n_blocks, sums });
+                summaries.push(Summaries {
+                    layer: li,
+                    kv_head: kvh,
+                    n_blocks,
+                    sums,
+                });
             }
         }
 
@@ -958,7 +1031,12 @@ fn prefill_capture(
             *xo += oo;
         }
         for t in 0..t_len {
-            rmsnorm_into(&x[t * hidden..(t + 1) * hidden], &layer.post_norm, m.rms_eps, &mut xn[t * hidden..(t + 1) * hidden]);
+            rmsnorm_into(
+                &x[t * hidden..(t + 1) * hidden],
+                &layer.post_norm,
+                m.rms_eps,
+                &mut xn[t * hidden..(t + 1) * hidden],
+            );
         }
         let g = gemm(&xn, t_len, &layer.gate_w, m.ffn, hidden, n_threads);
         let u = gemm(&xn, t_len, &layer.up_w, m.ffn, hidden, n_threads);
@@ -1057,7 +1135,13 @@ fn write_fixture(
 // Validation: llama-perplexity chunk semantics (n_ctx=1024, first=512)
 // ──────────────────────────────────────────────────────────────────────────
 
-fn validate_ppl(m: &Qwen3, rope_for: &impl Fn(usize) -> RopeTable, tokens: &[u32], n_ctx: usize, n_threads: usize) -> f64 {
+fn validate_ppl(
+    m: &Qwen3,
+    rope_for: &impl Fn(usize) -> RopeTable,
+    tokens: &[u32],
+    n_ctx: usize,
+    n_threads: usize,
+) -> f64 {
     let first = n_ctx / 2;
     let n_chunk = tokens.len() / n_ctx;
     let mut nll = 0f64;
@@ -1076,7 +1160,12 @@ fn validate_ppl(m: &Qwen3, rope_for: &impl Fn(usize) -> RopeTable, tokens: &[u32
         // final norm + lm_head
         let mut xn = vec![0f32; n_ctx * m.hidden];
         for t in 0..n_ctx {
-            rmsnorm_into(&hidden[t * m.hidden..(t + 1) * m.hidden], &m.out_norm, m.rms_eps, &mut xn[t * m.hidden..(t + 1) * m.hidden]);
+            rmsnorm_into(
+                &hidden[t * m.hidden..(t + 1) * m.hidden],
+                &m.out_norm,
+                m.rms_eps,
+                &mut xn[t * m.hidden..(t + 1) * m.hidden],
+            );
         }
         let logits = gemm(&xn, n_ctx, &m.head, vocab, m.hidden, n_threads);
         for t in first..n_ctx - 1 {
@@ -1099,7 +1188,8 @@ fn validate_ppl(m: &Qwen3, rope_for: &impl Fn(usize) -> RopeTable, tokens: &[u32
 // ──────────────────────────────────────────────────────────────────────────
 
 fn main() {
-    let mut model_path = PathBuf::from("/Users/katopz/git/riir-train/data/Ternary-Bonsai-8B-Q2_0.gguf");
+    let mut model_path =
+        PathBuf::from("/Users/katopz/git/riir-train/data/Ternary-Bonsai-8B-Q2_0.gguf");
     let mut out_path = PathBuf::from("tests/data/asentmax_p07_bonsai8b.fixture");
     let mut prompt_file: Option<PathBuf> = None;
     let mut mode_validate = false;
@@ -1112,17 +1202,23 @@ fn main() {
         match a.as_str() {
             "--model" => model_path = PathBuf::from(args.next().expect("--model PATH")),
             "--out" => out_path = PathBuf::from(args.next().expect("--out PATH")),
-            "--prompt-file" => prompt_file = Some(PathBuf::from(args.next().expect("--prompt-file PATH"))),
+            "--prompt-file" => {
+                prompt_file = Some(PathBuf::from(args.next().expect("--prompt-file PATH")))
+            }
             "--threads" => n_threads = args.next().expect("--threads N").parse().expect("int"),
             "--validate-ppl" => mode_validate = true,
             "--capture" => mode_capture = true,
             "--head-tokens" => head_tokens = Some(args.next().expect("N").parse().expect("int")),
-            "--dump-activations" => dump_activations = Some(args.next().expect("N").parse().expect("int")),
+            "--dump-activations" => {
+                dump_activations = Some(args.next().expect("N").parse().expect("int"))
+            }
             other => panic!("unknown arg {other}"),
         }
     }
     let prompt: String = match &prompt_file {
-        Some(p) => std::fs::read_to_string(p).unwrap_or_else(|e| panic!("read {}: {e}", p.display())),
+        Some(p) => {
+            std::fs::read_to_string(p).unwrap_or_else(|e| panic!("read {}: {e}", p.display()))
+        }
         None => include_str!("../tests/data/asentmax_p07_prompt.txt").to_string(),
     };
     let prompt: &str = &prompt;
@@ -1130,7 +1226,14 @@ fn main() {
         let gg2 = read_gguf(&model_path).expect("gguf");
         let tok2 = Bpe::from_gguf(&gg2);
         let ids = tok2.encode(prompt);
-        println!("{}", ids[..n.min(ids.len())].iter().map(|i| i.to_string()).collect::<Vec<_>>().join(","));
+        println!(
+            "{}",
+            ids[..n.min(ids.len())]
+                .iter()
+                .map(|i| i.to_string())
+                .collect::<Vec<_>>()
+                .join(",")
+        );
         return;
     }
     if let Some(n) = dump_activations {
@@ -1142,7 +1245,12 @@ fn main() {
         let ids = &ids[..n.min(ids.len())];
         let m2 = load_qwen3(&gg2).expect("model");
         let rope = rope_table(&m2, &gg2, ids.len());
-        let cap = CaptureSpec { layers: vec![], q_heads: vec![], k_ends: Default::default(), k_heads: Default::default() };
+        let cap = CaptureSpec {
+            layers: vec![],
+            q_heads: vec![],
+            k_ends: Default::default(),
+            k_heads: Default::default(),
+        };
         eprintln!("tokens: {ids:?}");
         let (_s, _r, _h) = prefill_capture(&m2, &rope, ids, &cap, n_threads);
         return;
@@ -1154,7 +1262,11 @@ fn main() {
     let gg = read_gguf(&model_path).expect("gguf");
     let tok = Bpe::from_gguf(&gg);
     let tokens = tok.encode(prompt);
-    eprintln!("[tokenizer] {} bytes → {} tokens", prompt.len(), tokens.len());
+    eprintln!(
+        "[tokenizer] {} bytes → {} tokens",
+        prompt.len(),
+        tokens.len()
+    );
 
     let m = load_qwen3(&gg).expect("model");
 
@@ -1174,8 +1286,16 @@ fn main() {
         let long = total_blocks > 40;
         let cap = CaptureSpec {
             layers: vec![1, 5, 10, 14, 19, 23, 28, 33],
-            q_heads: if long { vec![0, 9, 17, 31] } else { vec![0, 4, 9, 13, 17, 22, 26, 31] },
-            k_heads: if long { vec![0, 2, 4, 7].into_iter().collect() } else { Default::default() },
+            q_heads: if long {
+                vec![0, 9, 17, 31]
+            } else {
+                vec![0, 4, 9, 13, 17, 22, 26, 31]
+            },
+            k_heads: if long {
+                vec![0, 2, 4, 7].into_iter().collect()
+            } else {
+                Default::default()
+            },
             k_ends: k_end_set(total_blocks).into_iter().collect(),
         };
         let rope = rope_table(&m, &gg, tokens.len());
@@ -1195,20 +1315,31 @@ fn main() {
         let co = prompt.find(needle_sent).expect("needle sentence present");
         let n_needle_tok = tok.encode(&prompt[..co]).len();
         let needle_block = n_needle_tok / BLOCK;
-        eprintln!(
-            "[capture] needle at char {co} → token {n_needle_tok} → block {needle_block}"
-        );
-        write_fixture(&out_path, m.head_dim, &summaries, &rows, prompt, tokens.len(), needle_block)
-            .expect("write fixture");
+        eprintln!("[capture] needle at char {co} → token {n_needle_tok} → block {needle_block}");
+        write_fixture(
+            &out_path,
+            m.head_dim,
+            &summaries,
+            &rows,
+            prompt,
+            tokens.len(),
+            needle_block,
+        )
+        .expect("write fixture");
 
         // Replay smoke: prove the fixture replays through EntmaxRouter.
         let router = EntmaxRouter::default_router();
         let s0 = summaries.first().expect("stream");
         let mut cache = EntmaxCache::with_capacity(s0.n_blocks, s0.sums.len());
         for b in 0..s0.n_blocks {
-            cache.summaries.push(s0.sums[b * m.head_dim..(b + 1) * m.head_dim].to_vec());
+            cache
+                .summaries
+                .push(s0.sums[b * m.head_dim..(b + 1) * m.head_dim].to_vec());
         }
-        let r0 = rows.iter().find(|r| r.layer == s0.layer && r.kv_head == s0.kv_head).expect("row");
+        let r0 = rows
+            .iter()
+            .find(|r| r.layer == s0.layer && r.kv_head == s0.kv_head)
+            .expect("row");
         let mut scratch = VortexScratch::new(s0.n_blocks);
         let dec = router.forward_indexer(&r0.query, &cache, s0.n_blocks, s0.n_blocks, &mut scratch);
         eprintln!(

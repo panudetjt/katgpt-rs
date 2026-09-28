@@ -78,7 +78,8 @@ fn run_case(
     let mut rng = Rng(0x894 ^ ((bits as u64) << 32) ^ ((kv_dim as u64) << 16) ^ tile as u64);
     let mut v = vec![0.0f32; kv_dim];
     // Stored inputs, `[layer][pos] -> (key, value)`, for the in-progress reads.
-    let mut inputs: Vec<Vec<(Vec<f32>, Vec<f32>)>> = (0..2).map(|_| Vec::with_capacity(stored)).collect();
+    let mut inputs: Vec<Vec<(Vec<f32>, Vec<f32>)>> =
+        (0..2).map(|_| Vec::with_capacity(stored)).collect();
     for (layer, inp) in inputs.iter_mut().enumerate() {
         for p in 0..stored {
             let constant = p % 11 == 5;

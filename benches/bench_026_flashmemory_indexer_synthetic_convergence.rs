@@ -60,9 +60,7 @@
 #![cfg(feature = "trained_indexer")]
 #![allow(clippy::needless_range_loop)]
 
-use katgpt_attn::dash_attn::flashmemory_sparse::{
-    DualEncoderIndexer, FlashMemoryConfig,
-};
+use katgpt_attn::dash_attn::flashmemory_sparse::{DualEncoderIndexer, FlashMemoryConfig};
 use katgpt_core::simd::simd_matmul_rows;
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -206,20 +204,34 @@ struct AdamTrainer {
     timestep: usize,
 
     // Q-Indexer weights
-    q_w1: Vec<f32>, q_b1: Vec<f32>, q_w2: Vec<f32>, q_b2: f32,
+    q_w1: Vec<f32>,
+    q_b1: Vec<f32>,
+    q_w2: Vec<f32>,
+    q_b2: f32,
     // K-Indexer weights
-    k_w1: Vec<f32>, k_b1: Vec<f32>, k_w2: Vec<f32>, k_b2: f32,
+    k_w1: Vec<f32>,
+    k_b1: Vec<f32>,
+    k_w2: Vec<f32>,
+    k_b2: f32,
 
     // Adam first moment (m) + second moment (v) buffers
-    q_w1_m: Vec<f32>, q_w1_v: Vec<f32>,
-    q_b1_m: Vec<f32>, q_b1_v: Vec<f32>,
-    q_w2_m: Vec<f32>, q_w2_v: Vec<f32>,
-    q_b2_m: f32, q_b2_v: f32,
+    q_w1_m: Vec<f32>,
+    q_w1_v: Vec<f32>,
+    q_b1_m: Vec<f32>,
+    q_b1_v: Vec<f32>,
+    q_w2_m: Vec<f32>,
+    q_w2_v: Vec<f32>,
+    q_b2_m: f32,
+    q_b2_v: f32,
 
-    k_w1_m: Vec<f32>, k_w1_v: Vec<f32>,
-    k_b1_m: Vec<f32>, k_b1_v: Vec<f32>,
-    k_w2_m: Vec<f32>, k_w2_v: Vec<f32>,
-    k_b2_m: f32, k_b2_v: f32,
+    k_w1_m: Vec<f32>,
+    k_w1_v: Vec<f32>,
+    k_b1_m: Vec<f32>,
+    k_b1_v: Vec<f32>,
+    k_w2_m: Vec<f32>,
+    k_w2_v: Vec<f32>,
+    k_b2_m: f32,
+    k_b2_v: f32,
 
     // Forward scratch
     q_hidden: Vec<f32>,
@@ -242,8 +254,13 @@ impl AdamTrainer {
         let bias_init = 1.0f32;
 
         Self {
-            d_h, hidden, lr,
-            beta1: 0.9, beta2: 0.999, epsilon: 1e-8, timestep: 0,
+            d_h,
+            hidden,
+            lr,
+            beta1: 0.9,
+            beta2: 0.999,
+            epsilon: 1e-8,
+            timestep: 0,
 
             q_w1: (0..hidden * d_h).map(|_| next() * xavier_w1).collect(),
             q_b1: vec![0.0; hidden],
@@ -255,15 +272,23 @@ impl AdamTrainer {
             k_w2: (0..hidden).map(|_| next() * xavier_w2).collect(),
             k_b2: bias_init,
 
-            q_w1_m: vec![0.0; hidden * d_h], q_w1_v: vec![0.0; hidden * d_h],
-            q_b1_m: vec![0.0; hidden], q_b1_v: vec![0.0; hidden],
-            q_w2_m: vec![0.0; hidden], q_w2_v: vec![0.0; hidden],
-            q_b2_m: 0.0, q_b2_v: 0.0,
+            q_w1_m: vec![0.0; hidden * d_h],
+            q_w1_v: vec![0.0; hidden * d_h],
+            q_b1_m: vec![0.0; hidden],
+            q_b1_v: vec![0.0; hidden],
+            q_w2_m: vec![0.0; hidden],
+            q_w2_v: vec![0.0; hidden],
+            q_b2_m: 0.0,
+            q_b2_v: 0.0,
 
-            k_w1_m: vec![0.0; hidden * d_h], k_w1_v: vec![0.0; hidden * d_h],
-            k_b1_m: vec![0.0; hidden], k_b1_v: vec![0.0; hidden],
-            k_w2_m: vec![0.0; hidden], k_w2_v: vec![0.0; hidden],
-            k_b2_m: 0.0, k_b2_v: 0.0,
+            k_w1_m: vec![0.0; hidden * d_h],
+            k_w1_v: vec![0.0; hidden * d_h],
+            k_b1_m: vec![0.0; hidden],
+            k_b1_v: vec![0.0; hidden],
+            k_w2_m: vec![0.0; hidden],
+            k_w2_v: vec![0.0; hidden],
+            k_b2_m: 0.0,
+            k_b2_v: 0.0,
 
             q_hidden: vec![0.0; hidden],
             k_hidden: vec![0.0; hidden],
@@ -276,14 +301,22 @@ impl AdamTrainer {
         let h = self.hidden;
 
         simd_matmul_rows(&mut self.q_hidden, &self.q_w1, q, h, d);
-        for i in 0..h { self.q_hidden[i] = (self.q_hidden[i] + self.q_b1[i]).max(0.0); }
+        for i in 0..h {
+            self.q_hidden[i] = (self.q_hidden[i] + self.q_b1[i]).max(0.0);
+        }
         let mut q_score = self.q_b2;
-        for i in 0..h { q_score += self.q_w2[i] * self.q_hidden[i]; }
+        for i in 0..h {
+            q_score += self.q_w2[i] * self.q_hidden[i];
+        }
 
         simd_matmul_rows(&mut self.k_hidden, &self.k_w1, k, h, d);
-        for i in 0..h { self.k_hidden[i] = (self.k_hidden[i] + self.k_b1[i]).max(0.0); }
+        for i in 0..h {
+            self.k_hidden[i] = (self.k_hidden[i] + self.k_b1[i]).max(0.0);
+        }
         let mut k_score = self.k_b2;
-        for i in 0..h { k_score += self.k_w2[i] * self.k_hidden[i]; }
+        for i in 0..h {
+            k_score += self.k_w2[i] * self.k_hidden[i];
+        }
 
         let z = (q_score * k_score).clamp(-30.0, 30.0);
         katgpt_core::sigmoid(z)
@@ -295,14 +328,22 @@ impl AdamTrainer {
         let h = self.hidden;
 
         simd_matmul_rows(&mut self.q_hidden, &self.q_w1, q, h, d);
-        for i in 0..h { self.q_hidden[i] = (self.q_hidden[i] + self.q_b1[i]).max(0.0); }
+        for i in 0..h {
+            self.q_hidden[i] = (self.q_hidden[i] + self.q_b1[i]).max(0.0);
+        }
         let mut q_score = self.q_b2;
-        for i in 0..h { q_score += self.q_w2[i] * self.q_hidden[i]; }
+        for i in 0..h {
+            q_score += self.q_w2[i] * self.q_hidden[i];
+        }
 
         simd_matmul_rows(&mut self.k_hidden, &self.k_w1, k, h, d);
-        for i in 0..h { self.k_hidden[i] = (self.k_hidden[i] + self.k_b1[i]).max(0.0); }
+        for i in 0..h {
+            self.k_hidden[i] = (self.k_hidden[i] + self.k_b1[i]).max(0.0);
+        }
         let mut k_score = self.k_b2;
-        for i in 0..h { k_score += self.k_w2[i] * self.k_hidden[i]; }
+        for i in 0..h {
+            k_score += self.k_w2[i] * self.k_hidden[i];
+        }
 
         (q_score, k_score)
     }
@@ -316,14 +357,22 @@ impl AdamTrainer {
 
         // ── Forward ──
         simd_matmul_rows(&mut self.q_hidden, &self.q_w1, q, h, d);
-        for i in 0..h { self.q_hidden[i] = (self.q_hidden[i] + self.q_b1[i]).max(0.0); }
+        for i in 0..h {
+            self.q_hidden[i] = (self.q_hidden[i] + self.q_b1[i]).max(0.0);
+        }
         let mut q_score = self.q_b2;
-        for i in 0..h { q_score += self.q_w2[i] * self.q_hidden[i]; }
+        for i in 0..h {
+            q_score += self.q_w2[i] * self.q_hidden[i];
+        }
 
         simd_matmul_rows(&mut self.k_hidden, &self.k_w1, k, h, d);
-        for i in 0..h { self.k_hidden[i] = (self.k_hidden[i] + self.k_b1[i]).max(0.0); }
+        for i in 0..h {
+            self.k_hidden[i] = (self.k_hidden[i] + self.k_b1[i]).max(0.0);
+        }
         let mut k_score = self.k_b2;
-        for i in 0..h { k_score += self.k_w2[i] * self.k_hidden[i]; }
+        for i in 0..h {
+            k_score += self.k_w2[i] * self.k_hidden[i];
+        }
 
         let z = (q_score * k_score).clamp(-30.0, 30.0);
         let p = katgpt_core::sigmoid(z);
@@ -342,25 +391,66 @@ impl AdamTrainer {
         let mut dq_hidden = vec![0.0f32; h];
         for i in 0..h {
             dq_hidden[i] = dq_score * self.q_w2[i];
-            if self.q_hidden[i] <= 0.0 { dq_hidden[i] = 0.0; }
+            if self.q_hidden[i] <= 0.0 {
+                dq_hidden[i] = 0.0;
+            }
         }
 
         for i in 0..h {
             let grad = dq_score * self.q_hidden[i];
-            Self::adam_update_vec(self.beta1, self.beta2, self.epsilon, self.lr,
-                &mut self.q_w2, &mut self.q_w2_m, &mut self.q_w2_v, i, grad, t);
+            Self::adam_update_vec(
+                self.beta1,
+                self.beta2,
+                self.epsilon,
+                self.lr,
+                &mut self.q_w2,
+                &mut self.q_w2_m,
+                &mut self.q_w2_v,
+                i,
+                grad,
+                t,
+            );
         }
-        Self::adam_update_scalar(self.beta1, self.beta2, self.epsilon, self.lr,
-            &mut self.q_b2, &mut self.q_b2_m, &mut self.q_b2_v, dq_score, t);
+        Self::adam_update_scalar(
+            self.beta1,
+            self.beta2,
+            self.epsilon,
+            self.lr,
+            &mut self.q_b2,
+            &mut self.q_b2_m,
+            &mut self.q_b2_v,
+            dq_score,
+            t,
+        );
 
         for i in 0..h {
-            Self::adam_update_vec(self.beta1, self.beta2, self.epsilon, self.lr,
-                &mut self.q_b1, &mut self.q_b1_m, &mut self.q_b1_v, i, dq_hidden[i], t);
+            Self::adam_update_vec(
+                self.beta1,
+                self.beta2,
+                self.epsilon,
+                self.lr,
+                &mut self.q_b1,
+                &mut self.q_b1_m,
+                &mut self.q_b1_v,
+                i,
+                dq_hidden[i],
+                t,
+            );
             let row_off = i * d;
             for j in 0..d {
                 let grad = dq_hidden[i] * q[j];
-                Self::adam_update_vec(self.beta1, self.beta2, self.epsilon, self.lr,
-                    &mut self.q_w1, &mut self.q_w1_m, &mut self.q_w1_v, row_off + j, grad, t);
+                Self::adam_update_vec(
+                    self.beta1,
+                    self.beta2,
+                    self.epsilon,
+                    self.lr,
+                    &mut self.q_w1,
+                    &mut self.q_w1_m,
+                    &mut self.q_w1_v,
+                    row_off + j,
+                    grad,
+                    t,
+                );
             }
         }
 
@@ -368,25 +458,66 @@ impl AdamTrainer {
         let mut dk_hidden = vec![0.0f32; h];
         for i in 0..h {
             dk_hidden[i] = dk_score * self.k_w2[i];
-            if self.k_hidden[i] <= 0.0 { dk_hidden[i] = 0.0; }
+            if self.k_hidden[i] <= 0.0 {
+                dk_hidden[i] = 0.0;
+            }
         }
 
         for i in 0..h {
             let grad = dk_score * self.k_hidden[i];
-            Self::adam_update_vec(self.beta1, self.beta2, self.epsilon, self.lr,
-                &mut self.k_w2, &mut self.k_w2_m, &mut self.k_w2_v, i, grad, t);
+            Self::adam_update_vec(
+                self.beta1,
+                self.beta2,
+                self.epsilon,
+                self.lr,
+                &mut self.k_w2,
+                &mut self.k_w2_m,
+                &mut self.k_w2_v,
+                i,
+                grad,
+                t,
+            );
         }
-        Self::adam_update_scalar(self.beta1, self.beta2, self.epsilon, self.lr,
-            &mut self.k_b2, &mut self.k_b2_m, &mut self.k_b2_v, dk_score, t);
+        Self::adam_update_scalar(
+            self.beta1,
+            self.beta2,
+            self.epsilon,
+            self.lr,
+            &mut self.k_b2,
+            &mut self.k_b2_m,
+            &mut self.k_b2_v,
+            dk_score,
+            t,
+        );
 
         for i in 0..h {
-            Self::adam_update_vec(self.beta1, self.beta2, self.epsilon, self.lr,
-                &mut self.k_b1, &mut self.k_b1_m, &mut self.k_b1_v, i, dk_hidden[i], t);
+            Self::adam_update_vec(
+                self.beta1,
+                self.beta2,
+                self.epsilon,
+                self.lr,
+                &mut self.k_b1,
+                &mut self.k_b1_m,
+                &mut self.k_b1_v,
+                i,
+                dk_hidden[i],
+                t,
+            );
             let row_off = i * d;
             for j in 0..d {
                 let grad = dk_hidden[i] * k[j];
-                Self::adam_update_vec(self.beta1, self.beta2, self.epsilon, self.lr,
-                    &mut self.k_w1, &mut self.k_w1_m, &mut self.k_w1_v, row_off + j, grad, t);
+                Self::adam_update_vec(
+                    self.beta1,
+                    self.beta2,
+                    self.epsilon,
+                    self.lr,
+                    &mut self.k_w1,
+                    &mut self.k_w1_m,
+                    &mut self.k_w1_v,
+                    row_off + j,
+                    grad,
+                    t,
+                );
             }
         }
 
@@ -397,9 +528,16 @@ impl AdamTrainer {
     #[inline]
     #[allow(clippy::too_many_arguments)]
     fn adam_update_vec(
-        beta1: f32, beta2: f32, epsilon: f32, lr: f32,
-        param: &mut [f32], m: &mut [f32], v: &mut [f32],
-        idx: usize, grad: f32, t: f32,
+        beta1: f32,
+        beta2: f32,
+        epsilon: f32,
+        lr: f32,
+        param: &mut [f32],
+        m: &mut [f32],
+        v: &mut [f32],
+        idx: usize,
+        grad: f32,
+        t: f32,
     ) {
         m[idx] = beta1 * m[idx] + (1.0 - beta1) * grad;
         v[idx] = beta2 * v[idx] + (1.0 - beta2) * grad * grad;
@@ -412,9 +550,15 @@ impl AdamTrainer {
     #[inline]
     #[allow(clippy::too_many_arguments)]
     fn adam_update_scalar(
-        beta1: f32, beta2: f32, epsilon: f32, lr: f32,
-        param: &mut f32, m: &mut f32, v: &mut f32,
-        grad: f32, t: f32,
+        beta1: f32,
+        beta2: f32,
+        epsilon: f32,
+        lr: f32,
+        param: &mut f32,
+        m: &mut f32,
+        v: &mut f32,
+        grad: f32,
+        t: f32,
     ) {
         *m = beta1 * *m + (1.0 - beta1) * grad;
         *v = beta2 * *v + (1.0 - beta2) * grad * grad;
@@ -425,11 +569,25 @@ impl AdamTrainer {
 
     /// Build a trained DualEncoderIndexer from the current weights.
     #[allow(dead_code)]
-    fn to_indexer(&self, config: FlashMemoryConfig, n_heads: usize, max_blocks: usize) -> DualEncoderIndexer {
+    fn to_indexer(
+        &self,
+        config: FlashMemoryConfig,
+        n_heads: usize,
+        max_blocks: usize,
+    ) -> DualEncoderIndexer {
         DualEncoderIndexer::from_weights(
-            config, self.d_h, n_heads, max_blocks,
-            self.q_w1.clone(), self.q_b1.clone(), self.q_w2.clone(), self.q_b2,
-            self.k_w1.clone(), self.k_b1.clone(), self.k_w2.clone(), self.k_b2,
+            config,
+            self.d_h,
+            n_heads,
+            max_blocks,
+            self.q_w1.clone(),
+            self.q_b1.clone(),
+            self.q_w2.clone(),
+            self.q_b2,
+            self.k_w1.clone(),
+            self.k_b1.clone(),
+            self.k_w2.clone(),
+            self.k_b2,
         )
     }
 
@@ -517,7 +675,14 @@ fn run_bench() {
     println!();
     let grad_ok = numerical_gradient_check();
     println!();
-    println!("  Gradient check: {}", if grad_ok { "✅ PASS (< 1% relative error)" } else { "❌ FAIL" });
+    println!(
+        "  Gradient check: {}",
+        if grad_ok {
+            "✅ PASS (< 1% relative error)"
+        } else {
+            "❌ FAIL"
+        }
+    );
     println!();
 
     if !grad_ok {
@@ -543,7 +708,9 @@ fn run_bench() {
     let lr = 0.01f32;
 
     println!("Config: d_h={d_h}, hidden={hidden}, signal_dims={signal_dims}");
-    println!("  noise_std={noise_std}, n_train={n_train}, n_val={n_val}, epochs={n_epochs}, lr={lr}");
+    println!(
+        "  noise_std={noise_std}, n_train={n_train}, n_val={n_val}, epochs={n_epochs}, lr={lr}"
+    );
     println!();
 
     let train_data = generate_binary_relevance(n_train, d_h, signal_dims, noise_std, 42);
@@ -563,7 +730,10 @@ fn run_bench() {
         let p_pos = trainer.forward(&sample_pos.q, &sample_pos.k);
         let p_neg = trainer.forward(&sample_neg.q, &sample_neg.k);
         println!("Initial predictions: p(positive)={p_pos:.4}  p(negative)={p_neg:.4}");
-        println!("  (σ(1.0)={:.4} = expected with bias_init=1.0)", katgpt_core::sigmoid(1.0));
+        println!(
+            "  (σ(1.0)={:.4} = expected with bias_init=1.0)",
+            katgpt_core::sigmoid(1.0)
+        );
     }
     println!();
 
@@ -582,11 +752,15 @@ fn run_bench() {
 
         let train_acc = trainer.evaluate(&train_data);
         let val_acc = trainer.evaluate(&val_data);
-        if val_acc > best_val_acc { best_val_acc = val_acc; }
+        if val_acc > best_val_acc {
+            best_val_acc = val_acc;
+        }
 
         if epoch % 25 == 0 || epoch == n_epochs - 1 {
-            println!("  Epoch {:3}/{n_epochs}: loss={avg_loss:.4}  train_acc={train_acc:.4}  val_acc={val_acc:.4}",
-                epoch + 1);
+            println!(
+                "  Epoch {:3}/{n_epochs}: loss={avg_loss:.4}  train_acc={train_acc:.4}  val_acc={val_acc:.4}",
+                epoch + 1
+            );
         }
     }
 
@@ -594,19 +768,37 @@ fn run_bench() {
     let final_train_acc = trainer.evaluate(&train_data);
     let final_val_acc = trainer.evaluate(&val_data);
     println!("=== Results ===");
-    println!("  Final train accuracy: {:.4} ({:.1}%)", final_train_acc, 100.0 * final_train_acc);
-    println!("  Final val accuracy:   {:.4} ({:.1}%)", final_val_acc, 100.0 * final_val_acc);
-    println!("  Best val accuracy:    {:.4} ({:.1}%)", best_val_acc, 100.0 * best_val_acc);
+    println!(
+        "  Final train accuracy: {:.4} ({:.1}%)",
+        final_train_acc,
+        100.0 * final_train_acc
+    );
+    println!(
+        "  Final val accuracy:   {:.4} ({:.1}%)",
+        final_val_acc,
+        100.0 * final_val_acc
+    );
+    println!(
+        "  Best val accuracy:    {:.4} ({:.1}%)",
+        best_val_acc,
+        100.0 * best_val_acc
+    );
     println!();
 
     // ── Convergence verdict ──
     println!("=== Convergence Gate ===");
     let train_passes = final_train_acc >= 0.80;
     let val_passes = final_val_acc >= 0.75;
-    println!("  Train acc ≥ 80%: {} ({:.1}%)",
-        if train_passes { "✅ PASS" } else { "❌ FAIL" }, 100.0 * final_train_acc);
-    println!("  Val acc ≥ 75%:   {} ({:.1}%)",
-        if val_passes { "✅ PASS" } else { "❌ FAIL" }, 100.0 * final_val_acc);
+    println!(
+        "  Train acc ≥ 80%: {} ({:.1}%)",
+        if train_passes { "✅ PASS" } else { "❌ FAIL" },
+        100.0 * final_train_acc
+    );
+    println!(
+        "  Val acc ≥ 75%:   {} ({:.1}%)",
+        if val_passes { "✅ PASS" } else { "❌ FAIL" },
+        100.0 * final_val_acc
+    );
     println!();
 
     if train_passes && val_passes {
@@ -640,7 +832,11 @@ fn run_bench() {
     for t in &val_data {
         let dot: f32 = t.q.iter().zip(t.k.iter()).map(|(&a, &b)| a * b).sum();
         // Also compute signal-only dot for diagnostics.
-        let _signal_dot: f32 = t.q[..signal_dims].iter().zip(t.k[..signal_dims].iter()).map(|(&a, &b)| a * b).sum();
+        let _signal_dot: f32 = t.q[..signal_dims]
+            .iter()
+            .zip(t.k[..signal_dims].iter())
+            .map(|(&a, &b)| a * b)
+            .sum();
         if t.label > 0.5 {
             modelless_dot_pos_sum += dot;
             n_pos += 1;
@@ -658,16 +854,57 @@ fn run_bench() {
     }
     let modelless_acc = modelless_correct as f32 / n_val as f32;
     println!("  Modelless diagnostics:");
-    println!("    avg dot (positive): {:.4} (n={})", modelless_dot_pos_sum / n_pos as f32, n_pos);
-    println!("    avg dot (negative): {:.4} (n={})", modelless_dot_neg_sum / n_neg as f32, n_neg);
-    println!("    avg signal-only dot (positive): {:.4}",
-        val_data.iter().filter(|t| t.label > 0.5).map(|t| t.q[..signal_dims].iter().zip(t.k[..signal_dims].iter()).map(|(&a, &b)| a * b).sum::<f32>()).sum::<f32>() / n_pos as f32);
-    println!("    avg signal-only dot (negative): {:.4}",
-        val_data.iter().filter(|t| t.label < 0.5).map(|t| t.q[..signal_dims].iter().zip(t.k[..signal_dims].iter()).map(|(&a, &b)| a * b).sum::<f32>()).sum::<f32>() / n_neg as f32);
-    println!("  Modelless dot-product accuracy: {:.4} ({:.1}%)", modelless_acc, 100.0 * modelless_acc);
-    println!("  Trained indexer accuracy:       {:.4} ({:.1}%)", final_val_acc, 100.0 * final_val_acc);
+    println!(
+        "    avg dot (positive): {:.4} (n={})",
+        modelless_dot_pos_sum / n_pos as f32,
+        n_pos
+    );
+    println!(
+        "    avg dot (negative): {:.4} (n={})",
+        modelless_dot_neg_sum / n_neg as f32,
+        n_neg
+    );
+    println!(
+        "    avg signal-only dot (positive): {:.4}",
+        val_data
+            .iter()
+            .filter(|t| t.label > 0.5)
+            .map(|t| t.q[..signal_dims]
+                .iter()
+                .zip(t.k[..signal_dims].iter())
+                .map(|(&a, &b)| a * b)
+                .sum::<f32>())
+            .sum::<f32>()
+            / n_pos as f32
+    );
+    println!(
+        "    avg signal-only dot (negative): {:.4}",
+        val_data
+            .iter()
+            .filter(|t| t.label < 0.5)
+            .map(|t| t.q[..signal_dims]
+                .iter()
+                .zip(t.k[..signal_dims].iter())
+                .map(|(&a, &b)| a * b)
+                .sum::<f32>())
+            .sum::<f32>()
+            / n_neg as f32
+    );
+    println!(
+        "  Modelless dot-product accuracy: {:.4} ({:.1}%)",
+        modelless_acc,
+        100.0 * modelless_acc
+    );
+    println!(
+        "  Trained indexer accuracy:       {:.4} ({:.1}%)",
+        final_val_acc,
+        100.0 * final_val_acc
+    );
     if final_val_acc > modelless_acc {
-        println!("  → ✅ Trained indexer BEATS modelless by {:.1}pp", 100.0 * (final_val_acc - modelless_acc));
+        println!(
+            "  → ✅ Trained indexer BEATS modelless by {:.1}pp",
+            100.0 * (final_val_acc - modelless_acc)
+        );
     } else {
         println!("  → ⚠️  Modelless matches/beats trained (the raw dot product is already");
         println!("     a strong baseline for this linear signal pattern)");

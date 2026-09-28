@@ -143,11 +143,7 @@ fn bloch_norm_matches_purity() {
 #[test]
 fn bloch_projection_is_phase_invariant() {
     let b = GellMannBasis::<3>::new();
-    let q = normalize(&[
-        C32::new(0.3, 0.1),
-        C32::new(-0.5, 0.7),
-        C32::new(0.2, -0.4),
-    ]);
+    let q = normalize(&[C32::new(0.3, 0.1), C32::new(-0.5, 0.7), C32::new(0.2, -0.4)]);
     let phase = C32::new(0.6, 0.8); // |e^{iθ}| = 1
     let mut rotated = q;
     for z in rotated.iter_mut() {
@@ -182,11 +178,7 @@ fn bloch_overlap_endpoints() {
 #[test]
 fn constraint_holds_for_pure_states() {
     let rec = CpHopfield3::new(4);
-    let q = normalize(&[
-        C32::new(0.4, -0.2),
-        C32::new(0.1, 0.9),
-        C32::new(-0.3, 0.5),
-    ]);
+    let q = normalize(&[C32::new(0.4, -0.2), C32::new(0.1, 0.9), C32::new(-0.3, 0.5)]);
     let mut s = [0.0f32; 8];
     rec.basis().bloch_projection_into(&q, &mut s);
     assert!(
@@ -256,7 +248,10 @@ fn d2_has_no_nonlinear_constraint() {
 fn recall_single_memory_from_40pct_corruption() {
     let mut rec = haar_fixture::<3, 8>(64, 1, 0.4, 0xA11CE);
     let before = rec.mean_overlap(0);
-    assert!(before < 0.75, "corruption should degrade overlap, got {before}");
+    assert!(
+        before < 0.75,
+        "corruption should degrade overlap, got {before}"
+    );
     rec.sweep();
     let after = rec.mean_overlap(0);
     assert!(
@@ -493,13 +488,8 @@ fn capacity_degrades_with_load() {
 fn correlated_memories_show_shadow_phenomenon() {
     let p = 8;
     let mut haar = distribution_fixture::<3, 8>(32, p, 0.4, MemoryDistribution::Haar, 0x77AA);
-    let mut corr = distribution_fixture::<3, 8>(
-        32,
-        p,
-        0.4,
-        MemoryDistribution::correlated(0.35),
-        0x77AA,
-    );
+    let mut corr =
+        distribution_fixture::<3, 8>(32, p, 0.4, MemoryDistribution::correlated(0.35), 0x77AA);
     haar.recall_to_fixed_point(1e-4, 20);
     corr.recall_to_fixed_point(1e-4, 20);
 

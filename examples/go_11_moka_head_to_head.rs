@@ -58,16 +58,21 @@ fn make_player(name: &str, cfg: SearchConfig) -> Box<dyn GoPlayer> {
         "validator" => Box::new(GoValidatorPlayer),
         "hl" => Box::new(GoHLPlayer::new()),
         "mcts" => Box::new(GoMctsPlayer::new(cfg.mcts_budget, 50)),
-        "mcts-moka" => Box::new(GoMctsMokaPlayer::new(cfg.mcts_moka_budget, cfg.mcts_moka_depth)),
+        "mcts-moka" => Box::new(GoMctsMokaPlayer::new(
+            cfg.mcts_moka_budget,
+            cfg.mcts_moka_depth,
+        )),
         "moka-search" => Box::new(GoMokaSearchPlayer::new(cfg.search_depth, cfg.search_top_k)),
         "moka-openingbook" => Box::new(GoOpeningBookSearchPlayer::new(
             cfg.search_depth,
             cfg.search_top_k,
             cfg.opening_book_moves,
         )),
-        "moka-puct" => {
-            Box::new(GoPuctMokaPlayer::new(cfg.puct_budget, cfg.puct_c_puct, cfg.search_top_k))
-        }
+        "moka-puct" => Box::new(GoPuctMokaPlayer::new(
+            cfg.puct_budget,
+            cfg.puct_c_puct,
+            cfg.search_top_k,
+        )),
         "gzero" => Box::new(GoGZeroPlayer::new()),
         "moka" => Box::new(MokaPlayer::new()),
         _ => panic!("Unknown player: {name}"),
@@ -285,13 +290,34 @@ fn run_matchup(
     let mut games = Vec::with_capacity(num_games);
 
     for i in 0..num_games {
-        let player_a_color = if i % 2 == 0 { GoCell::Black } else { GoCell::White };
-        let color_label = if player_a_color == GoCell::Black { "B" } else { "W" };
+        let player_a_color = if i % 2 == 0 {
+            GoCell::Black
+        } else {
+            GoCell::White
+        };
+        let color_label = if player_a_color == GoCell::Black {
+            "B"
+        } else {
+            "W"
+        };
 
-        print!("  [{:>2}/{}] {}({}) vs Moka ", i + 1, num_games, player_a.name(), color_label);
+        print!(
+            "  [{:>2}/{}] {}({}) vs Moka ",
+            i + 1,
+            num_games,
+            player_a.name(),
+            color_label
+        );
         let _ = std::io::Write::flush(&mut std::io::stdout());
 
-        let result = play_game(player_a.as_mut(), player_b.as_mut(), player_a_color, board_size, opening_moves, rng);
+        let result = play_game(
+            player_a.as_mut(),
+            player_b.as_mut(),
+            player_a_color,
+            board_size,
+            opening_moves,
+            rng,
+        );
 
         let outcome = if result.first_player_won { "W" } else { "L" };
         let score_display = if result.score > 0.0 {
@@ -326,8 +352,12 @@ fn print_header(num_games: usize, board_size: usize) {
     println!("╔══════════════════════════════════════════════════════════════════╗");
     println!("║   Go 11 — Modelless Players vs Moka v1 (real weights)              ║");
     println!("╠══════════════════════════════════════════════════════════════════╣");
-    println!("║  Games per matchup: {num_games:<4}  Board: {board_size}×{board_size}                          ║");
-    println!("║  Moka komi convention: 7.0 (not this repo's default {DEFAULT_KOMI})              ║");
+    println!(
+        "║  Games per matchup: {num_games:<4}  Board: {board_size}×{board_size}                          ║"
+    );
+    println!(
+        "║  Moka komi convention: 7.0 (not this repo's default {DEFAULT_KOMI})              ║"
+    );
     println!("╚══════════════════════════════════════════════════════════════════╝");
     println!();
 }
@@ -356,7 +386,9 @@ fn print_final_table(results: &[MatchupResult]) {
     println!("══════════════════════════════════════════════════════════════════════════");
     println!();
     println!("  Reference (external, not measured by this harness):");
-    println!("  Gemma 2 2B (riir-ai Plan 393/408/410): 0% gain over random baseline, ~50 s/move CPU");
+    println!(
+        "  Gemma 2 2B (riir-ai Plan 393/408/410): 0% gain over random baseline, ~50 s/move CPU"
+    );
 }
 
 /// Time the raw forward pass, both the allocating convenience wrapper and the
@@ -415,42 +447,82 @@ fn bench_forward() {
         alloc * 1000.0,
         MACS_PER_FORWARD / alloc / 1e9
     );
-    println!("  scratch reuse saves  : {:>8.1}%", (1.0 - reuse / alloc) * 100.0);
+    println!(
+        "  scratch reuse saves  : {:>8.1}%",
+        (1.0 - reuse / alloc) * 100.0
+    );
     println!();
     println!("  Projected per-move cost (1 forward per visited node):");
-    for (label, nodes) in [("moka (greedy, 1 node)", 1.0), ("depth1 top8 (~9)", 9.0), ("depth2 top8 (~40 after pruning)", 40.0)] {
+    for (label, nodes) in [
+        ("moka (greedy, 1 node)", 1.0),
+        ("depth1 top8 (~9)", 9.0),
+        ("depth2 top8 (~40 after pruning)", 40.0),
+    ] {
         println!("    {label:<34} {:>8.1} ms", reuse * nodes * 1000.0);
     }
 }
 
 fn main() {
-    let num_games: usize = env::var("GO_GAMES").ok().and_then(|s| s.parse().ok()).unwrap_or(DEFAULT_NUM_GAMES);
-    let board_size: usize = env::var("GO_BOARD").ok().and_then(|s| s.parse().ok()).unwrap_or(DEFAULT_BOARD_SIZE);
-    let mcts_budget: usize = env::var("GO_MCTS_BUDGET").ok().and_then(|s| s.parse().ok()).unwrap_or(200);
+    let num_games: usize = env::var("GO_GAMES")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(DEFAULT_NUM_GAMES);
+    let board_size: usize = env::var("GO_BOARD")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(DEFAULT_BOARD_SIZE);
+    let mcts_budget: usize = env::var("GO_MCTS_BUDGET")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(200);
     // GoMctsMokaPlayer calls a full Moka forward pass (~3ms) per rollout leaf
     // eval — keep its budget far smaller than plain MCTS or per-move cost
     // grows fast. Default chosen for a first read, not tuned.
-    let mcts_moka_budget: usize = env::var("GO_MCTS_MOKA_BUDGET").ok().and_then(|s| s.parse().ok()).unwrap_or(30);
+    let mcts_moka_budget: usize = env::var("GO_MCTS_MOKA_BUDGET")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(30);
     // Rollout plies BEFORE Moka's value head judges the position. 0 = evaluate
     // immediately after each candidate move (in-distribution for a value net
     // trained on real self-play) instead of after N random plies (likely
     // out-of-distribution). See go_arena.md "GoMctsMokaPlayer" section.
-    let mcts_moka_depth: usize = env::var("GO_MCTS_MOKA_DEPTH").ok().and_then(|s| s.parse().ok()).unwrap_or(0);
+    let mcts_moka_depth: usize = env::var("GO_MCTS_MOKA_DEPTH")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0);
     // GoMokaSearchPlayer: negamax plies + per-node branching. Cost is ~1
     // forward pass (~3ms) per visited node, bounded by top_k^depth before
     // alpha-beta pruning — 2/8 is ~75 passes ≈ 220ms/move worst case.
-    let search_depth: usize = env::var("GO_SEARCH_DEPTH").ok().and_then(|s| s.parse().ok()).unwrap_or(2);
-    let search_top_k: usize = env::var("GO_SEARCH_TOPK").ok().and_then(|s| s.parse().ok()).unwrap_or(8);
+    let search_depth: usize = env::var("GO_SEARCH_DEPTH")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(2);
+    let search_top_k: usize = env::var("GO_SEARCH_TOPK")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(8);
     // Opening-book wrapper: star-point plies before delegating to search.
     // Only used by the `moka-openingbook` player.
-    let opening_book_moves: usize = env::var("GO_OPENING_BOOK_MOVES").ok().and_then(|s| s.parse().ok()).unwrap_or(6);
+    let opening_book_moves: usize = env::var("GO_OPENING_BOOK_MOVES")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(6);
     // PUCT player: simulation budget per move + exploration constant.
-    let puct_budget: usize = env::var("GO_PUCT_BUDGET").ok().and_then(|s| s.parse().ok()).unwrap_or(100);
-    let puct_c_puct: f32 = env::var("GO_PUCT_C").ok().and_then(|s| s.parse().ok()).unwrap_or(1.5);
+    let puct_budget: usize = env::var("GO_PUCT_BUDGET")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(100);
+    let puct_c_puct: f32 = env::var("GO_PUCT_C")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(1.5);
     // Random opening plies per game. Both Moka-family players are fully
     // deterministic, so with 0 every same-color game replays identically and
     // "N games" is really 2 samples. Non-zero makes games independent.
-    let opening_moves: usize = env::var("GO_OPENING_MOVES").ok().and_then(|s| s.parse().ok()).unwrap_or(4);
+    let opening_moves: usize = env::var("GO_OPENING_MOVES")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(4);
 
     let cfg = SearchConfig {
         mcts_budget,
@@ -484,12 +556,24 @@ fn main() {
     // whole cheap-player sweep every time.
     let default_matchups = "greedy,validator,hl,gzero,mcts,mcts-moka,moka-search";
     let matchup_spec = env::var("GO_MATCHUPS").unwrap_or_else(|_| default_matchups.to_string());
-    let matchups: Vec<&str> = matchup_spec.split(',').map(str::trim).filter(|s| !s.is_empty()).collect();
+    let matchups: Vec<&str> = matchup_spec
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .collect();
     let mut all_results = Vec::with_capacity(matchups.len());
 
     for (idx, name) in matchups.iter().enumerate() {
         println!("Matchup {}/{}: {} vs moka", idx + 1, matchups.len(), name);
-        let result = run_matchup(name, "moka", num_games, board_size, opening_moves, cfg, &mut rng);
+        let result = run_matchup(
+            name,
+            "moka",
+            num_games,
+            board_size,
+            opening_moves,
+            cfg,
+            &mut rng,
+        );
         println!(
             "  Result: {} {}W/{}L ({:.1}%)\n",
             result.first_player,

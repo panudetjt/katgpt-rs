@@ -53,4 +53,4 @@ Probe determinism on frozen fixtures (byte-identical per-layer KL vectors); cali
 - [x] G1b / G2 / G4 / kill-switch — see Bench 899. G4 surfaced and fixed a latent Issue-717 `LoopDeepStats::clear()` defect (stale empty entries under `capture_states`).
 - [x] Validation — `goat_108_lt2_looped` 11/11, `issue_035_any_time_lt2_dispatch` 13/13, `goat_428_loop_stability` 1/1, `issue_717_*` 3/3 + 5/5 green with the feature off.
 - [x] Output — calibrated defaults: **none changed** (checkpoint-dependent; `loop_max = 0` → "use loop_mode's count" stands). Feature stays opt-in (a measurement instrument, not a promotion candidate).
-- [ ] Contingent BO arm — BLOCKED on a BO-trained checkpoint (riir-train `.plans/421` Phase 4); Issue 568's `riir-poc/loop_injection_poc.rs` stays the regression check.
+- [-] Contingent BO arm — BLOCKED on a BO-trained checkpoint (riir-train `.plans/421` Phase 4); Issue 568's `riir-poc/loop_injection_poc.rs` stays the regression check. **Unblock:** when `.plans/421` Phase 4 lands a BO-trained checkpoint, this arm opens (apply BO at loop boundaries + readout, α retuned per mode, G1 allowed to REFUTE — the Issue-568 no-transfer hazard stands).

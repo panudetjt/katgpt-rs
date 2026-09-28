@@ -60,9 +60,7 @@ const TARGET_LATENCY_NS: f64 = 1_000.0; // <1µs
 fn main() {
     println!("══════════════════════════════════════════════════════════════════");
     println!("  Plan 377 Phase 3 — Local Branch Routing GOAT gate");
-    println!(
-        "  K={K}, D={D}, ITERS={ITERS}, ALLOC_ITERS={ALLOC_ITERS}"
-    );
+    println!("  K={K}, D={D}, ITERS={ITERS}, ALLOC_ITERS={ALLOC_ITERS}");
     println!("══════════════════════════════════════════════════════════════════\n");
 
     // ── Fixture: K=3 candidate hidden states + frozen direction. ────────

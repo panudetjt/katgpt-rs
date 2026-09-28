@@ -126,7 +126,9 @@ impl<'a> ObservedStates<'a> {
         t_len: usize,
         d_len: usize,
     ) -> Result<Self, InversionError> {
-        let expected = t_len.checked_mul(d_len).ok_or(InversionError::ShapeOverflow)?;
+        let expected = t_len
+            .checked_mul(d_len)
+            .ok_or(InversionError::ShapeOverflow)?;
         if states.len() != expected {
             return Err(InversionError::ShapeMismatch {
                 expected,

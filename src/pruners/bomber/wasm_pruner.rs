@@ -741,15 +741,17 @@ impl BomberWasmPruner {
 
         // Lock-free read. The steady-state path is a single hash lookup;
         // only the first call on a thread falls through to insert + re-get.
-        let mutex = if let Some(m) = guard.get(&id) { m } else {
-                // First call for this thread — create instance
-                let inner = match BomberInner::new(&self.engine, &self.module) {
-                    Ok(i) => Mutex::new(i),
-                    Err(_) => return None,
-                };
-                guard.insert(id, inner);
-                guard.get(&id)?
+        let mutex = if let Some(m) = guard.get(&id) {
+            m
+        } else {
+            // First call for this thread — create instance
+            let inner = match BomberInner::new(&self.engine, &self.module) {
+                Ok(i) => Mutex::new(i),
+                Err(_) => return None,
             };
+            guard.insert(id, inner);
+            guard.get(&id)?
+        };
         let mut inner = match mutex.lock() {
             Ok(g) => g,
             Err(_) => return None,
@@ -1018,7 +1020,9 @@ mod tests {
         );
         if !std::path::Path::new(WASM_ARTIFACT).exists() {
             eprintln!("⚠ Skipping: artifact not found at {WASM_ARTIFACT}");
-            eprintln!("  Build it: cd riir-ai && cargo build --example bomber_validator --target wasm32-unknown-unknown --release");
+            eprintln!(
+                "  Build it: cd riir-ai && cargo build --example bomber_validator --target wasm32-unknown-unknown --release"
+            );
             return;
         }
 
@@ -1051,9 +1055,7 @@ mod tests {
                     .iter()
                     .copied()
                     .filter(|&(x, y)| (x, y) != (px, py))
-                    .map(|p| {
-                        (p, (p.0 - px).abs() + (p.1 - py).abs())
-                    })
+                    .map(|p| (p, (p.0 - px).abs() + (p.1 - py).abs()))
                     .collect::<Vec<_>>();
                 nearest.sort_by_key(|&(_, d)| d);
                 let worst_bombs: Vec<((i32, i32), u32, u32)> = nearest
@@ -1064,24 +1066,22 @@ mod tests {
 
                 let bombs: &[((i32, i32), u32, u32)] = &worst_bombs;
                 for action in 0..ACTION_COUNT {
-                        inner.store.set_fuel(PROBE_FUEL).expect("set_fuel");
-                        let (bytes, tokens) = inner
-                            .state_buf
-                            .serialize(&grid, px, py, 0, bombs);
-                        inner.write_state_buf(0, bytes).expect("write state");
-                        let is_valid_fn = inner.is_valid_fn;
-                        let _ = is_valid_fn.call(&mut inner.store, (0, action as u32, 0, tokens));
-                        let used = PROBE_FUEL - inner.store.get_fuel().expect("get_fuel");
-                        if used > max_call.0 {
-                            max_call = (
-                                used,
-                                format!(
-                                    "seed={seed} pos=({px},{py}) action={action} bombs={} (wasmi2 input-ops)",
-                                    bombs.len()
-                                ),
-                            );
-                        }
+                    inner.store.set_fuel(PROBE_FUEL).expect("set_fuel");
+                    let (bytes, tokens) = inner.state_buf.serialize(&grid, px, py, 0, bombs);
+                    inner.write_state_buf(0, bytes).expect("write state");
+                    let is_valid_fn = inner.is_valid_fn;
+                    let _ = is_valid_fn.call(&mut inner.store, (0, action as u32, 0, tokens));
+                    let used = PROBE_FUEL - inner.store.get_fuel().expect("get_fuel");
+                    if used > max_call.0 {
+                        max_call = (
+                            used,
+                            format!(
+                                "seed={seed} pos=({px},{py}) action={action} bombs={} (wasmi2 input-ops)",
+                                bombs.len()
+                            ),
+                        );
                     }
+                }
 
                 // Batch: 4 players × 7 actions against the worst bomb config.
                 if inner.has_batch() {
@@ -1141,9 +1141,18 @@ mod tests {
         }
 
         println!("fuel_calibration_probe (wasmi 2.0, per-INPUT-op metering):");
-        println!("  max per-call is_valid consumed: {} [{}]", max_call.0, max_call.1);
-        println!("  max batch_validate consumed:    {} [{}]", max_batch.0, max_batch.1);
-        println!("  FUEL_PER_CALL = {FUEL_PER_CALL}, batch budget = {}", FUEL_PER_CALL * FUEL_BATCH_MULTIPLIER);
+        println!(
+            "  max per-call is_valid consumed: {} [{}]",
+            max_call.0, max_call.1
+        );
+        println!(
+            "  max batch_validate consumed:    {} [{}]",
+            max_batch.0, max_batch.1
+        );
+        println!(
+            "  FUEL_PER_CALL = {FUEL_PER_CALL}, batch budget = {}",
+            FUEL_PER_CALL * FUEL_BATCH_MULTIPLIER
+        );
 
         // Decision rule: production constants must keep ≥2× headroom over the
         // measured worst case.

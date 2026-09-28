@@ -10,8 +10,8 @@
 // this whole module (scoped here).
 #![allow(clippy::needless_range_loop)]
 
-use super::{gw_coupling, gw_loss, gw_score, score_from_loss, GwError, GwScratch, GW_MAX};
 use super::solve::SolveCore;
+use super::{GW_MAX, GwError, GwScratch, gw_coupling, gw_loss, gw_score, score_from_loss};
 // Deterministic xorshift64* — the ONLY randomness in this module is test
 // geometry generation; the solver consumes no RNG (determinism contract).
 struct XorShift(u64);
@@ -103,13 +103,7 @@ fn add_noise(d: &mut [Vec<f32>], eps: f64, rng: &mut XorShift) {
 
 /// Direct O(n²m²) GW quadratic form for a coupling — the ground truth the
 /// closed-form loss must match.
-fn direct_loss(
-    a: &[&[f32]],
-    b: &[&[f32]],
-    t: &[[f32; GW_MAX]; GW_MAX],
-    n: usize,
-    m: usize,
-) -> f64 {
+fn direct_loss(a: &[&[f32]], b: &[&[f32]], t: &[[f32; GW_MAX]; GW_MAX], n: usize, m: usize) -> f64 {
     let mut acc = 0.0f64;
     for i in 0..n {
         for k in 0..m {
@@ -341,11 +335,17 @@ fn determinism_bit_identical_double_run() {
     let mut s2 = GwScratch::new();
     let (l1, sc1) = {
         let loss = solve_loss(&a, &b, &mut s1);
-        (loss, gw_score(&refs(&a), &refs(&b), &mut s1).expect("valid"))
+        (
+            loss,
+            gw_score(&refs(&a), &refs(&b), &mut s1).expect("valid"),
+        )
     };
     let (l2, sc2) = {
         let loss = solve_loss(&a, &b, &mut s2);
-        (loss, gw_score(&refs(&a), &refs(&b), &mut s2).expect("valid"))
+        (
+            loss,
+            gw_score(&refs(&a), &refs(&b), &mut s2).expect("valid"),
+        )
     };
     assert_eq!(l1.to_bits(), l2.to_bits(), "loss must be bit-identical");
     assert_eq!(sc1.to_bits(), sc2.to_bits(), "score must be bit-identical");
@@ -353,7 +353,11 @@ fn determinism_bit_identical_double_run() {
     let a3 = random_geometry(5, 2, &mut rng);
     let l3a = solve_loss(&a3, &a3, &mut s1);
     let l3b = solve_loss(&a3, &a3, &mut s2);
-    assert_eq!(l3a.to_bits(), l3b.to_bits(), "smaller solve after bigger scratch");
+    assert_eq!(
+        l3a.to_bits(),
+        l3b.to_bits(),
+        "smaller solve after bigger scratch"
+    );
 }
 
 #[test]
@@ -552,7 +556,11 @@ fn g2_planted_vs_shuffled_separation_and_auc() {
     }
     // AUC of the score as a planted/shuffled classifier (Mann–Whitney U).
     let pos: Vec<f32> = pooled.iter().filter(|(_, p)| *p).map(|(s, _)| *s).collect();
-    let neg: Vec<f32> = pooled.iter().filter(|(_, p)| !*p).map(|(s, _)| *s).collect();
+    let neg: Vec<f32> = pooled
+        .iter()
+        .filter(|(_, p)| !*p)
+        .map(|(s, _)| *s)
+        .collect();
     let mut u = 0.0f64;
     for &p in &pos {
         for &n in &neg {
@@ -576,8 +584,7 @@ fn g2_planted_vs_shuffled_separation_and_auc() {
             "level {lvl} (ε {}) dominance {count}/16 < 13/16",
             NOISE[lvl]
         );
-        let seg: Vec<(f32, bool)> =
-            pooled[lvl * per_level..(lvl + 1) * per_level].to_vec();
+        let seg: Vec<(f32, bool)> = pooled[lvl * per_level..(lvl + 1) * per_level].to_vec();
         let lp: Vec<f32> = seg.iter().filter(|(_, p)| *p).map(|(s, _)| *s).collect();
         let ln: Vec<f32> = seg.iter().filter(|(_, p)| !*p).map(|(s, _)| *s).collect();
         let mut uu = 0.0f64;
@@ -597,9 +604,7 @@ fn g2_planted_vs_shuffled_separation_and_auc() {
         // above carries the separation claim, AUC is the secondary check.
         assert!(lauc >= 0.85, "level {lvl} AUC {lauc:.4} < 0.85");
     }
-    println!(
-        "g2: pooled AUC {auc:.4} (informational); per-level dominance {lvl_dominated:?}"
-    );
+    println!("g2: pooled AUC {auc:.4} (informational); per-level dominance {lvl_dominated:?}");
 }
 
 #[test]
@@ -653,9 +658,9 @@ fn g2_gw_sees_through_correspondence_break_rsa_cannot() {
         // destruction, which is the claim under test. Record both.
         let rsa = spearman(&offdiag_flat(&a), &offdiag_flat(&b));
         let _ = rsa; // recorded, not gated: the flat-vector RSA variant is
-                     // permutation-invariant by construction (same multiset),
-                     // so it CANNOT fail on a pure rename — the separation
-                     // that matters is planted-vs-shuffled, gated above.
+        // permutation-invariant by construction (same multiset),
+        // so it CANNOT fail on a pure rename — the separation
+        // that matters is planted-vs-shuffled, gated above.
     }
 }
 
@@ -727,17 +732,11 @@ fn coupling_exposes_identity_correspondence() {
     // tail-projection noise.
     for (i, row) in t.iter().enumerate() {
         let rs: f64 = row.iter().map(|v| f64::from(*v)).sum();
-        assert!(
-            (rs - 1.0 / 8.0).abs() < 1e-3,
-            "row {i} sum {rs} != 1/8"
-        );
+        assert!((rs - 1.0 / 8.0).abs() < 1e-3, "row {i} sum {rs} != 1/8");
     }
     for j in 0..8 {
         let cs: f64 = (0..8).map(|i| f64::from(t[i][j])).sum();
-        assert!(
-            (cs - 1.0 / 8.0).abs() < 1e-3,
-            "col {j} sum {cs} != 1/8"
-        );
+        assert!((cs - 1.0 / 8.0).abs() < 1e-3, "col {j} sum {cs} != 1/8");
     }
 }
 

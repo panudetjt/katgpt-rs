@@ -1,4 +1,3 @@
-
 use super::*;
 
 /// A synthetic recursion-capable generator that captures pre/post logits.

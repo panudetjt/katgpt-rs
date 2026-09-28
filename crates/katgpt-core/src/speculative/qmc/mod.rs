@@ -507,7 +507,8 @@ fn find_primitive_poly(dim_index: u32) -> (u64, u32) {
             // How many polys in this degree?
             let next_cum = DEGREE_CUMULATIVE
                 .iter()
-                .find(|&&(d, _)| d == deg + 1).map_or(35, |&(_, c)| c);
+                .find(|&&(d, _)| d == deg + 1)
+                .map_or(35, |&(_, c)| c);
             let count_in_degree = next_cum - cum;
             skip = dim_index - cum - 1;
             if skip < count_in_degree {
@@ -642,12 +643,12 @@ fn prime_factors_u64(mut n: u64) -> Vec<u64> {
 #[inline]
 pub fn inverse_normal_cdf(u: f32) -> f32 {
     const C1: f64 = 0.802853;
-const C2: f64 = 0.010328;
-const D1: f64 = 1.432788;
-const D2: f64 = 0.189269;
-const D3: f64 = 0.001308;
+    const C2: f64 = 0.010328;
+    const D1: f64 = 1.432788;
+    const D2: f64 = 0.189269;
+    const D3: f64 = 0.001308;
 
-if u <= 0.0 {
+    if u <= 0.0 {
         return f32::NEG_INFINITY;
     }
     if u >= 1.0 {

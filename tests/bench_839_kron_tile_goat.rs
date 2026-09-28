@@ -80,7 +80,10 @@ impl Lcg {
         Self(seed)
     }
     fn next(&mut self) -> f32 {
-        self.0 = self.0.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+        self.0 = self
+            .0
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1);
         2.0 * (((self.0 >> 33) as f32) / (1u64 << 31) as f32) - 1.0
     }
 }
@@ -282,7 +285,10 @@ fn g2c_kron_against_ternary_dense_reported() {
     // what it names" hazard, one layer down, where the arm is chosen at run time
     // rather than at compile time. Without this line the reader cannot tell
     // which kernel produced the 124 µs.
-    println!("   G2c: baseline dispatch simd_level() = {:?}", simd_level());
+    println!(
+        "   G2c: baseline dispatch simd_level() = {:?}",
+        simd_level()
+    );
 
     let speedup = r.a_ns_per_iter() / r.b_ns_per_iter();
     println!(
@@ -299,7 +305,6 @@ fn g2c_kron_against_ternary_dense_reported() {
         "G2c instrument FAIL: speedup {speedup} is not a measurement"
     );
 }
-
 
 /// G2d — the three-stage Monarch composition against the dense operator, which
 /// is what Issue 839 T4 actually asks for.

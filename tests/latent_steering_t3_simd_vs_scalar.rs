@@ -153,13 +153,14 @@ fn t3_simd_vs_scalar_throughput() {
 
         // ── Scalar baseline: inline scalar SAXPY (matches the pre-T3.1 loop).
         let dir_for_closure = dir.clone();
-        let ns_scalar = time_median_ns_batched(&mut state_scalar, N_ITERS, BATCH_D8_D16, move |s| {
-            let p = black_box(s.as_ptr());
-            for (si, di) in s.iter_mut().zip(dir_for_closure.iter()) {
-                *si += alpha * di;
-            }
-            black_box((p, s.len()));
-        });
+        let ns_scalar =
+            time_median_ns_batched(&mut state_scalar, N_ITERS, BATCH_D8_D16, move |s| {
+                let p = black_box(s.as_ptr());
+                for (si, di) in s.iter_mut().zip(dir_for_closure.iter()) {
+                    *si += alpha * di;
+                }
+                black_box((p, s.len()));
+            });
 
         let speedup = ns_scalar / ns_simd;
         let gate = if d == 8 { GATE_D8_X } else { GATE_D16_X };

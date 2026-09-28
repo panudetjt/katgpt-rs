@@ -367,7 +367,10 @@ fn engram_tripwire_g8_detector_poc_arms() {
     for _ in 0..200 {
         let w = a_656(&q, &mut rng);
         let v = tw.check(&w.retrieval, &w.gates, &mut m);
-        assert_eq!(v.suspect_source, 4, "first poison (c=0.96) is source index 4");
+        assert_eq!(
+            v.suspect_source, 4,
+            "first poison (c=0.96) is source index 4"
+        );
         if v.fired {
             a656_fires += 1;
         }
@@ -459,7 +462,7 @@ fn engram_tripwire_g2_check_cost_budget() {
 
     const N: usize = 20_000;
 
-let mut rng = Xs(0xC057);
+    let mut rng = Xs(0xC057);
     let q = random_unit(&mut rng);
     let mut tw = fresh_tripwire();
     let mut m = metrics_scratch();
@@ -486,7 +489,10 @@ let mut rng = Xs(0xC057);
         "check() {:.3} µs/call exceeds the 5 µs budget",
         per_call * 1e6
     );
-    println!("engram_tripwire G2: check() = {:.1} ns/call", per_call * 1e9);
+    println!(
+        "engram_tripwire G2: check() = {:.1} ns/call",
+        per_call * 1e9
+    );
 }
 
 // ─── Repair — drop the suspect, re-check ────────────────────────────────────
@@ -522,7 +528,10 @@ fn engram_tripwire_repair_drop_suspect_clears_inversion() {
     }
     let v2 = tw.check(&repaired_retrieval, &repaired_gates, &mut m);
     assert!(!v2.fired, "drop-the-suspect must clear the inversion");
-    assert_eq!(v2.suspect_source, 0, "the strongest topical source now tops the gate");
+    assert_eq!(
+        v2.suspect_source, 0,
+        "the strongest topical source now tops the gate"
+    );
     assert!(
         (m.normalized_top1_rank()).abs() < 1e-6,
         "post-repair: the top-consumed source is the top-retrieved one"

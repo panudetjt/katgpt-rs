@@ -485,9 +485,7 @@ fn bench_simd_topk_issue808_distribution_matrix() {
     let n_values = [64usize, 128, 256, 512, 1024];
     let rounds = 9;
 
-    println!(
-        "\n== Issue 808 distribution matrix (speedup = scalar/SIMD, <1.00 is a loss) =="
-    );
+    println!("\n== Issue 808 distribution matrix (speedup = scalar/SIMD, <1.00 is a loss) ==");
     println!(
         "{:<15} {:>4} {:>6} {:>12} {:>12} {:>9}  {:>17}",
         "distribution", "k", "n", "scalar ns", "simd ns", "speedup", "round band"
@@ -573,7 +571,10 @@ fn bench_simd_topk_issue808_crossover_nmin() {
                     dist.name()
                 ),
                 (Some(n1), None) => {
-                    println!("--> N_MIN[{}, k={k}] = {n1} (no ≥1.05 point in sweep)", dist.name());
+                    println!(
+                        "--> N_MIN[{}, k={k}] = {n1} (no ≥1.05 point in sweep)",
+                        dist.name()
+                    );
                 }
                 (None, _) => println!(
                     "--> N_MIN[{}, k={k}] = >{} (no crossing in sweep)",

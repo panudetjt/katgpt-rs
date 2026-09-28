@@ -293,7 +293,12 @@ mod tests {
         }
         DensePencil {
             a0: init.a0,
-            a: [a0, a1, nsd_diagonal_feature::<8>(&[0.15; 8]), nsd_diagonal_feature::<8>(&[0.1; 8])],
+            a: [
+                a0,
+                a1,
+                nsd_diagonal_feature::<8>(&[0.15; 8]),
+                nsd_diagonal_feature::<8>(&[0.1; 8]),
+            ],
         }
     }
 
@@ -474,17 +479,24 @@ mod tests {
 
         // Pin the composed form: Σ gate_k·L_k (≈ sigmoid(10)·ΣL at pi_max).
         let sigmoid = |x: f32| 1.0 / (1.0 + (-x).exp());
-        let expected_sum: f32 = [f0.lipschitz_bound(), f1.lipschitz_bound(), f2.lipschitz_bound()]
-            .iter()
-            .enumerate()
-            .map(|(kk, &lk)| sigmoid(blend.pi[kk] / blend.tau) * lk)
-            .sum();
+        let expected_sum: f32 = [
+            f0.lipschitz_bound(),
+            f1.lipschitz_bound(),
+            f2.lipschitz_bound(),
+        ]
+        .iter()
+        .enumerate()
+        .map(|(kk, &lk)| sigmoid(blend.pi[kk] / blend.tau) * lk)
+        .sum();
         let bound = blend.lipschitz_bound(&fields);
         assert!(
             (bound - expected_sum).abs() < 1e-2 * expected_sum,
             "composed bound {bound} != gated sum {expected_sum}"
         );
-        assert!(bound > f1.lipschitz_bound(), "sum form must exceed the max single term");
+        assert!(
+            bound > f1.lipschitz_bound(),
+            "sum form must exceed the max single term"
+        );
 
         // Empirical: the blended dynamics satisfy the composed bound.
         let mut violations = 0_u32;
@@ -582,7 +594,13 @@ mod tests {
         // A' = QᵀAQ is computed by index arithmetic — exact in floats.
         let conj = |m: &SymPacked<8>| -> SymPacked<8> {
             let full = m.to_full();
-            let map = |i: usize| -> usize { match i { 0 => 3, 3 => 0, j => j } };
+            let map = |i: usize| -> usize {
+                match i {
+                    0 => 3,
+                    3 => 0,
+                    j => j,
+                }
+            };
             let sgn = |i: usize| -> f32 {
                 match i {
                     5 => -1.0,

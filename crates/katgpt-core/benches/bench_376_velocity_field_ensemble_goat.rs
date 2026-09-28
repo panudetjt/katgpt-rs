@@ -129,9 +129,7 @@ fn median_u64(v: &mut [u64]) -> u64 {
 // ── Gates ─────────────────────────────────────────────────────────────────
 
 fn gate_g4_fit_latency() -> GateResult {
-    println!(
-        "\n--- G4: fit_into latency (N={N_FIT_PAIRS}, P={P}, D={D}) ---"
-    );
+    println!("\n--- G4: fit_into latency (N={N_FIT_PAIRS}, P={P}, D={D}) ---");
 
     // Pre-build pairs (one-time alloc, outside the measured region).
     let xs: Vec<[f32; D]> = (0..N_FIT_PAIRS)
@@ -201,9 +199,7 @@ fn gate_g4_fit_latency() -> GateResult {
 }
 
 fn gate_g4_eval_latency() -> GateResult {
-    println!(
-        "\n--- G4: eval_into latency (single call, P={P}, D={D}) ---"
-    );
+    println!("\n--- G4: eval_into latency (single call, P={P}, D={D}) ---");
 
     let mut ensemble = build_ensemble();
     let mut scratch = EnsembleFitScratch::<P, D>::new();
@@ -267,9 +263,7 @@ fn gate_g4_eval_latency() -> GateResult {
     }
     let med = median_u64(&mut per_call_ns);
 
-    println!(
-        "  eval_into p50: {med} ns  (target ≤ {TARGET_EVAL_NS} ns)"
-    );
+    println!("  eval_into p50: {med} ns  (target ≤ {TARGET_EVAL_NS} ns)");
 
     let passed = med <= TARGET_EVAL_NS;
     GateResult {
@@ -285,9 +279,7 @@ fn gate_g4_eval_latency() -> GateResult {
 }
 
 fn gate_g4_batch_latency() -> GateResult {
-    println!(
-        "\n--- G4: eval_batch_into latency (N_batch={N_BATCH}, P={P}, D={D}) ---"
-    );
+    println!("\n--- G4: eval_batch_into latency (N_batch={N_BATCH}, P={P}, D={D}) ---");
 
     let mut ensemble = build_ensemble();
     let mut scratch = EnsembleFitScratch::<P, D>::new();
@@ -345,9 +337,7 @@ fn gate_g4_batch_latency() -> GateResult {
     let med = median_u64(&mut per_run_us);
     let med_dur = Duration::from_micros(med);
 
-    println!(
-        "  eval_batch_into(N={N_BATCH}) p50: {med_dur:?}  (target ≤ {TARGET_BATCH_MS} ms)"
-    );
+    println!("  eval_batch_into(N={N_BATCH}) p50: {med_dur:?}  (target ≤ {TARGET_BATCH_MS} ms)");
 
     let passed = med <= TARGET_BATCH_MS * 1000;
     GateResult {

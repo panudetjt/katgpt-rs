@@ -879,11 +879,9 @@ pub fn fastica_into<'a>(
 
         let accepted = match config.acceptance {
             IcaAcceptance::Strict => count_unstable(&out_component_lim[..m_try], config) == 0,
-            IcaAcceptance::P95 => p95_accepts_into(
-                &out_component_lim[..m_try],
-                config,
-                &mut scratch.p95_buf,
-            ),
+            IcaAcceptance::P95 => {
+                p95_accepts_into(&out_component_lim[..m_try], config, &mut scratch.p95_buf)
+            }
         };
 
         if accepted {
@@ -1315,13 +1313,8 @@ pub fn erf_batch(
             let row = &acts[target * d_dim..(target + 1) * d_dim];
             suffix_scores[k_idx] = simd_dot_f32(row, reading_map_row, d_dim);
         }
-        total_erf += effective_receptive_field(
-            &scores_full,
-            target,
-            &suffix_scores,
-            schedule,
-            top_n,
-        ) as f32;
+        total_erf +=
+            effective_receptive_field(&scores_full, target, &suffix_scores, schedule, top_n) as f32;
     }
     total_erf / evidence_indices.len() as f32
 }
@@ -1336,17 +1329,15 @@ mod tests {
 
     /// Simple LCG for deterministic synthetic data.
     fn lcg_next(state: &mut u64) -> f32 {
-        *state = state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        *state = state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         (*state >> 33) as f32 / (1u64 << 31) as f32
     }
 
     /// Make a synthetic non-Gaussian source: independent Laplace + Uniform
     /// components mixed by a random-ish orthogonal-ish matrix.
-    fn make_synthetic_non_gaussian(
-        t: usize,
-        d: usize,
-        seed: u64,
-    ) -> Vec<f32> {
+    fn make_synthetic_non_gaussian(t: usize, d: usize, seed: u64) -> Vec<f32> {
         let mut rng = seed;
         // Sources: first half Laplace(0,1), second half Uniform[-√3, √3].
         let mut sources = vec![0.0_f32; t * d];
@@ -1366,7 +1357,11 @@ mod tests {
         let mut mix = vec![0.0_f32; d * d];
         for i in 0..d {
             for j in 0..d {
-                let sign = if ((i + j) * (i + j + 1) / 2) & 1 == 0 { 1.0 } else { -1.0 };
+                let sign = if ((i + j) * (i + j + 1) / 2) & 1 == 0 {
+                    1.0
+                } else {
+                    -1.0
+                };
                 mix[i * d + j] = sign * (1.0 + (lcg_next(&mut rng) - 0.5) * 0.5);
             }
         }
@@ -1407,8 +1402,16 @@ mod tests {
         let mut kurt = vec![0.0_f32; d];
         let mut lim = vec![0.0_f32; d];
         let result = fastica_into(
-            &window, t, d, &config, &mut scratch, &mut reading, &mut writing,
-            &mut scores, &mut kurt, &mut lim,
+            &window,
+            t,
+            d,
+            &config,
+            &mut scratch,
+            &mut reading,
+            &mut writing,
+            &mut scores,
+            &mut kurt,
+            &mut lim,
         );
         println!(
             "t1_9a: status={:?}, m_eff={}, n_unstable={}, kurt={:?}",
@@ -1457,8 +1460,16 @@ mod tests {
         let mut kurt = vec![0.0_f32; d];
         let mut lim = vec![0.0_f32; d];
         let _ = fastica_into(
-            &window, t, d, &config, &mut scratch, &mut reading, &mut writing,
-            &mut scores, &mut kurt, &mut lim,
+            &window,
+            t,
+            d,
+            &config,
+            &mut scratch,
+            &mut reading,
+            &mut writing,
+            &mut scores,
+            &mut kurt,
+            &mut lim,
         );
         let mean_kurt: f32 = kurt.iter().sum::<f32>() / d as f32;
         println!("t1_9b: mean kurtosis on Gaussian = {mean_kurt:.4}");
@@ -1487,8 +1498,16 @@ mod tests {
             let mut kurt = vec![0.0_f32; 4];
             let mut lim = vec![0.0_f32; 4];
             let _ = fastica_into(
-                &window, t, d, &config, &mut scratch, &mut reading, &mut writing,
-                &mut scores, &mut kurt, &mut lim,
+                &window,
+                t,
+                d,
+                &config,
+                &mut scratch,
+                &mut reading,
+                &mut writing,
+                &mut scores,
+                &mut kurt,
+                &mut lim,
             );
             (reading, scores)
         };
@@ -1528,10 +1547,7 @@ mod tests {
             })
             .collect();
         let k = excess_kurtosis(&vals);
-        assert!(
-            k.abs() < 0.1,
-            "Gaussian excess kurtosis ≈ 0, got {k:.4}"
-        );
+        assert!(k.abs() < 0.1, "Gaussian excess kurtosis ≈ 0, got {k:.4}");
     }
 
     #[test]
@@ -1564,9 +1580,7 @@ mod tests {
     fn erf_token_local_returns_one() {
         let scores_full = vec![0.1, 0.5, 0.9, 0.3, 0.7];
         let suffix_scores = vec![0.9]; // k=1 recovers
-        let erf = effective_receptive_field(
-            &scores_full, 2, &suffix_scores, &[1, 2, 4], 3,
-        );
+        let erf = effective_receptive_field(&scores_full, 2, &suffix_scores, &[1, 2, 4], 3);
         assert_eq!(erf, 1);
     }
 
@@ -1574,9 +1588,7 @@ mod tests {
     fn erf_context_dependent_returns_large_k() {
         let scores_full = vec![0.1, 0.5, 0.9, 0.3, 0.7];
         let suffix_scores = vec![0.0, 0.0, 0.9]; // k=4 recovers
-        let erf = effective_receptive_field(
-            &scores_full, 2, &suffix_scores, &[1, 2, 4], 3,
-        );
+        let erf = effective_receptive_field(&scores_full, 2, &suffix_scores, &[1, 2, 4], 3);
         assert_eq!(erf, 4);
     }
 
@@ -1585,9 +1597,7 @@ mod tests {
         let scores_full = vec![0.1, 0.5, 0.9, 0.3, 0.7];
         // Sign flips under every suffix.
         let suffix_scores = vec![-0.9, -0.9, -0.9];
-        let erf = effective_receptive_field(
-            &scores_full, 2, &suffix_scores, &[1, 2, 4], 3,
-        );
+        let erf = effective_receptive_field(&scores_full, 2, &suffix_scores, &[1, 2, 4], 3);
         assert_eq!(erf, 4);
     }
 
@@ -1596,9 +1606,7 @@ mod tests {
         let m = 3;
         let d = 5;
         let mut r = vec![
-            1.0_f32, 0.5, 0.0, 0.0, 0.0,
-            0.5, 1.0, 0.3, 0.0, 0.0,
-            0.0, 0.3, 1.0, 0.2, 0.1,
+            1.0_f32, 0.5, 0.0, 0.0, 0.0, 0.5, 1.0, 0.3, 0.0, 0.0, 0.0, 0.3, 1.0, 0.2, 0.1,
         ];
         let mut r_prev = vec![0.0_f32; m * d];
         let mut rrt = vec![0.0_f32; m * m];
@@ -1607,16 +1615,19 @@ mod tests {
         let mut rrt_eigvecs = vec![0.0_f32; m * m];
         let mut work_d = vec![0.0_f32; d];
         symmetric_orthogonalize_rows_into(
-            &mut r, &mut r_prev, &mut rrt, &mut rrt_scratch, &mut rrt_eigvals,
-            &mut rrt_eigvecs, &mut work_d, m, d,
+            &mut r,
+            &mut r_prev,
+            &mut rrt,
+            &mut rrt_scratch,
+            &mut rrt_eigvals,
+            &mut rrt_eigvecs,
+            &mut work_d,
+            m,
+            d,
         );
         for i in 0..m {
             for j in 0..m {
-                let dot = simd_dot_f32(
-                    &r[i * d..(i + 1) * d],
-                    &r[j * d..(j + 1) * d],
-                    d,
-                );
+                let dot = simd_dot_f32(&r[i * d..(i + 1) * d], &r[j * d..(j + 1) * d], d);
                 let expected = if i == j { 1.0 } else { 0.0 };
                 assert!(
                     (dot - expected).abs() < 1e-3,
@@ -1632,9 +1643,7 @@ mod tests {
         let m = 3;
         let d = 5;
         let r: Vec<f32> = vec![
-            1.0, 0.5, 0.0, 0.2, 0.1,
-            0.0, 1.0, 0.3, 0.0, 0.4,
-            0.1, 0.0, 1.0, 0.5, 0.0,
+            1.0, 0.5, 0.0, 0.2, 0.1, 0.0, 1.0, 0.3, 0.0, 0.4, 0.1, 0.0, 1.0, 0.5, 0.0,
         ];
         let mut d_map = vec![0.0_f32; d * m];
         let mut rrt = vec![0.0_f32; m * m];

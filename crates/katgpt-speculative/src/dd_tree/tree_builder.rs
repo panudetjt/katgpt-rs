@@ -266,7 +266,10 @@ impl TreeBuilder {
                             continue;
                         }
                         if prob > 0.0 && pruner.is_valid(depth, i, sibling_parent_tokens) {
-                            let sibling_path = chain_node.parent_path.parent(chain_node.depth).push(i as u32, depth);
+                            let sibling_path = chain_node
+                                .parent_path
+                                .parent(chain_node.depth)
+                                .push(i as u32, depth);
 
                             self.heap.push(TreeNode {
                                 score: parent_chain_score + self.log_marginals[depth][i],
@@ -559,8 +562,7 @@ impl TreeBuilder {
                 }
 
                 // Blended score: ln(P_llm) + ln(R). Use the cached ln(prob).
-                cumulative_score +=
-                    self.log_marginals[depth][token_idx] + relevance.ln();
+                cumulative_score += self.log_marginals[depth][token_idx] + relevance.ln();
                 let node_path = parent_path.push(token_idx as u32, depth);
 
                 let node = TreeNode {
@@ -646,10 +648,15 @@ impl TreeBuilder {
                         if relevance <= threshold {
                             continue;
                         }
-                        let sibling_path = chain_node.parent_path.parent(chain_node.depth).push(i as u32, depth);
+                        let sibling_path = chain_node
+                            .parent_path
+                            .parent(chain_node.depth)
+                            .push(i as u32, depth);
 
                         self.heap.push(TreeNode {
-                            score: parent_chain_score + self.log_marginals[depth][i] + relevance.ln(),
+                            score: parent_chain_score
+                                + self.log_marginals[depth][i]
+                                + relevance.ln(),
                             depth,
                             token_idx: i,
                             parent_path: sibling_path,
@@ -990,7 +997,10 @@ impl TreeBuilder {
                         if relevance <= threshold {
                             continue;
                         }
-                        let sibling_path = chain_node.parent_path.parent(chain_node.depth).push(i as u32, depth);
+                        let sibling_path = chain_node
+                            .parent_path
+                            .parent(chain_node.depth)
+                            .push(i as u32, depth);
 
                         self.heap.push(TreeNode {
                             score: parent_chain_score + balanced_score(prob, relevance, depth),
@@ -1232,8 +1242,7 @@ impl TreeBuilder {
 
                 // Blended score: ln(P_llm) + ln(R). Use the cached ln(prob) from
                 // cache_log_marginals (computed once per build).
-                cumulative_score +=
-                    self.log_marginals[depth][token_idx] + relevance.ln();
+                cumulative_score += self.log_marginals[depth][token_idx] + relevance.ln();
                 let node_path = parent_path.push(token_idx as u32, depth);
 
                 let node = TreeNode {
@@ -1322,10 +1331,15 @@ impl TreeBuilder {
                         if relevance <= threshold {
                             continue;
                         }
-                        let sibling_path = chain_node.parent_path.parent(chain_node.depth).push(i as u32, depth);
+                        let sibling_path = chain_node
+                            .parent_path
+                            .parent(chain_node.depth)
+                            .push(i as u32, depth);
 
                         self.heap.push(TreeNode {
-                            score: parent_chain_score + self.log_marginals[depth][i] + relevance.ln(),
+                            score: parent_chain_score
+                                + self.log_marginals[depth][i]
+                                + relevance.ln(),
                             depth,
                             token_idx: i,
                             parent_path: sibling_path,
@@ -1532,7 +1546,9 @@ impl TreeBuilder {
                 if self.tree.len() >= config.tree_budget {
                     break;
                 }
-                if depth >= depth_budgets.len() || self.depth_used_buf[depth] >= depth_budgets[depth] {
+                if depth >= depth_budgets.len()
+                    || self.depth_used_buf[depth] >= depth_budgets[depth]
+                {
                     break;
                 }
 
@@ -1556,9 +1572,7 @@ impl TreeBuilder {
                     break;
                 }
 
-                cumulative_score +=
-
-                    self.log_marginals[depth][token_idx] + relevance.ln();
+                cumulative_score += self.log_marginals[depth][token_idx] + relevance.ln();
                 let node_path = parent_path.push(token_idx as u32, depth);
 
                 let node = TreeNode {
@@ -1622,10 +1636,15 @@ impl TreeBuilder {
                         if relevance <= threshold {
                             continue;
                         }
-                        let sibling_path = chain_node.parent_path.parent(chain_node.depth).push(i as u32, depth);
+                        let sibling_path = chain_node
+                            .parent_path
+                            .parent(chain_node.depth)
+                            .push(i as u32, depth);
 
                         self.heap.push(TreeNode {
-                            score: parent_chain_score + self.log_marginals[depth][i] + relevance.ln(),
+                            score: parent_chain_score
+                                + self.log_marginals[depth][i]
+                                + relevance.ln(),
                             depth,
                             token_idx: i,
                             parent_path: sibling_path,
@@ -1839,8 +1858,7 @@ impl TreeBuilder {
                 prev_velocity = velocity;
 
                 // Blended score: ln(P_llm) + ln(R). Use the cached ln(prob).
-                cumulative_score +=
-                    self.log_marginals[depth][token_idx] + relevance.ln();
+                cumulative_score += self.log_marginals[depth][token_idx] + relevance.ln();
                 let node_path = parent_path.push(token_idx as u32, depth);
 
                 let node = TreeNode {
@@ -1922,10 +1940,15 @@ impl TreeBuilder {
                         if relevance <= threshold {
                             continue;
                         }
-                        let sibling_path = chain_node.parent_path.parent(chain_node.depth).push(i as u32, depth);
+                        let sibling_path = chain_node
+                            .parent_path
+                            .parent(chain_node.depth)
+                            .push(i as u32, depth);
 
                         self.heap.push(TreeNode {
-                            score: parent_chain_score + self.log_marginals[depth][i] + relevance.ln(),
+                            score: parent_chain_score
+                                + self.log_marginals[depth][i]
+                                + relevance.ln(),
                             depth,
                             token_idx: i,
                             parent_path: sibling_path,

@@ -17,9 +17,7 @@
 //! Compares sequential-vs-batched at N=1, N=4, N=8, N=16, N=32.
 
 use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
-use katgpt_core::{
-    FourierBasis, KarcBatchForecaster, KarcForecaster, karc_batched_matvec_into,
-};
+use katgpt_core::{FourierBasis, KarcBatchForecaster, KarcForecaster, karc_batched_matvec_into};
 
 /// Build a fitted `KarcForecaster` with a deterministic synthetic trajectory.
 /// Returns the forecaster + the seed delay state.
@@ -90,10 +88,8 @@ fn make_batch(
         singles.push(f);
         seeds.push(seed);
     }
-    let mut batch = KarcBatchForecaster::<FourierBasis<M>, D, M, K>::with_capacity(
-        FourierBasis::new(4.0),
-        n,
-    );
+    let mut batch =
+        KarcBatchForecaster::<FourierBasis<M>, D, M, K>::with_capacity(FourierBasis::new(4.0), n);
     for (i, f) in singles.iter().enumerate() {
         batch.set_wout(i, f.wout.clone());
     }
@@ -189,5 +185,10 @@ fn bench_sequential_n(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_pure_matvec, bench_batched_forecast, bench_sequential_n);
+criterion_group!(
+    benches,
+    bench_pure_matvec,
+    bench_batched_forecast,
+    bench_sequential_n
+);
 criterion_main!(benches);

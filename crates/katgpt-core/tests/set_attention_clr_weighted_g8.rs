@@ -16,8 +16,8 @@
 #![allow(clippy::too_many_lines)]
 
 use katgpt_core::set_attention::{
-    clr_reliability_scores, clr_weighted_set_attention_into, identity_projection,
-    set_sigmoid_attention_into, SetAttentionConfig,
+    SetAttentionConfig, clr_reliability_scores, clr_weighted_set_attention_into,
+    identity_projection, set_sigmoid_attention_into,
 };
 
 // ── Constants (matching the Issue 575 PoC) ─────────────────────────────────
@@ -114,11 +114,7 @@ fn norm(a: &[f32]) -> f32 {
 fn cosine_d_threat(state: &[f32]) -> f32 {
     // d_threat = [1, 0, 0, ..., 0], so dot(state, d_threat) = state[0].
     let n = norm(state);
-    if n > 1e-10 {
-        state[0] / n
-    } else {
-        0.0
-    }
+    if n > 1e-10 { state[0] / n } else { 0.0 }
 }
 
 /// Top-1 identification: argmax score == threat_idx.
@@ -142,14 +138,21 @@ fn plain_sa_scores(crowd: &Crowd) -> (Vec<f32>, Vec<f32>) {
     let cfg = SetAttentionConfig::new(SA_BETA, SA_GAMMA);
     let mut current = crowd.states.clone();
     let mut output = vec![0.0f32; N * D];
-    let (mut sq, mut sk, mut sa) = (
-        vec![0.0; N * K_PROJ],
-        vec![0.0; N * K_PROJ],
-        vec![0.0; N],
-    );
+    let (mut sq, mut sk, mut sa) = (vec![0.0; N * K_PROJ], vec![0.0; N * K_PROJ], vec![0.0; N]);
     for _ in 0..SA_TICKS {
         let _ = set_sigmoid_attention_into(
-            &current, &w, &w, None, &mut output, &cfg, N, D, K_PROJ, &mut sq, &mut sk, &mut sa,
+            &current,
+            &w,
+            &w,
+            None,
+            &mut output,
+            &cfg,
+            N,
+            D,
+            K_PROJ,
+            &mut sq,
+            &mut sk,
+            &mut sa,
         );
         core::mem::swap(&mut current, &mut output);
     }
@@ -295,15 +298,22 @@ fn g8b_clr_weighted_sa_aggregate_amplification() {
             // Plain SA for SA_TICKS ticks.
             let mut plain_current = crowd.states.clone();
             let mut plain_output = vec![0.0f32; N * D];
-            let (mut sq, mut sk, mut sa) = (
-                vec![0.0; N * K_PROJ],
-                vec![0.0; N * K_PROJ],
-                vec![0.0; N],
-            );
+            let (mut sq, mut sk, mut sa) =
+                (vec![0.0; N * K_PROJ], vec![0.0; N * K_PROJ], vec![0.0; N]);
             for _ in 0..SA_TICKS {
                 let _ = set_sigmoid_attention_into(
-                    &plain_current, &w, &w, None, &mut plain_output, &cfg, N, D, K_PROJ,
-                    &mut sq, &mut sk, &mut sa,
+                    &plain_current,
+                    &w,
+                    &w,
+                    None,
+                    &mut plain_output,
+                    &cfg,
+                    N,
+                    D,
+                    K_PROJ,
+                    &mut sq,
+                    &mut sk,
+                    &mut sa,
                 );
                 core::mem::swap(&mut plain_current, &mut plain_output);
             }
@@ -312,16 +322,24 @@ fn g8b_clr_weighted_sa_aggregate_amplification() {
             let mut clr_current = crowd.states.clone();
             let mut clr_output = vec![0.0f32; N * D];
             let mut reliability = vec![0.0f32; N];
-            let (mut sq2, mut sk2, mut sa2) = (
-                vec![0.0; N * K_PROJ],
-                vec![0.0; N * K_PROJ],
-                vec![0.0; N],
-            );
+            let (mut sq2, mut sk2, mut sa2) =
+                (vec![0.0; N * K_PROJ], vec![0.0; N * K_PROJ], vec![0.0; N]);
             for _ in 0..SA_TICKS {
                 clr_reliability_scores(&clr_current, &directions, M_CLR, N, D, &mut reliability);
                 let _ = clr_weighted_set_attention_into(
-                    &clr_current, &w, &w, None, &reliability, &mut clr_output, &cfg, N, D, K_PROJ,
-                    &mut sq2, &mut sk2, &mut sa2,
+                    &clr_current,
+                    &w,
+                    &w,
+                    None,
+                    &reliability,
+                    &mut clr_output,
+                    &cfg,
+                    N,
+                    D,
+                    K_PROJ,
+                    &mut sq2,
+                    &mut sk2,
+                    &mut sa2,
                 );
                 core::mem::swap(&mut clr_current, &mut clr_output);
             }

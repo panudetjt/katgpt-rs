@@ -19,7 +19,6 @@
 //! Single reference over-anchors rubric to one trajectory.
 //! [`RubricGatedConfig::min_references`] defaults to 2 to enforce this.
 
-
 use crate::absorb_compress::{AbsorbCompress, AbsorbCompressLayer};
 use crate::review_metrics::ReviewMetrics;
 use katgpt_speculative::ScreeningPruner;
@@ -296,9 +295,7 @@ impl<P: ScreeningPruner> RubricGatedAbsorbCompress<P> {
     /// Whether an arm's rubric gaps exceed the threshold.
     #[inline]
     pub fn is_above_threshold(&self, arm: usize) -> bool {
-        self.arm_states
-            .get(arm)
-            .is_some_and(|s| s.above_threshold)
+        self.arm_states.get(arm).is_some_and(|s| s.above_threshold)
     }
 
     /// Get the last computed gaps for an arm.

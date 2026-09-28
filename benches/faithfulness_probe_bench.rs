@@ -92,9 +92,7 @@ fn main() {
     // Same audit-cadence target (<1ms per segment); the two new probe methods
     // each cost one copy + one perturb + one consumer call (no rng for the
     // swap; Box-Muller per element for the noise).
-    println!(
-        "\n=== Issue 776 contrastive interventions (audit cadence) ===\n"
-    );
+    println!("\n=== Issue 776 contrastive interventions (audit cadence) ===\n");
     println!(
         "{:>6} {:>18} {:>18} {:>14} {:>14}",
         "n_dim", "us/matched_swap", "us/norm_noise", "swap PASS", "noise PASS"
@@ -132,8 +130,6 @@ fn main() {
         } else {
             ("FAIL ❌", "FAIL ❌")
         };
-        println!(
-            "{n:>6} {us_swap:>18.2} {us_noise:>18.2} {swap_v:>14} {noise_v:>14}"
-        );
+        println!("{n:>6} {us_swap:>18.2} {us_noise:>18.2} {swap_v:>14} {noise_v:>14}");
     }
 }

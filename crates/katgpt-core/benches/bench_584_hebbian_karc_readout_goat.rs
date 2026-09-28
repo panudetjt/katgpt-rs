@@ -27,7 +27,7 @@
 #![cfg(feature = "karc_hebbian_readout")]
 
 use katgpt_core::hebbian_kernel_memory::{HebbianMlpConfig, HebbianVariant};
-use katgpt_core::karc::hebbian_readout::{HebbianKarcReadout, HEBBIAN_KARC_DIM};
+use katgpt_core::karc::hebbian_readout::{HEBBIAN_KARC_DIM, HebbianKarcReadout};
 use katgpt_core::karc::{ChebyshevBasis, KarcForecaster};
 use std::hint::black_box;
 use std::time::Instant;
@@ -96,7 +96,12 @@ fn seed_of(delays: &[&[f32]], targets: &[&[f32]]) -> u64 {
 }
 
 fn config() -> HebbianMlpConfig {
-    HebbianMlpConfig { d: HEBBIAN_KARC_DIM, m: 128, ridge: 1e-6, variant: HebbianVariant::Whitened }
+    HebbianMlpConfig {
+        d: HEBBIAN_KARC_DIM,
+        m: 128,
+        ridge: 1e-6,
+        variant: HebbianVariant::Whitened,
+    }
 }
 
 // ─── Gates ─────────────────────────────────────────────────────────────────
@@ -144,9 +149,7 @@ fn g2a_fit_vs_fit_ridge() -> GateResult {
     // Hebbian arm (F=128 — its capacity regime).
     let t0 = Instant::now();
     for _ in 0..ITERS {
-        let _ = black_box(
-            HebbianKarcReadout::fit(&d_refs, &t_refs, config(), seed).expect("fit"),
-        );
+        let _ = black_box(HebbianKarcReadout::fit(&d_refs, &t_refs, config(), seed).expect("fit"));
     }
     let hebbian_per_fact = t0.elapsed().as_secs_f64() * 1e6 / ITERS as f64 / F as f64;
 
@@ -157,9 +160,17 @@ fn g2a_fit_vs_fit_ridge() -> GateResult {
     // Sane band: the Hebbian arm must be within 10× of fit_ridge per fact (it
     // does strictly more: construction + margin audit over F forwards).
     if ratio <= 10.0 && hebbian_per_fact.is_finite() && ridge_per_fact > 0.0 {
-        GateResult { name: "G2a fit vs fit_ridge (per-fact ratio)", passed: true, detail }
+        GateResult {
+            name: "G2a fit vs fit_ridge (per-fact ratio)",
+            passed: true,
+            detail,
+        }
     } else {
-        GateResult { name: "G2a fit vs fit_ridge (per-fact ratio)", passed: false, detail }
+        GateResult {
+            name: "G2a fit vs fit_ridge (per-fact ratio)",
+            passed: false,
+            detail,
+        }
     }
 }
 
@@ -170,7 +181,8 @@ fn g2b_forecast_latency() -> GateResult {
     let d_refs: Vec<&[f32]> = delays.iter().map(|d| &d[..]).collect();
     let t_refs: Vec<&[f32]> = targets.iter().map(|t| &t[..]).collect();
     let (readout, _) =
-        HebbianKarcReadout::fit(&d_refs, &t_refs, config(), seed_of(&d_refs, &t_refs)).expect("fit");
+        HebbianKarcReadout::fit(&d_refs, &t_refs, config(), seed_of(&d_refs, &t_refs))
+            .expect("fit");
 
     let mut phi = vec![0.0f32; 128];
     let mut out = [0.0f32; TARGET_DIM];
@@ -204,9 +216,17 @@ fn g2b_forecast_latency() -> GateResult {
         "forecast {per_query_us:.3} µs · direct forward {direct_us:.3} · wrapper Δ {delta:+.3} µs (target Δ ≤ 1; absolutes box-load-dependent)"
     );
     if delta <= 1.0 && per_query_us.is_finite() {
-        GateResult { name: "G2b forecast µs (wrapper Δ)", passed: true, detail }
+        GateResult {
+            name: "G2b forecast µs (wrapper Δ)",
+            passed: true,
+            detail,
+        }
     } else {
-        GateResult { name: "G2b forecast µs (wrapper Δ)", passed: false, detail }
+        GateResult {
+            name: "G2b forecast µs (wrapper Δ)",
+            passed: false,
+            detail,
+        }
     }
 }
 
@@ -216,7 +236,8 @@ fn g4_forecast_allocs() -> GateResult {
     let d_refs: Vec<&[f32]> = delays.iter().map(|d| &d[..]).collect();
     let t_refs: Vec<&[f32]> = targets.iter().map(|t| &t[..]).collect();
     let (readout, _) =
-        HebbianKarcReadout::fit(&d_refs, &t_refs, config(), seed_of(&d_refs, &t_refs)).expect("fit");
+        HebbianKarcReadout::fit(&d_refs, &t_refs, config(), seed_of(&d_refs, &t_refs))
+            .expect("fit");
     let mut phi = vec![0.0f32; 128];
     let mut out = [0.0f32; TARGET_DIM];
 
@@ -232,9 +253,17 @@ fn g4_forecast_allocs() -> GateResult {
     });
     let detail = format!("{allocs} allocs / 100 calls");
     if allocs == 0 {
-        GateResult { name: "G4 forecast_into allocs", passed: true, detail }
+        GateResult {
+            name: "G4 forecast_into allocs",
+            passed: true,
+            detail,
+        }
     } else {
-        GateResult { name: "G4 forecast_into allocs", passed: false, detail }
+        GateResult {
+            name: "G4 forecast_into allocs",
+            passed: false,
+            detail,
+        }
     }
 }
 
@@ -244,13 +273,25 @@ fn main() {
     println!("═════════════════════════════════════════════════════════════════");
     println!();
 
-    let gates = vec![g2a_fit_vs_fit_ridge(), g2b_forecast_latency(), g4_forecast_allocs()];
+    let gates = vec![
+        g2a_fit_vs_fit_ridge(),
+        g2b_forecast_latency(),
+        g4_forecast_allocs(),
+    ];
     for g in &gates {
-        println!("  {} — {} ({})", if g.passed { "✅ PASS" } else { "❌ FAIL" }, g.name, g.detail);
+        println!(
+            "  {} — {} ({})",
+            if g.passed { "✅ PASS" } else { "❌ FAIL" },
+            g.name,
+            g.detail
+        );
     }
     println!();
     let all_pass = gates.iter().all(|g| g.passed);
-    println!("  ─── Plan 584 T3 GOAT verdict: {} ───", if all_pass { "ALL PASS ✅" } else { "FAIL ❌" });
+    println!(
+        "  ─── Plan 584 T3 GOAT verdict: {} ───",
+        if all_pass { "ALL PASS ✅" } else { "FAIL ❌" }
+    );
     if !all_pass {
         std::process::exit(1);
     }

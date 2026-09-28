@@ -142,9 +142,7 @@ pub fn select_highest_attn_keys(
             desc_nan_last(&per_key_score[a], &per_key_score[b])
         });
     }
-    indices[..t].sort_by(|&a, &b| {
-        desc_nan_last(&per_key_score[a], &per_key_score[b])
-    });
+    indices[..t].sort_by(|&a, &b| desc_nan_last(&per_key_score[a], &per_key_score[b]));
     indices.truncate(t);
     // No NNLS weights here — caller will fit β separately.
     let weights = vec![1.0f32; t];

@@ -36,8 +36,7 @@ use katgpt_attn::mla_backward::{
     rmsnorm_backward as mla_rmsnorm_backward,
 };
 use katgpt_core::simd::{
-    simd_dot_f32, simd_matmul_rows, simd_outer_product_acc, simd_sum_sq,
-    simd_transpose_matvec_into,
+    simd_dot_f32, simd_matmul_rows, simd_outer_product_acc, simd_sum_sq, simd_transpose_matvec_into,
 };
 use katgpt_core::types::math::{rmsnorm_with_gamma_eps, situ};
 use katgpt_kv::shard_kv::rope::RopeFreqs;
@@ -181,7 +180,11 @@ pub struct LayerGradients {
 }
 
 impl LayerGradients {
-    pub fn zeros_like(config: &KimiK3ModelConfig, layer_idx: usize, weights: &KimiDecoderLayerWeights) -> Self {
+    pub fn zeros_like(
+        config: &KimiK3ModelConfig,
+        layer_idx: usize,
+        weights: &KimiDecoderLayerWeights,
+    ) -> Self {
         let d = config.hidden_size;
         let is_mla = config.is_mla_layer(layer_idx);
         let is_dense = layer_idx == 0;
@@ -285,7 +288,9 @@ pub fn kimi_k3_forward_token_saved(
 
     // Embedding lookup
     let embed_start = (token_id as usize) * d;
-    runtime.hidden.copy_from_slice(&weights.embed_weight[embed_start..embed_start + d]);
+    runtime
+        .hidden
+        .copy_from_slice(&weights.embed_weight[embed_start..embed_start + d]);
 
     // Decoder layers
     for (layer_idx, layer_w) in weights.layers.iter().enumerate() {
@@ -353,7 +358,11 @@ pub fn kimi_k3_forward_token_saved(
     let sum_sq = simd_sum_sq(&runtime.hidden, d);
     let inv_rms = 1.0 / ((sum_sq / d as f32 + config.rms_eps).sqrt());
     saved.final_norm_inv_rms = inv_rms;
-    rmsnorm_with_gamma_eps(&mut runtime.hidden, &weights.final_norm_weight, config.rms_eps as f64);
+    rmsnorm_with_gamma_eps(
+        &mut runtime.hidden,
+        &weights.final_norm_weight,
+        config.rms_eps as f64,
+    );
     saved.final_hidden = runtime.hidden.clone();
 
     // LM head
@@ -489,7 +498,11 @@ pub fn kimi_k3_forward_token_hidden_saved(
     let sum_sq = simd_sum_sq(&runtime.hidden, d);
     let inv_rms = 1.0 / ((sum_sq / d as f32 + config.rms_eps).sqrt());
     saved.final_norm_inv_rms = inv_rms;
-    rmsnorm_with_gamma_eps(&mut runtime.hidden, &weights.final_norm_weight, config.rms_eps as f64);
+    rmsnorm_with_gamma_eps(
+        &mut runtime.hidden,
+        &weights.final_norm_weight,
+        config.rms_eps as f64,
+    );
     saved.final_hidden = runtime.hidden.clone();
 
     // LM head.
@@ -557,16 +570,26 @@ fn forward_layer_saved(
 
     let attn_out: Vec<f32> = match (&config.attention, &weights.attention) {
         (KimiAttentionConfig::Mla(cfg), KimiAttentionWeights::Mla(w)) => {
-            let KimiAttentionState::Mla(cache) = attn_state else { panic!("MLA state mismatch") };
-            let KimiAttentionScratch::Mla(scratch) = attn_scratch else { panic!("MLA scratch mismatch") };
-            let Some(rf) = rope_freqs else { panic!("MLA needs rope") };
+            let KimiAttentionState::Mla(cache) = attn_state else {
+                panic!("MLA state mismatch")
+            };
+            let KimiAttentionScratch::Mla(scratch) = attn_scratch else {
+                panic!("MLA scratch mismatch")
+            };
+            let Some(rf) = rope_freqs else {
+                panic!("MLA needs rope")
+            };
             let (out, s) = mla_forward_token_with_saved(cfg, w, cache, scratch, rf, scratch_hidden);
             saved.mla_saved = Some(s);
             out
         }
         (KimiAttentionConfig::Kda(cfg), KimiAttentionWeights::Kda(w)) => {
-            let KimiAttentionState::Kda(cache) = attn_state else { panic!("KDA state mismatch") };
-            let KimiAttentionScratch::Kda(scratch) = attn_scratch else { panic!("KDA scratch mismatch") };
+            let KimiAttentionState::Kda(cache) = attn_state else {
+                panic!("KDA state mismatch")
+            };
+            let KimiAttentionScratch::Kda(scratch) = attn_scratch else {
+                panic!("KDA scratch mismatch")
+            };
             let (out, s) = kda_forward_token_with_saved(cfg, w, cache, scratch, scratch_hidden);
             saved.kda_saved = Some(s);
             out
@@ -601,18 +624,34 @@ fn forward_layer_saved(
     let sum_sq = simd_sum_sq(scratch_hidden, d);
     let inv_rms = 1.0 / ((sum_sq / d as f32 + eps).sqrt());
     saved.mlp_inv_rms = inv_rms;
-    rmsnorm_with_gamma_eps(scratch_hidden, &weights.post_attention_layernorm_weight, eps as f64);
+    rmsnorm_with_gamma_eps(
+        scratch_hidden,
+        &weights.post_attention_layernorm_weight,
+        eps as f64,
+    );
 
     let ffn_out: Vec<f32> = match (&config.ffn, &weights.ffn) {
-        (KimiFfnConfig::Dense { situ_beta, situ_linear_beta, .. }, KimiFfnWeights::Dense(expert)) => {
+        (
+            KimiFfnConfig::Dense {
+                situ_beta,
+                situ_linear_beta,
+                ..
+            },
+            KimiFfnWeights::Dense(expert),
+        ) => {
             let (out, s) = dense_situ_ffn_forward_saved(
-                expert, scratch_hidden, ffn_scratch, *situ_beta, *situ_linear_beta,
+                expert,
+                scratch_hidden,
+                ffn_scratch,
+                *situ_beta,
+                *situ_linear_beta,
             );
             saved.dense_saved = Some(s);
             out
         }
         (KimiFfnConfig::Moe(cfg), KimiFfnWeights::Moe(w)) => {
-            let (out, s) = moe_forward_token_with_saved(w, cfg, scratch_hidden, &mut ffn_scratch.moe);
+            let (out, s) =
+                moe_forward_token_with_saved(w, cfg, scratch_hidden, &mut ffn_scratch.moe);
             ffn_scratch.dense_out[..d].copy_from_slice(&out[..d]);
             saved.moe_saved = Some(s);
             out
@@ -636,10 +675,28 @@ pub(crate) fn dense_situ_ffn_forward_saved(
     let d_in = scratch.dense_out.len();
     let d_ffn = expert.gate_proj.len() / d_in;
 
-    simd_matmul_rows(&mut scratch.dense_gate, &expert.gate_proj, hidden, d_ffn, d_in);
+    simd_matmul_rows(
+        &mut scratch.dense_gate,
+        &expert.gate_proj,
+        hidden,
+        d_ffn,
+        d_in,
+    );
     simd_matmul_rows(&mut scratch.dense_up, &expert.up_proj, hidden, d_ffn, d_in);
-    situ(&mut scratch.dense_act, &scratch.dense_gate, &scratch.dense_up, beta, linear_beta);
-    simd_matmul_rows(&mut scratch.dense_out, &expert.down_proj, &scratch.dense_act, d_in, d_ffn);
+    situ(
+        &mut scratch.dense_act,
+        &scratch.dense_gate,
+        &scratch.dense_up,
+        beta,
+        linear_beta,
+    );
+    simd_matmul_rows(
+        &mut scratch.dense_out,
+        &expert.down_proj,
+        &scratch.dense_act,
+        d_in,
+        d_ffn,
+    );
 
     let saved = DenseFfnSavedActivations {
         h: hidden.to_vec(),
@@ -691,7 +748,13 @@ pub fn kimi_k3_backward_sequence(
     grads: &mut KimiK3ModelGradients,
 ) {
     kimi_k3_backward_sequence_with_input_grad(
-        config, weights, runtime, saved_tokens, d_logits, grads, None,
+        config,
+        weights,
+        runtime,
+        saved_tokens,
+        d_logits,
+        grads,
+        None,
     );
 }
 
@@ -745,7 +808,13 @@ pub fn kimi_k3_backward_sequence_with_input_grad(
         // LM head backward: dL/d(final_hidden) = lm_head^T · dL/d(logits)
         let mut d_fh = vec![0.0f32; d];
         simd_transpose_matvec_into(&mut d_fh, &weights.lm_head_weight, &d_logits[t], v, d);
-        simd_outer_product_acc(&mut grads.lm_head_weight, &d_logits[t], &saved.final_hidden, v, d);
+        simd_outer_product_acc(
+            &mut grads.lm_head_weight,
+            &d_logits[t],
+            &saved.final_hidden,
+            v,
+            d,
+        );
 
         // Final RMSNorm backward → dL/d(pre_final_norm = post-output-attn-res hidden)
         let d_pre_fn = mla_rmsnorm_backward(
@@ -807,8 +876,13 @@ pub fn kimi_k3_backward_sequence_with_input_grad(
             // token per layer.
 
             // FFN backward → dL/d(normed_mlp) + FFN weight grads
-            let d_normed_mlp =
-                ffn_backward(&layer_cfg.ffn, &layer_w.ffn, saved, &d_prefix[t], layer_grads);
+            let d_normed_mlp = ffn_backward(
+                &layer_cfg.ffn,
+                &layer_w.ffn,
+                saved,
+                &d_prefix[t],
+                layer_grads,
+            );
 
             // Post-attn RMSNorm backward → dL/d(mixed_mlp)
             let d_mixed_mlp = mla_rmsnorm_backward(
@@ -1042,10 +1116,24 @@ pub(crate) fn ffn_backward(
     layer_grads: &mut LayerGradients,
 ) -> Vec<f32> {
     match (ffn_config, ffn_weights) {
-        (KimiFfnConfig::Dense { situ_beta, situ_linear_beta, .. }, KimiFfnWeights::Dense(expert)) => {
+        (
+            KimiFfnConfig::Dense {
+                situ_beta,
+                situ_linear_beta,
+                ..
+            },
+            KimiFfnWeights::Dense(expert),
+        ) => {
             let dense_saved = saved.dense_saved.as_ref().unwrap();
             let dense_grads = layer_grads.dense_grads.as_mut().unwrap();
-            dense_situ_ffn_backward(expert, dense_saved, d_output, dense_grads, *situ_beta, *situ_linear_beta)
+            dense_situ_ffn_backward(
+                expert,
+                dense_saved,
+                d_output,
+                dense_grads,
+                *situ_beta,
+                *situ_linear_beta,
+            )
         }
         (KimiFfnConfig::Moe(moe_cfg), KimiFfnWeights::Moe(moe_w)) => {
             let moe_saved = saved.moe_saved.as_ref().unwrap();
@@ -1159,7 +1247,11 @@ pub fn attn_res_backward(
     }
 
     // ── Softmax backward: dL/dscore[i] = prob[i] * (d_prob[i] - Σ_j prob[j]*d_prob[j]) ──
-    let dot_prob_dprob: f32 = probs.iter().zip(d_probs.iter()).map(|(&p, &dp)| p * dp).sum();
+    let dot_prob_dprob: f32 = probs
+        .iter()
+        .zip(d_probs.iter())
+        .map(|(&p, &dp)| p * dp)
+        .sum();
     let d_scores: Vec<f32> = probs
         .iter()
         .zip(d_probs.iter())
@@ -1326,7 +1418,7 @@ fn situ_backward(
             let u = up_inter[i];
             let da = d_act[i];
             let gs = 1.0 / (1.0 + (-g).exp()); // sigmoid(g)
-            let gt = (g * inv_beta).tanh();    // tanh(g/beta)
+            let gt = (g * inv_beta).tanh(); // tanh(g/beta)
             // `tanh(u/lb)` was evaluated TWICE per element (once inside `ut`, once
             // as `tanh_u`). Compute it once and derive `ut = lb * tanh_u` — the
             // exact same expression tree, so bit-identical, but it removes one

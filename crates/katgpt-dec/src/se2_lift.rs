@@ -121,7 +121,14 @@ pub fn se2_lift_into(
     // For N=1 (no orientation) we just write the un-rotated correlation directly.
     // (Mathematically: θ_0 = 0, identity rotation.)
     if n_orientations == 1 {
-        correlate_centered_into(field, field_w, field_h, kernel, k, &mut out[..field_w * field_h]);
+        correlate_centered_into(
+            field,
+            field_w,
+            field_h,
+            kernel,
+            k,
+            &mut out[..field_w * field_h],
+        );
         return;
     }
 
@@ -199,7 +206,12 @@ pub fn se2_lift_into(
 /// `lifted` is `[n_cells * n_orientations]` indexed as `[(cell)*n_orient + θ]`.
 /// `out` is `[n_cells]`.
 #[inline]
-pub fn se2_project_integrate_into(lifted: &[f32], n_cells: usize, n_orientations: usize, out: &mut [f32]) {
+pub fn se2_project_integrate_into(
+    lifted: &[f32],
+    n_cells: usize,
+    n_orientations: usize,
+    out: &mut [f32],
+) {
     debug_assert!(
         lifted.len() >= n_cells * n_orientations,
         "se2_project_integrate_into: lifted.len={} < n_cells*n_orient={}",
@@ -233,7 +245,12 @@ pub fn se2_project_integrate_into(lifted: &[f32], n_cells: usize, n_orientations
 /// `lifted` is `[n_cells * n_orientations]` indexed as `[(cell)*n_orient + θ]`.
 /// `out` is `[n_cells]`.
 #[inline]
-pub fn se2_project_max_into(lifted: &[f32], n_cells: usize, n_orientations: usize, out: &mut [f32]) {
+pub fn se2_project_max_into(
+    lifted: &[f32],
+    n_cells: usize,
+    n_orientations: usize,
+    out: &mut [f32],
+) {
     debug_assert!(
         lifted.len() >= n_cells * n_orientations,
         "se2_project_max_into: lifted.len={} < n_cells*n_orient={}",
@@ -294,7 +311,14 @@ fn sample_bilinear(grid: &[f32], h: usize, w: usize, y: f32, x: f32) -> f32 {
 /// Direct centered correlation — used for the N=1 fast path.
 /// `out[y*W + x] = Σ_{ky,kx} kernel[ky*K+kx] · field[(y+ky-c, x+kx-c)]` with zero-padding.
 #[inline]
-fn correlate_centered_into(field: &[f32], w: usize, h: usize, kernel: &[f32], k: usize, out: &mut [f32]) {
+fn correlate_centered_into(
+    field: &[f32],
+    w: usize,
+    h: usize,
+    kernel: &[f32],
+    k: usize,
+    out: &mut [f32],
+) {
     let kc = (k - 1) as isize / 2;
     for y in 0..h {
         for x in 0..w {
@@ -368,9 +392,7 @@ mod tests {
         }
 
         // Asymmetric 3×3 kernel.
-        let kernel = [0.0f32, 1.0, 0.0,
-                       2.0,  4.0, 0.0,
-                       0.0, -1.0, 0.0];
+        let kernel = [0.0f32, 1.0, 0.0, 2.0, 4.0, 0.0, 0.0, -1.0, 0.0];
         let n = 8usize;
         let mut lifted_orig = vec![0.0f32; w * h * n];
         se2_lift_into(&field, w, h, &kernel, 3, n, &mut lifted_orig);
@@ -441,9 +463,7 @@ mod tests {
             }
         }
 
-        let kernel = [0.0f32, 0.0, 1.0,
-                       0.0,  2.0, 0.0,
-                       0.0,  0.0, 0.0];
+        let kernel = [0.0f32, 0.0, 1.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0];
         let n = 8usize;
         let mut lifted_orig = vec![0.0f32; w * h * n];
         se2_lift_into(&field, w, h, &kernel, 3, n, &mut lifted_orig);
@@ -552,7 +572,7 @@ mod tests {
         let n_orient = 4;
         let lifted = vec![
             -1.0, 5.0, 2.0, -3.0, // cell 0: max = 5
-            0.0, 0.0, 0.0, 7.5,   // cell 1: max = 7.5
+            0.0, 0.0, 0.0, 7.5, // cell 1: max = 7.5
         ];
         let mut out = vec![0.0f32; n_cells];
         se2_project_max_into(&lifted, n_cells, n_orient, &mut out);
@@ -587,7 +607,10 @@ mod tests {
         for cell in 0..w * h {
             let got = lifted[cell * 4];
             let want = field[cell];
-            assert!((got - want).abs() < 1e-5, "cell {cell}: got {got} want {want}");
+            assert!(
+                (got - want).abs() < 1e-5,
+                "cell {cell}: got {got} want {want}"
+            );
         }
     }
 }

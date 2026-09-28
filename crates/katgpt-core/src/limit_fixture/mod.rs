@@ -168,7 +168,11 @@ impl Rng {
         x.wrapping_mul(0x2545_F491_4F6C_DD1D)
     }
     fn below(&mut self, n: usize) -> usize {
-        if n == 0 { 0 } else { (self.next_u64() % n as u64) as usize }
+        if n == 0 {
+            0
+        } else {
+            (self.next_u64() % n as u64) as usize
+        }
     }
 }
 
@@ -214,7 +218,11 @@ pub fn build_limit(cfg: &LimitConfig) -> LimitFixture {
     // Enumerate a generous superset, then shuffle and truncate. Truncating
     // *before* shuffling would bias every query toward lexicographically-early
     // documents, which would leak positional signal into the relevance structure.
-    let cap = cfg.n_queries.saturating_mul(4).max(cfg.n_queries).min(MAX_SUBSETS);
+    let cap = cfg
+        .n_queries
+        .saturating_mul(4)
+        .max(cfg.n_queries)
+        .min(MAX_SUBSETS);
     let mut subsets = combinations(cfg.n_relevant, cfg.k, cap);
 
     // Deterministic Fisher-Yates so query order carries no positional signal.
@@ -249,13 +257,9 @@ pub fn build_limit(cfg: &LimitConfig) -> LimitFixture {
     // Filler tokens come from a slot range disjoint from the query attributes,
     // so padding can never accidentally satisfy a query.
     let filler_base = subsets.len() * 2 + 1;
-    let target_attrs = cfg.attrs_per_doc.max(
-        doc_attrs
-            .iter()
-            .map(|a| a.len())
-            .max()
-            .unwrap_or(0),
-    );
+    let target_attrs = cfg
+        .attrs_per_doc
+        .max(doc_attrs.iter().map(|a| a.len()).max().unwrap_or(0));
     for attrs in doc_attrs.iter_mut() {
         while attrs.len() < target_attrs {
             attrs.push(token(filler_base + rng.below(4096) * 2));
@@ -267,7 +271,11 @@ pub fn build_limit(cfg: &LimitConfig) -> LimitFixture {
         .into_iter()
         .enumerate()
         .map(|(i, attributes)| {
-            let name = format!("{} {}", token(filler_base + 8192 + i * 2), token(filler_base + 16384 + i * 2));
+            let name = format!(
+                "{} {}",
+                token(filler_base + 8192 + i * 2),
+                token(filler_base + 16384 + i * 2)
+            );
             let body = attributes.join(" and likes ");
             LimitDoc {
                 text: format!("{name} likes {body}"),
@@ -296,7 +304,10 @@ pub fn recall_at_k(ranked: &[usize], relevant: &[usize], k: usize) -> f32 {
         return 1.0;
     }
     let cut = k.min(ranked.len());
-    let hits = ranked[..cut].iter().filter(|d| relevant.contains(d)).count();
+    let hits = ranked[..cut]
+        .iter()
+        .filter(|d| relevant.contains(d))
+        .count();
     hits as f32 / relevant.len() as f32
 }
 

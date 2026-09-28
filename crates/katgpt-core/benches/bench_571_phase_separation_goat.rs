@@ -265,7 +265,9 @@ fn main() {
     if all_pass {
         println!("  ── G2/G4 ALL PASS ──");
         println!("  G1 (determinism + LRC bound) verified in lib tests:");
-        println!("    cargo test -p katgpt-core --features phase_separation --lib phase_separation");
+        println!(
+            "    cargo test -p katgpt-core --features phase_separation --lib phase_separation"
+        );
         println!("  G3 (no-regression) verified externally:");
         println!("    cargo test -p katgpt-core --lib                          (feature off)");
         println!("    cargo test -p katgpt-core --lib --features phase_separation (feature on)");

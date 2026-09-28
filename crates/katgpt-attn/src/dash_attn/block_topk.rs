@@ -1178,8 +1178,7 @@ mod tests {
                 let mut pairs = Vec::new();
                 argtopk_with_scratch(&scores, k, &mut indices, &mut pairs);
 
-                let mut ref_pairs: Vec<(usize, f32)> =
-                    scores.iter().copied().enumerate().collect();
+                let mut ref_pairs: Vec<(usize, f32)> = scores.iter().copied().enumerate().collect();
                 ref_pairs.sort_by(|a, b| b.1.total_cmp(&a.1));
                 let expected: Vec<usize> = ref_pairs[..k].iter().map(|(i, _)| *i).collect();
                 assert_eq!(indices, expected, "n={n} k={k}");
@@ -1248,8 +1247,7 @@ mod tests {
                 let mut indices = Vec::new();
                 unsafe { argtopk_avx2_kernel(&scores, k, &mut indices) };
 
-                let mut ref_pairs: Vec<(usize, f32)> =
-                    scores.iter().copied().enumerate().collect();
+                let mut ref_pairs: Vec<(usize, f32)> = scores.iter().copied().enumerate().collect();
                 ref_pairs.sort_by(|a, b| b.1.total_cmp(&a.1));
                 let expected: Vec<usize> = ref_pairs[..k].iter().map(|(i, _)| *i).collect();
                 assert_eq!(indices, expected, "partial tail: n={n} k={k}");

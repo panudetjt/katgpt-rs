@@ -312,7 +312,10 @@ fn r287_s4_hla_evolve_is_l1() {
     )
     .with_evidence(L1_ITEMS);
     let g = ClaimValidator.grade(&claim);
-    assert_eq!(g.honest_level, L1, "R287 §4 row 6: belief evolve_belief is L1");
+    assert_eq!(
+        g.honest_level, L1,
+        "R287 §4 row 6: belief evolve_belief is L1"
+    );
     assert!(!g.downgraded);
 }
 

@@ -30,7 +30,6 @@
 //! Plan 125: RMSD relevance-masked self-distillation.
 //! Feature gate: `rmsd_distill`
 
-
 // ── Config ──────────────────────────────────────────────────────
 
 /// RMSD configuration for modelless path.

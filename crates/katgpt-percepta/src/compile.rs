@@ -433,7 +433,8 @@ pub fn compile_rust_to_wasm(rust_source: &str) -> Result<Vec<u8>, CompileError> 
             // the arg must be the raw linker flag — a `-Wl,` prefix (the cc
             // driver form) reaches lld verbatim and fails with
             // "unknown argument".
-            "-C", "link-args=--export=__heap_base",
+            "-C",
+            "link-args=--export=__heap_base",
             "-o",
         ])
         .arg(&wasm_path)
@@ -1690,8 +1691,8 @@ mod tests {
 
     #[test]
     fn test_write_runtime_h() {
-        let temp_dir = std::env::temp_dir()
-            .join(format!("microgpt-test-runtime_{}", std::process::id()));
+        let temp_dir =
+            std::env::temp_dir().join(format!("microgpt-test-runtime_{}", std::process::id()));
         let _ = fs::create_dir_all(&temp_dir);
         let path = write_runtime_h(&temp_dir).unwrap();
 

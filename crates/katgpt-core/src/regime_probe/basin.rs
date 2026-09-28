@@ -239,7 +239,15 @@ pub fn basin_probe(
 ) -> BasinReport {
     let mut scratch = BasinScratch::new(renovator.len(), renovator.alphabet());
     let mut report = BasinReport::default();
-    basin_probe_into(renovator, original, rho, sweeps, seed, &mut scratch, &mut report);
+    basin_probe_into(
+        renovator,
+        original,
+        rho,
+        sweeps,
+        seed,
+        &mut scratch,
+        &mut report,
+    );
     report
 }
 
@@ -290,7 +298,15 @@ mod tests {
     #[test]
     fn oracle_renovator_recovers_everything() {
         let original = seq(40);
-        let r = basin_probe(&Oracle { answer: original.clone() }, &original, 0.4, 2, 7);
+        let r = basin_probe(
+            &Oracle {
+                answer: original.clone(),
+            },
+            &original,
+            0.4,
+            2,
+            7,
+        );
         assert_eq!(r.n_corrupted, 16, "round(0.4·40)");
         assert_eq!(r.recovered, 16);
         assert_eq!(r.recovery_rate, 1.0);
@@ -300,7 +316,15 @@ mod tests {
     #[test]
     fn contrary_renovator_recovers_nothing() {
         let original = seq(40);
-        let r = basin_probe(&Contrary { answer: original.clone() }, &original, 0.5, 3, 7);
+        let r = basin_probe(
+            &Contrary {
+                answer: original.clone(),
+            },
+            &original,
+            0.5,
+            3,
+            7,
+        );
         assert_eq!(r.n_corrupted, 20);
         assert_eq!(r.recovered, 0);
         assert_eq!(r.recovery_rate, 0.0);
@@ -309,7 +333,15 @@ mod tests {
     #[test]
     fn zero_rho_is_vacuous_not_fabricated() {
         let original = seq(16);
-        let r = basin_probe(&Oracle { answer: original.clone() }, &original, 0.0, 2, 7);
+        let r = basin_probe(
+            &Oracle {
+                answer: original.clone(),
+            },
+            &original,
+            0.0,
+            2,
+            7,
+        );
         assert_eq!(r.n_corrupted, 0);
         assert_eq!(r.recovery_rate, 1.0);
         assert_eq!(r.overlap, 1.0);
@@ -318,7 +350,9 @@ mod tests {
     #[test]
     fn determinism_bit_identical_twice() {
         let original = seq(64);
-        let ren = Oracle { answer: original.clone() };
+        let ren = Oracle {
+            answer: original.clone(),
+        };
         let a = basin_probe(&ren, &original, 0.35, 2, 0xDEADBEEF);
         let b = basin_probe(&ren, &original, 0.35, 2, 0xDEADBEEF);
         assert_eq!(a.artifact, b.artifact);
@@ -332,7 +366,15 @@ mod tests {
     #[test]
     fn zero_sweeps_is_the_pure_corruption_control() {
         let original = seq(32);
-        let r = basin_probe(&Oracle { answer: original.clone() }, &original, 0.5, 0, 7);
+        let r = basin_probe(
+            &Oracle {
+                answer: original.clone(),
+            },
+            &original,
+            0.5,
+            0,
+            7,
+        );
         assert_eq!(r.recovered, 0, "no sweeps → no renovation → no recovery");
         assert!(r.overlap < 1.0);
     }

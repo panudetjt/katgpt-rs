@@ -379,7 +379,10 @@ mod tests {
             let s = snap(1.0, 7);
             let id = s.snapshot_id();
             assert_eq!(id.version, 7, "the ordinal must be the generation counter");
-            assert_eq!(id.commitment, s.blake3, "the commitment must be the verified hash");
+            assert_eq!(
+                id.commitment, s.blake3,
+                "the commitment must be the verified hash"
+            );
             assert!(!id.is_unversioned());
         }
 
@@ -408,7 +411,10 @@ mod tests {
             assert!(id.is_unversioned());
             let bound = SnapshotBound::new(0.73f32, id);
             assert_eq!(bound.staleness(id), Staleness::Unversioned);
-            assert!(bound.get(id).is_none(), "an unversioned identity must refuse");
+            assert!(
+                bound.get(id).is_none(),
+                "an unversioned identity must refuse"
+            );
         }
 
         /// The whole point, end to end: a calibration fitted under the live
@@ -461,7 +467,11 @@ mod tests {
 
             store.swap(snap(2.0, 2)).expect("verified swap installs");
 
-            assert_eq!(held.snapshot_id(), held_id, "the held snapshot is unchanged");
+            assert_eq!(
+                held.snapshot_id(),
+                held_id,
+                "the held snapshot is unchanged"
+            );
             assert_ne!(store.snapshot_id().expect("read"), held_id);
             let bound = SnapshotBound::new(0.73f32, held_id);
             assert_eq!(bound.get(held_id), Some(&0.73));
@@ -476,7 +486,10 @@ mod tests {
             let before = store.snapshot_id().expect("uncontended read");
             let mut bad = snap(2.0, 2);
             bad.blake3 = [0u8; 32];
-            assert!(store.swap(bad).is_err(), "an unverifiable snapshot must be refused");
+            assert!(
+                store.swap(bad).is_err(),
+                "an unverifiable snapshot must be refused"
+            );
             assert_eq!(store.snapshot_id().expect("read"), before);
         }
 

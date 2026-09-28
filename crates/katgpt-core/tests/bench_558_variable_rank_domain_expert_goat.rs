@@ -36,8 +36,7 @@
 
 use katgpt_core::committed_field_blend::{ArchetypeFieldSource, CommittedFieldBlend};
 use katgpt_core::variable_rank_domain_expert::{
-    pick_domain, project_guided, scatter_guided, ClusterHolder, RoutingVerdict,
-    VariableRankRouter,
+    ClusterHolder, RoutingVerdict, VariableRankRouter, pick_domain, project_guided, scatter_guided,
 };
 use katgpt_core::variable_rank_router_static;
 use std::time::Instant;
@@ -56,7 +55,12 @@ impl<const D: usize> DirectionField<D> {
             let x = (seed * 37 + i * 13) as f32;
             *slot = ((x * 0.1).sin() + (x * 0.07).cos()) * 0.5;
         }
-        let norm: f32 = direction.iter().map(|v| v * v).sum::<f32>().sqrt().max(1e-8);
+        let norm: f32 = direction
+            .iter()
+            .map(|v| v * v)
+            .sum::<f32>()
+            .sqrt()
+            .max(1e-8);
         for v in direction.iter_mut() {
             *v /= norm;
         }
@@ -153,7 +157,8 @@ impl Baseline {
         let mut scratch = [0.0f32; 32];
         let mut out = [0.0f32; 32];
         self.blend.pi = *pi_override;
-        self.blend.apply_blended(&fields_ref, z, &mut scratch, &mut out);
+        self.blend
+            .apply_blended(&fields_ref, z, &mut scratch, &mut out);
         // Winning archetype = highest pi (sigmoid monotonicity)
         let mut winner = 0usize;
         let mut best = pi_override[0];
@@ -201,11 +206,8 @@ fn make_router() -> VariableRankRouter<3, 32, 3> {
     let quest_cluster = Box::new(ClusterHolder::<3, 32>::new(quest_blend, quest_fields));
 
     let domain_directions: [[f32; 3]; 3] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
-    let projection_indices: [Vec<usize>; 3] = [
-        (0..8).collect(),
-        (0..16).collect(),
-        (0..32).collect(),
-    ];
+    let projection_indices: [Vec<usize>; 3] =
+        [(0..8).collect(), (0..16).collect(), (0..32).collect()];
 
     VariableRankRouter::<3, 32, 3>::new(
         [move_cluster, combat_cluster, quest_cluster],
@@ -412,8 +414,12 @@ fn g2_perf_inner(n_npcs: usize, label: &str) {
     };
 
     println!("\n═══ Plan 558 G2 Perf Bench ({label} NPCs) ═══");
-    println!("  Baseline <3,32>:    {baseline_latency_ns:.1} ns/NPC, entropy = {baseline_entropy:.3} bits");
-    println!("  Variable-rank:      {router_latency_ns:.1} ns/NPC, entropy = {router_entropy:.3} bits");
+    println!(
+        "  Baseline <3,32>:    {baseline_latency_ns:.1} ns/NPC, entropy = {baseline_entropy:.3} bits"
+    );
+    println!(
+        "  Variable-rank:      {router_latency_ns:.1} ns/NPC, entropy = {router_entropy:.3} bits"
+    );
     println!("  Latency ratio:      {ratio:.3}× (pass: ≤ 1.0× in release)");
     println!("  Entropy ratio:      {entropy_ratio:.3}× (G3 target: ≥ 1.5×)");
     println!("  Baseline winners:   {baseline_winners:?}");
@@ -639,11 +645,7 @@ fn g5_determinism_bit_identical_across_runs() {
 fn sanity_pick_project_scatter() {
     // pick_domain
     let activity = [0.1, 0.8, 0.1];
-    let dirs: [[f32; 3]; 3] = [
-        [1.0, 0.0, 0.0],
-        [0.0, 1.0, 0.0],
-        [0.0, 0.0, 1.0],
-    ];
+    let dirs: [[f32; 3]; 3] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
     assert_eq!(pick_domain::<3, 3>(&activity, &dirs), 1);
 
     // project_guided

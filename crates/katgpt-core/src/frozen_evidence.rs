@@ -123,7 +123,13 @@ pub fn transition_into(h: &[f32], evidence: &FrozenEvidence, f_out: &mut [f32]) 
 ///
 /// Default budget (CVRR): `t_steps = 4`, `β = 0.5` — the +9.9% latency
 /// class of one shared layer reused four times.
-pub fn deliberate(h: &mut [f32], evidence: &FrozenEvidence, t_steps: usize, beta: f32, scratch: &mut [f32]) {
+pub fn deliberate(
+    h: &mut [f32],
+    evidence: &FrozenEvidence,
+    t_steps: usize,
+    beta: f32,
+    scratch: &mut [f32],
+) {
     if t_steps == 0 || h.is_empty() {
         return;
     }
@@ -234,7 +240,11 @@ mod tests {
         // Two 8-d rows, each normalized to unit L2.
         let mut buf = seed_vals;
         for r in 0..2 {
-            let norm: f32 = buf[r * D..(r + 1) * D].iter().map(|x| x * x).sum::<f32>().sqrt();
+            let norm: f32 = buf[r * D..(r + 1) * D]
+                .iter()
+                .map(|x| x * x)
+                .sum::<f32>()
+                .sqrt();
             if norm > 1e-9 {
                 for x in &mut buf[r * D..(r + 1) * D] {
                     *x /= norm;
@@ -334,18 +344,21 @@ mod tests {
             gate_map_into(&h, &ev, &mut m);
             maps.push(m);
         }
-        let drifts: Vec<f32> = maps
-            .windows(2)
-            .map(|w| cosine(&w[0], &w[1]))
-            .collect();
+        let drifts: Vec<f32> = maps.windows(2).map(|w| cosine(&w[0], &w[1])).collect();
         assert_eq!(classify_drift(&drifts), RecurrenceHealth::DriftStuck);
     }
 
     #[test]
     fn classify_drift_bands_direct() {
-        assert_eq!(classify_drift(&[1.0, 0.9995, 1.0]), RecurrenceHealth::DriftStuck);
+        assert_eq!(
+            classify_drift(&[1.0, 0.9995, 1.0]),
+            RecurrenceHealth::DriftStuck
+        );
         assert_eq!(classify_drift(&[0.0, 0.01]), RecurrenceHealth::NoCarry);
-        assert_eq!(classify_drift(&[0.37, 0.35, 0.4]), RecurrenceHealth::Healthy);
+        assert_eq!(
+            classify_drift(&[0.37, 0.35, 0.4]),
+            RecurrenceHealth::Healthy
+        );
         assert_eq!(classify_drift(&[]), RecurrenceHealth::Healthy);
         // Mixed (some stuck, some not) → Healthy band by construction.
         assert_eq!(classify_drift(&[1.0, 0.3]), RecurrenceHealth::Healthy);

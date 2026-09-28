@@ -18,10 +18,10 @@ pub mod moe;
 // GPU backward. Gated behind `moe_backward` (implies `transformer_moe`).
 // katgpt-rs is modelless-by-mandate; this is the training-time reference
 // consumed by riir-train, never on the production inference path.
-#[cfg(feature = "moe_backward")]
-pub mod moe_backward;
 #[cfg(feature = "transformer_attn_res")]
 pub mod attn_res;
+#[cfg(feature = "moe_backward")]
+pub mod moe_backward;
 mod mtp;
 mod weights;
 

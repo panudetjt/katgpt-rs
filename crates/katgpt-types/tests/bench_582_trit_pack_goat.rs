@@ -98,7 +98,7 @@ fn dense_matrix(rows: usize, cols: usize, seed: u64) -> Vec<f32> {
 fn median_ns(reps: usize, inner: usize, mut f: impl FnMut()) -> f64 {
     const MAX_REPS: usize = 32;
 
-for _ in 0..inner {
+    for _ in 0..inner {
         f();
     }
     assert!(reps <= MAX_REPS, "reps={reps} exceeds MAX_REPS={MAX_REPS}");
@@ -184,7 +184,10 @@ fn g2_footprint_beats_bit_planes_by_at_least_17_percent() {
         params * 2.125 / 8.0 / 1e9
     );
 
-    assert!(all_pass, "G2 FAIL: footprint ratio above 0.83 at some shape");
+    assert!(
+        all_pass,
+        "G2 FAIL: footprint ratio above 0.83 at some shape"
+    );
 }
 
 // ── G2b: latency (informational, reject bound only) ───────────
@@ -236,7 +239,10 @@ fn g2b_latency_vs_bit_plane_kernel() {
     // scalar ratio is itself below 1.0, base-3 decode is genuinely cheaper than
     // bit extraction.
     println!("\n── attribution: scalar-vs-scalar isolates decode cost from scale hoisting ──");
-    println!("{:>12} {:>14} {:>14} {:>10}", "shape", "trit", "bit-plane", "ratio");
+    println!(
+        "{:>12} {:>14} {:>14} {:>10}",
+        "shape", "trit", "bit-plane", "ratio"
+    );
     for &(rows, cols) in &SHAPES {
         let src = dense_matrix(rows, cols, 0x582);
         let plane = TernaryGroupWeights::quantize_from_f32(&src, rows, cols);
@@ -367,7 +373,10 @@ fn g1_matches_bit_plane_tier_at_benchmark_scale() {
         // Scalar-vs-scalar is exact: same op order, same one-scale-per-group.
         ternary_trit_matvec_scalar(&trit, &x, &mut y_trit);
         ternary_group_matvec_scalar(&plane, &x, &mut y_plane);
-        assert_eq!(y_trit, y_plane, "{rows}x{cols} scalar must be bit-identical");
+        assert_eq!(
+            y_trit, y_plane,
+            "{rows}x{cols} scalar must be bit-identical"
+        );
 
         // SIMD-vs-SIMD differs only in summation order (~1e-6 relative).
         simd_ternary_trit_matvec(&trit, &x, &mut y_trit);
@@ -413,8 +422,12 @@ fn g2d_row_parallel_keeps_pace() {
     // 9 reps rather than 5: the parallel numbers move more than the serial ones.
     let t_trit_ser = median_ns(9, 3, || simd_ternary_trit_matvec(&trit, &x, &mut y));
     let t_plane_ser = median_ns(9, 3, || simd_ternary_group_matvec(&plane, &x, &mut y));
-    let t_trit_par = median_ns(9, 5, || simd_ternary_trit_matvec_parallel(&trit, &x, &mut y));
-    let t_plane_par = median_ns(9, 5, || simd_ternary_group_matvec_parallel(&plane, &x, &mut y));
+    let t_trit_par = median_ns(9, 5, || {
+        simd_ternary_trit_matvec_parallel(&trit, &x, &mut y)
+    });
+    let t_plane_par = median_ns(9, 5, || {
+        simd_ternary_group_matvec_parallel(&plane, &x, &mut y)
+    });
 
     println!(
         "\n── Issue 582 G2d: row-parallel ({rows}x{cols}, {} threads; timings noisy) ──\n\

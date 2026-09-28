@@ -86,7 +86,8 @@ fn steady_state_tick_is_alloc_free() {
     }
     let after = thread_alloc_count();
     assert_eq!(
-        before, after,
+        before,
+        after,
         "steady-state code/value/update must not allocate (delta {})",
         after - before
     );

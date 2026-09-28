@@ -102,8 +102,14 @@ impl IgnitionSchedule {
     /// Unless `z0 < target < k`.
     pub fn time_to_reach(&self, target: f32) -> f32 {
         let (z0, k) = (self.z0, self.k);
-        assert!(target > z0, "target must exceed z0 (got target={target}, z0={z0})");
-        assert!(target < k, "target must stay below k (got target={target}, k={k})");
+        assert!(
+            target > z0,
+            "target must exceed z0 (got target={target}, z0={z0})"
+        );
+        assert!(
+            target < k,
+            "target must stay below k (got target={target}, k={k})"
+        );
         (((k - z0) * target) / ((k - target) * z0)).ln() / self.zeta
     }
 }
@@ -281,7 +287,10 @@ mod tests {
             let mut prev = f32::INFINITY;
             for &z in &zetas {
                 let t = ignition_time(z, eps);
-                assert!(t < prev, "t* must strictly decrease as ζ rises (z={z}, eps={eps})");
+                assert!(
+                    t < prev,
+                    "t* must strictly decrease as ζ rises (z={z}, eps={eps})"
+                );
                 prev = t;
             }
             // The ln(1/ε) amplification: smaller ε scales every wait by the
@@ -299,7 +308,10 @@ mod tests {
         // Same (z0, K), distinct ζ: at every t > 0 the z-ordering is exactly
         // the ζ-ordering (the latent-ops ranking contract).
         let zetas = [0.3f32, 0.8, 1.4, 2.6];
-        let scheds: Vec<_> = zetas.iter().map(|&z| IgnitionSchedule::new(0.01, 1.0, z)).collect();
+        let scheds: Vec<_> = zetas
+            .iter()
+            .map(|&z| IgnitionSchedule::new(0.01, 1.0, z))
+            .collect();
         for i in 0..120 {
             let t = i as f32 * 0.25;
             let mut prev = f32::NEG_INFINITY;
@@ -398,7 +410,10 @@ mod tests {
         let mut order = [0usize; 4];
         order_by_ignition_into(&zetas, &mut order);
         let (count, _bytes) = crate::alloc::get_alloc_stats();
-        assert_eq!(count, 0, "ignition evaluation must be alloc-free (acc={acc})");
+        assert_eq!(
+            count, 0,
+            "ignition evaluation must be alloc-free (acc={acc})"
+        );
         assert_eq!(order[0], 3);
     }
 
@@ -442,7 +457,10 @@ mod tests {
         assert!(lm1b > sudoku, "larger V must push t* later");
         // Near-flat in V: a 2500× vocab increase moves t* by well under 0.2
         // (the √(log V) scaling the paper emphasizes).
-        assert!(lm1b - sudoku < 0.2, "t* must be near-flat in V ({lm1b} vs {sudoku})");
+        assert!(
+            lm1b - sudoku < 0.2,
+            "t* must be near-flat in V ({lm1b} vs {sudoku})"
+        );
         // Sanity anchor at the closed form, hand-computed: V=12, σ=1, a=1 →
         // t* = 1 − 1/(1 + √(2 ln 12)) = 1 − 1/(1 + 2.3830…).
         let expected = 1.0 - 1.0 / (1.0 + (2.0f64 * 12f64.ln()).sqrt());

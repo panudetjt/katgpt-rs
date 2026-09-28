@@ -172,7 +172,8 @@ fn run_one_scale(ctx: &ScaleCtx<'_>, seq_len: usize) -> ScaleResult {
     let mut rope_sparse =
         RopeFreqs::new_with_theta(ctx.mla_config.qk_rope_head_dim, ctx.mla_config.rope_theta);
     let mut block_cache = FlashMemoryBlockCache::new(ctx.mla_config, &fm_config, seq_len + 1);
-    let mut selector = FlashMemorySelector::new(fm_config.clone(), ctx.mla_config.n_heads, max_blocks);
+    let mut selector =
+        FlashMemorySelector::new(fm_config.clone(), ctx.mla_config.n_heads, max_blocks);
 
     let mut cos_sims = Vec::with_capacity(seq_len);
     let mut rel_mses = Vec::with_capacity(seq_len);
@@ -181,8 +182,14 @@ fn run_one_scale(ctx: &ScaleCtx<'_>, seq_len: usize) -> ScaleResult {
 
     let t0 = Instant::now();
     for (step, h) in hidden_states.iter().enumerate() {
-        let out_dense =
-            mla_forward_token(ctx.mla_config, ctx.mla_weights, &mut cache_dense, &mut scratch_dense, &mut rope_dense, h);
+        let out_dense = mla_forward_token(
+            ctx.mla_config,
+            ctx.mla_weights,
+            &mut cache_dense,
+            &mut scratch_dense,
+            &mut rope_dense,
+            h,
+        );
         let out_dense: Vec<f32> = out_dense.to_vec();
 
         let out_sparse = mla_forward_token_flashmemory(
@@ -202,7 +209,9 @@ fn run_one_scale(ctx: &ScaleCtx<'_>, seq_len: usize) -> ScaleResult {
         rel_mses.push(relative_mse(&out_dense, &out_sparse));
 
         let selection = selector.selection();
-        let total_sel: usize = (0..ctx.mla_config.n_heads).map(|h| selection.len_for_head(h)).sum();
+        let total_sel: usize = (0..ctx.mla_config.n_heads)
+            .map(|h| selection.len_for_head(h))
+            .sum();
         total_blocks_selected.push(total_sel);
 
         let tokens_attended: usize = (0..ctx.mla_config.n_heads)
@@ -253,10 +262,13 @@ fn run_one_scale(ctx: &ScaleCtx<'_>, seq_len: usize) -> ScaleResult {
 fn main() {
     use katgpt_rs::kimi_k3::decoder_layer::KimiAttentionWeights;
 
-let config = katgpt_rs::kimi_k3::model::KimiK3ModelConfig::kimi_k3_0_40b();
+    let config = katgpt_rs::kimi_k3::model::KimiK3ModelConfig::kimi_k3_0_40b();
     let d = config.hidden_size;
-    println!("Config: D_model={d}, vocab={vocab}, layers={n_layers}",
-        vocab = config.vocab_size, n_layers = config.num_layers);
+    println!(
+        "Config: D_model={d}, vocab={vocab}, layers={n_layers}",
+        vocab = config.vocab_size,
+        n_layers = config.num_layers
+    );
     println!("MLA layers: {:?}", config.mla_layer_indices);
 
     // Load real weights once.
@@ -288,7 +300,9 @@ let config = katgpt_rs::kimi_k3::model::KimiK3ModelConfig::kimi_k3_0_40b();
     let threshold = env_or_f32("FLASHMEMORY_THRESHOLD", 0.5);
     let scales = parse_scales();
 
-    println!("\nFlashMemory config: block_size={block_size}, refresh_period={refresh_period}, threshold={threshold}");
+    println!(
+        "\nFlashMemory config: block_size={block_size}, refresh_period={refresh_period}, threshold={threshold}"
+    );
     println!("Scales: {scales:?}\n");
 
     let ctx = ScaleCtx {
@@ -308,7 +322,10 @@ let config = katgpt_rs::kimi_k3::model::KimiK3ModelConfig::kimi_k3_0_40b();
         let r = run_one_scale(&ctx, seq_len);
         eprintln!(
             "    cos={:.4} mse={:.4} sel={:.1}% time={:.1}s {}",
-            r.cos_median, r.mse_median, r.selection_pct, r.elapsed_secs,
+            r.cos_median,
+            r.mse_median,
+            r.selection_pct,
+            r.elapsed_secs,
             if r.g1_pass { "✅" } else { "❌" }
         );
         results.push(r);
@@ -327,17 +344,27 @@ let config = katgpt_rs::kimi_k3::model::KimiK3ModelConfig::kimi_k3_0_40b();
         let kv_red = 100.0 - r.selection_pct;
         println!(
             "{:>8} {:>10.4} {:>10.4} {:>12.1} {:>12.1} {:>8}",
-            r.seq_len, r.cos_median, r.mse_median, r.selection_pct, kv_red,
+            r.seq_len,
+            r.cos_median,
+            r.mse_median,
+            r.selection_pct,
+            kv_red,
             if r.g1_pass { "PASS" } else { "FAIL" }
         );
     }
 
     // G5 verdict.
     let all_g1 = results.iter().all(|r| r.g1_pass);
-    let max_kv_red = results.iter().map(|r| 100.0 - r.selection_pct).fold(0.0f32, f32::max);
+    let max_kv_red = results
+        .iter()
+        .map(|r| 100.0 - r.selection_pct)
+        .fold(0.0f32, f32::max);
 
     println!("\n{}", "─".repeat(78));
-    println!("G1 GATE (all scales): {}", if all_g1 { "✅ PASS" } else { "❌ FAIL" });
+    println!(
+        "G1 GATE (all scales): {}",
+        if all_g1 { "✅ PASS" } else { "❌ FAIL" }
+    );
     println!("G5 (M3 max KV reduction): {max_kv_red:.1}% (at longest M3-feasible scale)");
     println!("G5 (paper claim @ 500K): 90% — requires 256K test on 4090 (Bonsai)");
     println!("\nNote: the ~74% plateau at ≤4K is expected — at short context most blocks");

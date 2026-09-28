@@ -468,8 +468,16 @@ impl RouteTable {
 /// `mu1(v) / (inflow(v) + mu0(v))`, clamped.
 fn consistent_absorption_from(in_total: &[f32], mu0: &[f32], mu1: &[f32]) -> Vec<f32> {
     let n = in_total.len();
-    assert_eq!(mu0.len(), n, "consistent_absorption: mu0 must be one per vertex");
-    assert_eq!(mu1.len(), n, "consistent_absorption: mu1 must be one per vertex");
+    assert_eq!(
+        mu0.len(),
+        n,
+        "consistent_absorption: mu0 must be one per vertex"
+    );
+    assert_eq!(
+        mu1.len(),
+        n,
+        "consistent_absorption: mu1 must be one per vertex"
+    );
     (0..n)
         .map(|v| {
             let avail = in_total[v] + mu0[v];
@@ -738,7 +746,11 @@ mod tests {
         // The routing table itself is untouched by the policy.
         let derived = f.router(&cx, &mu0, &mu1);
         for v in 0..router.n_vertices() {
-            assert_eq!(router.out_flow(v), derived.out_flow(v), "table differs at {v}");
+            assert_eq!(
+                router.out_flow(v),
+                derived.out_flow(v),
+                "table differs at {v}"
+            );
             assert_eq!(router.span(v), derived.span(v), "CSR span differs at {v}");
         }
     }

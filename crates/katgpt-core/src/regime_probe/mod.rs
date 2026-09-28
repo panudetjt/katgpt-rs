@@ -46,9 +46,7 @@ pub mod gap;
 pub mod gardner;
 
 pub use basin::{BasinReport, BasinScratch, FrozenRenovator, basin_probe, basin_probe_into};
-pub use entropy::{
-    conditional_entropies_into, conditional_entropy_nats, mean_conditional_entropy,
-};
+pub use entropy::{conditional_entropies_into, conditional_entropy_nats, mean_conditional_entropy};
 pub use gap::{EntropyGapReport, entropy_gap, entropy_gap_into};
 pub use gardner::{
     KAPPA_GRID_POINTS, KAPPA_MAX, basin_radius_bound, basin_radius_from_kappa, gamma_capacity,

@@ -41,9 +41,9 @@ use katgpt_core::swe_trajectory_freeze::StateMagnitudeEncoder;
 use katgpt_rs::kimi_k3::decoder_layer::{
     KimiAttentionWeights, KimiDecoderLayerWeights, KimiFfnWeights,
 };
-use katgpt_rs::kimi_k3::loader::{load_kimi_k3, KimiK3ModelWeights};
+use katgpt_rs::kimi_k3::loader::{KimiK3ModelWeights, load_kimi_k3};
 use katgpt_rs::kimi_k3::model::{
-    kimi_k3_forward_token, kimi_k3_forward_token_traced, KimiK3ModelConfig, KimiK3Runtime,
+    KimiK3ModelConfig, KimiK3Runtime, kimi_k3_forward_token, kimi_k3_forward_token_traced,
 };
 use katgpt_transformer::attn_res::AttnResWeights;
 use katgpt_transformer::moe::{MoeWeights, SwiGluExpertWeights};
@@ -237,7 +237,8 @@ fn extract_generation_trajectory(
         let next_tok = current_logits
             .iter()
             .enumerate()
-            .max_by(|(_, a), (_, b)| katgpt_core::float_order::cmp_for_max(**a, **b)).map_or(0, |(idx, _)| idx as u32);
+            .max_by(|(_, a), (_, b)| katgpt_core::float_order::cmp_for_max(**a, **b))
+            .map_or(0, |(idx, _)| idx as u32);
 
         generated.push(next_tok);
 
@@ -278,7 +279,11 @@ fn extract_processing_trajectory(
 
 // ─── Encoding (substrate StateMagnitudeEncoder) ────────────────────────────
 
-fn encode_state_stats(states: &[Vec<f32>], encoder: &StateMagnitudeEncoder, out: &mut [f32; D_ENC]) {
+fn encode_state_stats(
+    states: &[Vec<f32>],
+    encoder: &StateMagnitudeEncoder,
+    out: &mut [f32; D_ENC],
+) {
     let refs: Vec<&[f32]> = states.iter().map(|v| v.as_slice()).collect();
     encoder.encode_into(&refs, out);
 }
@@ -412,7 +417,8 @@ fn gaussian_cdf(x: f32) -> f32 {
     let k2 = k * k;
     let k3 = k2 * k;
     let k4 = k3 * k;
-    let poly = 0.31938153 * k - 0.35656378 * k2 + 1.781_477_9 * k3 - 1.821_255_9 * k4 + 1.330_274_5 * k4 * k;
+    let poly = 0.31938153 * k - 0.35656378 * k2 + 1.781_477_9 * k3 - 1.821_255_9 * k4
+        + 1.330_274_5 * k4 * k;
     let pdf = (-0.5 * x * x).exp() / (2.0 * core::f32::consts::PI).sqrt();
     1.0 - pdf * poly
 }
@@ -432,7 +438,10 @@ fn main() {
 
 fn run_bench() {
     let config = KimiK3ModelConfig::kimi_k3_0_40b();
-    println!("Config: D_model={}, layers={}", config.hidden_size, config.num_layers);
+    println!(
+        "Config: D_model={}, layers={}",
+        config.hidden_size, config.num_layers
+    );
 
     // Locate model.safetensors (same as bench_012-018).
     let model_dir = std::env::var("KIMI_K3_MODEL_DIR").unwrap_or_else(|_| {
@@ -463,7 +472,8 @@ fn run_bench() {
         .map(|p| {
             (0..PROC_LEN)
                 .map(|i| {
-                    ((p as u32).wrapping_mul(31)
+                    ((p as u32)
+                        .wrapping_mul(31)
                         .wrapping_add((i as u32).wrapping_mul(7))
                         .wrapping_add(3))
                         % (BENCH_VOCAB as u32)
@@ -526,9 +536,7 @@ fn run_bench() {
         let mut weights_b = weights_a.clone();
         perturb_model(&mut weights_b, sigma);
 
-        print!(
-            "Extracting Model B trajectories (σ={sigma}) ... "
-        );
+        print!("Extracting Model B trajectories (σ={sigma}) ... ");
         let t0 = std::time::Instant::now();
 
         // Generation trajectories for Model B.
@@ -594,7 +602,11 @@ fn run_bench() {
     for r in &all_results {
         println!(
             "  {:>6.2}  {:>12}  {:>8.1}%  {:>9.3}  {:>8.1}%",
-            r.sigma, r.regime, r.euclidean_acc * 100.0, r.d_euclid, r.bayes_optimal * 100.0
+            r.sigma,
+            r.regime,
+            r.euclidean_acc * 100.0,
+            r.d_euclid,
+            r.bayes_optimal * 100.0
         );
     }
 
@@ -612,19 +624,27 @@ fn run_bench() {
     // Check if generation works as well as processing.
     let gen_at_01 = all_results
         .iter()
-        .find(|r| r.sigma == 0.1 && r.regime == "generation").map_or(0.0, |r| r.euclidean_acc);
+        .find(|r| r.sigma == 0.1 && r.regime == "generation")
+        .map_or(0.0, |r| r.euclidean_acc);
     let proc_at_01 = all_results
         .iter()
-        .find(|r| r.sigma == 0.1 && r.regime == "processing").map_or(0.0, |r| r.euclidean_acc);
+        .find(|r| r.sigma == 0.1 && r.regime == "processing")
+        .map_or(0.0, |r| r.euclidean_acc);
 
-    println!("At σ=0.1: generation={:.1}% vs processing={:.1}%", gen_at_01 * 100.0, proc_at_01 * 100.0);
+    println!(
+        "At σ=0.1: generation={:.1}% vs processing={:.1}%",
+        gen_at_01 * 100.0,
+        proc_at_01 * 100.0
+    );
     if gen_at_01 >= 0.8 {
         println!();
         println!("VERDICT: POSITIVE — generation trajectory discriminates at ≥80%.");
         println!("The substrate is validated for the full SWE-bench use case (patch generation).");
     } else if gen_at_01 > proc_at_01 * 0.7 {
         println!();
-        println!("VERDICT: PARTIAL — generation trajectory discriminates but weaker than processing.");
+        println!(
+            "VERDICT: PARTIAL — generation trajectory discriminates but weaker than processing."
+        );
     } else {
         println!();
         println!("VERDICT: NEGATIVE — generation trajectory does NOT discriminate well.");

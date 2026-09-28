@@ -21,9 +21,9 @@
 #![cfg(feature = "kimi_k3_backward")]
 
 use katgpt_rs::kimi_k3::backward::{
-    kimi_k3_backward_sequence, kimi_k3_backward_sequence_with_input_grad,
-    kimi_k3_forward_token_hidden_saved, kimi_k3_forward_token_saved, KimiK3ModelGradients,
-    TokenSavedActivations,
+    KimiK3ModelGradients, TokenSavedActivations, kimi_k3_backward_sequence,
+    kimi_k3_backward_sequence_with_input_grad, kimi_k3_forward_token_hidden_saved,
+    kimi_k3_forward_token_saved,
 };
 use katgpt_rs::kimi_k3::loader::KimiK3ModelWeights;
 use katgpt_rs::kimi_k3::model::{KimiK3ModelConfig, KimiK3Runtime};
@@ -146,7 +146,14 @@ fn token_positions_still_scatter_to_their_own_embedding_row() {
     }
 
     let mut grads = KimiK3ModelGradients::zeros_like(&config, &weights);
-    kimi_k3_backward_sequence(&config, &weights, &rt, &saved, &unit_d_logits(2, v), &mut grads);
+    kimi_k3_backward_sequence(
+        &config,
+        &weights,
+        &rt,
+        &saved,
+        &unit_d_logits(2, v),
+        &mut grads,
+    );
 
     for &t in &ids {
         let base = t as usize * d;
@@ -188,17 +195,39 @@ fn wrapper_matches_the_out_param_variant_bitwise_on_the_token_path() {
 
     let mut g_explicit = KimiK3ModelGradients::zeros_like(&config, &weights);
     kimi_k3_backward_sequence_with_input_grad(
-        &config, &weights, &rt, &saved, &dl, &mut g_explicit, None,
+        &config,
+        &weights,
+        &rt,
+        &saved,
+        &dl,
+        &mut g_explicit,
+        None,
     );
 
     assert_eq!(
-        g_wrapper.embed_weight.iter().map(|f| f.to_bits()).collect::<Vec<_>>(),
-        g_explicit.embed_weight.iter().map(|f| f.to_bits()).collect::<Vec<_>>(),
+        g_wrapper
+            .embed_weight
+            .iter()
+            .map(|f| f.to_bits())
+            .collect::<Vec<_>>(),
+        g_explicit
+            .embed_weight
+            .iter()
+            .map(|f| f.to_bits())
+            .collect::<Vec<_>>(),
         "delegating must be bit-identical for existing callers"
     );
     assert_eq!(
-        g_wrapper.lm_head_weight.iter().map(|f| f.to_bits()).collect::<Vec<_>>(),
-        g_explicit.lm_head_weight.iter().map(|f| f.to_bits()).collect::<Vec<_>>(),
+        g_wrapper
+            .lm_head_weight
+            .iter()
+            .map(|f| f.to_bits())
+            .collect::<Vec<_>>(),
+        g_explicit
+            .lm_head_weight
+            .iter()
+            .map(|f| f.to_bits())
+            .collect::<Vec<_>>(),
     );
 }
 
@@ -243,5 +272,8 @@ fn mixed_span_credits_tokens_and_latents_separately() {
         );
     }
     // Every position, latent or not, reports its input gradient.
-    assert!(d_in.iter().all(|g| g.len() == d && g.iter().any(|x| *x != 0.0)));
+    assert!(
+        d_in.iter()
+            .all(|g| g.len() == d && g.iter().any(|x| *x != 0.0))
+    );
 }

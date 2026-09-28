@@ -65,7 +65,9 @@ impl<const D: usize> SymPacked<D> {
     #[inline]
     #[must_use]
     pub const fn zeroed() -> Self {
-        Self { data: [[0.0; D]; D] }
+        Self {
+            data: [[0.0; D]; D],
+        }
     }
 
     /// Pack a full symmetric matrix. Only the upper triangle of `full`
@@ -204,7 +206,10 @@ pub struct Tridiagonal<const D: usize> {
 impl<const D: usize> Tridiagonal<D> {
     #[must_use]
     pub const fn zeroed() -> Self {
-        Self { diag: [0.0; D], off: [0.0; D] }
+        Self {
+            diag: [0.0; D],
+            off: [0.0; D],
+        }
     }
 
     /// Gershgorin bounds `(lo, hi)` containing every eigenvalue.
@@ -281,7 +286,10 @@ mod tests {
             for j in 0..D {
                 let (a, b) = (full[i][j], rt[i][j]);
                 let ulps = ((a.to_bits() as i64) - (b.to_bits() as i64)).abs();
-                assert!(ulps <= 1, "round trip drifted {ulps} ulps at ({i},{j}): {a} vs {b}");
+                assert!(
+                    ulps <= 1,
+                    "round trip drifted {ulps} ulps at ({i},{j}): {a} vs {b}"
+                );
             }
         }
     }
@@ -316,7 +324,10 @@ mod tests {
         let fro = (fro as f32).sqrt();
         let packed_norm = p1.frobenius_norm();
         let ulps = ((fro.to_bits() as i64) - (packed_norm.to_bits() as i64)).abs();
-        assert!(ulps <= 2, "norm identity drifted {ulps} ulps: {fro} vs {packed_norm}");
+        assert!(
+            ulps <= 2,
+            "norm identity drifted {ulps} ulps: {fro} vs {packed_norm}"
+        );
 
         let mut fi = 0.0_f64;
         for i in 0..D {
@@ -327,7 +338,10 @@ mod tests {
         let fi = fi as f32;
         let pd = p1.frobenius_dot(&p2);
         let ulps = ((fi.to_bits() as i64) - (pd.to_bits() as i64)).abs();
-        assert!(ulps <= 4, "inner-product identity drifted {ulps} ulps: {fi} vs {pd}");
+        assert!(
+            ulps <= 4,
+            "inner-product identity drifted {ulps} ulps: {fi} vs {pd}"
+        );
     }
 
     #[test]

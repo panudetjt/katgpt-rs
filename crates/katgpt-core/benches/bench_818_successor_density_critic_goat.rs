@@ -50,7 +50,7 @@ use std::hint::black_box;
 use std::time::Instant;
 
 use katgpt_core::successor_density_critic::{
-    laplace_log_ratio, SamplerKind, SdcConfig, SuccessorDensityBuilder, SuccessorDensityTable,
+    SamplerKind, SdcConfig, SuccessorDensityBuilder, SuccessorDensityTable, laplace_log_ratio,
 };
 
 #[cfg(any(debug_assertions, feature = "alloc_tracking"))]
@@ -103,7 +103,11 @@ fn best_of_ns(rounds: usize, iters: usize, mut f: impl FnMut(u32) -> f32) -> f64
 /// policy is the G3 skew: state 0 is a 0.97-stay sink, and away from 0 the
 /// +1 action is taken 3× as often as +2 (the raw-count inversion driver).
 /// Returns the frozen table and its builder (the bench reads both).
-fn build_skewed_ring(steps: usize, gamma: f32, seed: u64) -> (SuccessorDensityBuilder, SuccessorDensityTable) {
+fn build_skewed_ring(
+    steps: usize,
+    gamma: f32,
+    seed: u64,
+) -> (SuccessorDensityBuilder, SuccessorDensityTable) {
     const S: u32 = 8;
     let mut b = SuccessorDensityBuilder::new(SdcConfig {
         n_states: S,
@@ -156,7 +160,6 @@ fn build_skewed_ring(steps: usize, gamma: f32, seed: u64) -> (SuccessorDensityBu
     let table = b.clone().finish();
     (b, table)
 }
-
 
 /// Exact behavior-continued discounted successor measure for the
 /// three-jump ring (stay / +1 / +2, all deterministic), by fixed-point
@@ -229,7 +232,8 @@ fn exact_measure_ring32(gamma: f64, sweeps: usize) -> Vec<f64> {
                 };
                 for g in 0..S {
                     let hit = if s2 == g { 1.0 } else { 0.0 };
-                    let v = (1.0 - gamma) * hit + gamma * 0.5 * (p[s2 * A * S + g] + p[(s2 * A + 1) * S + g]);
+                    let v = (1.0 - gamma) * hit
+                        + gamma * 0.5 * (p[s2 * A * S + g] + p[(s2 * A + 1) * S + g]);
                     nxt[(s * A + a) * S + g] = v;
                 }
             }
@@ -280,7 +284,8 @@ fn main() {
                 let denom = b.row_mass(st as u32, a as u32);
                 for g in 0..S as usize {
                     let cond = b.sag_mass(st as u32, a as u32, g as u32) / denom;
-                    max_cond_err = max_cond_err.max((cond - exact[(st * 2 + a) * S as usize + g]).abs());
+                    max_cond_err =
+                        max_cond_err.max((cond - exact[(st * 2 + a) * S as usize + g]).abs());
                 }
             }
         }
@@ -290,7 +295,9 @@ fn main() {
             verdict(g1a)
         );
         if !g1a {
-            failures.push(format!("G1a: conditional-measure error {max_cond_err:.5} > 0.01"));
+            failures.push(format!(
+                "G1a: conditional-measure error {max_cond_err:.5} > 0.01"
+            ));
         }
 
         let mut ranking_ok = true;
@@ -501,10 +508,14 @@ fn main() {
             verdict(bite_ok)
         );
         if !structural_ok {
-            failures.push("G3a: uniform-prior argmax_g diverged from the raw conditional argmax".into());
+            failures.push(
+                "G3a: uniform-prior argmax_g diverged from the raw conditional argmax".into(),
+            );
         }
         if !bite_ok {
-            failures.push("G3b: the empirical goal prior moved no argmax_g (fixture skew lost?)".into());
+            failures.push(
+                "G3b: the empirical goal prior moved no argmax_g (fixture skew lost?)".into(),
+            );
         }
 
         // Row-ranking consistency: for a fixed goal, rank all (s, a) rows
@@ -556,10 +567,13 @@ fn main() {
             verdict(g3c)
         );
         if critic_disc > 0 {
-            failures.push(format!("G3c: critic has {critic_disc} ranking discordances vs the exact measure"));
+            failures.push(format!(
+                "G3c: critic has {critic_disc} ranking discordances vs the exact measure"
+            ));
         }
         if raw_disc == 0 {
-            failures.push("G3c: raw-count baseline never inverted (fixture lost its teeth?)".into());
+            failures
+                .push("G3c: raw-count baseline never inverted (fixture lost its teeth?)".into());
         }
     }
 

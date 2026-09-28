@@ -1,4 +1,3 @@
-
 use super::*;
 use katgpt_core::traits::{NoPruner, NoScreeningPruner};
 
@@ -676,9 +675,16 @@ mod probe_guidance_tests {
         let mut dctx = D2fContext::new(&config);
         let vocab = config.vocab_size;
         let range = block_range(vocab);
-        let values: Vec<f32> = (0..range.len()).map(|i| (i % 17) as f32 * 0.2 - 1.0).collect();
+        let values: Vec<f32> = (0..range.len())
+            .map(|i| (i % 17) as f32 * 0.2 - 1.0)
+            .collect();
         dctx.logits_flat[range.clone()].copy_from_slice(&values);
-        dctx.set_guidance(1.75, Box::new(EchoProbe { values: values.clone() }));
+        dctx.set_guidance(
+            1.75,
+            Box::new(EchoProbe {
+                values: values.clone(),
+            }),
+        );
 
         crate::d2f_context::apply_probe_guidance(&mut dctx, &[], 2, 6, vocab, config.n_embd, 0);
 
@@ -772,7 +778,10 @@ mod probe_guidance_tests {
         let other = (strong_pick + 7) % (vocab - 1); // mask_token = vocab−1, never propose it
         let (unguided, guided) = decode_pair(Some((
             0.5,
-            Box::new(OpposingProbe { token: other, boost: 10.0 }),
+            Box::new(OpposingProbe {
+                token: other,
+                boost: 10.0,
+            }),
         )));
         assert_eq!(
             unguided.tokens,
@@ -794,8 +803,12 @@ mod probe_guidance_tests {
         let decode_config = D2fDecodeConfig::with_block_size(4);
         let weights = TransformerWeights::new(&config, &mut Rng::new(42));
 
-        let plain = D2fPipeline::with_prompt(&config, decode_config, 4, &[0, 1])
-            .decode_all(&weights, &NoPruner, &NoScreeningPruner, &mut Rng::new(42));
+        let plain = D2fPipeline::with_prompt(&config, decode_config, 4, &[0, 1]).decode_all(
+            &weights,
+            &NoPruner,
+            &NoScreeningPruner,
+            &mut Rng::new(42),
+        );
         let guided = D2fPipeline::with_prompt(&config, decode_config, 4, &[0, 1])
             .set_guidance(1.0, Box::new(PoisonProbe))
             .decode_all(&weights, &NoPruner, &NoScreeningPruner, &mut Rng::new(42));
@@ -831,10 +844,20 @@ mod probe_guidance_tests {
             }
         }
 
-        let plain = D2fPipeline::with_prompt(&config, decode_config, 4, &[0, 1])
-            .decode_all(&weights, &NoPruner, &NoScreeningPruner, &mut Rng::new(42));
+        let plain = D2fPipeline::with_prompt(&config, decode_config, 4, &[0, 1]).decode_all(
+            &weights,
+            &NoPruner,
+            &NoScreeningPruner,
+            &mut Rng::new(42),
+        );
         let guided = D2fPipeline::with_prompt(&config, decode_config, 4, &[0, 1])
-            .set_guidance(0.5, Box::new(OpposingProbe { token: other, boost: 1000.0 }))
+            .set_guidance(
+                0.5,
+                Box::new(OpposingProbe {
+                    token: other,
+                    boost: 1000.0,
+                }),
+            )
             .decode_all(&weights, &NoPruner, &NoScreeningPruner, &mut Rng::new(42));
 
         assert_ne!(
@@ -861,19 +884,20 @@ mod probe_guidance_tests {
         forward_block_causal_with(&mut on_ctx, &weights, &tokens, &config, 4);
 
         assert_eq!(
-            off_ctx.logits_flat,
-            on_ctx.logits_flat,
+            off_ctx.logits_flat, on_ctx.logits_flat,
             "capture is a pure copy — logits must be bit-identical"
         );
         let n = config.n_embd;
-        let any_written = (0..tokens.len())
-            .any(|p| on_ctx.probe_tap_flat[p * n..(p + 1) * n].iter().any(|&v| v != 0.0));
+        let any_written = (0..tokens.len()).any(|p| {
+            on_ctx.probe_tap_flat[p * n..(p + 1) * n]
+                .iter()
+                .any(|&v| v != 0.0)
+        });
         assert!(any_written, "armed capture must populate probe_tap_flat");
         // And the capture must differ from the pre-layer input residual (it
         // carries the attention output) at least somewhere.
-        let differs_from_xr = (0..tokens.len()).any(|p| {
-            on_ctx.probe_tap_flat[p * n..(p + 1) * n] != off_ctx.xr[p * n..(p + 1) * n]
-        });
+        let differs_from_xr = (0..tokens.len())
+            .any(|p| on_ctx.probe_tap_flat[p * n..(p + 1) * n] != off_ctx.xr[p * n..(p + 1) * n]);
         assert!(
             differs_from_xr,
             "the tap (post-attention) must differ from xr (pre-attention) somewhere"
@@ -882,9 +906,9 @@ mod probe_guidance_tests {
 
     // ── Issue 865 T2: the trained artifact path ──────────────────────
 
+    use crate::weak_probe_mlp::MlpWeakProbe;
     use katgpt_speculative::belief_drafter::LatentDynamicsMLP;
     use katgpt_speculative::probe_artifact::ProbeArtifact;
-    use crate::weak_probe_mlp::MlpWeakProbe;
 
     fn artifact_probe() -> MlpWeakProbe {
         let config = Config::micro_dllm();
@@ -974,7 +998,10 @@ mod multi_layer_tests {
             let mut ctx = D2fContext::new(&two_layer_config());
             ctx.set_decode_layers(3);
         }));
-        assert!(result.is_err(), "depth beyond n_layer_total must panic loudly");
+        assert!(
+            result.is_err(),
+            "depth beyond n_layer_total must panic loudly"
+        );
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             let mut ctx = D2fContext::new(&two_layer_config());
             ctx.set_decode_layers(0);
@@ -1043,7 +1070,13 @@ mod multi_layer_tests {
         one_layer_weights.wpe = weights.wpe.clone();
         one_layer_weights.lm_head = weights.lm_head.clone();
         let mut one_ctx = D2fContext::new(&one_layer_config);
-        forward_block_causal_with(&mut one_ctx, &one_layer_weights, &tokens, &one_layer_config, 4);
+        forward_block_causal_with(
+            &mut one_ctx,
+            &one_layer_weights,
+            &tokens,
+            &one_layer_config,
+            4,
+        );
 
         assert_eq!(
             deep_default, one_ctx.logits_flat,
@@ -1076,7 +1109,10 @@ mod multi_layer_tests {
         );
         for p in first.len()..second.len() {
             let row = &ctx.logits_flat[p * config.vocab_size..(p + 1) * config.vocab_size];
-            assert!(row.iter().all(|l| l.is_finite()), "block pos {p} must be finite");
+            assert!(
+                row.iter().all(|l| l.is_finite()),
+                "block pos {p} must be finite"
+            );
         }
     }
 
@@ -1178,15 +1214,20 @@ mod multi_layer_tap_tests {
 
         let n = config.n_embd;
         let plane = ctx.probe_tap_plane;
-        assert_eq!(ctx.probe_tap_layers.as_slice(), &[0, 1], "tap set is sorted");
+        assert_eq!(
+            ctx.probe_tap_layers.as_slice(),
+            &[0, 1],
+            "tap set is sorted"
+        );
         assert_eq!(ctx.probe_tap_flat.len(), 2 * plane);
 
         // Both planes written with finite nonzero values somewhere.
         for s in 0..2 {
-            let any = (0..tokens.len())
-                .any(|p| ctx.probe_tap_flat[s * plane + p * n..s * plane + (p + 1) * n]
+            let any = (0..tokens.len()).any(|p| {
+                ctx.probe_tap_flat[s * plane + p * n..s * plane + (p + 1) * n]
                     .iter()
-                    .any(|v| v.is_finite() && *v != 0.0));
+                    .any(|v| v.is_finite() && *v != 0.0)
+            });
             assert!(any, "plane {s} must be populated");
         }
         // The planes differ (layer 1's post-attention residual ≠ layer 0's).
@@ -1226,7 +1267,10 @@ mod multi_layer_tap_tests {
             ctx.set_decode_layers(2);
             ctx.set_guidance(1.5, Box::new(layer1_tap_artifact(&config)));
         }));
-        assert!(r.is_err(), "install must panic when the tap layer is not captured");
+        assert!(
+            r.is_err(),
+            "install must panic when the tap layer is not captured"
+        );
 
         // Capture layer 1 and decode once with capture armed.
         let tokens: Vec<usize> = vec![0, 5, config.mask_token, 3];

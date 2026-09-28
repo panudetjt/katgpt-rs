@@ -56,7 +56,15 @@ fn workspace() -> &'static (Config, TransformerWeights, Vec<Vec<usize>>) {
             generate_pattern_dataset(&mut rng, 2048, config.block_size, config.vocab_size - 1);
         let test_data =
             generate_pattern_dataset(&mut rng, 256, config.block_size, config.vocab_size - 1);
-        let (weights, _) = train_mini_dllm(&config, &train_data, &test_data, TRUNK_EPOCHS, 0.01, 0.3, 42);
+        let (weights, _) = train_mini_dllm(
+            &config,
+            &train_data,
+            &test_data,
+            TRUNK_EPOCHS,
+            0.01,
+            0.3,
+            42,
+        );
         (config, weights, test_data)
     })
 }
@@ -139,9 +147,12 @@ fn run_arm(
                         )),
                         ProbeKind::Noise => Box::new(ZeroProbe { vocab }),
                     };
-                    pipeline
-                        .set_guidance(lam, probe)
-                        .decode_all(weights, &NoPruner, &NoScreeningPruner, &mut rng)
+                    pipeline.set_guidance(lam, probe).decode_all(
+                        weights,
+                        &NoPruner,
+                        &NoScreeningPruner,
+                        &mut rng,
+                    )
                 }
             };
             for (p, &t) in result.tokens[prompt_len..prompt_len + DECODE_LEN]
@@ -198,13 +209,19 @@ fn print_arm(arm: &ArmResult) {
 /// recorded in `.benchmarks/850_probe_guidance_headroom_study.md`.
 #[test]
 fn headroom_lambda_sweep_study() {
-    println!("## Bench 850 — headroom-trunk study, regime 1: high-data 12-epoch trunk (2048 seqs, 2-token prompt, T0 = {T0})");
+    println!(
+        "## Bench 850 — headroom-trunk study, regime 1: high-data 12-epoch trunk (2048 seqs, 2-token prompt, T0 = {T0})"
+    );
     study_fronts(workspace(), T0, PROMPT_LEN, 0.3, 16);
 
-    println!("## Bench 850 — regime 2: LOW-DATA 12-epoch trunk (96 seqs, 8-token prompt, T0 = {T0})");
+    println!(
+        "## Bench 850 — regime 2: LOW-DATA 12-epoch trunk (96 seqs, 8-token prompt, T0 = {T0})"
+    );
     study_fronts(low_data_workspace(), T0, LOW_DATA_PROMPT_LEN, 0.3, 16);
 
-    println!("## Bench 850 — regime 3: low-data trunk + STRICT decode config (τ_conf 0.7, 8 steps — the decode-uncertainty cell)");
+    println!(
+        "## Bench 850 — regime 3: low-data trunk + STRICT decode config (τ_conf 0.7, 8 steps — the decode-uncertainty cell)"
+    );
     study_fronts(low_data_workspace(), T0, LOW_DATA_PROMPT_LEN, 0.7, 8);
 }
 
@@ -229,14 +246,9 @@ fn low_data_workspace() -> &'static (Config, TransformerWeights, Vec<Vec<usize>>
             config.block_size,
             config.vocab_size - 1,
         );
-        let eval = generate_pattern_dataset(
-            &mut rng,
-            256,
-            config.block_size,
-            config.vocab_size - 1,
-        );
-        let (weights, _) =
-            train_mini_dllm(&config, &train, &eval, TRUNK_EPOCHS, 0.01, 0.3, 42);
+        let eval =
+            generate_pattern_dataset(&mut rng, 256, config.block_size, config.vocab_size - 1);
+        let (weights, _) = train_mini_dllm(&config, &train, &eval, TRUNK_EPOCHS, 0.01, 0.3, 42);
         (config, weights, eval)
     })
 }
@@ -255,13 +267,24 @@ fn study_fronts(
     println!("  unguided temperature front:");
     let mut unguided: Vec<ArmResult> = Vec::new();
     for t in [2.5f32, 2.0, 1.75, 1.5, 1.25, 1.0, 0.8, 0.6, 0.4] {
-        let arm = run_arm(&format!("T={t:.2}"), config, weights, prompts, prompt_len, t, None, ProbeKind::Dropout, tau_conf, denoise_steps);
+        let arm = run_arm(
+            &format!("T={t:.2}"),
+            config,
+            weights,
+            prompts,
+            prompt_len,
+            t,
+            None,
+            ProbeKind::Dropout,
+            tau_conf,
+            denoise_steps,
+        );
         print_arm(&arm);
         unguided.push(arm);
     }
 
     // Dropout-guided front at T0.
-    println!("  dropout-guided front (tap-level 50%, T0):", );
+    println!("  dropout-guided front (tap-level 50%, T0):",);
     let mut dropout: Vec<ArmResult> = Vec::new();
     for lam in [1.0f32, 1.25, 1.5, 1.75, 2.0] {
         let arm = run_arm(
@@ -303,8 +326,14 @@ fn study_fronts(
     // Structural invariant 1: λ = 1 with the dropout probe is bit-identical
     // to the unguided T0 arm (the G1 contract, study side).
     let t0_label = format!("T={t0:.2}");
-    let t0_arm = unguided.iter().find(|a| a.label == t0_label).expect("T0 row");
-    let l1_arm = dropout.iter().find(|a| a.label == "λ=1.00").expect("λ=1 row");
+    let t0_arm = unguided
+        .iter()
+        .find(|a| a.label == t0_label)
+        .expect("T0 row");
+    let l1_arm = dropout
+        .iter()
+        .find(|a| a.label == "λ=1.00")
+        .expect("λ=1 row");
     assert_eq!(
         t0_arm.accuracy, l1_arm.accuracy,
         "G1: λ=1 accuracy must equal the unguided T0 arm"
@@ -359,7 +388,10 @@ fn study_fronts(
                 (d.accuracy - best_u.accuracy) * 100.0
             );
         } else {
-            println!("    {} (div {:.4}): no unguided point within match window", d.label, d.diversity);
+            println!(
+                "    {} (div {:.4}): no unguided point within match window",
+                d.label, d.diversity
+            );
         }
     }
 }

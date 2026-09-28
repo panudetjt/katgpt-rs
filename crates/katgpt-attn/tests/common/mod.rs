@@ -125,7 +125,12 @@ pub fn parse_fixture(bytes: &[u8]) -> Fixture {
         for s in &mut sums {
             *s = c.f16();
         }
-        streams.push(Stream { layer, kv_head, n_blocks, sums });
+        streams.push(Stream {
+            layer,
+            kv_head,
+            n_blocks,
+            sums,
+        });
     }
     let mut rows = Vec::with_capacity(n_rows);
     for _ in 0..n_rows {
@@ -141,10 +146,25 @@ pub fn parse_fixture(bytes: &[u8]) -> Fixture {
         for m in &mut masses {
             *m = c.f32();
         }
-        rows.push(Row { layer, q_head, kv_head, n_blocks, query, masses });
+        rows.push(Row {
+            layer,
+            q_head,
+            kv_head,
+            n_blocks,
+            query,
+            masses,
+        });
     }
     assert_eq!(c.p, bytes.len(), "fixture fully consumed");
-    Fixture { head_dim, block, n_tokens, prompt_fnv, needle_block, streams, rows }
+    Fixture {
+        head_dim,
+        block,
+        n_tokens,
+        prompt_fnv,
+        needle_block,
+        streams,
+        rows,
+    }
 }
 
 // ── replay harness ──────────────────────────────────────────────────────────
@@ -158,7 +178,9 @@ pub fn cache_for(fx: &Fixture, layer: usize, kv_head: usize, n_blocks: usize) ->
     assert!(stream.n_blocks >= n_blocks);
     let mut cache = EntmaxCache::with_capacity(n_blocks, fx.head_dim);
     for b in 0..n_blocks {
-        cache.summaries.push(stream.sums[b * fx.head_dim..(b + 1) * fx.head_dim].to_vec());
+        cache
+            .summaries
+            .push(stream.sums[b * fx.head_dim..(b + 1) * fx.head_dim].to_vec());
     }
     cache
 }
@@ -166,7 +188,8 @@ pub fn cache_for(fx: &Fixture, layer: usize, kv_head: usize, n_blocks: usize) ->
 pub fn stream_n_blocks(fx: &Fixture, layer: usize, kv_head: usize) -> usize {
     fx.streams
         .iter()
-        .find(|s| s.layer == layer && s.kv_head == kv_head).map_or(0, |s| s.n_blocks)
+        .find(|s| s.layer == layer && s.kv_head == kv_head)
+        .map_or(0, |s| s.n_blocks)
 }
 
 pub struct Decision {
@@ -193,16 +216,25 @@ pub fn replay_via(router: &EntmaxRouter, fx: &Fixture) -> Vec<Decision> {
     let mut out = Vec::with_capacity(fx.rows.len());
     for row in &fx.rows {
         let key = (row.layer, row.kv_head);
-        let cache = caches
-            .entry(key)
-            .or_insert_with(|| cache_for(fx, row.layer, row.kv_head, stream_n_blocks(fx, row.layer, row.kv_head)));
+        let cache = caches.entry(key).or_insert_with(|| {
+            cache_for(
+                fx,
+                row.layer,
+                row.kv_head,
+                stream_n_blocks(fx, row.layer, row.kv_head),
+            )
+        });
         // ensure capacity for this row's n_blocks (caches only grow)
         if cache.summaries.len() < row.n_blocks {
             let full = cache_for(fx, row.layer, row.kv_head, row.n_blocks);
             *cache = full;
         }
-        let dec = router.forward_indexer(&row.query, cache, row.n_blocks, row.n_blocks, &mut scratch);
-        out.push(Decision { blocks: dec.blocks, weights: dec.weights });
+        let dec =
+            router.forward_indexer(&row.query, cache, row.n_blocks, row.n_blocks, &mut scratch);
+        out.push(Decision {
+            blocks: dec.blocks,
+            weights: dec.weights,
+        });
     }
     out.shrink_to_fit();
     out

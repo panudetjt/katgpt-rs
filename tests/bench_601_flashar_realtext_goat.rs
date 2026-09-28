@@ -63,7 +63,9 @@
 
 #![cfg(feature = "flashar_anchor")]
 
-use katgpt_core::ugc_schedule::{UGC_MASK, UgcDenoiser, UgcScratch, certified_block_plan, estimate_interval};
+use katgpt_core::ugc_schedule::{
+    UGC_MASK, UgcDenoiser, UgcScratch, certified_block_plan, estimate_interval,
+};
 use katgpt_core::{Config, Rng};
 use katgpt_forward::d2f::{D2fBlockResult, D2fDecodeConfig};
 use katgpt_forward::{
@@ -118,9 +120,7 @@ fn train_text_model() -> (Config, TransformerWeights, Vec<Vec<usize>>) {
     let tokens = encode_text(TEXT_CORPUS);
     let train = slice_blocks(&tokens, 0, TRAIN_BLOCKS, BLOCK + 1);
     let eval = slice_blocks(&tokens, EVAL_WINDOW_START, N_EVAL, BLOCK + 1);
-    let (weights, _) = train_mini_dllm(
-        &config, &train, &eval, train_epochs(), 0.01, 0.3, 42,
-    );
+    let (weights, _) = train_mini_dllm(&config, &train, &eval, train_epochs(), 0.01, 0.3, 42);
     (config, weights, eval)
 }
 
@@ -189,24 +189,60 @@ fn run_arm(
         let out: DecodeOut = match arm.kind {
             ArmKind::AllMask => {
                 let anchors = [mask; BLOCK];
-                let D2fBlockResult { tokens, steps_used, .. } = anchor_fill_with_prefilled(
-                    &mut dctx, weights, config, &decode_config, &anchors, &mut rng, None,
+                let D2fBlockResult {
+                    tokens, steps_used, ..
+                } = anchor_fill_with_prefilled(
+                    &mut dctx,
+                    weights,
+                    config,
+                    &decode_config,
+                    &anchors,
+                    &mut rng,
+                    None,
                 );
-                DecodeOut { tokens, steps: steps_used, n_anchors: 0 }
+                DecodeOut {
+                    tokens,
+                    steps: steps_used,
+                    n_anchors: 0,
+                }
             }
             ArmKind::Stride { stride } => {
                 let r = anchor_then_fill(
-                    &mut ctx, &mut cache, &mut dctx, weights, config, &decode_config,
-                    &AnchorConfig::with_stride(stride), seq[0], 0, &mut rng,
+                    &mut ctx,
+                    &mut cache,
+                    &mut dctx,
+                    weights,
+                    config,
+                    &decode_config,
+                    &AnchorConfig::with_stride(stride),
+                    seq[0],
+                    0,
+                    &mut rng,
                 );
-                DecodeOut { tokens: r.tokens, steps: r.fill_steps_used, n_anchors: r.n_anchors }
+                DecodeOut {
+                    tokens: r.tokens,
+                    steps: r.fill_steps_used,
+                    n_anchors: r.n_anchors,
+                }
             }
             ArmKind::Conf { floor } => {
                 let r = anchor_then_fill_with(
-                    &mut ctx, &mut cache, &mut dctx, weights, config, &decode_config,
-                    &ConfidenceAnchorConfig::new(arm.kappa, floor), seq[0], 0, &mut rng,
+                    &mut ctx,
+                    &mut cache,
+                    &mut dctx,
+                    weights,
+                    config,
+                    &decode_config,
+                    &ConfidenceAnchorConfig::new(arm.kappa, floor),
+                    seq[0],
+                    0,
+                    &mut rng,
                 );
-                DecodeOut { tokens: r.tokens, steps: r.fill_steps_used, n_anchors: r.n_anchors }
+                DecodeOut {
+                    tokens: r.tokens,
+                    steps: r.fill_steps_used,
+                    n_anchors: r.n_anchors,
+                }
             }
         };
         wall_sum += t0.elapsed().as_secs_f32() * 1e6;
@@ -230,7 +266,11 @@ fn run_arm(
 
     let n = per_seq_acc.len() as f32;
     let mean = acc_sum / n;
-    let var = per_seq_acc.iter().map(|&a| (a - mean) * (a - mean)).sum::<f32>() / n;
+    let var = per_seq_acc
+        .iter()
+        .map(|&a| (a - mean) * (a - mean))
+        .sum::<f32>()
+        / n;
     ArmOutcome {
         mean_acc: mean,
         se_acc: var.sqrt() / n.sqrt(),
@@ -244,19 +284,47 @@ fn run_arm(
 
 fn build_arms() -> Vec<Arm> {
     let mut arms = vec![
-        Arm { label: "all-mask D2F baseline", kappa: 0.7, kind: ArmKind::AllMask },
-        Arm { label: "stride1 tau0.70", kappa: 0.7, kind: ArmKind::Stride { stride: 1 } },
-        Arm { label: "stride2 tau0.70 (incumbent)", kappa: 0.7, kind: ArmKind::Stride { stride: 2 } },
-        Arm { label: "stride4 tau0.70", kappa: 0.7, kind: ArmKind::Stride { stride: 4 } },
+        Arm {
+            label: "all-mask D2F baseline",
+            kappa: 0.7,
+            kind: ArmKind::AllMask,
+        },
+        Arm {
+            label: "stride1 tau0.70",
+            kappa: 0.7,
+            kind: ArmKind::Stride { stride: 1 },
+        },
+        Arm {
+            label: "stride2 tau0.70 (incumbent)",
+            kappa: 0.7,
+            kind: ArmKind::Stride { stride: 2 },
+        },
+        Arm {
+            label: "stride4 tau0.70",
+            kappa: 0.7,
+            kind: ArmKind::Stride { stride: 4 },
+        },
     ];
     for &k in &KAPPAS {
-        arms.push(Arm { label: "stride2 tau=kappa (matched ref)", kappa: k, kind: ArmKind::Stride { stride: 2 } });
+        arms.push(Arm {
+            label: "stride2 tau=kappa (matched ref)",
+            kappa: k,
+            kind: ArmKind::Stride { stride: 2 },
+        });
     }
     for &k in &KAPPAS {
-        arms.push(Arm { label: "conf kappa (no floor)", kappa: k, kind: ArmKind::Conf { floor: false } });
+        arms.push(Arm {
+            label: "conf kappa (no floor)",
+            kappa: k,
+            kind: ArmKind::Conf { floor: false },
+        });
     }
     for &k in &KAPPAS {
-        arms.push(Arm { label: "conf kappa + floor (DBTM)", kappa: k, kind: ArmKind::Conf { floor: true } });
+        arms.push(Arm {
+            label: "conf kappa + floor (DBTM)",
+            kappa: k,
+            kind: ArmKind::Conf { floor: true },
+        });
     }
     arms
 }
@@ -285,11 +353,18 @@ impl UgcDenoiser for D2fUgcDenoiser<'_> {
         let vocab = self.config.vocab_size;
         let mut block = [0usize; BLOCK];
         for (dst, &src) in block.iter_mut().zip(x.iter()) {
-            *dst = if src == UGC_MASK { self.config.mask_token } else { src };
+            *dst = if src == UGC_MASK {
+                self.config.mask_token
+            } else {
+                src
+            };
         }
         let mut bctx = self.bctx.borrow_mut();
         katgpt_forward::forward_bidirectional_positions_into(
-            self.weights, &block, self.config, &mut bctx,
+            self.weights,
+            &block,
+            self.config,
+            &mut bctx,
         );
         let row = &bctx.all_logits[i * vocab..i * vocab + vocab];
         let mut m = f32::NEG_INFINITY;
@@ -361,7 +436,10 @@ fn mc_realized_kl(
     let alpha = 0.5f64;
     let support = (TEXT_ALPHABET * TEXT_ALPHABET) as f64;
     let pz_denom = total as f64 + alpha * support;
-    let pz: Vec<f64> = counts.iter().map(|&c| (c as f64 + alpha) / pz_denom).collect();
+    let pz: Vec<f64> = counts
+        .iter()
+        .map(|&c| (c as f64 + alpha) / pz_denom)
+        .collect();
 
     let cdf = unigram_cdf(law_tokens);
     let mut q_counts = vec![0u64; TEXT_ALPHABET * TEXT_ALPHABET];
@@ -383,15 +461,31 @@ fn mc_realized_kl(
             ArmKind::AllMask => unreachable!("T9 compares anchored arms only"),
             ArmKind::Stride { stride } => {
                 let r = anchor_then_fill(
-                    &mut ctx, &mut cache, &mut dctx, weights, config, &decode_config,
-                    &AnchorConfig::with_stride(stride), seed, 0, &mut rng,
+                    &mut ctx,
+                    &mut cache,
+                    &mut dctx,
+                    weights,
+                    config,
+                    &decode_config,
+                    &AnchorConfig::with_stride(stride),
+                    seed,
+                    0,
+                    &mut rng,
                 );
                 r.tokens
             }
             ArmKind::Conf { floor } => {
                 let r = anchor_then_fill_with(
-                    &mut ctx, &mut cache, &mut dctx, weights, config, &decode_config,
-                    &ConfidenceAnchorConfig::new(arm.kappa, floor), seed, 0, &mut rng,
+                    &mut ctx,
+                    &mut cache,
+                    &mut dctx,
+                    weights,
+                    config,
+                    &decode_config,
+                    &ConfidenceAnchorConfig::new(arm.kappa, floor),
+                    seed,
+                    0,
+                    &mut rng,
                 );
                 r.tokens
             }
@@ -464,7 +558,9 @@ fn t2_realtext_g1_g2_goat() {
 
     println!(
         "\n== Plan 601 arm table (real text: Austen tail, {} train blocks × {} epochs, {} held-out blocks, block={BLOCK}) ==",
-        TRAIN_BLOCKS, train_epochs(), N_EVAL
+        TRAIN_BLOCKS,
+        train_epochs(),
+        N_EVAL
     );
     println!(
         "{:<32} {:>6} {:>4} {:>7} {:>7} {:>8} {:>7} {:>9}",
@@ -479,12 +575,19 @@ fn t2_realtext_g1_g2_goat() {
             assert!(
                 out.all_terminated || !arm.label.contains("DBTM"),
                 "DBTM arm must terminate within budget: {} k={} NFE={budget}",
-                arm.label, arm.kappa
+                arm.label,
+                arm.kappa
             );
             println!(
                 "{:<32} {:>6.2} {:>4} {:>7.3} {:>7.3} {:>8.2} {:>7.2} {:>9.1}",
-                arm.label, arm.kappa, budget, out.mean_acc, out.se_acc,
-                out.mean_steps, out.mean_anchors, out.mean_wall_us
+                arm.label,
+                arm.kappa,
+                budget,
+                out.mean_acc,
+                out.se_acc,
+                out.mean_steps,
+                out.mean_anchors,
+                out.mean_wall_us
             );
             per_budget.push(out);
         }
@@ -493,7 +596,9 @@ fn t2_realtext_g1_g2_goat() {
 
     let nfe8 = NFE_CELLS.iter().position(|&b| b == 8).unwrap();
     let find = |label: &str, k: f32| -> &ArmOutcome {
-        let idx = arms.iter().position(|a| a.label == label && a.kappa == k)
+        let idx = arms
+            .iter()
+            .position(|a| a.label == label && a.kappa == k)
             .unwrap_or_else(|| panic!("arm not found: {label} k={k}"));
         &outcomes[idx][nfe8]
     };
@@ -505,7 +610,8 @@ fn t2_realtext_g1_g2_goat() {
     assert!(
         sm09.mean_acc - am.mean_acc > 2.0 * gap_se,
         "corpus liveness FAIL: anchored arm ({:.3}) not measurably above all-mask ({:.3}) — the anchor round carries no signal on this text model",
-        sm09.mean_acc, am.mean_acc
+        sm09.mean_acc,
+        am.mean_acc
     );
 
     // ── G1 + G2 at every κ, NFE=8 ──
@@ -522,8 +628,11 @@ fn t2_realtext_g1_g2_goat() {
             .collect();
         let n = deltas.len() as f32;
         let mean_d = deltas.iter().sum::<f32>() / n;
-        let var_d =
-            deltas.iter().map(|&d| (d - mean_d) * (d - mean_d)).sum::<f32>() / n;
+        let var_d = deltas
+            .iter()
+            .map(|&d| (d - mean_d) * (d - mean_d))
+            .sum::<f32>()
+            / n;
         let se_d = var_d.sqrt() / n.sqrt();
         println!(
             "G1 kappa={k}: paired Δ(acc) = {mean_d:+.4} ± {se_d:.4} | conf+floor {:.3} vs matched-stride {:.3}",
@@ -536,7 +645,9 @@ fn t2_realtext_g1_g2_goat() {
         assert!(
             cf.mean_acc >= sm.mean_acc - 2.0 * se_d,
             "G1 FAIL at κ={k}: conf+floor {:.4} below matched-stride {:.4} by more than 2·SE ({:.4})",
-            cf.mean_acc, sm.mean_acc, se_d
+            cf.mean_acc,
+            sm.mean_acc,
+            se_d
         );
 
         // G2: steps + wall.
@@ -544,13 +655,15 @@ fn t2_realtext_g1_g2_goat() {
             assert!(
                 cf.mean_steps < sm.mean_steps,
                 "G2 FAIL at κ={k}: DBTM steps {:.2} must beat matched-stride {:.2}",
-                cf.mean_steps, sm.mean_steps
+                cf.mean_steps,
+                sm.mean_steps
             );
         } else {
             assert!(
                 cf.mean_steps <= sm.mean_steps,
                 "G2 FAIL at κ={k}: DBTM steps {:.2} must tie or beat matched-stride {:.2}",
-                cf.mean_steps, sm.mean_steps
+                cf.mean_steps,
+                sm.mean_steps
             );
         }
         let wall_ratio = cf.mean_wall_us / sm.mean_wall_us;
@@ -561,7 +674,8 @@ fn t2_realtext_g1_g2_goat() {
         assert!(
             wall_ratio <= 1.25,
             "G2 FAIL at κ={k}: DBTM wall {:.0}µs is {wall_ratio:.2}× matched-stride {:.0}µs (> 1.25× non-inferiority bar)",
-            cf.mean_wall_us, sm.mean_wall_us
+            cf.mean_wall_us,
+            sm.mean_wall_us
         );
     }
 }
@@ -580,10 +694,22 @@ fn t3_realtext_ugc_kl_cross_check() {
     let mut rng = Rng::new(2026);
     let mut scratch = UgcScratch::new(BLOCK, config.vocab_size - 1, 24, 64);
     let est_lo = estimate_interval(
-        &dz, 1.0 / BLOCK as f32, 0.5, 24, 0.05, &mut rng, &mut scratch,
+        &dz,
+        1.0 / BLOCK as f32,
+        0.5,
+        24,
+        0.05,
+        &mut rng,
+        &mut scratch,
     );
     let est_hi = estimate_interval(
-        &dz, 0.5, 1.0 - 1.0 / BLOCK as f32, 24, 0.05, &mut rng, &mut scratch,
+        &dz,
+        0.5,
+        1.0 - 1.0 / BLOCK as f32,
+        24,
+        0.05,
+        &mut rng,
+        &mut scratch,
     );
     let plan = certified_block_plan(
         &[1.0 / BLOCK as f32, 0.5, 1.0 - 1.0 / BLOCK as f32],
@@ -592,7 +718,8 @@ fn t3_realtext_ugc_kl_cross_check() {
     );
     println!(
         "T9 certificate (text model): Ĉ = {:.4}, bound 4Ĉ/8 = {:.5} (random-order reference — the greedy reveal is OUTSIDE its premise)",
-        plan.chat_partition_complexity, 4.0 * plan.chat_partition_complexity as f64 / 8.0
+        plan.chat_partition_complexity,
+        4.0 * plan.chat_partition_complexity as f64 / 8.0
     );
 
     // Realized side: the law is the EMPIRICAL bigram joint of a held-out
@@ -605,18 +732,20 @@ fn t3_realtext_ugc_kl_cross_check() {
 
     let budget = 8;
     let n_mc = n_mc();
-    let arms_at = |k: f32| [
-        Arm {
-            label: "stride2 tau=kappa (matched ref)",
-            kappa: k,
-            kind: ArmKind::Stride { stride: 2 },
-        },
-        Arm {
-            label: "conf kappa + floor (DBTM)",
-            kappa: k,
-            kind: ArmKind::Conf { floor: true },
-        },
-    ];
+    let arms_at = |k: f32| {
+        [
+            Arm {
+                label: "stride2 tau=kappa (matched ref)",
+                kappa: k,
+                kind: ArmKind::Stride { stride: 2 },
+            },
+            Arm {
+                label: "conf kappa + floor (DBTM)",
+                kappa: k,
+                kind: ArmKind::Conf { floor: true },
+            },
+        ]
+    };
 
     for k in KAPPAS {
         let [sm, cf] = arms_at(k);

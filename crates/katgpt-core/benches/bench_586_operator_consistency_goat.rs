@@ -97,7 +97,8 @@ fn run_g1() -> bool {
 
     let consistent = rule_consistency(&fixture_consistent(100));
     let v_a = promotion_verdict(&consistent, &cfg);
-    let ok_a = consistent.regime == ConsistencyRegime::Consistent && v_a == PromotionVerdict::Promote;
+    let ok_a =
+        consistent.regime == ConsistencyRegime::Consistent && v_a == PromotionVerdict::Promote;
 
     let flaky = rule_consistency(&fixture_flaky(96));
     let v_b = promotion_verdict(&flaky, &cfg);
@@ -163,7 +164,10 @@ fn run_g2() -> bool {
         if n <= 64 {
             pass &= gate;
         }
-        println!("  N={n:>4}: {d:?}{}", if n <= 64 { "" } else { " (report-only)" });
+        println!(
+            "  N={n:>4}: {d:?}{}",
+            if n <= 64 { "" } else { " (report-only)" }
+        );
     }
     if pass {
         println!("G2 PASS — sub-µs at N ≤ 64");

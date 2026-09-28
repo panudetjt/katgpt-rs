@@ -29,9 +29,7 @@
 
 #![allow(clippy::needless_range_loop)]
 
-use katgpt_pruners::event_log::{
-    Actor, EventId, EventLog, EventPredicate, EventType, Predicate,
-};
+use katgpt_pruners::event_log::{Actor, EventId, EventLog, EventPredicate, EventType, Predicate};
 use std::hint::black_box;
 use std::time::Instant;
 
@@ -97,7 +95,7 @@ fn g1_correctness() -> bool {
         }
     }
 
-println!("── G1: Correctness (12 predicate combinations) ──");
+    println!("── G1: Correctness (12 predicate combinations) ──");
     let log = build_test_log(100);
     let mut pass = true;
     let mut checked = 0;
@@ -150,7 +148,11 @@ println!("── G1: Correctness (12 predicate combinations) ──");
         .query_window(EventId(10)..EventId(20), None)
         .map(|e| e.id.0)
         .collect();
-    pass &= assert_eq_vec("query_window(10..20, None)", &window, &(10u64..20).collect::<Vec<_>>());
+    pass &= assert_eq_vec(
+        "query_window(10..20, None)",
+        &window,
+        &(10u64..20).collect::<Vec<_>>(),
+    );
     checked += 1;
 
     // 9. query_window(EventId(10)..EventId(20), Some(Action)) → only Action in window
@@ -160,20 +162,23 @@ println!("── G1: Correctness (12 predicate combinations) ──");
         .query_window(EventId(10)..EventId(20), Some(EventType::Action))
         .map(|e| e.id.0)
         .collect();
-    pass &= assert_eq_vec("query_window(10..20, Some(Action))", &window_actions, &[10, 13, 16, 19]);
+    pass &= assert_eq_vec(
+        "query_window(10..20, Some(Action))",
+        &window_actions,
+        &[10, 13, 16, 19],
+    );
     checked += 1;
 
     // 10. And: Action AND id >= 50 → ids 52,55,...,97
-    let pred = Predicate::event_type(EventType::Action)
-        .and(Predicate::id_range_from(EventId(50)));
+    let pred = Predicate::event_type(EventType::Action).and(Predicate::id_range_from(EventId(50)));
     let result: Vec<u64> = log.filter(&pred).map(|e| e.id.0).collect();
     let expected: Vec<u64> = (52u64..100).step_by(3).collect();
     pass &= assert_eq_vec("Action AND id>=50", &result, &expected);
     checked += 1;
 
     // 11. Or: GameStart OR GameEnd → 2 events (id 0 + id 99)
-    let pred = Predicate::event_type(EventType::GameStart)
-        .or(Predicate::event_type(EventType::GameEnd));
+    let pred =
+        Predicate::event_type(EventType::GameStart).or(Predicate::event_type(EventType::GameEnd));
     let result: Vec<u64> = log.filter(&pred).map(|e| e.id.0).collect();
     pass &= assert_eq_vec("GameStart OR GameEnd", &result, &[0, 99]);
     checked += 1;
@@ -230,7 +235,11 @@ fn assert_eq_usize(label: &str, actual: usize, expected: usize) -> bool {
     }
 }
 
-fn assert_eq_option<T: std::fmt::Debug + PartialEq>(label: &str, actual: Option<T>, expected: Option<T>) -> bool {
+fn assert_eq_option<T: std::fmt::Debug + PartialEq>(
+    label: &str,
+    actual: Option<T>,
+    expected: Option<T>,
+) -> bool {
     if actual == expected {
         true
     } else {
@@ -263,8 +272,15 @@ fn g2_perf() -> bool {
     let filter_pass = per_result_ns < 1000.0;
     println!(
         "  filter(Action):    {:>10?} total | {:.2} ns/result-event ({:.0} ns/scan) | {} events/scan → {}",
-        t_filter, per_result_ns, per_scan_ns, result_count,
-        if filter_pass { "✅ < 1µs/result" } else { "❌ ≥ 1µs/result" }
+        t_filter,
+        per_result_ns,
+        per_scan_ns,
+        result_count,
+        if filter_pass {
+            "✅ < 1µs/result"
+        } else {
+            "❌ ≥ 1µs/result"
+        }
     );
     pass &= filter_pass;
 
@@ -282,8 +298,13 @@ fn g2_perf() -> bool {
     let window_pass = window_ns < 100.0;
     println!(
         "  query_window:      {:>10?} total | {:.2} ns/call (100-event window) → {}",
-        t_window, window_ns,
-        if window_pass { "✅ < 100ns" } else { "❌ ≥ 100ns" }
+        t_window,
+        window_ns,
+        if window_pass {
+            "✅ < 100ns"
+        } else {
+            "❌ ≥ 100ns"
+        }
     );
     pass &= window_pass;
 
@@ -308,8 +329,13 @@ fn g2_perf() -> bool {
     let first_pass = first_ns < 100.0;
     println!(
         "  first_where:       {:>10?} total | {:.2} ns/call (early-exit at id 1) → {}",
-        t_first, first_ns,
-        if first_pass { "✅ < 100ns" } else { "❌ ≥ 100ns" }
+        t_first,
+        first_ns,
+        if first_pass {
+            "✅ < 100ns"
+        } else {
+            "❌ ≥ 100ns"
+        }
     );
     pass &= first_pass;
 
@@ -323,14 +349,23 @@ fn g2_perf() -> bool {
     let last_pass = last_ns < 100.0;
     println!(
         "  last_where:        {:>10?} total | {:.2} ns/call (early-exit from end) → {}",
-        t_last, last_ns,
-        if last_pass { "✅ < 100ns" } else { "❌ ≥ 100ns" }
+        t_last,
+        last_ns,
+        if last_pass {
+            "✅ < 100ns"
+        } else {
+            "❌ ≥ 100ns"
+        }
     );
     pass &= last_pass;
 
     println!(
         "\n  G2: {}",
-        if pass { "✅ PASS (all perf targets met)" } else { "❌ FAIL (see above)" }
+        if pass {
+            "✅ PASS (all perf targets met)"
+        } else {
+            "❌ FAIL (see above)"
+        }
     );
     pass
 }
@@ -339,7 +374,9 @@ fn g2_perf() -> bool {
 
 fn g3_no_regression() {
     println!("\n── G3: No-regression (documented) ──");
-    println!("  G3: feature OFF build verified clean in Phase 1 exit criteria → ✅ PASS (documented)");
+    println!(
+        "  G3: feature OFF build verified clean in Phase 1 exit criteria → ✅ PASS (documented)"
+    );
     println!("    (cargo build -p katgpt-pruners --no-default-features: clean)");
     println!("    (existing Plan 124 API unchanged — verified by existing_api_unchanged test)");
 }
@@ -384,7 +421,9 @@ fn g4_alloc_free() -> bool {
 
     // Also verify count_where / first_where / last_where / query_window are
     // allocation-free by nature (they don't collect into a Vec at all).
-    println!("  G4: count_where / first_where / last_where / query_window → ✅ (no collect; lazy iterators / early-exit)");
+    println!(
+        "  G4: count_where / first_where / last_where / query_window → ✅ (no collect; lazy iterators / early-exit)"
+    );
 
     pass
 }

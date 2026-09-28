@@ -369,8 +369,16 @@ impl FsmEnumerator {
 
                 for _ in 0..rounds {
                     // Round k reads the opponent's action from round k-1.
-                    let hist_j: &[u8] = if first_round { &empty } else { std::slice::from_ref(&last_action_j) };
-                    let hist_i: &[u8] = if first_round { &empty } else { std::slice::from_ref(&last_action_i) };
+                    let hist_j: &[u8] = if first_round {
+                        &empty
+                    } else {
+                        std::slice::from_ref(&last_action_j)
+                    };
+                    let hist_i: &[u8] = if first_round {
+                        &empty
+                    } else {
+                        std::slice::from_ref(&last_action_i)
+                    };
                     let action_i = si.next_action(hist_j);
                     let action_j = sj.next_action(hist_i);
 

@@ -65,8 +65,8 @@
 //! stores (bounded by [`MAX_OUT`] rows / [`MAX_COLS`] columns) so nothing on
 //! the hot path touches the heap.
 
-use arrayvec::ArrayVec;
 use crate::special_fn::ln_gamma;
+use arrayvec::ArrayVec;
 
 /// Maximum outcomes (rows) per column. The paper's modalities are ≤ 4.
 pub const MAX_OUT: usize = 64;
@@ -169,11 +169,7 @@ pub fn ln_beta_delta(counts: &Counts, base: &ColumnSums, col: usize, delta: &[f6
 /// Read a zeroed concentration parameter at [`SHRINKAGE`].
 #[inline]
 fn shrunk(v: f64) -> f64 {
-    if v > 0.0 {
-        v
-    } else {
-        SHRINKAGE
-    }
+    if v > 0.0 { v } else { SHRINKAGE }
 }
 
 /// `ln B` of one column with every zero entry read at [`SHRINKAGE`].
@@ -210,8 +206,14 @@ impl Counts {
 
     /// Store with every entry set to `value`.
     pub fn filled(rows: usize, cols: usize, value: f64) -> Self {
-        assert!((1..=MAX_OUT).contains(&rows), "rows {rows} out of 1..={MAX_OUT}");
-        assert!((1..=MAX_COLS).contains(&cols), "cols {cols} out of 1..={MAX_COLS}");
+        assert!(
+            (1..=MAX_OUT).contains(&rows),
+            "rows {rows} out of 1..={MAX_OUT}"
+        );
+        assert!(
+            (1..=MAX_COLS).contains(&cols),
+            "cols {cols} out of 1..={MAX_COLS}"
+        );
         let mut data = ArrayVec::new();
         for _ in 0..rows * cols {
             data.push(value);
@@ -348,12 +350,7 @@ fn log_softmax_into(v: &mut [f64]) {
 ///
 /// Full O(#cols × #models) recompute — the naive baseline. The cached
 /// [`ModelSpace`] answers the same question incrementally.
-pub fn posterior_over_models(
-    prior: &Counts,
-    models: &[Counts],
-    post: &Counts,
-    out: &mut [f64],
-) {
+pub fn posterior_over_models(prior: &Counts, models: &[Counts], post: &Counts, out: &mut [f64]) {
     assert!(out.len() >= models.len(), "out too small");
     for (m, reduced) in models.iter().enumerate() {
         out[m] = -bmr_log_evidence(prior, post, reduced);
@@ -526,8 +523,7 @@ impl ModelSpace {
         assert!(w >= 0.0, "negative observation weight");
         let a_r = self.post.col(col)[row];
         let s_a = self.post_sum[col];
-        let d_ln_post =
-            (ln_gamma(a_r + w) - ln_gamma(a_r)) - (ln_gamma(s_a + w) - ln_gamma(s_a));
+        let d_ln_post = (ln_gamma(a_r + w) - ln_gamma(a_r)) - (ln_gamma(s_a + w) - ln_gamma(s_a));
         self.post.add(col, row, w);
         self.post_sum[col] += w;
         for m in 0..self.n_models() {
@@ -551,10 +547,11 @@ impl ModelSpace {
         assert!(out.len() >= self.n_models(), "out too small");
         let d_post = self.post.col(col)[row].ln() - self.post_sum[col].ln();
         let n = self.n_models();
-        for (o, (&f_e, (b_m, b_s))) in out[..n]
-            .iter_mut()
-            .zip(self.free_energy.iter().zip(self.b.iter().zip(self.b_sum.iter())))
-        {
+        for (o, (&f_e, (b_m, b_s))) in out[..n].iter_mut().zip(
+            self.free_energy
+                .iter()
+                .zip(self.b.iter().zip(self.b_sum.iter())),
+        ) {
             let x = b_m.col(col)[row];
             *o = -(f_e + d_post - (x.ln() - b_s[col].ln()));
         }
@@ -578,7 +575,10 @@ impl ModelSpace {
     /// all scratch is caller-supplied.
     pub fn efe_model_gain(&self, action: &[(usize, usize, f64)], scratch: &mut EfeScratch) -> f64 {
         let n = self.n_models();
-        for (s, &f) in scratch.log_base[..n].iter_mut().zip(self.free_energy.iter()) {
+        for (s, &f) in scratch.log_base[..n]
+            .iter_mut()
+            .zip(self.free_energy.iter())
+        {
             *s = -f;
         }
         log_softmax_into(&mut scratch.log_base[..n]);
@@ -655,7 +655,11 @@ pub fn occam_log_bayes_factor(model_posterior: &[f64]) -> f64 {
     if model_posterior.is_empty() || !total.is_finite() || total <= 0.0 {
         return f64::NEG_INFINITY;
     }
-    let p_star = model_posterior.iter().copied().fold(f64::NEG_INFINITY, f64::max) / total;
+    let p_star = model_posterior
+        .iter()
+        .copied()
+        .fold(f64::NEG_INFINITY, f64::max)
+        / total;
     let denom = (1.0 - p_star).max(1e-16);
     (p_star / denom).ln()
 }
@@ -710,11 +714,23 @@ impl FactorLayout {
             !context_levels.is_empty() && context_levels.len() <= MAX_FACTORS,
             "1..={MAX_FACTORS} context factors"
         );
-        assert!(context_levels.iter().all(|&l| l >= 1), "context levels >= 1");
+        assert!(
+            context_levels.iter().all(|&l| l >= 1),
+            "context levels >= 1"
+        );
         assert!(choice_levels >= 1, "choice_levels >= 1");
-        assert!((2..=MAX_OUT).contains(&outcome_rows), "outcome_rows in 2..={MAX_OUT}");
-        assert!(match_row < outcome_rows && mismatch_row < outcome_rows, "rows in range");
-        assert_ne!(match_row, mismatch_row, "match and mismatch rows must differ");
+        assert!(
+            (2..=MAX_OUT).contains(&outcome_rows),
+            "outcome_rows in 2..={MAX_OUT}"
+        );
+        assert!(
+            match_row < outcome_rows && mismatch_row < outcome_rows,
+            "rows in range"
+        );
+        assert_ne!(
+            match_row, mismatch_row,
+            "match and mismatch rows must differ"
+        );
         let context_levels = context_levels.iter().copied().collect();
         Self {
             context_levels,
@@ -832,9 +848,9 @@ mod tests {
     #[test]
     fn ln_beta_exact_small_integers() {
         let cases: &[(&[f64], f64)] = &[
-            (&[1.0, 1.0], 0.0),                       // B(1,1)=1
-            (&[2.0, 2.0], (1.0f64 / 6.0).ln()),       // B(2,2)=1/6
-            (&[2.0, 3.0], (1.0f64 / 12.0).ln()),      // B(2,3)=1/12
+            (&[1.0, 1.0], 0.0),                        // B(1,1)=1
+            (&[2.0, 2.0], (1.0f64 / 6.0).ln()),        // B(2,2)=1/6
+            (&[2.0, 3.0], (1.0f64 / 12.0).ln()),       // B(2,3)=1/12
             (&[1.0, 1.0, 1.0], -(2.0_f64).ln()),       // B=1/2! =1/2
             (&[2.0, 2.0, 2.0], -(120.0_f64).ln()),     // B=(1!³)/5! =1/120
             (&[3.0, 2.0, 1.0], (2.0f64 / 120.0).ln()), // (2!·1!·0!)/5!
@@ -857,8 +873,8 @@ mod tests {
             let c = random_store(&mut rng, rows, cols, &[1.0, 2.0, 3.0, 5.0]);
             for col in 0..cols {
                 let x = c.col(col);
-                let direct: f64 = x.iter().map(|&v| ln_gamma(v)).sum::<f64>()
-                    - ln_gamma(x.iter().sum::<f64>());
+                let direct: f64 =
+                    x.iter().map(|&v| ln_gamma(v)).sum::<f64>() - ln_gamma(x.iter().sum::<f64>());
                 assert!((ln_beta(x) - direct).abs() < 1e-12);
             }
         }
@@ -971,7 +987,10 @@ mod tests {
 
         let f_c = bmr_log_evidence(&prior, &post, &consistent);
         let f_i = bmr_log_evidence(&prior, &post, &inconsistent);
-        assert!(f_c < f_i, "consistent model must have lower F ({f_c} vs {f_i})");
+        assert!(
+            f_c < f_i,
+            "consistent model must have lower F ({f_c} vs {f_i})"
+        );
 
         let mut out = [0.0f64; 2];
         posterior_over_models(&prior, &[consistent, inconsistent], &post, &mut out);
@@ -1139,14 +1158,7 @@ mod tests {
             let mut sparse = vec![0.0f64; models.len()];
             let mut full = vec![0.0f64; models.len()];
             engine.predictive_posterior_into(col, row, &mut sparse);
-            predictive_model_posterior(
-                engine.prior(),
-                &models,
-                engine.post(),
-                col,
-                row,
-                &mut full,
-            );
+            predictive_model_posterior(engine.prior(), &models, engine.post(), col, row, &mut full);
             for m in 0..models.len() {
                 assert!(
                     (sparse[m] - full[m]).abs() < 1e-9,
@@ -1202,7 +1214,14 @@ mod tests {
             let mut want = 0.0;
             for &(col, row, p) in &action {
                 let mut pred = vec![0.0f64; n];
-                predictive_model_posterior(engine.prior(), &models, engine.post(), col, row, &mut pred);
+                predictive_model_posterior(
+                    engine.prior(),
+                    &models,
+                    engine.post(),
+                    col,
+                    row,
+                    &mut pred,
+                );
                 let mut kl = 0.0;
                 for m in 0..n {
                     if pred[m] > 0.0 {
@@ -1213,11 +1232,11 @@ mod tests {
             }
             let mut scratch = EfeScratch::new();
             let got = engine.efe_model_gain(&action, &mut scratch);
+            assert!((got - want).abs() < 1e-9, "efe {got} vs definition {want}");
             assert!(
-                (got - want).abs() < 1e-9,
-                "efe {got} vs definition {want}"
+                got >= -1e-12,
+                "KL-weighted gain must be non-negative, got {got}"
             );
-            assert!(got >= -1e-12, "KL-weighted gain must be non-negative, got {got}");
         }
     }
 
@@ -1276,7 +1295,10 @@ mod tests {
     fn occam_saturates_gracefully_at_one() {
         let got = occam_log_bayes_factor(&[1.0, 0.0]);
         assert!(got.is_finite(), "p*→1 must stay finite, got {got}");
-        assert!(got > 30.0 && got < 40.0, "saturated near ln(1e16)≈36.8, got {got}");
+        assert!(
+            got > 30.0 && got < 40.0,
+            "saturated near ln(1e16)≈36.8, got {got}"
+        );
         assert_eq!(occam_log_bayes_factor(&[]), f64::NEG_INFINITY);
         assert_eq!(occam_log_bayes_factor(&[0.0, 0.0]), f64::NEG_INFINITY);
     }

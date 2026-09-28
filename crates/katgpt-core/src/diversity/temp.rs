@@ -1723,7 +1723,11 @@ mod tests {
     #[test]
     fn select_diverse_subset_in_place_matches_wrapper() {
         let rows: Vec<Vec<f32>> = (0..12)
-            .map(|i| (0..6).map(|j| ((i * 7 + j * 3) % 11) as f32 * 0.1).collect())
+            .map(|i| {
+                (0..6)
+                    .map(|j| ((i * 7 + j * 3) % 11) as f32 * 0.1)
+                    .collect()
+            })
             .collect();
         let refs: Vec<&[f32]> = rows.iter().map(|r| r.as_slice()).collect();
         for k in 1..=12 {

@@ -272,16 +272,14 @@ impl SpeculativeVerifier for D2fDrafterVerifier<'_> {
 
             let step = match self.accept_policy {
                 DraftAcceptPolicy::PrefixMatch => prefix_match_step(p_dist, draft_tok),
-                DraftAcceptPolicy::SoftmaxArgmax => {
-                    softmax_argmax_step(p_dist, draft_tok, rng)
-                }
-                DraftAcceptPolicy::TruncatedArgmax => {
-                    truncated_argmax_step(p_dist, draft_tok, rng)
-                }
+                DraftAcceptPolicy::SoftmaxArgmax => softmax_argmax_step(p_dist, draft_tok, rng),
+                DraftAcceptPolicy::TruncatedArgmax => truncated_argmax_step(p_dist, draft_tok, rng),
                 DraftAcceptPolicy::ExactQ => {
                     let q_start = i * vocab_size;
                     let q_end = q_start + vocab_size;
-                    let q_dist = &self.q_distributions_flat[q_start.min(self.q_distributions_flat.len())..q_end.min(self.q_distributions_flat.len())];
+                    let q_dist = &self.q_distributions_flat[q_start
+                        .min(self.q_distributions_flat.len())
+                        ..q_end.min(self.q_distributions_flat.len())];
                     exact_q_step(p_dist, q_dist, draft_tok, rng, &mut self.residual_buf)
                 }
             };
@@ -344,7 +342,8 @@ impl SpeculativeVerifier for D2fDrafterVerifier<'_> {
 fn argmax_total_cmp(p: &[f32]) -> usize {
     p.iter()
         .enumerate()
-        .max_by(|(_, a), (_, b)| a.total_cmp(b)).map_or(0, |(idx, _)| idx)
+        .max_by(|(_, a), (_, b)| a.total_cmp(b))
+        .map_or(0, |(idx, _)| idx)
 }
 
 /// Argmax excluding one index (correction fallbacks).
@@ -360,11 +359,7 @@ fn argmax_excluding(p: &[f32], exclude: usize) -> usize {
             best = t;
         }
     }
-    if best == usize::MAX {
-        exclude
-    } else {
-        best
-    }
+    if best == usize::MAX { exclude } else { best }
 }
 
 /// Sample `y ~ p` renormalized over `t ≠ exclude` (FLARE Eq 21 correction:
@@ -425,7 +420,11 @@ pub(crate) fn softmax_argmax_step(p: &[f32], d: usize, rng: &mut Rng) -> PolicyS
 
 /// Top-k scan (descending insertion) into fixed stack buffers.
 /// Returns `(k_used, z_k)` where `z_k` is the truncated mass.
-fn topk_into(p: &[f32], ids: &mut [usize; TRUNC_TOPK], probs: &mut [f32; TRUNC_TOPK]) -> (usize, f32) {
+fn topk_into(
+    p: &[f32],
+    ids: &mut [usize; TRUNC_TOPK],
+    probs: &mut [f32; TRUNC_TOPK],
+) -> (usize, f32) {
     let k = TRUNC_TOPK.min(p.len());
     if k == 0 {
         return (0, 0.0);
@@ -515,9 +514,7 @@ fn exact_q_step(p: &[f32], q: &[f32], d: usize, rng: &mut Rng, residual: &mut [f
     if u <= acceptance {
         PolicyStep::Accept
     } else {
-        PolicyStep::Correct(sample_residual_distribution_into(
-            p, q, residual, rng,
-        ))
+        PolicyStep::Correct(sample_residual_distribution_into(p, q, residual, rng))
     }
 }
 
@@ -780,7 +777,10 @@ mod tests {
             4,
             DraftAcceptPolicy::SoftmaxArgmax,
         );
-        assert!(v.d2f_config.greedy_draft, "SoftmaxArgmax must force greedy drafting");
+        assert!(
+            v.d2f_config.greedy_draft,
+            "SoftmaxArgmax must force greedy drafting"
+        );
 
         let v2 = D2fDrafterVerifier::with_accept_policy(
             &target_weights,
@@ -830,7 +830,13 @@ mod tests {
                     4,
                     policy,
                 );
-                v.speculate(&draft_weights, &config, config.bos_token, 0, &mut Rng::new(7))
+                v.speculate(
+                    &draft_weights,
+                    &config,
+                    config.bos_token,
+                    0,
+                    &mut Rng::new(7),
+                )
             };
             let r2 = {
                 let mut v = D2fDrafterVerifier::with_accept_policy(
@@ -840,7 +846,13 @@ mod tests {
                     4,
                     policy,
                 );
-                v.speculate(&draft_weights, &config, config.bos_token, 0, &mut Rng::new(7))
+                v.speculate(
+                    &draft_weights,
+                    &config,
+                    config.bos_token,
+                    0,
+                    &mut Rng::new(7),
+                )
             };
             assert_eq!(r1, r2, "{policy:?}: same seed must reproduce");
             assert!(!r1.is_empty(), "{policy:?}: must return ≥1 token");

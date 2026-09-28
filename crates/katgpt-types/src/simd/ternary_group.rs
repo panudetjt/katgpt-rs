@@ -45,7 +45,10 @@
 
 #![allow(clippy::needless_range_loop, clippy::too_many_arguments)]
 
-#[cfg(all(feature = "ternary_group_scale", any(target_arch = "aarch64", target_arch = "x86_64")))]
+#[cfg(all(
+    feature = "ternary_group_scale",
+    any(target_arch = "aarch64", target_arch = "x86_64")
+))]
 use super::SimdLevel;
 #[cfg(feature = "ternary_group_scale")]
 use super::simd_level;
@@ -56,7 +59,10 @@ use crate::{GROUP_SIZE, TernaryGroupWeights};
 /// Consumed only by the arch kernels (neon on aarch64, avx2 on x86_64) — the
 /// scalar/wasm32 paths walk `>> 6` directly, so on other triples this is dead
 /// and must not compile.
-#[cfg(all(feature = "ternary_group_scale", any(target_arch = "aarch64", target_arch = "x86_64")))]
+#[cfg(all(
+    feature = "ternary_group_scale",
+    any(target_arch = "aarch64", target_arch = "x86_64")
+))]
 const BLOCKS_PER_GROUP: usize = GROUP_SIZE / 64;
 
 /// Scalar reference: `y[r] = Σ_g group_scale[r,g] · Σ_{col∈g} sign(col) · x[col]`
@@ -169,7 +175,11 @@ unsafe fn neon_row_range(w: &TernaryGroupWeights, x: &[f32], y: &mut [f32], row_
                     let neg_word = w.neg_bits[idx];
 
                     let base_col = b * 64;
-                    let remaining = if base_col + 64 <= w.cols { 64 } else { w.cols - base_col };
+                    let remaining = if base_col + 64 <= w.cols {
+                        64
+                    } else {
+                        w.cols - base_col
+                    };
 
                     // 32-element unroll: 4 × 8-element chunks, one per accumulator.
                     let mut col = 0usize;
@@ -399,7 +409,11 @@ unsafe fn neon_row_range_hoisted(
                     let neg_word = w.neg_bits[idx];
 
                     let base_col = b * 64;
-                    let remaining = if base_col + 64 <= w.cols { 64 } else { w.cols - base_col };
+                    let remaining = if base_col + 64 <= w.cols {
+                        64
+                    } else {
+                        w.cols - base_col
+                    };
 
                     let mut col = 0usize;
                     while col + 32 <= remaining {
@@ -459,10 +473,8 @@ unsafe fn neon_row_range_hoisted(
                     }
                 }
 
-                let group_acc = vaddvq_f32(vaddq_f32(
-                    vaddq_f32(acc0, acc1),
-                    vaddq_f32(acc2, acc3),
-                )) + scalar_acc;
+                let group_acc = vaddvq_f32(vaddq_f32(vaddq_f32(acc0, acc1), vaddq_f32(acc2, acc3)))
+                    + scalar_acc;
                 row_sum += w.group_scale[group_base + g].to_f32() * group_acc;
             }
 
@@ -945,7 +957,7 @@ pub fn simd_ternary_group_matmul_batch(
 
     use rayon::prelude::*;
 
-if batch < PARALLEL_BATCH_MIN {
+    if batch < PARALLEL_BATCH_MIN {
         for b in 0..batch {
             let x_off = b * w.cols;
             let y_off = b * w.rows;

@@ -176,11 +176,23 @@ pub enum ConstructionError {
     /// `keys` and `fact_map` lengths disagree.
     FactMapLengthMismatch { keys: usize, fact_map: usize },
     /// `keys[i].len() != D`.
-    KeyDimMismatch { index: usize, got: usize, expected: usize },
+    KeyDimMismatch {
+        index: usize,
+        got: usize,
+        expected: usize,
+    },
     /// `values[j].len() != D`.
-    ValueDimMismatch { index: usize, got: usize, expected: usize },
+    ValueDimMismatch {
+        index: usize,
+        got: usize,
+        expected: usize,
+    },
     /// `fact_map[i].1 >= values.len()` (value index out of bounds).
-    ValueIndexOutOfBounds { fact_idx: usize, value_idx: usize, n_values: usize },
+    ValueIndexOutOfBounds {
+        fact_idx: usize,
+        value_idx: usize,
+        n_values: usize,
+    },
     /// Empty fact set (`F == 0`).
     EmptyFactSet,
     /// Feature width `m == 0`.
@@ -221,7 +233,9 @@ impl SeedRng {
     #[inline]
     pub fn new(seed: u64) -> Self {
         // Force state away from the all-zeros stuck point of splitmix64.
-        Self { state: seed.wrapping_add(0x9E37_79B9_7F4A_7C15) }
+        Self {
+            state: seed.wrapping_add(0x9E37_79B9_7F4A_7C15),
+        }
     }
 
     /// Next `u64` via splitmix64 (Sebastiano Vigna's algorithm; passes
@@ -722,7 +736,14 @@ fn fill_gaussian(buf: &mut [f32], rng: &mut SeedRng) {
 
 /// Dispatch the whitened readout to primal (m ≤ F) or dual (m > F) form.
 /// Picks the smaller Gram matrix for the Cholesky solve.
-fn whitened_readout(phi: &[f32], c_f: &[f32], f: usize, m: usize, d: usize, lambda: f32) -> Vec<f32> {
+fn whitened_readout(
+    phi: &[f32],
+    c_f: &[f32],
+    f: usize,
+    m: usize,
+    d: usize,
+    lambda: f32,
+) -> Vec<f32> {
     if m <= f {
         whitened_primal(phi, c_f, f, m, d, lambda)
     } else {
@@ -738,7 +759,14 @@ fn whitened_readout(phi: &[f32], c_f: &[f32], f: usize, m: usize, d: usize, lamb
 /// `X` where `X[i, r] = Xᵀ[r, i]`).
 ///
 /// We use [`chol_solve_f32`] on the `m × m` system `(Σ̂ + λI) Xᵀ = (1/F) Φᵀ C_f`.
-fn whitened_primal(phi: &[f32], c_f: &[f32], f: usize, m: usize, d: usize, lambda: f32) -> Vec<f32> {
+fn whitened_primal(
+    phi: &[f32],
+    c_f: &[f32],
+    f: usize,
+    m: usize,
+    d: usize,
+    lambda: f32,
+) -> Vec<f32> {
     // Σ̂ = (1/F) Φᵀ Φ ∈ ℝ^{m×m}
     let mut sigma = vec![0.0_f32; m * m];
     // Φᵀ Φ  — Φ is F × m row-major; (Φᵀ Φ)[r,s] = Σ_i Φ[i,r]·Φ[i,s]
@@ -835,15 +863,15 @@ fn whitened_dual(phi: &[f32], c_f: &[f32], f: usize, m: usize, d: usize, lambda:
     let mut z_scratch = vec![0.0_f32; f * d];
     let mut w = vec![0.0_f32; m * d];
     ridge_solve_woodbury_f32(
-        &mut w,        // W = Φᵀ Z = B_λᵀ, shape m × D
+        &mut w, // W = Φᵀ Z = B_λᵀ, shape m × D
         &mut l_scratch,
         &mut z_scratch,
         &sample_gram,
         c_f,
         phi,
-        f,             // n = F
-        m,             // d_h = m (feature dim of X)
-        d,             // n_out = D (output dim)
+        f, // n = F
+        m, // d_h = m (feature dim of X)
+        d, // n_out = D (output dim)
     );
 
     // B_λ = (B_λᵀ)ᵀ ∈ ℝ^{D × m}.  B_λ[i, r] = B_λᵀ[r, i] = w[r * d + i].
@@ -938,14 +966,18 @@ pub struct HebbianSlot<const D: usize> {
 
 impl<const D: usize> Clone for HebbianSlot<D> {
     fn clone(&self) -> Self {
-        Self { inner: Arc::clone(&self.inner) }
+        Self {
+            inner: Arc::clone(&self.inner),
+        }
     }
 }
 
 impl<const D: usize> HebbianSlot<D> {
     /// Construct an empty slot (no memory induced yet).
     pub fn new() -> Self {
-        Self { inner: Arc::new(RwLock::new(None)) }
+        Self {
+            inner: Arc::new(RwLock::new(None)),
+        }
     }
 
     /// Construct a slot pre-loaded with `memory` at `version` / `margin`.
@@ -959,7 +991,9 @@ impl<const D: usize> HebbianSlot<D> {
             margin,
             n_facts: 0,
         };
-        Self { inner: Arc::new(RwLock::new(Some((mem, commitment)))) }
+        Self {
+            inner: Arc::new(RwLock::new(Some((mem, commitment)))),
+        }
     }
 
     /// Pre-load with explicit version + margin + n_facts.
@@ -978,7 +1012,9 @@ impl<const D: usize> HebbianSlot<D> {
             margin,
             n_facts,
         };
-        Self { inner: Arc::new(RwLock::new(Some((mem, commitment)))) }
+        Self {
+            inner: Arc::new(RwLock::new(Some((mem, commitment)))),
+        }
     }
 
     /// Hot-swap the memory. Computes the new commitment from the memory's
@@ -1086,18 +1122,12 @@ mod tests {
     ) -> (Vec<Vec<f32>>, Vec<Vec<f32>>, Vec<(usize, usize)>) {
         let mut rng = SeedRng::new(seed);
         let keys: Vec<Vec<f32>> = (0..f)
-            .map(|_| {
-                (0..D).map(|_| rng.next_gaussian_pair().0).collect()
-            })
+            .map(|_| (0..D).map(|_| rng.next_gaussian_pair().0).collect())
             .collect();
         let values: Vec<Vec<f32>> = (0..v)
-            .map(|_| {
-                (0..D).map(|_| rng.next_gaussian_pair().0).collect()
-            })
+            .map(|_| (0..D).map(|_| rng.next_gaussian_pair().0).collect())
             .collect();
-        let fact_map: Vec<(usize, usize)> = (0..f)
-            .map(|i| (i, i % v.max(1)))
-            .collect();
+        let fact_map: Vec<(usize, usize)> = (0..f).map(|i| (i, i % v.max(1))).collect();
         (keys, values, fact_map)
     }
 
@@ -1114,8 +1144,9 @@ mod tests {
         let keys_ref = refs(&keys);
         let values_ref = refs(&values);
         let cfg = HebbianMlpConfig::new(D, 32);
-        let mem = HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 0xBEEF)
-            .expect("construction");
+        let mem =
+            HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 0xBEEF)
+                .expect("construction");
         assert_eq!(mem.a.len(), 32 * D);
         assert_eq!(mem.g.len(), 32 * D);
         assert_eq!(mem.b.len(), D * 32);
@@ -1131,10 +1162,12 @@ mod tests {
         let keys_ref = refs(&keys);
         let values_ref = refs(&values);
         let cfg = HebbianMlpConfig::new(D, 32);
-        let m1 = HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 0xBEEF)
-            .unwrap();
-        let m2 = HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 0xBEEF)
-            .unwrap();
+        let m1 =
+            HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 0xBEEF)
+                .unwrap();
+        let m2 =
+            HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 0xBEEF)
+                .unwrap();
         assert_eq!(m1.a, m2.a, "A must be bit-identical");
         assert_eq!(m1.g, m2.g, "G must be bit-identical");
         assert_eq!(m1.b, m2.b, "B must be bit-identical");
@@ -1148,11 +1181,17 @@ mod tests {
         let keys_ref = refs(&keys);
         let values_ref = refs(&values);
         let cfg = HebbianMlpConfig::new(D, 32);
-        let m1 = HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 0xBEEF)
-            .unwrap();
-        let m2 = HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 0xDEAD)
-            .unwrap();
-        assert_ne!(m1.blake3(), m2.blake3(), "different seeds → different memories");
+        let m1 =
+            HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 0xBEEF)
+                .unwrap();
+        let m2 =
+            HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 0xDEAD)
+                .unwrap();
+        assert_ne!(
+            m1.blake3(),
+            m2.blake3(),
+            "different seeds → different memories"
+        );
     }
 
     // ── Error paths ──────────────────────────────────────────────────────
@@ -1171,7 +1210,12 @@ mod tests {
         let (keys, values, fact_map) = synthetic_fact_set::<D>(4, 4, 1);
         let keys_ref = refs(&keys);
         let values_ref = refs(&values);
-        let cfg = HebbianMlpConfig { d: D, m: 0, ridge: 1e-6, variant: HebbianVariant::Whitened };
+        let cfg = HebbianMlpConfig {
+            d: D,
+            m: 0,
+            ridge: 1e-6,
+            variant: HebbianVariant::Whitened,
+        };
         let err = HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 0)
             .unwrap_err();
         assert_eq!(err, ConstructionError::ZeroFeatureWidth);
@@ -1188,7 +1232,11 @@ mod tests {
         let err = HebbianKernelMemory::<D>::construct(&[&bad_key], &values_ref, &fact_map, cfg, 0)
             .unwrap_err();
         match err {
-            ConstructionError::KeyDimMismatch { index: 0, got: 8, expected: 4 } => {}
+            ConstructionError::KeyDimMismatch {
+                index: 0,
+                got: 8,
+                expected: 4,
+            } => {}
             other => panic!("expected KeyDimMismatch, got {other:?}"),
         }
     }
@@ -1205,7 +1253,10 @@ mod tests {
         let err = HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 0)
             .unwrap_err();
         match err {
-            ConstructionError::FactMapLengthMismatch { keys: 4, fact_map: 2 } => {}
+            ConstructionError::FactMapLengthMismatch {
+                keys: 4,
+                fact_map: 2,
+            } => {}
             other => panic!("expected FactMapLengthMismatch, got {other:?}"),
         }
     }
@@ -1230,9 +1281,12 @@ mod tests {
         let keys_ref = refs(&keys);
         let values_ref = refs(&values);
         let cfg = HebbianMlpConfig::new(D, m);
-        let mem = HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 0xABCD)
+        let mem =
+            HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 0xABCD)
+                .unwrap();
+        let gamma = mem
+            .decoding_margin(&keys_ref, &values_ref, &fact_map)
             .unwrap();
-        let gamma = mem.decoding_margin(&keys_ref, &values_ref, &fact_map).unwrap();
         assert!(
             gamma > 0.0,
             "whitened margin must be positive for isotropic fact set at D=64, F=128, m=128; got {gamma}"
@@ -1256,12 +1310,26 @@ mod tests {
         let keys_ref = refs(&keys);
         let values_ref = refs(&values);
         let cfg_w = HebbianMlpConfig::new(D, m);
-        let cfg_u = HebbianMlpConfig { variant: HebbianVariant::Unwhitened, ..cfg_w };
-        let mem_w = HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg_w, 0xABCD).unwrap();
-        let mem_u = HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg_u, 0xABCD).unwrap();
-        let gamma_w = mem_w.decoding_margin(&keys_ref, &values_ref, &fact_map).unwrap();
-        let gamma_u = mem_u.decoding_margin(&keys_ref, &values_ref, &fact_map).unwrap();
-        assert!(gamma_w > 0.0, "whitened margin must be positive; got {gamma_w}");
+        let cfg_u = HebbianMlpConfig {
+            variant: HebbianVariant::Unwhitened,
+            ..cfg_w
+        };
+        let mem_w =
+            HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg_w, 0xABCD)
+                .unwrap();
+        let mem_u =
+            HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg_u, 0xABCD)
+                .unwrap();
+        let gamma_w = mem_w
+            .decoding_margin(&keys_ref, &values_ref, &fact_map)
+            .unwrap();
+        let gamma_u = mem_u
+            .decoding_margin(&keys_ref, &values_ref, &fact_map)
+            .unwrap();
+        assert!(
+            gamma_w > 0.0,
+            "whitened margin must be positive; got {gamma_w}"
+        );
         assert!(
             gamma_w > gamma_u,
             "whitened margin {gamma_w} must exceed unwhitened {gamma_u} (paper §B.2.4)"
@@ -1281,10 +1349,18 @@ mod tests {
         let (keys, values, fact_map) = synthetic_fact_set::<D>(f, v, 0x1234);
         let keys_ref = refs(&keys);
         let values_ref = refs(&values);
-        let cfg = HebbianMlpConfig { d: D, m, ridge: 1e-6, variant: HebbianVariant::DataDependent };
-        let mem = HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 0xABCD)
+        let cfg = HebbianMlpConfig {
+            d: D,
+            m,
+            ridge: 1e-6,
+            variant: HebbianVariant::DataDependent,
+        };
+        let mem =
+            HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 0xABCD)
+                .unwrap();
+        let gamma = mem
+            .decoding_margin(&keys_ref, &values_ref, &fact_map)
             .unwrap();
-        let gamma = mem.decoding_margin(&keys_ref, &values_ref, &fact_map).unwrap();
         assert!(
             gamma > 0.0,
             "data-dependent margin must be positive; got {gamma}"
@@ -1302,10 +1378,20 @@ mod tests {
         let keys_ref = refs(&keys);
         let values_ref = refs(&values);
         let cfg_w = HebbianMlpConfig::new(D, 32);
-        let cfg_d = HebbianMlpConfig { variant: HebbianVariant::DataDependent, ..cfg_w };
-        let m_w = HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg_w, 0xBEEF).unwrap();
-        let m_d = HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg_d, 0xBEEF).unwrap();
-        assert_eq!(m_w.b, m_d.b, "P1: data-dependent B must equal whitened B (ALS gated)");
+        let cfg_d = HebbianMlpConfig {
+            variant: HebbianVariant::DataDependent,
+            ..cfg_w
+        };
+        let m_w =
+            HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg_w, 0xBEEF)
+                .unwrap();
+        let m_d =
+            HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg_d, 0xBEEF)
+                .unwrap();
+        assert_eq!(
+            m_w.b, m_d.b,
+            "P1: data-dependent B must equal whitened B (ALS gated)"
+        );
     }
 
     // ── Forward + retrieval end-to-end ───────────────────────────────────
@@ -1320,8 +1406,9 @@ mod tests {
         let keys_ref = refs(&keys);
         let values_ref = refs(&values);
         let cfg = HebbianMlpConfig::new(D, m);
-        let mem = HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 0x4242)
-            .unwrap();
+        let mem =
+            HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 0x4242)
+                .unwrap();
 
         let mut phi = vec![0.0_f32; m];
         let mut fwd = vec![0.0_f32; D];
@@ -1408,8 +1495,10 @@ mod tests {
         let keys_ref = refs(&keys);
         let values_ref = refs(&values);
         let cfg = HebbianMlpConfig::new(D, 16);
-        let m1 = HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 1).unwrap();
-        let m2 = HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 2).unwrap();
+        let m1 =
+            HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 1).unwrap();
+        let m2 =
+            HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 2).unwrap();
 
         let slot = HebbianSlot::<D>::new();
         let c1 = slot.induce(m1, 1, 0.5, 8);
@@ -1429,7 +1518,8 @@ mod tests {
         let keys_ref = refs(&keys);
         let values_ref = refs(&values);
         let cfg = HebbianMlpConfig::new(D, 16);
-        let mem = HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 1).unwrap();
+        let mem =
+            HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 1).unwrap();
 
         let slot1 = HebbianSlot::<D>::new();
         let slot2 = slot1.clone();
@@ -1448,8 +1538,10 @@ mod tests {
         let keys_ref = refs(&keys);
         let values_ref = refs(&values);
         let cfg = HebbianMlpConfig::new(D, 16);
-        let m1 = HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 7).unwrap();
-        let m2 = HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 7).unwrap();
+        let m1 =
+            HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 7).unwrap();
+        let m2 =
+            HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 7).unwrap();
         assert_eq!(m1.blake3(), m2.blake3());
     }
 
@@ -1460,9 +1552,15 @@ mod tests {
         let keys_ref = refs(&keys);
         let values_ref = refs(&values);
         let cfg = HebbianMlpConfig::new(D, 16);
-        let m_whitened = HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 7).unwrap();
-        let cfg_u = HebbianMlpConfig { variant: HebbianVariant::Unwhitened, ..cfg };
-        let m_unwhitened = HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg_u, 7).unwrap();
+        let m_whitened =
+            HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg, 7).unwrap();
+        let cfg_u = HebbianMlpConfig {
+            variant: HebbianVariant::Unwhitened,
+            ..cfg
+        };
+        let m_unwhitened =
+            HebbianKernelMemory::<D>::construct(&keys_ref, &values_ref, &fact_map, cfg_u, 7)
+                .unwrap();
         assert_ne!(m_whitened.blake3(), m_unwhitened.blake3());
     }
 

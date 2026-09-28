@@ -36,8 +36,8 @@ use super::{
 };
 use crate::transformer::TransformerWeights;
 use crate::types::{Config, Rng};
-use katgpt_core::order_to_gen_steps;
 use katgpt_core::PositionOffsetSchedule;
+use katgpt_core::order_to_gen_steps;
 
 /// Per-sequence generation-step source — the Issue 813 custom-order seam.
 ///
@@ -366,9 +366,10 @@ pub fn train_mini_set_causal_denoiser_with_gen_steps(
     gen_steps_for: SetCausalGenStepsFn<'_>,
     seed: u64,
 ) -> (TransformerWeights, Vec<f32>) {
-    assert!
-        ((0.0..=1.0).contains(&mask_ratio),
-        "mask_ratio must be in [0, 1], got {mask_ratio}");
+    assert!(
+        (0.0..=1.0).contains(&mask_ratio),
+        "mask_ratio must be in [0, 1], got {mask_ratio}"
+    );
     let mut rng = Rng::new(seed);
     let mut weights = TransformerWeights::new(config, &mut rng);
     let mut loss_history = Vec::with_capacity(n_epochs);
@@ -429,14 +430,7 @@ pub fn train_mini_set_causal_denoiser_with_gen_steps(
 
             // Backward + SGD: the zero-weight ⇒ zero-gradient attention
             // invariant carries the mask; the loss set carries the target.
-            backward(
-                &act,
-                &weights,
-                tokens,
-                &is_masked_buf,
-                config,
-                &mut bwd_ctx,
-            );
+            backward(&act, &weights, tokens, &is_masked_buf, config, &mut bwd_ctx);
             sgd_update(&mut weights, &bwd_ctx.grads, lr);
 
             epoch_loss += loss;
@@ -484,7 +478,13 @@ pub fn evaluate_set_causal_denoiser_nll_with_gen_steps(
 ) -> f32 {
     let mut fwd_ctx = ForwardSaveContext::new(config);
     evaluate_set_causal_denoiser_nll_with_gen_steps_internal(
-        weights, data, config, mask_ratio, gen_steps_for, rng, &mut fwd_ctx,
+        weights,
+        data,
+        config,
+        mask_ratio,
+        gen_steps_for,
+        rng,
+        &mut fwd_ctx,
     )
 }
 

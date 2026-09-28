@@ -1562,7 +1562,8 @@ mod legal_set_equivalence {
             token_idx: usize,
             parent_tokens: &[usize],
         ) -> u32 {
-            self.0.min_completion_distance(depth, token_idx, parent_tokens)
+            self.0
+                .min_completion_distance(depth, token_idx, parent_tokens)
         }
         fn singular_span_len(&self, depth: usize, parent_tokens: &[usize]) -> u32 {
             self.0.singular_span_len(depth, parent_tokens)

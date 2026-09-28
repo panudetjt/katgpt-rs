@@ -338,7 +338,11 @@ mod tests {
 
         for (i, &idx) in held.iter().enumerate() {
             assert_eq!(idx, i, "held index changed after churn");
-            assert_eq!(pool.get(idx), Some(&(1000 + i as u64)), "held value changed");
+            assert_eq!(
+                pool.get(idx),
+                Some(&(1000 + i as u64)),
+                "held value changed"
+            );
         }
         assert_eq!(pool.len(), 16 + 1 + 4);
     }
@@ -368,7 +372,11 @@ mod tests {
         // the free list.
         assert_eq!(pool.len(), 0);
         assert_eq!(pool.capacity(), 1);
-        assert_eq!(pool.free, vec![a], "free list must hold the slot exactly once");
+        assert_eq!(
+            pool.free,
+            vec![a],
+            "free list must hold the slot exactly once"
+        );
         assert!(pool.is_empty());
     }
 

@@ -163,28 +163,27 @@ fn run_arm(
 
     for (i, seq) in prompts.iter().take(N_PROMPTS).enumerate() {
         for k in 0..K_RESAMPLES {
-            let pipeline = D2fPipeline::with_prompt(
-                config,
-                decode_config,
-                DECODE_LEN,
-                &seq[..PROMPT_LEN],
-            );
+            let pipeline =
+                D2fPipeline::with_prompt(config, decode_config, DECODE_LEN, &seq[..PROMPT_LEN]);
             let mut rng = Rng::new(SEED_BASE + 10_000 * k as u64 + i as u64);
             let result = match lambda {
                 None => pipeline.decode_all(weights, &NoPruner, &NoScreeningPruner, &mut rng),
                 Some(lam) => {
                     let probe: Box<dyn WeakLogitProbe> = match probe_kind {
-                        ProbeKind::Trained => Box::new(
-                            MlpWeakProbe::new(load_artifact()).expect("fixture wraps"),
-                        ),
+                        ProbeKind::Trained => {
+                            Box::new(MlpWeakProbe::new(load_artifact()).expect("fixture wraps"))
+                        }
                         ProbeKind::Noise => Box::new(ConstantProbe::noise(vocab)),
                         ProbeKind::Bonus(bonus) => {
                             Box::new(ConstantProbe::bonus(vocab, config.mask_token, bonus))
                         }
                     };
-                    pipeline
-                        .set_guidance(lam, probe)
-                        .decode_all(weights, &NoPruner, &NoScreeningPruner, &mut rng)
+                    pipeline.set_guidance(lam, probe).decode_all(
+                        weights,
+                        &NoPruner,
+                        &NoScreeningPruner,
+                        &mut rng,
+                    )
                 }
             };
             for (p, &t) in result.tokens[PROMPT_LEN..PROMPT_LEN + DECODE_LEN]
@@ -389,13 +388,15 @@ fn g1_lambda_one_bit_identity_with_trained_probe() {
     };
     for (i, seq) in test_data.iter().take(64).enumerate() {
         let mut rng_u = Rng::new(SEED_BASE + i as u64);
-        let unguided = D2fPipeline::with_prompt(config, decode_config, DECODE_LEN, &seq[..PROMPT_LEN])
-            .decode_all(weights, &NoPruner, &NoScreeningPruner, &mut rng_u);
+        let unguided =
+            D2fPipeline::with_prompt(config, decode_config, DECODE_LEN, &seq[..PROMPT_LEN])
+                .decode_all(weights, &NoPruner, &NoScreeningPruner, &mut rng_u);
         let mut rng_g = Rng::new(SEED_BASE + i as u64);
         let probe = MlpWeakProbe::new(artifact.clone()).expect("fixture wraps");
-        let guided = D2fPipeline::with_prompt(config, decode_config, DECODE_LEN, &seq[..PROMPT_LEN])
-            .set_guidance(1.0, Box::new(probe) as Box<dyn WeakLogitProbe>)
-            .decode_all(weights, &NoPruner, &NoScreeningPruner, &mut rng_g);
+        let guided =
+            D2fPipeline::with_prompt(config, decode_config, DECODE_LEN, &seq[..PROMPT_LEN])
+                .set_guidance(1.0, Box::new(probe) as Box<dyn WeakLogitProbe>)
+                .decode_all(weights, &NoPruner, &NoScreeningPruner, &mut rng_g);
         assert_eq!(
             unguided.tokens, guided.tokens,
             "λ=1 must be bit-identical to unguided (prompt {i})"
@@ -600,7 +601,10 @@ fn g3_bonus_control_directionality() {
         );
     }
     let total_drop = pts[0].1 - pts.last().expect("non-empty").1;
-    println!("G-bonus: total drop {:+.2} pts over the bonus sweep", total_drop * 100.0);
+    println!(
+        "G-bonus: total drop {:+.2} pts over the bonus sweep",
+        total_drop * 100.0
+    );
     assert!(
         total_drop >= 0.01,
         "G-bonus: total drop {total_drop:.4} < 1 pt — the directionality \
@@ -622,7 +626,15 @@ fn softening_arm_is_printed_not_gated() {
         Some(0.5),
         ProbeKind::Trained,
     );
-    let base = run_arm("λ=1.0", config, weights, test_data, T0, Some(1.0), ProbeKind::Trained);
+    let base = run_arm(
+        "λ=1.0",
+        config,
+        weights,
+        test_data,
+        T0,
+        Some(1.0),
+        ProbeKind::Trained,
+    );
     print_arm(&soft);
     print_arm(&base);
 }

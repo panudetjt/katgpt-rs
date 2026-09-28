@@ -297,14 +297,7 @@ fn g1_reference_p0(config: &Config, weights: &TransformerWeights) -> Vec<f32> {
 
     let mut ctx = ForwardContext::new(config);
     let mut cache = MultiLayerKVCache::new(config);
-    let logits = forward(
-        &mut ctx,
-        weights,
-        &mut cache,
-        config.bos_token,
-        0,
-        config,
-    );
+    let logits = forward(&mut ctx, weights, &mut cache, config.bos_token, 0, config);
     let mut p0: Vec<f32> = logits.to_vec();
     softmax_scaled(&mut p0, 1.0 / config.temperature);
     p0
@@ -359,7 +352,9 @@ fn proof_5_g1_e2e_softmax_argmax_preserves_target_distribution() {
         G1_ROUNDS,
     );
     let tv = g1_tv(&counts, &p0, G1_ROUNDS);
-    eprintln!("  G1 SoftmaxArgmax (self-spec, greedy drafts): TV = {tv:.4} over {G1_ROUNDS} rounds");
+    eprintln!(
+        "  G1 SoftmaxArgmax (self-spec, greedy drafts): TV = {tv:.4} over {G1_ROUNDS} rounds"
+    );
     assert!(
         tv < 0.06,
         "SoftmaxArgmax must preserve the target next-token distribution (TV = {tv:.4})"
@@ -381,7 +376,9 @@ fn proof_5_g1_e2e_exact_q_preserves_target_distribution() {
         G1_ROUNDS,
     );
     let tv = g1_tv(&counts, &p0, G1_ROUNDS);
-    eprintln!("  G1 ExactQ (self-spec, sampled drafts + stored q): TV = {tv:.4} over {G1_ROUNDS} rounds");
+    eprintln!(
+        "  G1 ExactQ (self-spec, sampled drafts + stored q): TV = {tv:.4} over {G1_ROUNDS} rounds"
+    );
     assert!(
         tv < 0.06,
         "ExactQ must preserve the target next-token distribution (TV = {tv:.4})"
@@ -433,7 +430,7 @@ fn proof_5_g1_e2e_prefix_match_collapses_to_mode() {
 fn proof_6_g2_acceptance_and_latency_vs_prefix_match() {
     const N: usize = 400;
 
-let config = Config::micro_dllm();
+    let config = Config::micro_dllm();
     let mut rng = Rng::new(42);
     let weights = TransformerWeights::new(&config, &mut rng);
     // Self-speculation regime (draft == target) — the design point where
@@ -446,7 +443,9 @@ let config = Config::micro_dllm();
         ("TruncatedArgmax", DraftAcceptPolicy::TruncatedArgmax),
         ("ExactQ", DraftAcceptPolicy::ExactQ),
     ];
-    eprintln!("\n  G2 policy comparison (self-speculation, untrained weights — relative numbers only):");
+    eprintln!(
+        "\n  G2 policy comparison (self-speculation, untrained weights — relative numbers only):"
+    );
     let mut results: Vec<(&str, f64, f64)> = Vec::new();
     for (name, policy) in policies {
         let d2f_config = D2fDecodeConfig {
@@ -466,9 +465,7 @@ let config = Config::micro_dllm();
         let elapsed = start.elapsed();
         let avg_tokens = tokens as f64 / N as f64;
         let us_per_round = elapsed.as_micros() as f64 / N as f64;
-        eprintln!(
-            "    {name:<16} tokens/round = {avg_tokens:.2}  latency = {us_per_round:.1} µs"
-        );
+        eprintln!("    {name:<16} tokens/round = {avg_tokens:.2}  latency = {us_per_round:.1} µs");
         results.push((name, avg_tokens, us_per_round));
     }
 
@@ -477,7 +474,9 @@ let config = Config::micro_dllm();
     let (sa_name, sa_tokens, sa_latency) = results[1];
     assert_eq!(pm_name, "PrefixMatch");
     assert_eq!(sa_name, "SoftmaxArgmax");
-    eprintln!("    gate: SA tokens {sa_tokens:.2} >= PM {pm_tokens:.2} - 0.1; SA latency {sa_latency:.1} <= PM {pm_latency:.1} * 1.25 + 5");
+    eprintln!(
+        "    gate: SA tokens {sa_tokens:.2} >= PM {pm_tokens:.2} - 0.1; SA latency {sa_latency:.1} <= PM {pm_latency:.1} * 1.25 + 5"
+    );
     assert!(
         sa_tokens >= pm_tokens - 0.1,
         "SoftmaxArgmax acceptance regression: {sa_tokens:.2} vs PrefixMatch {pm_tokens:.2}"
@@ -509,13 +508,8 @@ fn proof_7_g4_steady_state_buffer_stable() {
     // regime where buffer churn would show if any existed. ExactQ additionally
     // exercises the q-capture + residual-scratch paths.
     for policy in [DraftAcceptPolicy::SoftmaxArgmax, DraftAcceptPolicy::ExactQ] {
-        let mut verifier = D2fDrafterVerifier::with_accept_policy(
-            &target_weights,
-            &config,
-            d2f_config,
-            4,
-            policy,
-        );
+        let mut verifier =
+            D2fDrafterVerifier::with_accept_policy(&target_weights, &config, d2f_config, 4, policy);
         let mut rng = Rng::new(2026);
 
         // Warmup (establish steady state) then measure: capacity of the heavy

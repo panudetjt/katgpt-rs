@@ -14,9 +14,7 @@
 
 #![cfg(feature = "mla_attention")]
 
-use katgpt_attn::mla::{
-    MlaConfig, MlaForwardScratch, MlaKVCache, MlaWeights, mla_forward_token,
-};
+use katgpt_attn::mla::{MlaConfig, MlaForwardScratch, MlaKVCache, MlaWeights, mla_forward_token};
 use katgpt_kv::shard_kv::rope::RopeFreqs;
 
 // ─── f64 reference implementation ───────────────────────────────────────────
@@ -262,12 +260,17 @@ fn run_f32(config: &MlaConfig, weights: &MlaWeights, tokens: &[Vec<f32>]) -> Vec
     let max_seq = tokens.len();
     let mut cache = MlaKVCache::new(config, max_seq);
     let mut scratch = MlaForwardScratch::new(config, max_seq);
-    let mut rope_freqs =
-        RopeFreqs::new_with_theta(config.qk_rope_head_dim, config.rope_theta);
+    let mut rope_freqs = RopeFreqs::new_with_theta(config.qk_rope_head_dim, config.rope_theta);
     let mut last_out = Vec::new();
     for h in tokens {
-        let out =
-            mla_forward_token(config, weights, &mut cache, &mut scratch, &mut rope_freqs, h);
+        let out = mla_forward_token(
+            config,
+            weights,
+            &mut cache,
+            &mut scratch,
+            &mut rope_freqs,
+            h,
+        );
         last_out = out.to_vec();
     }
     last_out
@@ -290,7 +293,9 @@ fn g1_single_token_zero_position_matches_reference() {
     let weights = MlaWeights::random(&config, 42);
     let weights_f64 = weights_to_f64(&weights);
 
-    let h_f32: Vec<f32> = (0..config.hidden_size).map(|i| (i as f32 + 1.0) * 0.1).collect();
+    let h_f32: Vec<f32> = (0..config.hidden_size)
+        .map(|i| (i as f32 + 1.0) * 0.1)
+        .collect();
     let h_f64: Vec<f64> = h_f32.iter().map(|&v| v as f64).collect();
 
     let f32_out = run_f32(&config, &weights, &[h_f32]);
@@ -371,7 +376,9 @@ fn g1_output_gate_on_matches_reference() {
     let weights = MlaWeights::random(&config, 11);
     let weights_f64 = weights_to_f64(&weights);
 
-    let h_f32: Vec<f32> = (0..config.hidden_size).map(|i| (i as f32) * 0.05 - 0.4).collect();
+    let h_f32: Vec<f32> = (0..config.hidden_size)
+        .map(|i| (i as f32) * 0.05 - 0.4)
+        .collect();
     let h_f64: Vec<f64> = h_f32.iter().map(|&v| v as f64).collect();
 
     let f32_out = run_f32(&config, &weights, &[h_f32]);
@@ -392,7 +399,9 @@ fn g1_output_gate_off_matches_reference() {
     let weights = MlaWeights::random(&config, 11);
     let weights_f64 = weights_to_f64(&weights);
 
-    let h_f32: Vec<f32> = (0..config.hidden_size).map(|i| (i as f32) * 0.05 - 0.4).collect();
+    let h_f32: Vec<f32> = (0..config.hidden_size)
+        .map(|i| (i as f32) * 0.05 - 0.4)
+        .collect();
     let h_f64: Vec<f64> = h_f32.iter().map(|&v| v as f64).collect();
 
     let f32_out = run_f32(&config, &weights, &[h_f32]);
@@ -416,7 +425,9 @@ fn g1_attention_scale_is_sqrt_dh_plus_dr() {
 
     let tokens_f32: Vec<Vec<f32>> = vec![
         (0..config.hidden_size).map(|i| (i as f32) * 0.1).collect(),
-        (0..config.hidden_size).map(|i| 1.0 - (i as f32) * 0.05).collect(),
+        (0..config.hidden_size)
+            .map(|i| 1.0 - (i as f32) * 0.05)
+            .collect(),
     ];
     let tokens_f64: Vec<Vec<f64>> = tokens_f32
         .iter()

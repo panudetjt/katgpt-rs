@@ -125,9 +125,7 @@ fn test_goat_flow_score_overhead() {
     eprintln!("═══ GOAT T5.1: Flow Score Overhead ═══");
     eprintln!("  V={vocab} T={positions}: {per_call_us:.1}μs/call");
     eprintln!("  Inference estimate: {inference_us:.0}μs/token");
-    eprintln!(
-        "  Overhead: {overhead_pct:.4}% (debug cap: {debug_overhead_cap}%)"
-    );
+    eprintln!("  Overhead: {overhead_pct:.4}% (debug cap: {debug_overhead_cap}%)");
     eprintln!("  NOTE: Release build expected <1%. Debug is ~5-10x slower.");
 
     assert!(
@@ -461,17 +459,11 @@ fn test_goat_flow_score_entropy_discrimination() {
         .collect();
 
     eprintln!("═══ GOAT T5.6: Entropy Discrimination (Core NF-CoT Insight) ═══");
-    eprintln!(
-        "  Peaked:   score={score_a_peaked:.6} base={base_a:.6} det={det_a:.6}"
-    );
-    eprintln!(
-        "  Uniform:  score={score_b_uniform:.6} base={base_b:.6} det={det_b:.6}"
-    );
+    eprintln!("  Peaked:   score={score_a_peaked:.6} base={base_a:.6} det={det_a:.6}");
+    eprintln!("  Uniform:  score={score_b_uniform:.6} base={base_b:.6} det={det_b:.6}");
     eprintln!("  Entropy peaked:  {entropy_peaked:?}");
     eprintln!("  Entropy uniform: {entropy_uniform:?}");
-    eprintln!(
-        "  log_det peaked:  {det_a:.6} (should be very negative — confident)"
-    );
+    eprintln!("  log_det peaked:  {det_a:.6} (should be very negative — confident)");
     eprintln!("  log_det uniform: {det_b:.6} (should be ≈0 — uncertain)");
 
     // Core assertions:
@@ -498,9 +490,7 @@ fn test_goat_flow_score_entropy_discrimination() {
         "log_det should discriminate: |{det_b:.6} - {det_a:.6}| = {det_diff:.6} (should be > 0.01)"
     );
 
-    eprintln!(
-        "  ✓ log_det discrimination: {det_diff:.4} (peaked det is more negative)"
-    );
+    eprintln!("  ✓ log_det discrimination: {det_diff:.4} (peaked det is more negative)");
     eprintln!(
         "  ✓ NF-CoT insight validated: uncertain regions carry more information, \
          log_det correctly penalizes overconfident trajectories"
@@ -565,9 +555,7 @@ fn test_bench_flow_score_vs_max_prob_selection() {
             if agree {
                 agreements += 1;
             }
-            eprintln!(
-                "    {name}: flow=#{best_flow} max=#{best_max_idx} agree={agree}"
-            );
+            eprintln!("    {name}: flow=#{best_flow} max=#{best_max_idx} agree={agree}");
         }
         assert_eq!(
             agreements,
@@ -639,9 +627,7 @@ fn test_bench_flow_score_vs_max_prob_selection() {
         // Report which flow_score prefers
         let flow_prefers = if flow_a > flow_b { 'A' } else { 'B' };
         let maxprob_prefers = if logprob_a > logprob_b { 'A' } else { 'B' };
-        eprintln!(
-            "    flow_score prefers: {flow_prefers} | max-prob prefers: {maxprob_prefers}"
-        );
+        eprintln!("    flow_score prefers: {flow_prefers} | max-prob prefers: {maxprob_prefers}");
 
         if flow_prefers != maxprob_prefers {
             eprintln!(

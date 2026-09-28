@@ -140,11 +140,11 @@ fn jaccard(a: &[usize], b: &[usize]) -> f64 {
 
 fn main() {
     const D_K_C: usize = 64;
-const D_V_C: usize = 4;
-const K_C: usize = 8;
-const N_CLUSTERS: usize = 10;
+    const D_V_C: usize = 4;
+    const K_C: usize = 8;
+    const N_CLUSTERS: usize = 10;
 
-println!("══════════════════════════════════════════════════════════════════");
+    println!("══════════════════════════════════════════════════════════════════");
     println!("  Plan 408 Phase 3 — Product Key Memory GOAT gate");
     println!(
         "  SQRT_N={} (N={} slots), D_K={}, D_V={}, K={}",
@@ -225,13 +225,9 @@ println!("═══════════════════════�
     let g1_pass = speedup >= G1_SPEEDUP_TARGET;
 
     println!("── G1: latency (O(√N) PKM vs O(N) brute-force) ──────────────────");
-    println!(
-        "  PKM   p50 = {pkm_p50:>10} ns  (mean {pkm_mean:.0} ns, p99 {pkm_p99:.0} ns)"
-    );
+    println!("  PKM   p50 = {pkm_p50:>10} ns  (mean {pkm_mean:.0} ns, p99 {pkm_p99:.0} ns)");
     println!("  BF    p50 = {bf_p50:>10} ns  ({bf_iters} iters)");
-    println!(
-        "  Speedup    = {speedup:>7.1}×   (target ≥ {G1_SPEEDUP_TARGET:.0}×)"
-    );
+    println!("  Speedup    = {speedup:>7.1}×   (target ≥ {G1_SPEEDUP_TARGET:.0}×)");
     println!(
         "  G1 verdict: {}\n",
         if g1_pass { "✅ PASS" } else { "❌ FAIL" }
@@ -343,9 +339,7 @@ println!("═══════════════════════�
     println!("── G3: IDW centroid-ness (intra-cluster-0 access rate) ──────────");
     println!("  Dot intra-cluster rate = {dot_rate:.3}");
     println!("  IDW intra-cluster rate = {idw_rate:.3}");
-    println!(
-        "  IDW / Dot ratio        = {idw_ratio:.3}×   (target ≥ {G3_IDW_RATIO_TARGET:.1}×)"
-    );
+    println!("  IDW / Dot ratio        = {idw_ratio:.3}×   (target ≥ {G3_IDW_RATIO_TARGET:.1}×)");
     println!(
         "  G3 verdict: {}\n",
         if g3_pass { "✅ PASS" } else { "❌ FAIL" }
@@ -372,9 +366,7 @@ println!("═══════════════════════�
     let g4_pass = alloc_delta == 0;
 
     println!("── G4: zero-alloc steady state ──────────────────────────────────");
-    println!(
-        "  Allocations over {ALLOC_ITERS} query_into calls: {alloc_delta}  (target 0)"
-    );
+    println!("  Allocations over {ALLOC_ITERS} query_into calls: {alloc_delta}  (target 0)");
     println!(
         "  G4 verdict: {}\n",
         if g4_pass { "✅ PASS" } else { "❌ FAIL" }

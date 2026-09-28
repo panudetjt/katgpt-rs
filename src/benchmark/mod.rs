@@ -213,7 +213,11 @@ pub fn save_results_csv(results: &[BenchResult], path: &str) -> std::io::Result<
     let commit = std::process::Command::new("git")
         .args(["rev-parse", "--short", "HEAD"])
         .output()
-        .ok().map_or_else(|| "unknown".into(), |o| String::from_utf8_lossy(&o.stdout).trim().to_string());
+        .ok()
+        .map_or_else(
+            || "unknown".into(),
+            |o| String::from_utf8_lossy(&o.stdout).trim().to_string(),
+        );
 
     let date = chrono_like_now();
     let features = active_features();
@@ -253,10 +257,14 @@ pub fn save_results_csv(results: &[BenchResult], path: &str) -> std::io::Result<
 pub fn append_timeseries_csv(results: &[BenchResult], path: &str) -> std::io::Result<()> {
     use std::io::Write;
 
-let commit = std::process::Command::new("git")
+    let commit = std::process::Command::new("git")
         .args(["rev-parse", "--short", "HEAD"])
         .output()
-        .ok().map_or_else(|| "unknown".into(), |o| String::from_utf8_lossy(&o.stdout).trim().to_string());
+        .ok()
+        .map_or_else(
+            || "unknown".into(),
+            |o| String::from_utf8_lossy(&o.stdout).trim().to_string(),
+        );
 
     let date = chrono_like_now();
     let features = active_features();

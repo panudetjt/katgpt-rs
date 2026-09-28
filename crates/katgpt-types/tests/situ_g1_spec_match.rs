@@ -37,7 +37,11 @@ fn g1_situ_zero_gate_produces_zero() {
     let gate = [0.0f32];
     let up = [1.0f32];
     situ(&mut hidden, &gate, &up, 4.0, Some(25.0));
-    assert!(hidden[0].abs() < 1e-7, "situ(0, *) should be 0, got {}", hidden[0]);
+    assert!(
+        hidden[0].abs() < 1e-7,
+        "situ(0, *) should be 0, got {}",
+        hidden[0]
+    );
 }
 
 #[test]
@@ -55,12 +59,23 @@ fn g1_situ_matches_reference_with_linear_beta() {
     situ(&mut hidden, &gate, &up, beta, linear_beta);
 
     for i in 0..n {
-        let expected = situ_ref(f64::from(gate[i]), f64::from(up[i]), f64::from(beta), linear_beta.map(f64::from));
+        let expected = situ_ref(
+            f64::from(gate[i]),
+            f64::from(up[i]),
+            f64::from(beta),
+            linear_beta.map(f64::from),
+        );
         let diff = (f64::from(hidden[i]) - expected).abs();
         assert!(
             diff < 1e-4,
             "situ({}, {}, {}, {:?}) = {} but reference = {} (diff {})",
-            gate[i], up[i], beta, linear_beta, hidden[i], expected, diff
+            gate[i],
+            up[i],
+            beta,
+            linear_beta,
+            hidden[i],
+            expected,
+            diff
         );
     }
 }
@@ -85,7 +100,12 @@ fn g1_situ_matches_reference_without_linear_beta() {
         assert!(
             diff < 1e-4,
             "situ({}, {}, {}, None) = {} but reference = {} (diff {})",
-            gate[i], up[i], beta, hidden[i], expected, diff
+            gate[i],
+            up[i],
+            beta,
+            hidden[i],
+            expected,
+            diff
         );
     }
 }
@@ -107,13 +127,20 @@ fn g1_situ_sweep_minus_ten_to_ten() {
     let mut max_diff = 0.0f64;
     let lb_f64: f64 = 25.0; // matches linear_beta above
     for i in 0..n {
-        let expected = situ_ref(f64::from(values[i]), f64::from(up[i]), f64::from(beta), Some(lb_f64));
+        let expected = situ_ref(
+            f64::from(values[i]),
+            f64::from(up[i]),
+            f64::from(beta),
+            Some(lb_f64),
+        );
         let diff = (f64::from(hidden[i]) - expected).abs();
         max_diff = max_diff.max(diff);
         assert!(
             diff < 1e-3,
             "situ gate={}, up={} diff {} exceeds 1e-3",
-            values[i], up[i], diff
+            values[i],
+            up[i],
+            diff
         );
     }
     // Report the worst-case diff for GOAT documentation
@@ -134,7 +161,11 @@ fn g1_situ_large_positive_gate_saturates_to_beta() {
 
     let expected = beta * linear_beta * 0.761_594_2; // beta * lb * tanh(1)
     let diff = (hidden[0] - expected).abs();
-    assert!(diff < 0.01, "large-gate saturation: expected ~{expected:.4}, got {}", hidden[0]);
+    assert!(
+        diff < 0.01,
+        "large-gate saturation: expected ~{expected:.4}, got {}",
+        hidden[0]
+    );
 }
 
 #[test]
@@ -146,5 +177,9 @@ fn g1_situ_negative_gate_tanh_dominates() {
     let gate = [-100.0f32];
     let up = [1.0f32];
     situ(&mut hidden, &gate, &up, beta, None);
-    assert!(hidden[0].abs() < 1e-10, "negative-gate should → 0, got {}", hidden[0]);
+    assert!(
+        hidden[0].abs() < 1e-10,
+        "negative-gate should → 0, got {}",
+        hidden[0]
+    );
 }

@@ -128,20 +128,31 @@ fn g1_omega_stays_in_closed_unit_interval_f32() {
     }
     // After 1000 observations with |A|=2, log_w = -693 → exp underflows → ω=1.
     // Verify the saturation is reached (sanity-check the precision floor).
-    assert_eq!(posterior.omega(), 1.0, "ω should saturate to 1.0 in f32 precision");
+    assert_eq!(
+        posterior.omega(),
+        1.0,
+        "ω should saturate to 1.0 in f32 precision"
+    );
 
     // Positive log_w contribution → ω → 0. exp(50) ≈ 5.2e21 (finite in f32),
     // so ω stays strictly > 0 here.
     let mut posterior = SimilarityPosterior::new(0.5).unwrap();
     posterior.observe(&[], &[], &[], 50.0);
     let omega = posterior.omega();
-    assert!(omega > 0.0 && omega < 1.0, "ω should be in (0,1) for finite W: got {omega}");
+    assert!(
+        omega > 0.0 && omega < 1.0,
+        "ω should be in (0,1) for finite W: got {omega}"
+    );
     // To actually saturate to 0, we need log_w so large that exp() overflows
     // to +inf in f32 (happens around log_w > 88.7 since f32 max ≈ 3.4e38).
     // exp(89) ≈ 4.4e38 which rounds up to +inf → ω = α/(α+inf) = 0.0 exactly.
     let mut posterior = SimilarityPosterior::new(0.5).unwrap();
     posterior.observe(&[], &[], &[], 89.0);
-    assert_eq!(posterior.omega(), 0.0, "ω should saturate to 0.0 in f32 precision");
+    assert_eq!(
+        posterior.omega(),
+        0.0,
+        "ω should saturate to 0.0 in f32 precision"
+    );
 }
 
 #[test]
@@ -161,31 +172,28 @@ fn g8_cooperates_iff_omega_above_half_pd() {
     // G8: for canonical PD (R=2, S=0, T=3, P=1) with uniform partner marginal,
     // embedded_best_response returns Cooperate (0) iff ω > 0.5, else Defect (1).
     const COOPERATE: u8 = 0;
-const DEFECT: u8 = 1;
+    const DEFECT: u8 = 1;
 
-let payoff = canonical_pd();
+    let payoff = canonical_pd();
     let marginal = [0.5_f32, 0.5];
 
     // Below threshold → Defect
     for omega in [0.0_f32, 0.1, 0.25, 0.49, 0.4999] {
         let a = embedded_best_response(omega, &payoff, &marginal).unwrap();
-        assert_eq!(
-            a, DEFECT,
-            "ω={omega} < 0.5 should Defect, got Cooperate"
-        );
+        assert_eq!(a, DEFECT, "ω={omega} < 0.5 should Defect, got Cooperate");
     }
     // Exactly at threshold → Defect (strict-greater comparison; tie breaks to
     // lower index = Cooperate, but at exactly ω=0.5 Q(C)=Q(D) so it's a genuine
     // tie. Verify the documented behavior: lower index wins, so it Cooperates).
     let a = embedded_best_response(0.5, &payoff, &marginal).unwrap();
-    assert_eq!(a, COOPERATE, "ω=0.5 tie should resolve to Cooperate (lower idx)");
+    assert_eq!(
+        a, COOPERATE,
+        "ω=0.5 tie should resolve to Cooperate (lower idx)"
+    );
     // Above threshold → Cooperate
     for omega in [0.5001_f32, 0.6, 0.75, 0.9, 1.0] {
         let a = embedded_best_response(omega, &payoff, &marginal).unwrap();
-        assert_eq!(
-            a, COOPERATE,
-            "ω={omega} > 0.5 should Cooperate, got Defect"
-        );
+        assert_eq!(a, COOPERATE, "ω={omega} > 0.5 should Cooperate, got Defect");
     }
 }
 
@@ -226,7 +234,10 @@ fn g8_shape_mismatch_errors() {
     let err = embedded_best_response(0.7, &payoff, &bad_marginal);
     assert!(matches!(
         err,
-        Err(SimilarityError::MarginalShapeMismatch { expected: 2, got: 3 })
+        Err(SimilarityError::MarginalShapeMismatch {
+            expected: 2,
+            got: 3
+        })
     ));
 }
 
@@ -271,7 +282,10 @@ fn payoff_matrix_shape_validation() {
     let bad = crate::similarity_inference::PayoffMatrix::from_row_major(2, vec![1.0, 2.0, 3.0]);
     assert!(matches!(
         bad,
-        Err(SimilarityError::PayoffShapeMismatch { expected: 4, got: 3 })
+        Err(SimilarityError::PayoffShapeMismatch {
+            expected: 4,
+            got: 3
+        })
     ));
 
     // Empty.
@@ -299,7 +313,11 @@ fn g1_mismatch_drives_omega_to_zero() {
     for _ in 0..10 {
         p.observe_match(2);
     }
-    assert!(p.omega() > 0.99, "after 10 matches ω should be >0.99, got {}", p.omega());
+    assert!(
+        p.omega() > 0.99,
+        "after 10 matches ω should be >0.99, got {}",
+        p.omega()
+    );
     assert!(!p.is_collapsed_to_zero());
     // Now a mismatch → ω = 0.
     p.observe_mismatch(2);

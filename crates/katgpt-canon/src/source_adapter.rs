@@ -98,7 +98,10 @@ impl SourceFeatureAdapter {
     /// Panics if `w_t.len() != d_in * d_out` or any dim is 0.
     #[inline]
     pub fn from_weights(w_t: Vec<f32>, d_in: usize, d_out: usize) -> Self {
-        assert!(d_in > 0 && d_out > 0, "SourceFeatureAdapter: dims must be > 0");
+        assert!(
+            d_in > 0 && d_out > 0,
+            "SourceFeatureAdapter: dims must be > 0"
+        );
         assert_eq!(
             w_t.len(),
             d_in * d_out,
@@ -107,7 +110,12 @@ impl SourceFeatureAdapter {
             d_in * d_out
         );
         let commitment = blake3_of_f32_slice(&w_t);
-        Self { w_t, d_in, d_out, commitment }
+        Self {
+            w_t,
+            d_in,
+            d_out,
+            commitment,
+        }
     }
 
     /// Input feature dim (histogram bins for the typed path).
@@ -149,7 +157,13 @@ impl SourceFeatureAdapter {
     ///
     /// Panics if `h.len() != d_in` or `out.len() != d_out`.
     pub fn apply_slice_into(&self, h: &[f32], out: &mut [f32]) {
-        assert_eq!(h.len(), self.d_in, "apply_slice_into: h.len() ({}) != d_in ({})", h.len(), self.d_in);
+        assert_eq!(
+            h.len(),
+            self.d_in,
+            "apply_slice_into: h.len() ({}) != d_in ({})",
+            h.len(),
+            self.d_in
+        );
         assert_eq!(
             out.len(),
             self.d_out,
@@ -218,7 +232,10 @@ pub fn fit_linear_adapter(
     ridge_lambda: f32,
 ) -> Option<SourceAdapterFit> {
     assert!(n > 0, "fit_linear_adapter: n must be > 0");
-    assert!(d_in > 0 && d_out > 0, "fit_linear_adapter: dims must be > 0");
+    assert!(
+        d_in > 0 && d_out > 0,
+        "fit_linear_adapter: dims must be > 0"
+    );
     assert_eq!(
         x.len(),
         n * d_in,
@@ -528,7 +545,8 @@ mod tests {
         // The f32 hot path reproduces the planted targets row-wise.
         let mut out = vec![0.0f32; d_out];
         for i in 0..n {
-            fit.adapter.apply_slice_into(&x[i * d_in..(i + 1) * d_in], &mut out);
+            fit.adapter
+                .apply_slice_into(&x[i * d_in..(i + 1) * d_in], &mut out);
             let rel = rel_err(&out, &y[i * d_out..(i + 1) * d_out]);
             assert!(rel < 1e-3, "row {i}: f32 apply rel err {rel}");
         }
@@ -542,8 +560,12 @@ mod tests {
         // leans on when it reads steering directions back as features.
         let (d_in, d_mid, n) = (N_AST_BINS, 128, 512);
         let (x, y, xh, _) = planted_fixture(n, d_in, d_mid, 0x867_0002);
-        let fwd = fit_linear_adapter(&x, &y, n, d_in, d_mid, 1e-6).expect("fwd fit").adapter;
-        let back = fit_linear_adapter(&y, &x, n, d_mid, d_in, 1e-6).expect("back fit").adapter;
+        let fwd = fit_linear_adapter(&x, &y, n, d_in, d_mid, 1e-6)
+            .expect("fwd fit")
+            .adapter;
+        let back = fit_linear_adapter(&y, &x, n, d_mid, d_in, 1e-6)
+            .expect("back fit")
+            .adapter;
 
         let mut v = vec![0.0f32; d_mid];
         let mut h_rec = vec![0.0f32; d_in];
@@ -587,7 +609,11 @@ mod tests {
             }
         }
         let fit = fit_source_adapter(&hists, &y, d_out, 1e-6).expect("typed fit");
-        assert!(fit.relative_error < 1e-3, "typed fit rel err {}", fit.relative_error);
+        assert!(
+            fit.relative_error < 1e-3,
+            "typed fit rel err {}",
+            fit.relative_error
+        );
 
         // Scale invariance: ×7 counts → the same steering direction (within
         // f32 rounding of the normalize path; NOT bit-identical — (7c)/(7t)
@@ -618,13 +644,18 @@ mod tests {
     #[test]
     fn zero_histogram_is_zero_direction_and_benign_fit_row() {
         let d_out = 16usize;
-        let empty = AstHistogram { counts: [0; N_AST_BINS] };
+        let empty = AstHistogram {
+            counts: [0; N_AST_BINS],
+        };
         // Pre-filled garbage — apply OVERWRITES, it does not accumulate.
         let mut out = vec![7.5f32; d_out];
         let w_t: Vec<f32> = (0..N_AST_BINS * d_out).map(|i| i as f32 * 0.01).collect();
         let a = SourceFeatureAdapter::from_weights(w_t, N_AST_BINS, d_out);
         a.apply_into(&empty, &mut out);
-        assert!(out.iter().all(|&v| v == 0.0), "zero histogram must steer to zero");
+        assert!(
+            out.iter().all(|&v| v == 0.0),
+            "zero histogram must steer to zero"
+        );
 
         // A fit whose rows include zero histograms still succeeds: the row
         // contributes nothing to the Gram. Zero targets → relative error 0

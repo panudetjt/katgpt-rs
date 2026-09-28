@@ -327,10 +327,7 @@ fn select_arm(
     match strategy {
         BanditStrategy::Ucb1 => (0..combat_arms)
             .max_by(|&a, &b| {
-                katgpt_core::float_order::cmp_for_max(
-                        stats.ucb1_score(a),
-                        stats.ucb1_score(b),
-                    )
+                katgpt_core::float_order::cmp_for_max(stats.ucb1_score(a), stats.ucb1_score(b))
             })
             .unwrap_or(0),
         BanditStrategy::EpsilonGreedy { .. } => {
@@ -364,27 +361,18 @@ fn select_arm(
         #[cfg(feature = "tes_loop")]
         BanditStrategy::Rpucg { .. } => (0..combat_arms)
             .max_by(|&a, &b| {
-                katgpt_core::float_order::cmp_for_max(
-                        stats.ucb1_score(a),
-                        stats.ucb1_score(b),
-                    )
+                katgpt_core::float_order::cmp_for_max(stats.ucb1_score(a), stats.ucb1_score(b))
             })
             .unwrap_or(0),
         BanditStrategy::CurvatureInfluence { .. } => (0..combat_arms)
             .max_by(|&a, &b| {
-                katgpt_core::float_order::cmp_for_max(
-                        stats.ucb1_score(a),
-                        stats.ucb1_score(b),
-                    )
+                katgpt_core::float_order::cmp_for_max(stats.ucb1_score(a), stats.ucb1_score(b))
             })
             .unwrap_or(0),
         #[cfg(feature = "safe_bandit")]
         BanditStrategy::SafePhased { .. } => (0..combat_arms)
             .max_by(|&a, &b| {
-                katgpt_core::float_order::cmp_for_max(
-                        stats.ucb1_score(a),
-                        stats.ucb1_score(b),
-                    )
+                katgpt_core::float_order::cmp_for_max(stats.ucb1_score(a), stats.ucb1_score(b))
             })
             .unwrap_or(0),
     }

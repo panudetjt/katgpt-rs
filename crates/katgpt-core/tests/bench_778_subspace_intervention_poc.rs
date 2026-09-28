@@ -64,7 +64,7 @@
 //! feature through probe-derived subspaces and reads through a frozen head
 //! — the arXiv:2607.01987 protocol exactly.
 
-use katgpt_core::subspace_phase_gate::{thin_svd_into, SvdResultScratch, SvdScratch};
+use katgpt_core::subspace_phase_gate::{SvdResultScratch, SvdScratch, thin_svd_into};
 
 // ── Bank constants ─────────────────────────────────────────────────────────
 const D: usize = 64; // d_model (≤ svcca MAX_K, kept for a future metric swap)
@@ -117,7 +117,11 @@ impl Rng {
         let u2 = self.next_f32();
         let r = (-2.0 * u1.ln()).sqrt();
         let theta = std::f32::consts::TAU * u2;
-        if self.next_u64() & 1 == 0 { r * theta.cos() } else { r * theta.sin() }
+        if self.next_u64() & 1 == 0 {
+            r * theta.cos()
+        } else {
+            r * theta.sin()
+        }
     }
 }
 
@@ -167,7 +171,7 @@ fn gram_schmidt(cols: &mut [f32], d: usize) {
 fn build_bank(seed: u64) -> Bank {
     let mut rng = Rng::new(seed);
     // One global orthonormal frame Q (D×D, column-major):
- // cols [c*6..c*6+6) = class-c idiosyncratic block; cols [48..48+3) = the
+    // cols [c*6..c*6+6) = class-c idiosyncratic block; cols [48..48+3) = the
     // SHARED task subspace T (class means live here — plants the paper's
     // low-rank-compressible task signal); cols [51..64) = nuisance.
     let mut q = vec![0.0f32; D * D];
@@ -248,7 +252,11 @@ fn build_bank(seed: u64) -> Bank {
                 for j in 0..R_PLANT {
                     // Small idiosyncratic mean (tail) for the OWN class +
                     // within-class scatter; cross-class leak for the others.
-                    let mean_term = if c == y { AMPL[c] * g * MEAN_SCALE * IDIO_SCALE * mean_dir[c][j] } else { 0.0 };
+                    let mean_term = if c == y {
+                        AMPL[c] * g * MEAN_SCALE * IDIO_SCALE * mean_dir[c][j]
+                    } else {
+                        0.0
+                    };
                     let scatter = if c == y {
                         AMPL[c] * g * SCATTER_SD * own[i][j]
                     } else {
@@ -278,7 +286,11 @@ fn build_bank(seed: u64) -> Bank {
     for &y in &labels {
         hasher.update(&(y as u64).to_le_bytes());
     }
-    Bank { acts, labels, hash: *hasher.finalize().as_bytes() }
+    Bank {
+        acts,
+        labels,
+        hash: *hasher.finalize().as_bytes(),
+    }
 }
 
 // ── Ridge probe (closed-form; right singular vectors only) ─────────────────
@@ -377,7 +389,13 @@ fn eval_head(z: &[Vec<f32>], y: &[usize], w: &[f32]) -> (f32, Vec<f32>) {
         }
     }
     let recalls = (0..C)
-        .map(|c| if total[c] == 0 { 0.0 } else { hits[c] as f32 / total[c] as f32 })
+        .map(|c| {
+            if total[c] == 0 {
+                0.0
+            } else {
+                hits[c] as f32 / total[c] as f32
+            }
+        })
         .collect();
     (correct as f32 / n as f32, recalls)
 }
@@ -452,7 +470,9 @@ fn train_indices(seed: u64, bootstrap: bool) -> Vec<usize> {
         pool
     } else {
         let mut rng = Rng::new(seed);
-        (0..N_TRAIN).map(|_| pool[rng.next_u64() as usize % pool.len()]).collect()
+        (0..N_TRAIN)
+            .map(|_| pool[rng.next_u64() as usize % pool.len()])
+            .collect()
     }
 }
 
@@ -516,7 +536,10 @@ fn run_pipeline(bank: &Bank) -> PipelOut {
     for s in 0..3u64 {
         let idx = train_indices(100 + s, true);
         let lab: Vec<usize> = idx.iter().map(|&i| bank.labels[i]).collect();
-        let xtr: Vec<Vec<f32>> = idx.iter().map(|&i| bank.acts[best_layer][i].clone()).collect();
+        let xtr: Vec<Vec<f32>> = idx
+            .iter()
+            .map(|&i| bank.acts[best_layer][i].clone())
+            .collect();
         let lam = [0.005f32, 0.01, 0.02][s as usize];
         let w = ridge_fit(&xtr, &lab, lam, &mut svd_res_g, &mut svd_work_g);
         thin_svd_into(&w, C, D, &mut svd_res_w, &mut svd_work_w);
@@ -540,7 +563,15 @@ fn run_pipeline(bank: &Bank) -> PipelOut {
         })
         .collect();
 
-    PipelOut { full_acc, aligned, random, residual, peak_layer, stability, best_layer }
+    PipelOut {
+        full_acc,
+        aligned,
+        random,
+        residual,
+        peak_layer,
+        stability,
+        best_layer,
+    }
 }
 
 /// Substrate contract pin for this protocol's two non-obvious dependencies:
@@ -558,11 +589,18 @@ fn thin_svd_wide_matrix_and_ridge_contract() {
         w[c * D + c] = 1.0;
     }
     thin_svd_into(&w, 8, D, &mut res, &mut work);
-    println!("wide svd len={} sigs={:?}", res.len(), res.singular_values());
+    println!(
+        "wide svd len={} sigs={:?}",
+        res.len(),
+        res.singular_values()
+    );
     for j in 0..res.len().min(3) {
         let vj = res.right_singular_vector(j);
         let nz: Vec<usize> = (0..D).filter(|&a| vj[a].abs() > 0.5).collect();
-        println!("  v[{j}] dominant coords: {nz:?} norm {:.4}", vj.iter().map(|x| x * x).sum::<f32>().sqrt());
+        println!(
+            "  v[{j}] dominant coords: {nz:?} norm {:.4}",
+            vj.iter().map(|x| x * x).sum::<f32>().sqrt()
+        );
     }
 
     // (b) ridge fit sanity on an EASY fixture: two well-separated gaussian
@@ -572,17 +610,27 @@ fn thin_svd_wide_matrix_and_ridge_contract() {
     let x: Vec<Vec<f32>> = (0..n)
         .map(|i| {
             let s = if i % 2 == 0 { 1.0f32 } else { -1.0 };
-            (0..D).map(|a| if a == 0 { s * 5.0 } else { 0.3 * rng.next_gaussian() }).collect()
-    })
-    .collect();
+            (0..D)
+                .map(|a| {
+                    if a == 0 {
+                        s * 5.0
+                    } else {
+                        0.3 * rng.next_gaussian()
+                    }
+                })
+                .collect()
+        })
+        .collect();
     let y: Vec<usize> = (0..n).map(|i| i % 2).collect();
     let mut res2 = SvdResultScratch::with_capacity(D, D);
     let mut work2 = SvdScratch::with_capacity(D, D);
     let wfit = ridge_fit(&x, &y, 0.01, &mut res2, &mut work2);
     let (tr_acc, _) = eval_head(&x, &y, &wfit);
-    println!("blob train acc: {tr_acc:.3} (expect 1.000); |W| per class: {} {}",
+    println!(
+        "blob train acc: {tr_acc:.3} (expect 1.000); |W| per class: {} {}",
         (0..D).map(|a| wfit[a].abs()).sum::<f32>(),
-        (0..D).map(|a| wfit[D + a].abs()).sum::<f32>());
+        (0..D).map(|a| wfit[D + a].abs()).sum::<f32>()
+    );
 }
 
 #[test]
@@ -592,13 +640,22 @@ fn issue_778_subspace_intervention_poc() {
     // G0: determinism — two independent bank builds + pipelines agree.
     let bank_a = build_bank(778);
     let bank_b = build_bank(778);
-    assert_eq!(bank_a.hash, bank_b.hash, "G0: bank BLAKE3 must be deterministic");
+    assert_eq!(
+        bank_a.hash, bank_b.hash,
+        "G0: bank BLAKE3 must be deterministic"
+    );
     let out_a = run_pipeline(&bank_a);
     let out_b = run_pipeline(&bank_b);
     for l in 0..N_LAYERS {
-        assert_eq!(out_a.full_acc[l], out_b.full_acc[l], "G0: full acc @layer {l}");
+        assert_eq!(
+            out_a.full_acc[l], out_b.full_acc[l],
+            "G0: full acc @layer {l}"
+        );
         for ki in 0..5 {
-            assert_eq!(out_a.aligned[l][ki], out_b.aligned[l][ki], "G0: aligned @layer {l} k{ki}");
+            assert_eq!(
+                out_a.aligned[l][ki], out_b.aligned[l][ki],
+                "G0: aligned @layer {l} k{ki}"
+            );
         }
     }
     println!(
@@ -611,7 +668,10 @@ fn issue_778_subspace_intervention_poc() {
         println!("  layer {l:2}: acc {:.3}", out_a.full_acc[l]);
     }
     let best_layer = out_a.best_layer;
-    println!("  best overall layer: {best_layer} (acc {:.3})", out_a.full_acc[best_layer]);
+    println!(
+        "  best overall layer: {best_layer} (acc {:.3})",
+        out_a.full_acc[best_layer]
+    );
 
     println!("\n── G2: per-class peak layer vs planted ──");
     let mut hits = 0usize;
@@ -620,17 +680,29 @@ fn issue_778_subspace_intervention_poc() {
         let pl = planted_peak(c);
         let ok = pk.abs_diff(pl) <= 1;
         hits += ok as usize;
-        println!("  class {c} (ampl {ampl:.2}): peak {pk:2} planted {pl:2} {}", if ok { "OK" } else { "MISS" });
+        println!(
+            "  class {c} (ampl {ampl:.2}): peak {pk:2} planted {pl:2} {}",
+            if ok { "OK" } else { "MISS" }
+        );
     }
     println!("  G2 affinity: {hits}/{C} within ±1");
-    assert!(hits >= 6, "G2 FAILED: only {hits}/8 classes recovered the planted peak layer");
+    assert!(
+        hits >= 6,
+        "G2 FAILED: only {hits}/8 classes recovered the planted peak layer"
+    );
 
     println!("\n── G1: three-arm intervention @ best layer {best_layer} ──");
-    println!("  {:>4} {:>9} {:>9} {:>9}", "k", "aligned", "random", "residual");
+    println!(
+        "  {:>4} {:>9} {:>9} {:>9}",
+        "k", "aligned", "random", "residual"
+    );
     for (ki, &k) in KS.iter().enumerate() {
         println!(
             "  {:>4} {:>9.3} {:>9.3} {:>9.3}",
-            k, out_a.aligned[best_layer][ki], out_a.random[best_layer][ki], out_a.residual[best_layer][ki]
+            k,
+            out_a.aligned[best_layer][ki],
+            out_a.random[best_layer][ki],
+            out_a.residual[best_layer][ki]
         );
     }
     let full = out_a.full_acc[best_layer];
@@ -661,19 +733,30 @@ fn issue_778_subspace_intervention_poc() {
     println!("  chance = {CHANCE:.3}; full-rank = {full:.3}");
     println!("  G1 triad: PASS — (a) rank-identity, (b) k=6 compression ≥ 0.9·full,");
     println!("            (c) residual collapse, (d) aligned ≥ 1.5·random at matched k=4.");
-    println!("  → protocol-level close of the spectral_pre_rotate.rs:29 deferred aligned-vs-random");
+    println!(
+        "  → protocol-level close of the spectral_pre_rotate.rs:29 deferred aligned-vs-random"
+    );
     println!("    eval (readout space, controlled ground truth); FUNCATTN-tensor arm = follow-up.");
 
     println!("\n── G3 (informational): seed stability of V_k @ layer {best_layer} ──");
     for (ki, &k) in KS.iter().enumerate() {
-        println!("  k={k:>2}: mean pairwise basis similarity {:.3}", out_a.stability[ki]);
+        println!(
+            "  k={k:>2}: mean pairwise basis similarity {:.3}",
+            out_a.stability[ki]
+        );
     }
     let (sim_lo, sim_hi) = (out_a.stability[0], out_a.stability[4]);
     if sim_lo - sim_hi >= 0.10 {
-        println!("  SPLIT DETECTED (k=1 sim {sim_lo:.3} vs k=8 sim {sim_hi:.3}) — freeze-policy implication: commit the stable core only.");
+        println!(
+            "  SPLIT DETECTED (k=1 sim {sim_lo:.3} vs k=8 sim {sim_hi:.3}) — freeze-policy implication: commit the stable core only."
+        );
     } else {
-        println!("  NO SPLIT (k=1 {sim_lo:.3} vs k=8 {sim_hi:.3}) — freeze policy unchanged; recorded per Issue 778 outcome criteria.");
+        println!(
+            "  NO SPLIT (k=1 {sim_lo:.3} vs k=8 {sim_hi:.3}) — freeze policy unchanged; recorded per Issue 778 outcome criteria."
+        );
     }
 
-    println!("\n═══ Issue 778 POC complete: G0 PASS · G1 PASS · G2 PASS ({hits}/8) · G3 recorded ═══");
+    println!(
+        "\n═══ Issue 778 POC complete: G0 PASS · G1 PASS · G2 PASS ({hits}/8) · G3 recorded ═══"
+    );
 }

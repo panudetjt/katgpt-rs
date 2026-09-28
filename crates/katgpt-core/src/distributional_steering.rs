@@ -175,18 +175,22 @@ impl ClosureReward {
     /// default for O(1)-scale rewards.
     pub fn new(dim: usize, fd_eps: f32, f: impl Fn(&[f32]) -> f32 + 'static) -> Self {
         assert!(dim > 0, "ClosureReward requires dim > 0 (got {dim})");
-        assert!(fd_eps > 0.0 && fd_eps.is_finite(), "fd_eps must be positive finite");
-        Self { dim, fd_eps, f: Box::new(f) }
+        assert!(
+            fd_eps > 0.0 && fd_eps.is_finite(),
+            "fd_eps must be positive finite"
+        );
+        Self {
+            dim,
+            fd_eps,
+            f: Box::new(f),
+        }
     }
 
     /// Evaluate `r(x)` with the finite boundary check.
     #[inline]
     fn eval(&self, x: &[f32]) -> f32 {
         let v = (self.f)(x);
-        debug_assert!(
-            v.is_finite(),
-            "ClosureReward r(x) must be finite (got {v})"
-        );
+        debug_assert!(v.is_finite(), "ClosureReward r(x) must be finite (got {v})");
         v
     }
 }
@@ -346,10 +350,7 @@ pub struct WeightedPopulation<'a> {
 impl<'a> WeightedPopulation<'a> {
     /// New view; `states.len()` must equal `log_weights.len() * dim`.
     pub fn new(states: &'a [f32], log_weights: &'a mut [f32], dim: usize) -> Self {
-        assert!(
-            dim > 0,
-            "WeightedPopulation requires dim > 0 (got {dim})"
-        );
+        assert!(dim > 0, "WeightedPopulation requires dim > 0 (got {dim})");
         assert!(
             states.len() == log_weights.len() * dim,
             "states.len() ({}) must equal log_weights.len() ({}) * dim ({})",
@@ -357,7 +358,11 @@ impl<'a> WeightedPopulation<'a> {
             log_weights.len(),
             dim
         );
-        Self { states, log_weights, dim }
+        Self {
+            states,
+            log_weights,
+            dim,
+        }
     }
 
     /// Particle count.
@@ -624,7 +629,11 @@ fn population_moment(pop: &WeightedPopulation, phi: &[f32]) -> f32 {
         return 0.0;
     }
     let mut m = 0.0f64;
-    for (&lw, xi) in pop.log_weights_ref().iter().zip(pop.states().chunks_exact(d)) {
+    for (&lw, xi) in pop
+        .log_weights_ref()
+        .iter()
+        .zip(pop.states().chunks_exact(d))
+    {
         m += ((lw as f64) - l).exp() * dot(xi, phi) as f64;
     }
     m as f32
@@ -746,7 +755,10 @@ pub fn gradient_steering_into(
             let m_count = target.len() / dim;
             let l = lse(log_weights) as f64;
             let weights: Vec<f64> = if l.is_finite() {
-                log_weights.iter().map(|&w| ((w as f64) - l).exp()).collect()
+                log_weights
+                    .iter()
+                    .map(|&w| ((w as f64) - l).exp())
+                    .collect()
             } else {
                 vec![1.0 / n as f64; n]
             };
@@ -808,7 +820,11 @@ pub fn clamp_steering_norm(steer: &[f32], b: &[f32], dim: usize, frac: f32, out:
             bn += bi[q] * bi[q];
         }
         let cap = frac * bn.sqrt();
-        let scale = if sn > cap * cap && sn > 0.0 { cap / sn.sqrt() } else { 1.0 };
+        let scale = if sn > cap * cap && sn > 0.0 {
+            cap / sn.sqrt()
+        } else {
+            1.0
+        };
         for q in 0..dim {
             out[i * dim + q] = si[q] * scale;
         }
@@ -836,7 +852,12 @@ pub struct FkStepper {
 
 impl Default for FkStepper {
     fn default() -> Self {
-        Self { steer_scale: 1.0, k_fp: 3, damping: 1.0, clip_log_delta: 1.0 }
+        Self {
+            steer_scale: 1.0,
+            k_fp: 3,
+            damping: 1.0,
+            clip_log_delta: 1.0,
+        }
     }
 }
 
@@ -1122,8 +1143,7 @@ impl FkStepper {
                         }
                     }
                     for q in 0..d {
-                        grad[i * d + q] =
-                            (coef * (col_acc[q] - emb_grad[i * d + q] as f64)) as f32;
+                        grad[i * d + q] = (coef * (col_acc[q] - emb_grad[i * d + q] as f64)) as f32;
                     }
                 }
             }
@@ -1255,8 +1275,8 @@ impl FkStepper {
             }
             let a = self.damping as f64;
             for i in 0..n {
-                let next = a * scratch.psi_dot_target[i] as f64
-                    + (1.0 - a) * scratch.psi_dot[i] as f64;
+                let next =
+                    a * scratch.psi_dot_target[i] as f64 + (1.0 - a) * scratch.psi_dot[i] as f64;
                 scratch.psi_dot[i] = next as f32;
             }
         }
@@ -1689,7 +1709,10 @@ mod tests {
             *s = rng.next_normal();
         }
         let phi = vec![1.0f32, -0.5];
-        let reward = MomentReward { gain: MomentGain::NegativeSquare, phi };
+        let reward = MomentReward {
+            gain: MomentGain::NegativeSquare,
+            phi,
+        };
         let mut log_w = vec![0.0f32; n];
         for (i, l) in log_w.iter_mut().enumerate() {
             *l = 0.05 * i as f32;
@@ -1785,7 +1808,8 @@ mod tests {
         // r(x) = −(x·x) has closed-form gradient ∇r = −2x; the FD arm in
         // FkStepper::gradient_into must land within FD truncation error.
         let dim = 2usize;
-        let reward = ClosureReward::new(dim, 1e-2, |x: &[f32]| -x.iter().map(|v| v * v).sum::<f32>());
+        let reward =
+            ClosureReward::new(dim, 1e-2, |x: &[f32]| -x.iter().map(|v| v * v).sum::<f32>());
         let n = 3usize;
         let states = vec![0.5f32, -1.25, 2.0, 0.75, -0.25, 1.5];
         let lw = vec![0.0f32; n];
@@ -1842,7 +1866,10 @@ mod tests {
         let target: Vec<f32> = (0..8 * dim).map(|_| rng.next_normal()).collect();
         let reward = MmdReward::new(0.4, target, dim);
         let lam = 2.5f32;
-        let stepper = FkStepper { steer_scale: lam, ..Default::default() };
+        let stepper = FkStepper {
+            steer_scale: lam,
+            ..Default::default()
+        };
         let mut scratch = SteeringScratch::new(n, dim);
         let mut lw = vec![0.0f32; n];
         stepper.begin_step(&reward, &states, &mut lw, &mut scratch);
@@ -1973,8 +2000,12 @@ mod tests {
         }
         let lin = solve_linear_psi_dot(0.2, lam, &states, &log_w, &b, &grad);
 
-        let stepper =
-            FkStepper { steer_scale: lam, k_fp: 200, damping: 1.0, clip_log_delta: 10.0 };
+        let stepper = FkStepper {
+            steer_scale: lam,
+            k_fp: 200,
+            damping: 1.0,
+            clip_log_delta: 10.0,
+        };
         let mut scratch = SteeringScratch::new(n, dim);
         let mut lw = log_w.clone();
         stepper.begin_step(&reward, &states, &mut lw, &mut scratch);
@@ -2005,7 +2036,11 @@ mod tests {
         let reward = MmdReward::new(0.25, target, dim);
         let b = vec![0.1f32; n * dim];
         for &k_fp in &[1u8, 3, 5, 10] {
-            let stepper = FkStepper { steer_scale: 3.0, k_fp, ..Default::default() };
+            let stepper = FkStepper {
+                steer_scale: 3.0,
+                k_fp,
+                ..Default::default()
+            };
             let mut scratch = SteeringScratch::new(n, dim);
             let mut lw = vec![0.0f32; n];
             for _ in 0..10 {
@@ -2046,7 +2081,12 @@ mod tests {
         let dt = 0.02f32;
 
         let run = |k_fp: u8, warm: bool| -> f32 {
-            let stepper = FkStepper { steer_scale: 30.0, k_fp, damping: 0.3, clip_log_delta: 0.5 };
+            let stepper = FkStepper {
+                steer_scale: 30.0,
+                k_fp,
+                damping: 0.3,
+                clip_log_delta: 0.5,
+            };
             let mut scratch = SteeringScratch::new(n, dim);
             let mut lw = vec![0.0f32; n];
             let mut st = states.clone();
@@ -2107,7 +2147,12 @@ mod tests {
         let dt = 0.05f32;
 
         let run_residual = |damping: f32| -> f32 {
-            let stepper = FkStepper { steer_scale: 40.0, k_fp: 3, damping, clip_log_delta: 1.0 };
+            let stepper = FkStepper {
+                steer_scale: 40.0,
+                k_fp: 3,
+                damping,
+                clip_log_delta: 1.0,
+            };
             let mut scratch = SteeringScratch::new(n, dim);
             let mut lw = vec![0.0f32; n];
             let mut st = states.clone();
@@ -2183,7 +2228,10 @@ mod tests {
             }
             let target: Vec<f32> = (0..16).map(|_| rng.next_normal()).collect();
             let reward = MmdReward::new(0.3, target, dim);
-            let stepper = FkStepper { steer_scale: 5.0, ..Default::default() };
+            let stepper = FkStepper {
+                steer_scale: 5.0,
+                ..Default::default()
+            };
             let mut scratch = SteeringScratch::new(n, dim);
             let mut lw = vec![0.0f32; n];
             let mut st = states;
@@ -2214,7 +2262,11 @@ mod tests {
         }
         let target: Vec<f32> = (0..16).map(|_| rng.next_normal()).collect();
         let reward = MmdReward::new(0.2, target, dim);
-        let stepper = FkStepper { steer_scale: 0.5, k_fp: 10, ..Default::default() };
+        let stepper = FkStepper {
+            steer_scale: 0.5,
+            k_fp: 10,
+            ..Default::default()
+        };
         let mut scratch = SteeringScratch::new(n, dim);
         let mut lw = vec![0.0f32; n];
         let b = vec![0.1f32; n];

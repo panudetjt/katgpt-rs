@@ -135,7 +135,10 @@ fn nu_nu_kernel() -> f64 {
 
 fn grid() -> (Vec<f64>, f64) {
     let step = (GRID_MAX - GRID_MIN) / (GRID_N - 1) as f64;
-    ((0..GRID_N).map(|i| GRID_MIN + i as f64 * step).collect(), step)
+    (
+        (0..GRID_N).map(|i| GRID_MIN + i as f64 * step).collect(),
+        step,
+    )
 }
 
 /// Analytic μ*(λ) on the grid via damped fixed-point iteration over the
@@ -284,7 +287,11 @@ enum Arm {
 fn sample_p1(rng: &mut SplitMix64) -> Vec<f64> {
     (0..N)
         .map(|_| {
-            let comp = if rng.next_uniform() < P1_W[0] { MU_A } else { MU_B };
+            let comp = if rng.next_uniform() < P1_W[0] {
+                MU_A
+            } else {
+                MU_B
+            };
             comp + SIG * rng.next_normal()
         })
         .collect()
@@ -307,7 +314,11 @@ fn run_arm(
         let mut rng = SplitMix64::new(0xD1CE);
         let mut t = Vec::with_capacity(256);
         for _ in 0..256 {
-            let comp = if rng.next_uniform() < NU_W[0] { MU_A } else { MU_B };
+            let comp = if rng.next_uniform() < NU_W[0] {
+                MU_A
+            } else {
+                MU_B
+            };
             t.push((comp + SIG * rng.next_normal()) as f32);
         }
         t
@@ -321,7 +332,12 @@ fn run_arm(
     // tilts" guidance (their α=0.5 at large λ).
     let damping = (2.0 / lam).min(1.0) as f32;
     let k_fp = if lam > 2.0 { 8 } else { 3 };
-    let stepper = FkStepper { steer_scale: lam as f32, k_fp, damping, clip_log_delta: 1.0 };
+    let stepper = FkStepper {
+        steer_scale: lam as f32,
+        k_fp,
+        damping,
+        clip_log_delta: 1.0,
+    };
     let mut scratch = SteeringScratch::new(N, 1);
     let mut log_w = vec![0.0f32; N];
     let uniform_log = vec![0.0f32; N];
@@ -368,14 +384,7 @@ fn run_arm(
         if arm == Arm::FkPicard {
             let stf2: Vec<f32> = st.iter().map(|&x| x as f32).collect();
             let bf: Vec<f32> = b_total.iter().map(|&x| x as f32).collect();
-            stepper.finish_step(
-                &reward,
-                &stf2,
-                &bf,
-                dt as f32,
-                &mut log_w,
-                &mut scratch,
-            );
+            stepper.finish_step(&reward, &stf2, &bf, dt as f32, &mut log_w, &mut scratch);
             // ESS guard → systematic resample (weights reset to uniform).
             let mut mx = f64::NEG_INFINITY;
             for &l in &log_w {
@@ -395,7 +404,10 @@ fn run_arm(
             if ess < 0.5 * N as f64 {
                 let u = u_stream.next_uniform() as f32;
                 katgpt_core::distributional_steering::systematic_resample_into(
-                    &w, N, u, &mut ancestors,
+                    &w,
+                    N,
+                    u,
+                    &mut ancestors,
                 );
                 for i in 0..N {
                     st_carry[i] = st[ancestors[i] as usize];
@@ -500,20 +512,38 @@ fn g1_fk_gap_minimized_at_lambda_star() {
             // (sched=0 lands at λ=5 with a flat curve; gradient-only ≈ FK
             // in this regime — see Bench 682 §G1).
             if (lam_star - 5.0).abs() < 1e-9 {
-                assert!(fk_ok, "λ*=5 FK argmin must be λ* (sched {sched}): row {fk_row:?}");
+                assert!(
+                    fk_ok,
+                    "λ*=5 FK argmin must be λ* (sched {sched}): row {fk_row:?}"
+                );
             }
 
             report.push_str(&format!(
                 "λ*={lam_star} sched={sched} (σ={sigma}): FK argmin λ={fk_arg} {} \
                  grad-only argmin λ={grad_arg} {} | FK gaps {:?} | grad gaps {:?}\n",
                 if fk_ok { "✓" } else { "✗" },
-                if grad_elsewhere { "✓(elsewhere)" } else { "=λ*" },
-                gaps[2].1.iter().map(|v| (v * 1e4).round() / 1e4).collect::<Vec<_>>(),
-                gaps[1].1.iter().map(|v| (v * 1e4).round() / 1e4).collect::<Vec<_>>(),
+                if grad_elsewhere {
+                    "✓(elsewhere)"
+                } else {
+                    "=λ*"
+                },
+                gaps[2]
+                    .1
+                    .iter()
+                    .map(|v| (v * 1e4).round() / 1e4)
+                    .collect::<Vec<_>>(),
+                gaps[1]
+                    .1
+                    .iter()
+                    .map(|v| (v * 1e4).round() / 1e4)
+                    .collect::<Vec<_>>(),
             ));
         }
     }
-    println!("G1 targeting (N={N}, T={STEPS}, seeds={SEEDS}, {:.1}s):\n{report}", t0.elapsed().as_secs_f32());
+    println!(
+        "G1 targeting (N={N}, T={STEPS}, seeds={SEEDS}, {:.1}s):\n{report}",
+        t0.elapsed().as_secs_f32()
+    );
     println!(
         "G1 VERDICT (full criterion): {} — recorded honestly in Bench 682; \
          the primitive stays opt-in",
@@ -535,8 +565,9 @@ fn t36_two_runs_bit_identical() {
     let run = || -> (Vec<f64>, Vec<f64>) {
         let mut rng = SplitMix64::new(4242);
         let init = sample_p1(&mut rng);
-        let noise: Vec<Vec<f64>> =
-            (0..STEPS).map(|_| (0..N).map(|_| rng.next_normal()).collect()).collect();
+        let noise: Vec<Vec<f64>> = (0..STEPS)
+            .map(|_| (0..N).map(|_| rng.next_normal()).collect())
+            .collect();
         let (st, w) = run_arm(Arm::FkPicard, 10.0, 0.5, &noise, &init);
         (st, w)
     };
@@ -559,10 +590,17 @@ fn bench_fk_path(n: usize, dim: usize, steps: usize) -> (f64, f64) {
     let m = 256.min(n);
     let target: Vec<f32> = (0..m * dim).map(|_| rng.next_normal() as f32).collect();
     let reward = MmdReward::new(0.1, target, dim);
-    let stepper = FkStepper { steer_scale: 5.0, k_fp: 3, damping: 1.0, clip_log_delta: 1.0 };
+    let stepper = FkStepper {
+        steer_scale: 5.0,
+        k_fp: 3,
+        damping: 1.0,
+        clip_log_delta: 1.0,
+    };
     let mut scratch = SteeringScratch::new(n, dim);
     let mut log_w = vec![0.0f32; n];
-    let b: Vec<f32> = (0..n * dim).map(|_| 0.1 * rng.next_normal() as f32).collect();
+    let b: Vec<f32> = (0..n * dim)
+        .map(|_| 0.1 * rng.next_normal() as f32)
+        .collect();
     // Warmup.
     for _ in 0..3 {
         stepper.begin_step(&reward, &st, &mut log_w, &mut scratch);
@@ -680,7 +718,10 @@ fn mu_star_tilt_moves_mass_toward_target() {
     };
     let r0 = mass_at(&rho0, MU_A) / mass_at(&rho0, MU_B);
     let r10 = mass_at(&rho10, MU_A) / mass_at(&rho10, MU_B);
-    assert!((r0 - p1_ratio).abs() < 0.02, "λ=0 ratio {r0} ≈ p₁ window ratio {p1_ratio}");
+    assert!(
+        (r0 - p1_ratio).abs() < 0.02,
+        "λ=0 ratio {r0} ≈ p₁ window ratio {p1_ratio}"
+    );
     assert!(
         r10 > r0 * 1.5,
         "λ=10 ratio {r10} should shift toward 3:1 (from {r0})"

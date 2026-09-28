@@ -94,7 +94,13 @@ fn pseudo(seed: &mut u64) -> u64 {
 /// Bulk-build the bit-plane container at a controlled zero density by
 /// drawing per weight: `d % m < k` → zero (z = k/m), else ±1 by the next
 /// draw. Writes words directly (per-`set` is 100× slower at gate shapes).
-fn planes_at_density(rows: usize, cols: usize, seed: u64, zero_m: u64, zero_k: u64) -> TernaryGroupWeights {
+fn planes_at_density(
+    rows: usize,
+    cols: usize,
+    seed: u64,
+    zero_m: u64,
+    zero_k: u64,
+) -> TernaryGroupWeights {
     assert_eq!(cols % 64, 0, "gate shapes are word-aligned");
     let words_per_row = cols / 64;
     let mut s = seed;
@@ -183,7 +189,10 @@ fn g2_footprint_vs_both_tiers_across_the_z_sweep() {
         let bc = BitcosWeights::pack_from_group(&gw);
         let trit = TernaryTritWeights::from_group(&gw);
         let z = bc.zero_density();
-        assert!(z > z_lo && z < z_hi, "{name}: z={z} outside [{z_lo},{z_hi})");
+        assert!(
+            z > z_lo && z < z_hi,
+            "{name}: z={z} outside [{z_lo},{z_hi})"
+        );
         let plane_bytes = gw.encoded_bytes();
         let trit_bytes = trit.encoded_bytes();
         let bc_bytes = bc.encoded_bytes();
@@ -208,7 +217,10 @@ fn g2_footprint_vs_both_tiers_across_the_z_sweep() {
     let gw = planes_at_density(512, 4096, 0x0FF, 1, 0);
     let bc = BitcosWeights::pack_from_group(&gw);
     let trit = TernaryTritWeights::from_group(&gw);
-    assert!(bc.zero_density() < 0.375, "dense fixture must be below z crossover");
+    assert!(
+        bc.zero_density() < 0.375,
+        "dense fixture must be below z crossover"
+    );
     assert!(
         bc.encoded_bytes() > trit.encoded_bytes(),
         "below the crossover the trit tier MUST be smaller — the dispatch's \
@@ -234,7 +246,11 @@ fn g4_kernels_are_alloc_free() {
 
 /// Payload bytes each tier streams per matvec at this shape (planes / trits /
 /// presence+signs+scales+offsets).
-fn payload_report(bc: &BitcosWeights, gw: &TernaryGroupWeights, trit: &TernaryTritWeights) -> (f64, f64, f64) {
+fn payload_report(
+    bc: &BitcosWeights,
+    gw: &TernaryGroupWeights,
+    trit: &TernaryTritWeights,
+) -> (f64, f64, f64) {
     (
         bc.encoded_bytes() as f64,
         gw.encoded_bytes() as f64,
@@ -268,14 +284,15 @@ fn g2b_and_roofline_the_regime_gate() {
             .zip(y_ref.iter())
             .map(|(&a, &b)| (a - b).abs() / b.abs().max(1e-3))
             .fold(0.0f32, f32::max);
-        assert!(max_rel < 5e-3, "dispatcher vs scalar max_rel={max_rel} (folded-scale association at 16K cols; the shipped AVX2 kernel carries the same class)");
+        assert!(
+            max_rel < 5e-3,
+            "dispatcher vs scalar max_rel={max_rel} (folded-scale association at 16K cols; the shipped AVX2 kernel carries the same class)"
+        );
         y.fill(0.0);
     }
 
     let (bc_bytes, plane_bytes, trit_bytes) = payload_report(&bc, &gw, &trit);
-    eprintln!(
-        "payloads: bitcos {bc_bytes:.0} B, plane {plane_bytes:.0} B, trit {trit_bytes:.0} B"
-    );
+    eprintln!("payloads: bitcos {bc_bytes:.0} B, plane {plane_bytes:.0} B, trit {trit_bytes:.0} B");
 
     // Warm both arms (Bench 749 lesson) then medians.
     let t_plane = median_ns(5, || simd_ternary_group_matvec(&gw, &x, &mut y));
@@ -291,20 +308,25 @@ fn g2b_and_roofline_the_regime_gate() {
         t_bitcos / 1e6,
         t_trit / 1e6
     );
-    assert!(drift < 0.15, "box too noisy for the regime gate (drift {drift:.1} percent)");
+    assert!(
+        drift < 0.15,
+        "box too noisy for the regime gate (drift {drift:.1} percent)"
+    );
 
     let r_plane = t_plane / t_bitcos;
     let r_trit = t_trit / t_bitcos;
-    eprintln!(
-        "G2b(a) ratios vs bitcos: plane {r_plane:.3}x, trit {r_trit:.3}x (z={z:.3})"
-    );
+    eprintln!("G2b(a) ratios vs bitcos: plane {r_plane:.3}x, trit {r_trit:.3}x (z={z:.3})");
     // The ≥1.05× gate vs BOTH — the promotion clause. A miss here does NOT
     // fail the tier (it stays opt-in); it fails PROMOTION. The gate prints
     // PASS/FAIL honestly and the bench doc records whichever landed.
     let gate_pass = r_plane >= 1.05 && r_trit >= 1.05;
     eprintln!(
         "G2b(a) >=1.05x-vs-BOTH gate: {} (plane {r_plane:.3}, trit {r_trit:.3})",
-        if gate_pass { "PASS" } else { "FAIL — stays opt-in" }
+        if gate_pass {
+            "PASS"
+        } else {
+            "FAIL — stays opt-in"
+        }
     );
 
     // T4 roofline: γ from the L1-resident decode rate, β from the shipped
@@ -324,11 +346,17 @@ fn g2b_and_roofline_the_regime_gate() {
 
     // Negative control (a) — LNL-shaped: a decode rate BELOW the streaming
     // bandwidth must refuse even at CAT-Q z.
-    assert!(!should_use_bitcos(0.515, 1.0 / (beta_rate * 0.5), beta_rate));
+    assert!(!should_use_bitcos(
+        0.515,
+        1.0 / (beta_rate * 0.5),
+        beta_rate
+    ));
     // Negative control (b) — G2b-shaped: L1-resident loss expected; the
     // dispatch measured on this shape must refuse.
     let mut y_s2 = vec![0.0f32; 128];
-    let t_s_plane = median_ns(200, || simd_ternary_group_matvec(&gw_s, &x[..1024], &mut y_s2));
+    let t_s_plane = median_ns(200, || {
+        simd_ternary_group_matvec(&gw_s, &x[..1024], &mut y_s2)
+    });
     let r_small = t_s_plane / t_small;
     eprintln!(
         "G2b(b) L1-resident: plane {t_s_plane:.0} ns vs bitcos {t_small:.0} ns = {r_small:.3}x \
@@ -341,12 +369,14 @@ fn g2b_and_roofline_the_regime_gate() {
         "the roofline dispatch must refuse the cache-resident shape — \
          if this fires the dispatch is decoration"
     );
-    assert!(r_small < 2.0, "reject bound: >2x L1-resident loss is a design failure");
+    assert!(
+        r_small < 2.0,
+        "reject bound: >2x L1-resident loss is a design failure"
+    );
     // And the streaming shape's own dispatch verdict must MATCH the gate.
     let dispatch_streams = should_use_bitcos(z, 1.0 / gamma_rate, beta_rate);
     assert_eq!(
-        dispatch_streams,
-        gate_pass,
+        dispatch_streams, gate_pass,
         "dispatch and gate disagree — the predicate is not measuring the knee"
     );
 }

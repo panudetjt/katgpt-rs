@@ -15,8 +15,8 @@
 
 use katgpt_spectral::hla_eigenbasis::{EigenbasisScratch, recover_eigenbasis_from_window};
 use katgpt_spectral::ica_lens::{
-    FastIcaConfig, FastIcaScratch, IcaAcceptance, IcaContrast,
-    excess_kurtosis_of_projection, fastica_into,
+    FastIcaConfig, FastIcaScratch, IcaAcceptance, IcaContrast, excess_kurtosis_of_projection,
+    fastica_into,
 };
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -106,12 +106,7 @@ fn make_mixed_non_gaussian(t: usize, d: usize, n_sources: usize, seed: u64) -> V
 }
 
 /// Compute PCA top-k directions + their kurtosis (the baseline).
-fn pca_top_k_kurtosis(
-    window: &[f32],
-    t: usize,
-    d: usize,
-    k: usize,
-) -> (Vec<f32>, Vec<f32>) {
+fn pca_top_k_kurtosis(window: &[f32], t: usize, d: usize, k: usize) -> (Vec<f32>, Vec<f32>) {
     let mut eigvecs = vec![0.0_f32; d * k];
     let mut eigvals = vec![0.0_f32; d];
     let mut scratch = EigenbasisScratch::with_capacity_d(d);
@@ -214,8 +209,16 @@ fn g1_latency(pf: &mut PassFail) {
 
     // Warmup.
     let _ = fastica_into(
-        &window, t, d, &config, &mut scratch, &mut reading, &mut writing,
-        &mut scores, &mut kurt, &mut lim,
+        &window,
+        t,
+        d,
+        &config,
+        &mut scratch,
+        &mut reading,
+        &mut writing,
+        &mut scores,
+        &mut kurt,
+        &mut lim,
     );
 
     // Measure.
@@ -223,14 +226,25 @@ fn g1_latency(pf: &mut PassFail) {
     let start = Instant::now();
     for _ in 0..iters {
         let _ = fastica_into(
-            &window, t, d, &config, &mut scratch, &mut reading, &mut writing,
-            &mut scores, &mut kurt, &mut lim,
+            &window,
+            t,
+            d,
+            &config,
+            &mut scratch,
+            &mut reading,
+            &mut writing,
+            &mut scores,
+            &mut kurt,
+            &mut lim,
         );
     }
     let elapsed = start.elapsed();
     let per_call_us = elapsed.as_micros() as f64 / iters as f64;
     println!("    T=512, D=8, m=8: {per_call_us:.1} µs/call (target ≤ 1000 µs)");
-    pf.check(per_call_us <= 1000.0, "G1: T=512/D=8/m=8 ≤ 1000µs (offline corpus fit)");
+    pf.check(
+        per_call_us <= 1000.0,
+        "G1: T=512/D=8/m=8 ≤ 1000µs (offline corpus fit)",
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -262,8 +276,16 @@ fn g2_quality_synthetic(pf: &mut PassFail) {
     let mut ica_kurt = vec![0.0_f32; m];
     let mut ica_lim = vec![0.0_f32; m];
     let _ = fastica_into(
-        &window, t, d, &config, &mut scratch, &mut ica_reading, &mut ica_writing,
-        &mut ica_scores, &mut ica_kurt, &mut ica_lim,
+        &window,
+        t,
+        d,
+        &config,
+        &mut scratch,
+        &mut ica_reading,
+        &mut ica_writing,
+        &mut ica_scores,
+        &mut ica_kurt,
+        &mut ica_lim,
     );
 
     // PCA baseline.
@@ -278,7 +300,10 @@ fn g2_quality_synthetic(pf: &mut PassFail) {
     println!("    PCA mean |kurtosis|: {pca_mean_abs:.4}");
     println!("    Ratio (ICA/PCA):    {ratio:.3}x (target ≥ 2.0x)");
 
-    pf.check(ratio >= 2.0, "G2(a): ICA/PCA kurtosis ratio ≥ 2.0x on synthetic Laplace+Uniform");
+    pf.check(
+        ratio >= 2.0,
+        "G2(a): ICA/PCA kurtosis ratio ≥ 2.0x on synthetic Laplace+Uniform",
+    );
 }
 
 fn g2_quality_high_dim(pf: &mut PassFail) {
@@ -308,8 +333,16 @@ fn g2_quality_high_dim(pf: &mut PassFail) {
     let ica_result_m_eff;
     {
         let r = fastica_into(
-            &window, t, d, &config, &mut scratch, &mut ica_reading, &mut ica_writing,
-            &mut ica_scores, &mut ica_kurt, &mut ica_lim,
+            &window,
+            t,
+            d,
+            &config,
+            &mut scratch,
+            &mut ica_reading,
+            &mut ica_writing,
+            &mut ica_scores,
+            &mut ica_kurt,
+            &mut ica_lim,
         );
         ica_result_status = r.status;
         ica_result_m_eff = r.m_eff;
@@ -326,7 +359,10 @@ fn g2_quality_high_dim(pf: &mut PassFail) {
     println!("    PCA mean |kurtosis|: {pca_mean_abs:.4}");
     println!("    Ratio (ICA/PCA):    {ratio:.3}x (target ≥ 1.5x)");
 
-    pf.check(ratio >= 1.5, "G2(b): ICA/PCA kurtosis ratio ≥ 1.5x on d=64 substrate");
+    pf.check(
+        ratio >= 1.5,
+        "G2(b): ICA/PCA kurtosis ratio ≥ 1.5x on d=64 substrate",
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -357,22 +393,35 @@ fn g4_alloc_free(pf: &mut PassFail) {
 
     // First call (may allocate for internal eigvecs_d / z_buf / w_mat temp Vecs).
     let _ = fastica_into(
-        &window, t, d, &config, &mut scratch, &mut reading, &mut writing,
-        &mut scores, &mut kurt, &mut lim,
+        &window,
+        t,
+        d,
+        &config,
+        &mut scratch,
+        &mut reading,
+        &mut writing,
+        &mut scores,
+        &mut kurt,
+        &mut lim,
     );
 
     // Measure second call (should be alloc-free after scratch is warmed).
     reset_alloc_counters();
     let _ = fastica_into(
-        &window, t, d, &config, &mut scratch, &mut reading, &mut writing,
-        &mut scores, &mut kurt, &mut lim,
+        &window,
+        t,
+        d,
+        &config,
+        &mut scratch,
+        &mut reading,
+        &mut writing,
+        &mut scores,
+        &mut kurt,
+        &mut lim,
     );
     let bytes = alloc_bytes();
     println!("    Steady-state allocation: {bytes} bytes (target 0)");
-    pf.check(
-        bytes == 0,
-        "G4: 0 bytes allocated in steady state",
-    );
+    pf.check(bytes == 0, "G4: 0 bytes allocated in steady state");
 }
 
 // ---------------------------------------------------------------------------
@@ -402,8 +451,16 @@ fn g5_determinism(pf: &mut PassFail) {
         let mut kurt = vec![0.0_f32; m];
         let mut lim = vec![0.0_f32; m];
         let _ = fastica_into(
-            &window, t, d, &config, &mut scratch, &mut reading, &mut writing,
-            &mut scores, &mut kurt, &mut lim,
+            &window,
+            t,
+            d,
+            &config,
+            &mut scratch,
+            &mut reading,
+            &mut writing,
+            &mut scores,
+            &mut kurt,
+            &mut lim,
         );
         reading
     };

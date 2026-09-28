@@ -123,7 +123,10 @@ pub struct EngramTripwireVerdict {
 /// [`tripwire_metrics_into`] uses for the N=1 statistic).
 #[inline]
 pub fn suspect_gate_source(gates: &[f32]) -> usize {
-    debug_assert!(!gates.is_empty(), "tripwire: consumed set must be non-empty");
+    debug_assert!(
+        !gates.is_empty(),
+        "tripwire: consumed set must be non-empty"
+    );
     let mut am = 0usize;
     for (i, &g) in gates.iter().enumerate() {
         if g > gates[am] {
@@ -161,7 +164,12 @@ impl EngramTripwire {
     /// Metrics land in `metrics` (caller-owned scratch, zero-alloc).
     /// `retrieval.len()` must equal `gates.len()` (debug-asserted by the
     /// primitive); gates must be strictly positive (σ gates are).
-    pub fn observe_benign(&mut self, retrieval: &[f32], gates: &[f32], metrics: &mut TripwireMetrics) {
+    pub fn observe_benign(
+        &mut self,
+        retrieval: &[f32],
+        gates: &[f32],
+        metrics: &mut TripwireMetrics,
+    ) {
         tripwire_metrics_into(retrieval, gates, metrics);
         let score = metrics.normalized_top1_rank();
         let cap = self.config.benign_pool_capacity.max(1);
@@ -337,8 +345,11 @@ mod tests {
         let v1 = tw.check(&r, &g, &mut m);
         let v2 = tw.check(&r, &g, &mut m);
         assert_eq!(v1, v2);
-        assert_eq!((tw.benign_worlds(), tw.pool_len(), tw.threshold()),
-            (worlds, len, threshold), "check must not mutate detector state");
+        assert_eq!(
+            (tw.benign_worlds(), tw.pool_len(), tw.threshold()),
+            (worlds, len, threshold),
+            "check must not mutate detector state"
+        );
     }
 
     #[test]

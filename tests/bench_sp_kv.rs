@@ -119,10 +119,15 @@ fn bench_gate_bias_overhead() {
     // bar assert fires — a miss at one `t_n` must never hide the other two
     // cells, because the scale-invariance check IS the finding.
     const T_NS: [usize; 3] = [128, 512, 2048];
-    let cells: Vec<T16Cell> = T_NS.iter().map(|&t_n| bench_gate_bias_overhead_at(t_n)).collect();
+    let cells: Vec<T16Cell> = T_NS
+        .iter()
+        .map(|&t_n| bench_gate_bias_overhead_at(t_n))
+        .collect();
 
     println!("\n  ┌─ T16 sweep summary (Issue 727 T3) ─────────────────────────────────┐");
-    println!("  │  t_n │ gated-zero │ zero rounds     │ mixed        │ speedup │ mixed rounds    │");
+    println!(
+        "  │  t_n │ gated-zero │ zero rounds     │ mixed        │ speedup │ mixed rounds    │"
+    );
     for c in &cells {
         println!(
             "  │ {:>4} │ {:+.2}%      │ {:.3}..{:.3} │ {:+.2}%      │ {:.3}x  │ {:.3}..{:.3} │",
@@ -583,14 +588,33 @@ fn gate_bias_hoist_bit_identity() {
             let mut sc_ref = vec![0.0f32; t_n];
             unsafe {
                 attention_head_core(
-                    &q, &key_cache, &value_cache, &mut out_new, &mut sc_new,
-                    q_off, kv_off, kvd, hd, t_n, scale,
+                    &q,
+                    &key_cache,
+                    &value_cache,
+                    &mut out_new,
+                    &mut sc_new,
+                    q_off,
+                    kv_off,
+                    kvd,
+                    hd,
+                    t_n,
+                    scale,
                     GateBias::new(bias),
                 );
             }
             reference_attention_head_pre727(
-                &q, &key_cache, &value_cache, &mut out_ref, &mut sc_ref,
-                q_off, kv_off, kvd, hd, t_n, scale, bias,
+                &q,
+                &key_cache,
+                &value_cache,
+                &mut out_ref,
+                &mut sc_ref,
+                q_off,
+                kv_off,
+                kvd,
+                hd,
+                t_n,
+                scale,
+                bias,
             );
             for d in 0..hd {
                 assert_eq!(
@@ -631,14 +655,33 @@ fn gate_bias_hoist_bit_identity() {
     let mut sc_ref = vec![0.0f32; t_n];
     unsafe {
         attention_head_core(
-            &q, &key_flat, &value_flat, &mut out_new, &mut sc_new,
-            0, 0, kvd, hd, t_n, scale,
+            &q,
+            &key_flat,
+            &value_flat,
+            &mut out_new,
+            &mut sc_new,
+            0,
+            0,
+            kvd,
+            hd,
+            t_n,
+            scale,
             GateBias::new(&under),
         );
     }
     reference_attention_head_pre727(
-        &q, &key_flat, &value_flat, &mut out_ref, &mut sc_ref,
-        0, 0, kvd, hd, t_n, scale, &under,
+        &q,
+        &key_flat,
+        &value_flat,
+        &mut out_ref,
+        &mut sc_ref,
+        0,
+        0,
+        kvd,
+        hd,
+        t_n,
+        scale,
+        &under,
     );
     for d in 0..hd {
         assert_eq!(out_new[d].to_bits(), out_ref[d].to_bits());
@@ -657,8 +700,17 @@ fn gate_bias_hoist_bit_identity() {
     let mut sc = vec![0.0f32; t_n];
     unsafe {
         attention_head_core(
-            &q, &key_cache, &value_cache, &mut out, &mut sc,
-            0, 0, kvd, hd, t_n, scale,
+            &q,
+            &key_cache,
+            &value_cache,
+            &mut out,
+            &mut sc,
+            0,
+            0,
+            kvd,
+            hd,
+            t_n,
+            scale,
             GateBias::new(&all_pruned),
         );
     }

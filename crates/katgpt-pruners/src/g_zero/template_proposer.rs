@@ -37,7 +37,6 @@
 //! proposer.observe_delta(pair.template_id, 0.42);
 //! ```
 
-
 use serde::{Deserialize, Serialize};
 
 // ── Query Template ──────────────────────────────────────────────

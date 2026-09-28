@@ -19,9 +19,9 @@
 #![allow(clippy::float_cmp)]
 
 use katgpt_core::regime_probe::{
-    BasinScratch, BasinReport, FrozenRenovator, basin_probe_into, basin_radius_bound,
-    basin_radius_from_kappa, conditional_entropies_into, conditional_entropy_nats,
-    entropy_gap, gamma_capacity, kappa_max, kappa_max_bisection, phi_cdf, phi_pdf,
+    BasinReport, BasinScratch, FrozenRenovator, basin_probe_into, basin_radius_bound,
+    basin_radius_from_kappa, conditional_entropies_into, conditional_entropy_nats, entropy_gap,
+    gamma_capacity, kappa_max, kappa_max_bisection, phi_cdf, phi_pdf,
 };
 
 // ── T4: Gardner LUT golden vectors ──────────────────────────────────────────
@@ -85,7 +85,10 @@ fn t4_bisection_actually_solves_the_equation() {
         let k = kappa_max_bisection(gamma);
         let back = gamma_capacity(k);
         let rel = (back - gamma).abs() / gamma;
-        assert!(rel < 1e-9, "bisection self-check at γ={gamma}: got {back}, rel {rel:e}");
+        assert!(
+            rel < 1e-9,
+            "bisection self-check at γ={gamma}: got {back}, rel {rel:e}"
+        );
     }
 }
 
@@ -103,7 +106,10 @@ fn t4_known_capacity_points() {
     // because this pins the closed forms against hand arithmetic, not the
     // interpolation (the golden sweep above pins that at 1e-6 vs bisection).
     let k = kappa_max(1.0);
-    assert!((k - 0.4712).abs() < 1e-2, "κ_max(1.0) = {k}, expected ≈ 0.4712");
+    assert!(
+        (k - 0.4712).abs() < 1e-2,
+        "κ_max(1.0) = {k}, expected ≈ 0.4712"
+    );
     assert!((phi_cdf(0.0) - 0.5).abs() < 1e-15);
     assert!((phi_pdf(0.0) - 0.398_942_280_401_432_7).abs() < 1e-15);
 }
@@ -116,7 +122,10 @@ fn t4_saturation_and_monotonicity() {
         gamma += 0.05;
         let b = basin_radius_bound(gamma);
         assert!(b <= prev, "ρ bound must not rise with load at γ={gamma}");
-        assert!((0.0..=1.0).contains(&b), "bound out of range at γ={gamma}: {b}");
+        assert!(
+            (0.0..=1.0).contains(&b),
+            "bound out of range at γ={gamma}: {b}"
+        );
         prev = b;
     }
 }
@@ -153,17 +162,17 @@ fn t1_matches_direct_f64_reference() {
         .map(|i| ((i as u64).wrapping_mul(6364136223846793005) >> 33) as f32 / 8.0 % 20.0 - 10.0)
         .collect();
     // Direct f64 softmax entropy.
-    let max = logits.iter().copied().map(f64::from).fold(f64::NEG_INFINITY, f64::max);
+    let max = logits
+        .iter()
+        .copied()
+        .map(f64::from)
+        .fold(f64::NEG_INFINITY, f64::max);
     let z: f64 = logits.iter().map(|&x| (x as f64 - max).exp()).sum();
     let want: f64 = logits
         .iter()
         .map(|&x| {
             let p = (x as f64 - max).exp() / z;
-            if p > 0.0 {
-                -p * p.ln()
-            } else {
-                0.0
-            }
+            if p > 0.0 { -p * p.ln() } else { 0.0 }
         })
         .sum();
     let got = conditional_entropy_nats(&logits) as f64;
@@ -184,8 +193,7 @@ fn t1_batch_equals_scalar_and_mean_matches() {
     conditional_entropies_into(&logits, positions, vocab, &mut out);
     let mut sum = 0.0f32;
     for p in 0..positions {
-        let scalar =
-            conditional_entropy_nats(&logits[p * vocab..(p + 1) * vocab]);
+        let scalar = conditional_entropy_nats(&logits[p * vocab..(p + 1) * vocab]);
         assert_eq!(out[p], scalar, "row {p}: batch vs scalar must be bit-equal");
         sum += scalar;
     }
@@ -226,7 +234,10 @@ impl FrozenRenovator for Oracle {
 #[test]
 fn t3_basin_artifact_bit_identical_across_runs() {
     let original: Vec<usize> = (0..96).map(|i| (i * 7) % 5).collect();
-    let ren = Oracle { answer: original.clone(), alphabet: 5 };
+    let ren = Oracle {
+        answer: original.clone(),
+        alphabet: 5,
+    };
     let mut s1 = BasinScratch::new(ren.len(), 5);
     let mut r1 = BasinReport::default();
     basin_probe_into(&ren, &original, 0.3, 3, 0x5EED_7402, &mut s1, &mut r1);

@@ -392,9 +392,11 @@ fn mean_pool_keys_into(chunk_keys: &[f32], chunk_size: usize, head_dim: usize, o
 /// libm path by ≤1 ULP per element (Cephes accuracy floor); softmax
 /// normalization absorbs this into the final reciprocal-multiply.
 fn softmax_inplace(scores: &mut [f32]) {
-    use katgpt_core::simd::{simd_add_scalar_inplace, simd_exp_sum_inplace, simd_max_f32, simd_scale_inplace};
+    use katgpt_core::simd::{
+        simd_add_scalar_inplace, simd_exp_sum_inplace, simd_max_f32, simd_scale_inplace,
+    };
 
-if scores.is_empty() {
+    if scores.is_empty() {
         return;
     }
     let max_val = simd_max_f32(scores);

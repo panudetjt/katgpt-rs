@@ -171,8 +171,21 @@ impl HebbianKarcReadout {
             f32::INFINITY
         };
 
-        let report = HebbianFitReport { gamma_min, n_facts: f, seed, config };
-        Ok((Self { memory, state_dim, target_dim, report }, report))
+        let report = HebbianFitReport {
+            gamma_min,
+            n_facts: f,
+            seed,
+            config,
+        };
+        Ok((
+            Self {
+                memory,
+                state_dim,
+                target_dim,
+                report,
+            },
+            report,
+        ))
     }
 
     /// Forecast: `forward_into(pad64(delay_state))`, head = `out[..target_dim]`.
@@ -193,7 +206,8 @@ impl HebbianKarcReadout {
         let mut key = [0.0f32; HEBBIAN_KARC_DIM];
         pad64_into(delay_state, &mut key);
         let mut head = [0.0f32; HEBBIAN_KARC_DIM];
-        self.memory.forward_into(&key[..], scratch_phi, &mut head[..]);
+        self.memory
+            .forward_into(&key[..], scratch_phi, &mut head[..]);
         let d = self.target_dim();
         out[..d].copy_from_slice(&head[..d]);
         true
@@ -301,7 +315,11 @@ mod tests {
             HebbianKarcReadout::fit(&d_refs, &t_refs, config(), seed_of(&d_refs, &t_refs))
                 .expect("fit");
         assert_eq!(report.n_facts, 8);
-        assert!(report.gamma_min.is_finite() && report.gamma_min > 0.0, "margin {}", report.gamma_min);
+        assert!(
+            report.gamma_min.is_finite() && report.gamma_min > 0.0,
+            "margin {}",
+            report.gamma_min
+        );
 
         let mut phi = vec![0.0f32; 128];
         let mut out = [0.0f32; 8];
@@ -347,7 +365,11 @@ mod tests {
         pad64_into(&v, &mut padded);
         let dot_raw: f32 = v.iter().zip(&v).map(|(a, b)| a * b).sum();
         let dot_pad: f32 = padded.iter().zip(&padded).map(|(a, b)| a * b).sum();
-        assert_eq!(dot_raw.to_bits(), dot_pad.to_bits(), "padding must preserve inner products exactly");
+        assert_eq!(
+            dot_raw.to_bits(),
+            dot_pad.to_bits(),
+            "padding must preserve inner products exactly"
+        );
         assert!(padded[32..].iter().all(|&x| x == 0.0));
     }
 
@@ -361,7 +383,11 @@ mod tests {
                 .expect("fit");
         assert!(report.gamma_min.is_infinite());
         assert_eq!(report.n_facts, 1);
-        assert_eq!(report.seed, seed_of(&d_refs, &t_refs), "report carries the fit seed");
+        assert_eq!(
+            report.seed,
+            seed_of(&d_refs, &t_refs),
+            "report carries the fit seed"
+        );
     }
 
     #[test]
@@ -372,8 +398,9 @@ mod tests {
             HebbianReadoutError::Construction(ConstructionError::EmptyFactSet)
         );
         let e2 = HebbianKarcReadout::fit(&[&[0.0; 32]], &[], config(), 0).unwrap_err();
-        assert!(
-            matches!(e2, HebbianReadoutError::Construction(ConstructionError::FactMapLengthMismatch { .. }))
-        );
+        assert!(matches!(
+            e2,
+            HebbianReadoutError::Construction(ConstructionError::FactMapLengthMismatch { .. })
+        ));
     }
 }

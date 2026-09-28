@@ -457,7 +457,9 @@ fn main() {
     println!("  producer p: wait turn>=2p-1 → write slots[p&1] → bump (publish)");
     println!("  consumer c: wait turn>=2c+1 → read slots[c&1] → bump (release)");
     println!("Honesty: 2-thread measurement (serial = 1 thread); no core pinning;");
-    println!("  M3 Max, release profile; N={FRAMES} frames/rep; {WARMUP_REPS} warmup + {TIMED_REPS} timed reps; median.");
+    println!(
+        "  M3 Max, release profile; N={FRAMES} frames/rep; {WARMUP_REPS} warmup + {TIMED_REPS} timed reps; median."
+    );
     println!("All variants share the same [AtomicU32] frame representation + kernels:");
     println!("  wall deltas are handoff/overlap only (see module docs for why).");
     println!("{rule}");
@@ -487,7 +489,9 @@ fn main() {
                 / mpsc_v.median_ns_per_frame;
 
             println!();
-            println!("── frame {kib} KiB ({elems} f32) · compute cell: {cell} (target {target_us:.0} µs) ──");
+            println!(
+                "── frame {kib} KiB ({elems} f32) · compute cell: {cell} (target {target_us:.0} µs) ──"
+            );
             println!(
                 "  calibration: consumer mac passes={mac_passes}, producer fill passes={fill_passes} (both → ~{target_us:.0} µs)"
             );
@@ -495,9 +499,7 @@ fn main() {
                 "  {:<10} {:>12} {:>10} {:>22} {:>12}",
                 "variant", "ns/frame", "overlap×", "min..max ns/frame", "checksum"
             );
-            for (name, r) in
-                [("serial", &serial), ("slot-flip", &slot), ("mpsc", &mpsc_v)]
-            {
+            for (name, r) in [("serial", &serial), ("slot-flip", &slot), ("mpsc", &mpsc_v)] {
                 println!(
                     "  {:<10} {:>12.0} {:>10.3} {:>22} {:>12.3}",
                     name,
@@ -508,7 +510,9 @@ fn main() {
                 );
             }
             if !checksums_agree {
-                println!("  ⚠ CHECKSUM MISMATCH — variants did not do identical work; walls above are NOT comparable");
+                println!(
+                    "  ⚠ CHECKSUM MISMATCH — variants did not do identical work; walls above are NOT comparable"
+                );
             }
             println!(
                 "  slot-flip vs serial: {slot_vs_serial_pct:+.1}%   slot-flip vs mpsc: {slot_vs_mpsc_pct:+.1}%"
@@ -557,9 +561,13 @@ fn main() {
         .filter(|l| l.contains("· long ") && l.contains("PROMOTE-CANDIDATE"))
         .count();
     if long_binding_promotes > 0 {
-        println!("B2 VERDICT: long-compute cell (binding) PROMOTE-CANDIDATE — file the DoubleBuffer upgrade as the arm's landing.");
+        println!(
+            "B2 VERDICT: long-compute cell (binding) PROMOTE-CANDIDATE — file the DoubleBuffer upgrade as the arm's landing."
+        );
     } else {
-        println!("B2 VERDICT: DECLINE — slot-flip does not beat BOTH baselines >10% in the binding (long-compute) cell.");
+        println!(
+            "B2 VERDICT: DECLINE — slot-flip does not beat BOTH baselines >10% in the binding (long-compute) cell."
+        );
         println!("  Channels tie/hold in the async_qdq regime. Pufferlib needs the spin");
         println!("  machine because C pthreads has no channels; Rust does. See the");
         println!("  per-cell lines above for the regime map (short-cell edge, if any).");

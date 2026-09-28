@@ -472,7 +472,9 @@ fn proof_p3_instrument_and_mechanism() {
     // one inside a 0.3..3.0 band are not the same claim even when they are the
     // same number.
     ab.report("P3 uniform-vs-frozen");
-    println!("  Speedup (median of {rounds} interleaved rounds): {speedup_pct:.1}% (recorded, not gated)");
+    println!(
+        "  Speedup (median of {rounds} interleaved rounds): {speedup_pct:.1}% (recorded, not gated)"
+    );
 
     // ── Gated half #1: instrument health ─────────────────────────────────
     // Both arms must be measurably real. An arm the optimiser deleted reads
@@ -490,9 +492,11 @@ fn proof_p3_instrument_and_mechanism() {
         ab.b_ns_per_iter(),
         ab.median,
     );
-    println!("  ✅ P3 PASS (instrument): both arms real (a {:.0} ns/iter, b {:.0} ns/iter)",
+    println!(
+        "  ✅ P3 PASS (instrument): both arms real (a {:.0} ns/iter, b {:.0} ns/iter)",
         ab.a_ns_per_iter(),
-        ab.b_ns_per_iter());
+        ab.b_ns_per_iter()
+    );
 
     // ── Gated half #2: the mechanism as an exact CALL COUNT ──────────────
     // `should_screen_full` is `hop >= total_hops - 1` for FrozenBaseGuard,
@@ -507,13 +511,17 @@ fn proof_p3_instrument_and_mechanism() {
     }
     impl ScreeningPruner for CountingScreener<'_> {
         fn relevance(&self, depth: usize, token_idx: usize, parent_tokens: &[usize]) -> f32 {
-            self.calls.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            self.calls
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             self.inner.relevance(depth, token_idx, parent_tokens)
         }
     }
     let count_screener_calls = |schedule: PrunerSchedule| -> u64 {
         let calls = std::sync::atomic::AtomicU64::new(0);
-        let counting = CountingScreener { inner: &expensive, calls: &calls };
+        let counting = CountingScreener {
+            inner: &expensive,
+            calls: &calls,
+        };
         for hop in 0..total_hops {
             let tree = build_dd_tree_screened_with_schedule(
                 std::hint::black_box(&refs),
@@ -537,7 +545,9 @@ fn proof_p3_instrument_and_mechanism() {
          — anything else means the intermediate-hop skip is gone, doubled, or \
          the fixture stopped building identical trees per hop",
     );
-    println!("  ✅ P3 PASS (mechanism): screener calls frozen {frozen_calls} = uniform {uniform_calls} / 3");
+    println!(
+        "  ✅ P3 PASS (mechanism): screener calls frozen {frozen_calls} = uniform {uniform_calls} / 3"
+    );
 }
 
 // ══════════════════════════════════════════════════════════════════════════

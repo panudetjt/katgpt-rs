@@ -11,6 +11,8 @@
 > **Related Plans:** 598 (katgpt-rs byte marginal primitive)
 > **Cross-ref (riir-ai):** Issue 961 (perf league BPB normalization); (riir-train) training rows in §7
 > **Classification:** Public (katgpt-rs)
+>
+> **PASS-Redirects (synthesis):** Csillag, Schuller, Dall'Antonia, Guibas, Velho, Novello [arXiv:2606.16926 "Functional Gradient Descent with Adaptive Representations"] — certificate-gated representation refinement in function-space FGD (refine while `(1+ε)U ≥ ε‖g‖`, U closed-form); the control-law shape is this note's certificate family with a **gradient-approximation signal** instead of boundary mass — verdict **Pass (both tracks)**: the modelless extractions (Sobolev tail bounds, refinement trigger, descent certificate) have no in-stack consumer (no function-fitting loop ships), and the training-side residue is covered by a shipped analog — the measured k_V rung law ships as a gate-passed opt-in key (riir-train Issue 459 T2, `sample_measured`; the hand-set ladder remains `train()`'s default) — wiring it is Issue 459's residue, independent of this paper; the FGD residual criterion adds no theorem at that site (subspace projection ≠ function-space FGD) and is not free to measure (the anchor config computes no same-data full/active gradient pair).
 
 ---
 

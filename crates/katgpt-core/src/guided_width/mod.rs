@@ -74,6 +74,6 @@ pub use rollout::{belief_key, guided_width_rollouts};
 pub use score::{latent_value_into, select_best};
 pub use table::{DirectionFitScratch, DirectionPosterior, DirectionTable, ThawError};
 pub use types::{
-    GuidedWidthConfig, GuidedWidthScratch, Guidance, Hooks, LatentValueConfig, MAX_BRANCHES,
+    Guidance, GuidedWidthConfig, GuidedWidthScratch, Hooks, LatentValueConfig, MAX_BRANCHES,
     MAX_DIRECTIONS, RolloutReport, StagnationGate, TrapProbe, TrapReallocConfig,
 };

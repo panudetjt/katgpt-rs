@@ -390,15 +390,20 @@ mod tests {
             for (i, &lab) in labels.iter().enumerate() {
                 let reference = logits[lab as usize] as f64 - lse;
                 let got = r.label_logprobs[i] as f64;
-                assert!
-((got - reference).abs() < 1e-5, "slot {p} label {lab}: got {got}, reference {reference}");
+                assert!(
+                    (got - reference).abs() < 1e-5,
+                    "slot {p} label {lab}: got {got}, reference {reference}"
+                );
             }
         }
 
         // Bit-identity across calls with fresh scratch.
         let out2 = structured_read(&weights, &config, &canvas, &labels).unwrap();
         for (a, b) in out.iter().zip(&out2) {
-            assert_eq!(a.label_logprobs, b.label_logprobs, "bit-identical across calls");
+            assert_eq!(
+                a.label_logprobs, b.label_logprobs,
+                "bit-identical across calls"
+            );
             assert_eq!(a.label_entropy, b.label_entropy);
             assert_eq!(a.argmax_index, b.argmax_index);
         }
@@ -426,19 +431,27 @@ mod tests {
             assert_eq!(r.n_labels as usize, n);
             let s: f32 = r.label_logprobs[..n].iter().map(|lp| lp.exp()).sum();
             let p_sum: f32 = r.label_logprobs[..n].iter().map(|lp| lp.exp() / s).sum();
-            assert!((p_sum - 1.0).abs() < 1e-5, "subset-normalized probs must sum to 1 (got {p_sum})");
-            let (imax, _) = r
-                .label_logprobs[..n]
+            assert!(
+                (p_sum - 1.0).abs() < 1e-5,
+                "subset-normalized probs must sum to 1 (got {p_sum})"
+            );
+            let (imax, _) = r.label_logprobs[..n]
                 .iter()
                 .enumerate()
                 .max_by(|a, b| a.1.total_cmp(b.1))
                 .unwrap();
-            assert_eq!(r.argmax_index as usize, imax, "argmax_index must be the max logprob");
+            assert_eq!(
+                r.argmax_index as usize, imax,
+                "argmax_index must be the max logprob"
+            );
             assert_eq!(r.argmax_logprob, r.label_logprobs[imax]);
             let expected_prob = r.label_logprobs[imax].exp() / s;
             assert!((r.argmax_label_prob - expected_prob).abs() < 1e-6);
             let h = r.label_entropy;
-            assert!(h >= 0.0 && h <= ln_n + 1e-4, "entropy {h} outside [0, ln({n})={ln_n}]");
+            assert!(
+                h >= 0.0 && h <= ln_n + 1e-4,
+                "entropy {h} outside [0, ln({n})={ln_n}]"
+            );
             assert!(r.vocab_argmax_token < config.vocab_size as u32);
         }
         assert_eq!(out[0].position, 2);
@@ -468,18 +481,44 @@ mod tests {
         let many: Vec<u32> = (0..=MAX_LABELS as u32).collect();
         let e = structured_read_into(&mut out, &weights, &config, &canvas, &many, &mut scratch)
             .unwrap_err();
-        assert_eq!(e, StructuredReadError::TooManyLabels { n: many.len(), max: MAX_LABELS });
+        assert_eq!(
+            e,
+            StructuredReadError::TooManyLabels {
+                n: many.len(),
+                max: MAX_LABELS
+            }
+        );
 
         let e = structured_read_into(&mut out, &weights, &config, &canvas, &[9, 27], &mut scratch)
             .unwrap_err();
-        assert_eq!(e, StructuredReadError::LabelOutOfRange { label: 27, vocab: 27 });
+        assert_eq!(
+            e,
+            StructuredReadError::LabelOutOfRange {
+                label: 27,
+                vocab: 27
+            }
+        );
 
-        let e = structured_read_into(&mut out, &weights, &config, &canvas, &[4, 4, 9], &mut scratch)
-            .unwrap_err();
+        let e = structured_read_into(
+            &mut out,
+            &weights,
+            &config,
+            &canvas,
+            &[4, 4, 9],
+            &mut scratch,
+        )
+        .unwrap_err();
         assert_eq!(e, StructuredReadError::LabelsNotAscending);
 
-        let e = structured_read_into(&mut out, &weights, &config, &[1, 2, 3], &[1, 2], &mut scratch)
-            .unwrap_err();
+        let e = structured_read_into(
+            &mut out,
+            &weights,
+            &config,
+            &[1, 2, 3],
+            &[1, 2],
+            &mut scratch,
+        )
+        .unwrap_err();
         assert_eq!(e, StructuredReadError::NoFreeSlots);
 
         let mut one = [out[0]];

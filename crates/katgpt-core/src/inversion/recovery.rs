@@ -15,11 +15,11 @@
 //! length `d` that the caller supplies once. The [`RandomPolicy`]'s
 //! permutation buffer is allocated once in `new` and reused.
 
+use crate::inversion::verifier::accept_observation;
 use crate::inversion::{
     InversionConfig, InversionError, InversionForward, InversionResult, ObservedStates,
     RandomPolicy,
 };
-use crate::inversion::verifier::accept_observation;
 
 #[cfg(feature = "grad_policy")]
 use crate::inversion::InversionPolicy;
@@ -202,7 +202,15 @@ pub fn invert_sequence_grad<F: InversionForward, G: InversionGradient>(
     seed: u64,
 ) -> Result<InversionResult, InversionError> {
     let mut scratch = vec![0.0_f32; observed.d_len];
-    invert_sequence_grad_into(observed, vocab_size, forward, grad, config, &mut scratch, seed)
+    invert_sequence_grad_into(
+        observed,
+        vocab_size,
+        forward,
+        grad,
+        config,
+        &mut scratch,
+        seed,
+    )
 }
 
 enum PositionOutcome {
@@ -292,15 +300,18 @@ fn run_one_position_grad<F: InversionForward, G: InversionGradient>(
 
         // Step: proxy ← proxy − step_size · grad.
         let step_size = grad_policy.step_size();
-        for (p, g) in grad_policy.proxy.iter_mut().zip(grad_policy.grad_scratch.iter()) {
+        for (p, g) in grad_policy
+            .proxy
+            .iter_mut()
+            .zip(grad_policy.grad_scratch.iter())
+        {
             *p -= step_size * g;
         }
 
         // Projection + acceptance test every projection_period steps, and
         // always on the final step.
         let period = grad_policy.projection_period();
-        let do_project = (step + 1) % period == 0
-            || step + 1 == grad_policy.max_grad_steps();
+        let do_project = (step + 1) % period == 0 || step + 1 == grad_policy.max_grad_steps();
         if !do_project {
             continue;
         }

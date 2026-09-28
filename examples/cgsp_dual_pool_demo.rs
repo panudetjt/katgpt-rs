@@ -107,7 +107,7 @@ fn print_pool(label: &str, prios: &[f32]) {
 fn demo_reachability() {
     const TOTAL: u32 = 50_000;
 
-separator("Demo 1: Proactive reachability (G1)");
+    separator("Demo 1: Proactive reachability (G1)");
     println!("  Setup: 8-arm E-pool (one-hot on arm 0), 8-arm X-pool (uniform).");
     println!("  We force E-pool 'success' every cycle so w_E grows without bound.");
     println!("  The X-pool floor (α clamped to 1−ε) guarantees it is still selected.");
@@ -333,7 +333,9 @@ fn main() {
     println!("  G5 (personality divergence benchmark) ran in riir-ai Plan 312: G5.2 FLAT");
     println!("  (PriorityTableBandit::uniform conjecturer too weak), G5.3 PASS (+161.2 ns/cycle),");
     println!("  G5.4 PASS (E-pool 8→64 arms, bit-identical roundtrip). Feature stays opt-in per");
-    println!("  reachability-guarantee rationale — promotion deferred until richer X-pool conjecturer.");
+    println!(
+        "  reachability-guarantee rationale — promotion deferred until richer X-pool conjecturer."
+    );
     println!();
 }
 

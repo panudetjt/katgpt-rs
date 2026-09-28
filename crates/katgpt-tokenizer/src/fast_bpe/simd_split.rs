@@ -149,7 +149,11 @@ impl<'a> WhitespaceSplitter<'a> {
     /// Split at an explicit level (differential tests + the scalar
     /// reference).
     pub(crate) fn with_level(text: &'a str, level: SplitLevel) -> Self {
-        WhitespaceSplitter { bytes: text.as_bytes(), pos: 0, level }
+        WhitespaceSplitter {
+            bytes: text.as_bytes(),
+            pos: 0,
+            level,
+        }
     }
 
     /// Bit i (little-endian over the chunk) = `is_ascii_ws_byte(b) || b >= 0x80`
@@ -332,10 +336,7 @@ fn sse2_stop_mask16(bytes: &[u8]) -> u32 {
         // b >= 0x80 ⇔ the raw byte is negative as i8 (high bit set).
         // NB: NOT `cmpgt(bx, 0)` — that misses b == 0x80 exactly (bx == 0).
         let nonascii = _mm_cmpgt_epi8(_mm_set1_epi8(0), v);
-        let stop = _mm_or_si128(
-            _mm_or_si128(_mm_and_si128(ge9, le13), eq20),
-            nonascii,
-        );
+        let stop = _mm_or_si128(_mm_or_si128(_mm_and_si128(ge9, le13), eq20), nonascii);
         _mm_movemask_epi8(stop) as u32
     }
 }
@@ -369,10 +370,7 @@ unsafe fn avx2_stop_mask32(bytes: &[u8]) -> u32 {
         // b >= 0x80 ⇔ the raw byte is negative as i8 — NOT `cmpgt(bx, 0)`, which
         // misses b == 0x80 exactly (bx == 0).
         let nonascii = _mm256_cmpgt_epi8(_mm256_setzero_si256(), v);
-        let stop = _mm256_or_si256(
-            _mm256_or_si256(_mm256_and_si256(ge9, le13), eq20),
-            nonascii,
-        );
+        let stop = _mm256_or_si256(_mm256_or_si256(_mm256_and_si256(ge9, le13), eq20), nonascii);
         _mm256_movemask_epi8(stop) as u32
     }
 }
@@ -462,19 +460,18 @@ mod tests {
 
     /// Every Unicode `White_Space` char (25 total).
     const ALL_WS_CHARS: [char; 25] = [
-        '\u{0009}', '\u{000A}', '\u{000B}', '\u{000C}', '\u{000D}', '\u{0020}',
-        '\u{0085}', '\u{00A0}', '\u{1680}',
-        '\u{2000}', '\u{2001}', '\u{2002}', '\u{2003}', '\u{2004}', '\u{2005}',
-        '\u{2006}', '\u{2007}', '\u{2008}', '\u{2009}', '\u{200A}',
-        '\u{2028}', '\u{2029}', '\u{202F}', '\u{205F}', '\u{3000}',
+        '\u{0009}', '\u{000A}', '\u{000B}', '\u{000C}', '\u{000D}', '\u{0020}', '\u{0085}',
+        '\u{00A0}', '\u{1680}', '\u{2000}', '\u{2001}', '\u{2002}', '\u{2003}', '\u{2004}',
+        '\u{2005}', '\u{2006}', '\u{2007}', '\u{2008}', '\u{2009}', '\u{200A}', '\u{2028}',
+        '\u{2029}', '\u{202F}', '\u{205F}', '\u{3000}',
     ];
 
     /// Near-miss chars that are NOT `White_Space` (regression traps:
     /// U+180E was ws before Unicode 6.3; ZWSP/FEFF are "space-like" but not
     /// ws; 0x0E/0x08 bracket the ASCII ws range; U+0084 is a C1 control).
     const NOT_WS_NEAR_MISSES: [char; 9] = [
-        '\u{0008}', '\u{000E}', '\u{007F}', '\u{0084}', '\u{00AD}',
-        '\u{180E}', '\u{200B}', '\u{200C}', '\u{FEFF}',
+        '\u{0008}', '\u{000E}', '\u{007F}', '\u{0084}', '\u{00AD}', '\u{180E}', '\u{200B}',
+        '\u{200C}', '\u{FEFF}',
     ];
 
     fn levels_under_test() -> Vec<(SplitLevel, &'static str)> {
@@ -559,7 +556,11 @@ mod tests {
                     .enumerate()
                     .filter(|&(_, &b)| is_ascii_ws_byte(b) || b >= 0x80)
                     .fold(0u32, |m, (i, _)| m | (1 << i));
-                assert_eq!(spl.stop_mask(&buf), want, "{name}: random buffer {buf:02x?}");
+                assert_eq!(
+                    spl.stop_mask(&buf),
+                    want,
+                    "{name}: random buffer {buf:02x?}"
+                );
             }
         }
     }
@@ -626,7 +627,10 @@ mod tests {
                 let b = WhitespaceSplitter::with_level(text, level)
                     .map(format_event)
                     .collect::<Vec<_>>();
-                assert_eq!(a, b, "{name}: coalesced stream differs from scalar on {text:?}");
+                assert_eq!(
+                    a, b,
+                    "{name}: coalesced stream differs from scalar on {text:?}"
+                );
             }
         }
     }

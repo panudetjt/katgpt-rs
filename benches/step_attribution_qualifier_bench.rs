@@ -174,9 +174,7 @@ fn main() {
     println!("  Executor: NoOpExecutor (returns *k per input, zero per-tick compute).");
     println!("  Aggregator: SumAggregator (SIMD-friendly sum).");
     println!("  Mutation: AddConst(0.5) (single f32 add).");
-    println!(
-        "  Measurement: median of {OUTER} outer × {BATCH} inner calls, warmup {WARMUP}."
-    );
+    println!("  Measurement: median of {OUTER} outer × {BATCH} inner calls, warmup {WARMUP}.");
     println!();
     println!("  G4 target: gate overhead (aggregate-only) < 1000 ns at W=64.");
     println!();
@@ -189,9 +187,7 @@ fn main() {
     for &w in WINDOW_SIZES {
         let (e2e, agg) = bench_qualify_latency(w);
         let misc = e2e - agg;
-        println!(
-            "  │ {w:>4} │ {e2e:>16.1} │ {agg:>16.1} │ {misc:>16.1} │"
-        );
+        println!("  │ {w:>4} │ {e2e:>16.1} │ {agg:>16.1} │ {misc:>16.1} │");
         if w == 64 {
             w64_agg = Some(agg);
         }
@@ -201,10 +197,12 @@ fn main() {
 
     // ── G4 verdict ──
     let g4_target_ns: f64 = 1000.0;
-    let g4_pass = if let Some(agg) = w64_agg { agg < g4_target_ns } else {
-            println!("  ⚠ W=64 not in WINDOW_SIZES — G4 verdict indeterminate.");
-            false
-        };
+    let g4_pass = if let Some(agg) = w64_agg {
+        agg < g4_target_ns
+    } else {
+        println!("  ⚠ W=64 not in WINDOW_SIZES — G4 verdict indeterminate.");
+        false
+    };
 
     println!("  ── G4 verdict (gate overhead at W=64) ──");
     if let Some(agg) = w64_agg {

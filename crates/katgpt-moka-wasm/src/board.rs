@@ -118,7 +118,7 @@ fn has_liberty(cells: &[Cell], start: usize) -> bool {
                     }
                 }
                 Cell::Empty => return true, // found a liberty — short-circuit
-                _ => {} // opponent stone
+                _ => {}                     // opponent stone
             }
         }
     }
@@ -313,11 +313,7 @@ impl Board {
             Cell::White => white > black,
             Cell::Empty => false,
         };
-        if color_ahead {
-            1.0
-        } else {
-            0.0
-        }
+        if color_ahead { 1.0 } else { 0.0 }
     }
 }
 

@@ -23,7 +23,10 @@ fn every_query_has_exactly_k_distinct_relevant_docs() {
     let f = build_limit(&LimitConfig::paper_small(11));
     for (qi, q) in f.queries.iter().enumerate() {
         assert_eq!(q.relevant.len(), 2, "query {qi}");
-        assert_ne!(q.relevant[0], q.relevant[1], "query {qi} has a duplicate target");
+        assert_ne!(
+            q.relevant[0], q.relevant[1],
+            "query {qi} has a duplicate target"
+        );
         for &d in &q.relevant {
             assert!(d < f.n_relevant, "query {qi} targets a distractor");
         }
@@ -58,7 +61,10 @@ fn attribute_appears_in_exactly_the_relevant_docs() {
             .collect();
         let mut want = q.relevant.clone();
         want.sort_unstable();
-        assert_eq!(carriers, want, "query {qi}: attribute carriers != relevant set");
+        assert_eq!(
+            carriers, want,
+            "query {qi}: attribute carriers != relevant set"
+        );
     }
 }
 
@@ -68,9 +74,16 @@ fn attribute_appears_in_exactly_the_relevant_docs() {
 fn attribute_counts_are_uniform() {
     let f = build_limit(&LimitConfig::paper_small(19));
     let n = f.docs[0].attributes.len();
-    assert!(n >= 4, "expected at least attrs_per_doc attributes, got {n}");
+    assert!(
+        n >= 4,
+        "expected at least attrs_per_doc attributes, got {n}"
+    );
     for (i, d) in f.docs.iter().enumerate() {
-        assert_eq!(d.attributes.len(), n, "doc {i} has a different attribute count");
+        assert_eq!(
+            d.attributes.len(),
+            n,
+            "doc {i} has a different attribute count"
+        );
     }
 }
 
@@ -84,7 +97,10 @@ fn synonym_variant_preserves_structure_but_removes_overlap() {
 
     assert_eq!(plain.queries.len(), syn.queries.len());
     for (p, s) in plain.queries.iter().zip(&syn.queries) {
-        assert_eq!(p.relevant, s.relevant, "relevance structure must be identical");
+        assert_eq!(
+            p.relevant, s.relevant,
+            "relevance structure must be identical"
+        );
         assert_eq!(p.attribute, s.attribute, "query surface must be identical");
     }
 
@@ -121,7 +137,10 @@ fn full_variant_adds_distractors_relevant_to_nothing() {
     let all_relevant: Vec<usize> = f.queries.iter().flat_map(|q| q.relevant.clone()).collect();
     for (i, d) in f.docs.iter().enumerate().skip(f.n_relevant) {
         assert!(d.is_distractor, "doc {i} should be flagged a distractor");
-        assert!(!all_relevant.contains(&i), "distractor {i} is relevant to a query");
+        assert!(
+            !all_relevant.contains(&i),
+            "distractor {i} is relevant to a query"
+        );
     }
 }
 
@@ -157,19 +176,33 @@ fn modelless_embedder_is_deterministic_unit_norm_and_discriminative() {
     assert_eq!(a, b, "must be deterministic");
 
     let norm: f32 = a.iter().map(|x| x * x).sum::<f32>().sqrt();
-    assert!((norm - 1.0).abs() < 1e-5, "must be L2-normalised, got {norm}");
+    assert!(
+        (norm - 1.0).abs() < 1e-5,
+        "must be L2-normalised, got {norm}"
+    );
 
     let c = modelless_embed_8("who likes clendz1");
     assert_ne!(a, c, "different text must embed differently");
     // BLAKE3 decorrelates, so unrelated strings should not be near-duplicates.
-    assert!(cosine(&a, &c).abs() < 0.999, "distinct strings collapsed together");
+    assert!(
+        cosine(&a, &c).abs() < 0.999,
+        "distinct strings collapsed together"
+    );
 }
 
 #[test]
 fn combinations_is_correct() {
-    assert_eq!(combinations(4, 2, usize::MAX), vec![
-        vec![0, 1], vec![0, 2], vec![0, 3], vec![1, 2], vec![1, 3], vec![2, 3]
-    ]);
+    assert_eq!(
+        combinations(4, 2, usize::MAX),
+        vec![
+            vec![0, 1],
+            vec![0, 2],
+            vec![0, 3],
+            vec![1, 2],
+            vec![1, 3],
+            vec![2, 3]
+        ]
+    );
     assert_eq!(combinations(5, 1, usize::MAX).len(), 5);
     assert_eq!(combinations(5, 5, usize::MAX), vec![vec![0, 1, 2, 3, 4]]);
     assert!(combinations(3, 4, usize::MAX).is_empty(), "k > n → none");

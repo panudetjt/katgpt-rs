@@ -97,7 +97,8 @@ pub fn load_tiktoken_bpe(data: &[u8]) -> Result<TiktokenRanks, TiktokenLoadError
         .collect();
 
     let format_a = lines
-        .first().is_none_or(|first_line| first_line.iter().any(|&b| b == b' ' || b == b'\t'));
+        .first()
+        .is_none_or(|first_line| first_line.iter().any(|&b| b == b' ' || b == b'\t'));
 
     if format_a {
         // Format A: each line is "<base64> <rank>"
@@ -105,12 +106,12 @@ pub fn load_tiktoken_bpe(data: &[u8]) -> Result<TiktokenRanks, TiktokenLoadError
             let line_str = std::str::from_utf8(line)
                 .map_err(|e| TiktokenLoadError::InvalidBase64(format!("non-UTF8 line: {e}")))?;
             let mut fields = line_str.split_whitespace();
-            let b64_token = fields
-                .next()
-                .ok_or_else(|| TiktokenLoadError::InvalidRank(format!("empty line: {line_str:?}")))?;
-            let rank_str = fields
-                .next()
-                .ok_or_else(|| TiktokenLoadError::InvalidRank(format!("missing rank: {line_str:?}")))?;
+            let b64_token = fields.next().ok_or_else(|| {
+                TiktokenLoadError::InvalidRank(format!("empty line: {line_str:?}"))
+            })?;
+            let rank_str = fields.next().ok_or_else(|| {
+                TiktokenLoadError::InvalidRank(format!("missing rank: {line_str:?}"))
+            })?;
 
             let token = base64::engine::general_purpose::STANDARD
                 .decode(b64_token)
@@ -124,9 +125,7 @@ pub fn load_tiktoken_bpe(data: &[u8]) -> Result<TiktokenRanks, TiktokenLoadError
         // Format B: alternating lines <base64>\n<rank>\n...
         let mut iter = lines.into_iter();
         while let Some(b64_line) = iter.next() {
-            let rank_line = iter
-                .next()
-                .ok_or(TiktokenLoadError::UnexpectedEof)?;
+            let rank_line = iter.next().ok_or(TiktokenLoadError::UnexpectedEof)?;
             if b64_line.is_empty() {
                 break;
             }
@@ -179,11 +178,9 @@ static KIMI_K3_PRETOK_PATTERN: &str = concat!(
 );
 
 /// Compiled pretokenizer regex, shared across all `TiktokenTokenizer` instances.
-static PRETOK_REGEX: LazyLock<fancy_regex::Regex> =
-    LazyLock::new(|| {
-        fancy_regex::Regex::new(KIMI_K3_PRETOK_PATTERN)
-            .expect("invalid Kimi-K3 pretokenizer regex")
-    });
+static PRETOK_REGEX: LazyLock<fancy_regex::Regex> = LazyLock::new(|| {
+    fancy_regex::Regex::new(KIMI_K3_PRETOK_PATTERN).expect("invalid Kimi-K3 pretokenizer regex")
+});
 
 /// A tiktoken tokenizer with a rank table + special tokens.
 ///
@@ -227,10 +224,8 @@ impl TiktokenTokenizer {
     /// sequential 0..N, this produces ID = rank.
     pub fn from_ranks(ranks: &TiktokenRanks) -> Self {
         // Sort entries by rank for deterministic ID assignment.
-        let mut entries: Vec<(Vec<u8>, usize)> = ranks
-            .iter()
-            .map(|(k, &v)| (k.clone(), v))
-            .collect();
+        let mut entries: Vec<(Vec<u8>, usize)> =
+            ranks.iter().map(|(k, &v)| (k.clone(), v)).collect();
         entries.sort_by_key(|(_, rank)| *rank);
 
         let mut token_to_id = HashMap::with_capacity(entries.len());
@@ -307,7 +302,10 @@ impl TiktokenTokenizer {
             }
             let start = parts[i].0;
             let end = parts[i + 2].0;
-            self.ranks.get(&bytes[start..end]).copied().unwrap_or(MAX_RANK)
+            self.ranks
+                .get(&bytes[start..end])
+                .copied()
+                .unwrap_or(MAX_RANK)
         };
 
         // Initialize ranks for all initial byte pairs.
@@ -513,7 +511,12 @@ mod tests {
 
         // "ab" should merge into a single token (rank 256)
         let ids = tok.encode("ab");
-        assert_eq!(ids.len(), 1, "'ab' should merge into 1 token, got {}", ids.len());
+        assert_eq!(
+            ids.len(),
+            1,
+            "'ab' should merge into 1 token, got {}",
+            ids.len()
+        );
         assert_eq!(ids[0], 256, "'ab' should have token ID 256");
     }
 
@@ -525,7 +528,12 @@ mod tests {
         // "abc" should merge: first 'a'+'b' -> "ab" (rank 256),
         // then "ab"+'c' -> "abc" (rank 257). Result: 1 token.
         let ids = tok.encode("abc");
-        assert_eq!(ids.len(), 1, "'abc' should merge into 1 token, got {} ids", ids.len());
+        assert_eq!(
+            ids.len(),
+            1,
+            "'abc' should merge into 1 token, got {} ids",
+            ids.len()
+        );
         assert_eq!(ids[0], 257, "'abc' should have token ID 257");
     }
 

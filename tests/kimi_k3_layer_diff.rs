@@ -72,7 +72,9 @@ fn layer_by_layer_diff() {
     // Step 1: Embedding
     let embed_start = (token_id as usize) * d;
     let embed_end = embed_start + d;
-    runtime.hidden.copy_from_slice(&weights.embed_weight[embed_start..embed_end]);
+    runtime
+        .hidden
+        .copy_from_slice(&weights.embed_weight[embed_start..embed_end]);
 
     // Compare embedding
     let ref_embed = load_raw_f32(&format!("{ref_dir}/layer_embed.bin"));
@@ -103,7 +105,11 @@ fn layer_by_layer_diff() {
         let ref_out = load_raw_f32(&ref_path);
         let (diff, idx, mean) = max_abs_diff(&runtime.hidden, &ref_out);
 
-        let layer_type = if layer_idx == 3 || layer_idx == 7 { "MLA" } else { "KDA" };
+        let layer_type = if layer_idx == 3 || layer_idx == 7 {
+            "MLA"
+        } else {
+            "KDA"
+        };
         let ffn_type = if layer_idx == 0 { "Dense" } else { "MoE" };
         eprintln!(
             "layer {layer_idx} ({layer_type}+{ffn_type}): max_diff={diff:.4e} at [{idx}], mean={mean:.4e}  \

@@ -390,7 +390,11 @@ mod tests {
         d.push(0.6);
         d.push(0.8);
         // Window 3 → last three values 0.4, 0.6, 0.8.
-        assert!((d.window_mean() - 0.6).abs() < 1e-6, "got {}", d.window_mean());
+        assert!(
+            (d.window_mean() - 0.6).abs() < 1e-6,
+            "got {}",
+            d.window_mean()
+        );
         assert!((d.window_mean() * 3.0 - 1.8).abs() < 1e-5);
     }
 
@@ -444,7 +448,13 @@ mod tests {
     #[test]
     fn detector_run_twice_bit_identical() {
         let seq: Vec<f32> = (0..64)
-            .map(|i| if i % 7 == 0 { 0.95 } else { 0.02 + (i % 5) as f32 * 0.001 })
+            .map(|i| {
+                if i % 7 == 0 {
+                    0.95
+                } else {
+                    0.02 + (i % 5) as f32 * 0.001
+                }
+            })
             .collect();
         let run = || {
             let mut d = SupportInstabilityDetector::new();
@@ -586,6 +596,9 @@ mod tests {
         }
         let (count, bytes) = get_alloc_stats();
         std::hint::black_box(&sink);
-        assert_eq!(count, 0, "steady-state allocs leaked ({count} allocs, {bytes} B)");
+        assert_eq!(
+            count, 0,
+            "steady-state allocs leaked ({count} allocs, {bytes} B)"
+        );
     }
 }

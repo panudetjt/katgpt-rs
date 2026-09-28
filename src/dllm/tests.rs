@@ -1458,8 +1458,26 @@ fn test_train_mini_dllm_from_is_deterministic_and_continues() {
     let (w1, _) = train_mini_dllm(&config, &train_data, &test_data, 200, 0.01, 0.25, 42);
 
     // Same weights + same seed => byte-identical continue-train run.
-    let (wa, ha) = train_mini_dllm_from(&config, w1.clone(), &train_data, &test_data, 100, 0.01, 0.25, 7);
-    let (_wb, hb) = train_mini_dllm_from(&config, w1.clone(), &train_data, &test_data, 100, 0.01, 0.25, 7);
+    let (wa, ha) = train_mini_dllm_from(
+        &config,
+        w1.clone(),
+        &train_data,
+        &test_data,
+        100,
+        0.01,
+        0.25,
+        7,
+    );
+    let (_wb, hb) = train_mini_dllm_from(
+        &config,
+        w1.clone(),
+        &train_data,
+        &test_data,
+        100,
+        0.01,
+        0.25,
+        7,
+    );
     assert_eq!(ha, hb, "same-seed continue-train must be deterministic");
 
     // Continuing a trained model must not lose to a same-budget re-init on

@@ -38,7 +38,7 @@
 #![cfg(all(feature = "cce_moderator", feature = "dec_operators"))]
 
 use katgpt_core::cce::{CceLp, Deviation, DeviationClass, OccupationMeasure, PayoffTensor};
-use katgpt_core::dec::{codifferential, CellComplex, CochainField};
+use katgpt_core::dec::{CellComplex, CochainField, codifferential};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Section 0: Local BFS-enumeration LP solver
@@ -134,7 +134,7 @@ fn enumerate_bfs(
         if let Some(x_basic) = solve_square_system(mat, rhs, &combo) {
             const NEG_TOL: f64 = -1e-7;
 
-x.fill(0.0);
+            x.fill(0.0);
             for (i, &col) in combo.iter().enumerate() {
                 x[col] = x_basic[i];
             }

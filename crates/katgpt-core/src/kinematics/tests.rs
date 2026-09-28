@@ -2,8 +2,8 @@
 
 use crate::kinematics::fixture::{self, Fixture, RangeLabel};
 use crate::kinematics::perception::{
-    ApproachReport, Eps, EventKind, Regime, RegimeClassifier, RegimeConfig,
-    RegimeSnapshot, ResidualConfig, ResidualMonitor, closest_approach, extrapolation_horizon,
+    ApproachReport, Eps, EventKind, Regime, RegimeClassifier, RegimeConfig, RegimeSnapshot,
+    ResidualConfig, ResidualMonitor, closest_approach, extrapolation_horizon,
     extrapolation_horizon_for_state, head_on_elastic_resolve, horizon_bound, intercept_time,
     normal_two_sided_z, predictive_half_width, time_to_contact, time_to_contact_log,
 };
@@ -71,7 +71,10 @@ fn constructor_screens_dt() {
 fn observe_screens_nan_and_ticks() {
     let mut st = KinState::<1>::new(1.0).unwrap();
     st.observe_into(&[1.0], 0).unwrap();
-    assert_eq!(st.observe_into(&[f32::NAN], 1).unwrap_err(), KinError::NonFinite);
+    assert_eq!(
+        st.observe_into(&[f32::NAN], 1).unwrap_err(),
+        KinError::NonFinite
+    );
     assert_eq!(
         st.observe_into(&[2.0], 0).unwrap_err(),
         KinError::NonMonotonicTick
@@ -287,7 +290,11 @@ fn geometric_drag_closed_form_matches_chain() {
             s2 += v2;
             a2 *= rho;
         }
-        let rel = if s2 == 0.0 { 0.0 } else { ((closed - s2) / s2).abs() };
+        let rel = if s2 == 0.0 {
+            0.0
+        } else {
+            ((closed - s2) / s2).abs()
+        };
         assert!(rel < 1e-6, "drag k={k}: closed {closed} vs chain {s2}");
         // And the in-module reference chain (same recurrence).
         assert_eq!(closed.to_bits(), chain1(&st, k, &sched).to_bits());
@@ -313,7 +320,10 @@ fn dt_rescale_invariance_bit_exact() {
         for t in 0..=4u32 {
             st2.observe_into(&[2.0 * (t as f32 * 0.5)], t).unwrap();
         }
-        assert_eq!(pred1(&st1, 10, &Sched::ZeroJerk), pred1(&st2, 20, &Sched::ZeroJerk));
+        assert_eq!(
+            pred1(&st1, 10, &Sched::ZeroJerk),
+            pred1(&st2, 20, &Sched::ZeroJerk)
+        );
     }
     // Parabola t², anchor t=2, wall +5.
     {
@@ -327,7 +337,10 @@ fn dt_rescale_invariance_bit_exact() {
             let tf = t as f32 * 0.5;
             st2.observe_into(&[tf * tf], t).unwrap();
         }
-        assert_eq!(pred1(&st1, 5, &Sched::ZeroJerk), pred1(&st2, 10, &Sched::ZeroJerk));
+        assert_eq!(
+            pred1(&st1, 5, &Sched::ZeroJerk),
+            pred1(&st2, 10, &Sched::ZeroJerk)
+        );
     }
     // Cubic t³/8 (jerk 6/8), anchor t=3, wall +4.
     {
@@ -341,7 +354,10 @@ fn dt_rescale_invariance_bit_exact() {
             let tf = t as f32 * 0.5;
             st2.observe_into(&[tf * tf * tf / 8.0], t).unwrap();
         }
-        assert_eq!(pred1(&st1, 4, &Sched::Measured), pred1(&st2, 8, &Sched::Measured));
+        assert_eq!(
+            pred1(&st1, 4, &Sched::Measured),
+            pred1(&st2, 8, &Sched::Measured)
+        );
     }
 }
 
@@ -489,7 +505,10 @@ fn classify_fixture(fix: &Fixture) -> (usize, usize) {
             if same {
                 correct += 1;
             } else {
-                eprintln!("t={}: classified {verdict:?}, tag {:?}", f.tick, fix.tags[i]);
+                eprintln!(
+                    "t={}: classified {verdict:?}, tag {:?}",
+                    f.tick, fix.tags[i]
+                );
             }
         }
     }
@@ -564,7 +583,8 @@ fn zero_alarms_on_100k_clean_ticks() {
             let vel_before = st.vel;
             st.observe_into(&[x], t).unwrap();
             assert!(
-                mon.update(predicted[0] - x, &vel_before, &st.vel, 1.0).is_none(),
+                mon.update(predicted[0] - x, &vel_before, &st.vel, 1.0)
+                    .is_none(),
                 "false alarm at t={t}"
             );
         }
@@ -586,7 +606,8 @@ fn zero_alarms_on_100k_clean_ticks() {
             let vel_before = st.vel;
             st.observe_into(&[x], t).unwrap();
             assert!(
-                mon.update(predicted[0] - x, &vel_before, &st.vel, 1.0).is_none(),
+                mon.update(predicted[0] - x, &vel_before, &st.vel, 1.0)
+                    .is_none(),
                 "false alarm at t={t}"
             );
         }
@@ -602,7 +623,7 @@ fn cusum_detects_sustained_drift_that_spikes_do_not() {
     // drift the spike gate cannot see.
     const VEL: [f32; 1] = [1.0];
 
-let mut mon = ResidualMonitor::new(ResidualConfig::default());
+    let mut mon = ResidualMonitor::new(ResidualConfig::default());
     let mut rng = fixture::SplitMix64::new(0xC0FFEE);
     let mut drift_tick = None;
     let mut spike_seen = false;
@@ -795,9 +816,17 @@ fn fixture_shape_and_ranges() {
             RangeLabel::Ood => {
                 let in_v = (0.05..=6.0).contains(&p.v);
                 let out_of_id = !(1.0..=4.0).contains(&p.v);
-                assert!(in_v && out_of_id, "OOD v={} must be in [0.05,6] minus ID", p.v);
+                assert!(
+                    in_v && out_of_id,
+                    "OOD v={} must be in [0.05,6] minus ID",
+                    p.v
+                );
                 assert!((0.6..=2.0).contains(&p.r));
-                assert!(p.rdot <= -0.05 + 1e-6, "OOD |ṙ|={:?} in [0.05,0.09]", -p.rdot);
+                assert!(
+                    p.rdot <= -0.05 + 1e-6,
+                    "OOD |ṙ|={:?} in [0.05,0.09]",
+                    -p.rdot
+                );
                 assert!(p.rdot >= -0.09 - 1e-6);
             }
         }
@@ -812,17 +841,20 @@ fn in_family_id_ood_gap_is_exactly_zero() {
     // empirical ~20×).
     let ks = [1u32, 8, 31];
     let seg_sched = [
-        Sched::Measured, // uniform
-        Sched::Measured, // parabolic
-        Sched::Measured, // bounce (event-crossing predictions excluded)
-        Sched::Measured, // looming (motion is uniform)
+        Sched::Measured,                   // uniform
+        Sched::Measured,                   // parabolic
+        Sched::Measured,                   // bounce (event-crossing predictions excluded)
+        Sched::Measured,                   // looming (motion is uniform)
         Sched::GeometricDrag { rho: 0.5 }, // drag
     ];
     let seg_names = ["uniform", "parabolic", "bounce", "looming", "drag"];
     let mut id_worst = vec![0.0f32; ks.len()];
     let mut ood_worst = vec![0.0f32; ks.len()];
     for seed in 1..=6u64 {
-        for (label, worst) in [(RangeLabel::Id, &mut id_worst), (RangeLabel::Ood, &mut ood_worst)] {
+        for (label, worst) in [
+            (RangeLabel::Id, &mut id_worst),
+            (RangeLabel::Ood, &mut ood_worst),
+        ] {
             let fix = fixture::generate(seed, label);
             for (seg, sched) in seg_sched.iter().enumerate() {
                 let errs = fixture::extrapolation_errors(&fix, seg, &ks, sched);
@@ -894,7 +926,9 @@ fn full_pipeline_bit_identical_across_runs() {
     }
     fn discriminant_event(e: &EventKind) -> u64 {
         match e {
-            EventKind::Impulse { axis, e } => 10 + (axis.unwrap_or(9) as u64) + (e.unwrap_or(0.0).to_bits() as u64),
+            EventKind::Impulse { axis, e } => {
+                10 + (axis.unwrap_or(9) as u64) + (e.unwrap_or(0.0).to_bits() as u64)
+            }
             EventKind::Drift { cusum } => 20 + (cusum.to_bits() as u64),
             EventKind::Spike { z, gate } => 30 + (z.to_bits() as u64) + (gate.to_bits() as u64),
         }

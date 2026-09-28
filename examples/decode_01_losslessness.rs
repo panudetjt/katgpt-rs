@@ -39,14 +39,14 @@
 use katgpt_tetris::sim as tetris_sim;
 #[path = "common/flappy_sim.rs"]
 mod flappy_sim;
+#[path = "common/grammar_tables.rs"]
+mod grammar_tables;
 #[path = "common/lanes_sim.rs"]
 mod lanes_sim;
 #[path = "common/micro_dump.rs"]
 mod micro_dump;
 #[path = "common/micro_fit.rs"]
 mod micro_fit;
-#[path = "common/grammar_tables.rs"]
-mod grammar_tables;
 
 use katgpt_core::state_option_scoring::head::HeadFitter;
 use micro_dump::MicroStateFixture;
@@ -54,15 +54,15 @@ use micro_fit::HeadCorpus;
 
 use flappy_sim::FlappyState;
 use lanes_sim::LanesState;
-use tetris_sim::{Board, OutcomeFeatures, Placement, Piece};
+use tetris_sim::{Board, OutcomeFeatures, Piece, Placement};
 
 use grammar_tables::{
-    decode_flappy_option, decode_flappy_option_v3, decode_flappy_state, decode_lanes_state,
-    decode_tetris_spot, flappy_decoded_features, flappy_option_forward, flappy_option_forward_v3,
-    flappy_option_v3, flappy_state_forward, flappy_v3_decoded_features, lanes_decoded_features,
-    lanes_forward, tetris_decoded_features, tetris_piece_fill, tetris_spot_forward,
-    tetris_state_forward, verify_all_closed, FLAPPY_DECODED_F, FLAPPY_V3_DECODED_F,
-    LANES_DECODED_F, TETRIS_DECODED_F,
+    FLAPPY_DECODED_F, FLAPPY_V3_DECODED_F, LANES_DECODED_F, TETRIS_DECODED_F, decode_flappy_option,
+    decode_flappy_option_v3, decode_flappy_state, decode_lanes_state, decode_tetris_spot,
+    flappy_decoded_features, flappy_option_forward, flappy_option_forward_v3, flappy_option_v3,
+    flappy_state_forward, flappy_v3_decoded_features, lanes_decoded_features, lanes_forward,
+    tetris_decoded_features, tetris_piece_fill, tetris_spot_forward, tetris_state_forward,
+    verify_all_closed,
 };
 
 // ── Published anchors (the structured arms this run must reproduce) ─────
@@ -83,8 +83,7 @@ use grammar_tables::{
 // from these fixtures must parse with float_roundtrip to land on the
 // same head bytes.
 
-const TETRIS_HEAD_ANCHOR: &str =
-    "b3c91ee05bde4086c3760eb917a3470884c9f47c951764bd63eb40d830083729";
+const TETRIS_HEAD_ANCHOR: &str = "b3c91ee05bde4086c3760eb917a3470884c9f47c951764bd63eb40d830083729";
 const FLAPPY_HEAD_PREFIX: &str = "4ac0a13c";
 const LANES_HEAD_PREFIX: &str = "7d3f1d8e";
 // Issue 876 / Bench 882: the v3 render-widening fixture's heads (full digests
@@ -146,7 +145,10 @@ fn run_arm<const D: usize>(
         .zip(argmaxes.iter())
         .filter(|(p, a)| p == a)
         .count();
-    let loo_distinct = loo_picks.iter().collect::<std::collections::HashSet<_>>().len();
+    let loo_distinct = loo_picks
+        .iter()
+        .collect::<std::collections::HashSet<_>>()
+        .len();
     ArmReading {
         chosen,
         in_agree,
@@ -241,7 +243,10 @@ fn load_tetris(path: &std::path::Path) -> TetrisLoaded {
         let mut fs = Vec::with_capacity(opts.len());
         for (p, fo) in opts.iter().zip(&st.options) {
             assert!(
-                p.rot == fo.rot && p.col == fo.col && p.row == fo.row && p.cells[..] == fo.cells[..],
+                p.rot == fo.rot
+                    && p.col == fo.col
+                    && p.row == fo.row
+                    && p.cells[..] == fo.cells[..],
                 "{}: placement drifted at rot {} col {}",
                 st.state_id,
                 fo.rot,
@@ -295,10 +300,7 @@ fn validate_tetris(t: &TetrisLoaded) -> (usize, usize) {
         let m = gs
             .decode(&st.state_sentence)
             .unwrap_or_else(|e| panic!("{}: state sentence: {e:?}", st.state_id));
-        match (
-            m.template,
-            tetris_state_forward(&t.boards[s], piece_fill),
-        ) {
+        match (m.template, tetris_state_forward(&t.boards[s], piece_fill)) {
             (0, Ok(fills)) => assert_eq!(
                 &m.fills[..5],
                 &fills,
@@ -386,10 +388,7 @@ fn load_lanes(path: &std::path::Path) -> Vec<(MicroStateFixture, LanesState)> {
 /// The shared state-sentence half: decode == semantic forward, v and h
 /// recover EXACTLY, re-render identical. Returns (rel fill, exact v, exact
 /// h) for the caller's assertions.
-fn validate_flappy_state_sentence(
-    f: &MicroStateFixture,
-    s: &FlappyState,
-) -> (u8, i32, i32) {
+fn validate_flappy_state_sentence(f: &MicroStateFixture, s: &FlappyState) -> (u8, i32, i32) {
     let gs = grammar_tables::flappy_state();
     let (rel, v, h) = decode_flappy_state(&gs, &f.state_sentence)
         .unwrap_or_else(|e| panic!("{}: state sentence: {e:?}", f.state_id));
@@ -429,7 +428,12 @@ fn validate_flappy(states: &[(MicroStateFixture, FlappyState)]) -> usize {
                 "{}: option {i} fill != semantic forward",
                 f.state_id
             );
-            assert_eq!(go.render(0, &[post]), o.sentence, "{}: re-render", f.state_id);
+            assert_eq!(
+                go.render(0, &[post]),
+                o.sentence,
+                "{}: re-render",
+                f.state_id
+            );
             n += 1;
         }
     }
@@ -470,7 +474,11 @@ fn validate_lanes(states: &[(MicroStateFixture, LanesState)]) -> usize {
             .unwrap_or_else(|e| panic!("{}: {e:?}", f.state_id));
         assert_eq!(dec, lanes_forward(s), "{}: decode != forward", f.state_id);
         for (i, o) in f.options.iter().enumerate() {
-            assert_eq!(dec.lanes[i].lane, i as u8, "{}: lane slot order", f.state_id);
+            assert_eq!(
+                dec.lanes[i].lane, i as u8,
+                "{}: lane slot order",
+                f.state_id
+            );
             let d = &dec.lanes[i];
             let rendered = match d.kind {
                 0 => gl.render(0, &[d.lane]),
@@ -598,10 +606,16 @@ fn main() {
         &argmaxes,
     );
     let mut summary: Vec<SummaryRow> = Vec::with_capacity(3);
-    let mut row = report_arena("tetris", n_states, &struct_arm, &dec_arm, &[
-        "encodes: holes CLASS, side band, surface band, height band, clears",
-        "drops:   bumpiness, wells, transitions, eroded, exact heights, aggregate",
-    ]);
+    let mut row = report_arena(
+        "tetris",
+        n_states,
+        &struct_arm,
+        &dec_arm,
+        &[
+            "encodes: holes CLASS, side band, surface band, height band, clears",
+            "drops:   bumpiness, wells, transitions, eroded, exact heights, aggregate",
+        ],
+    );
     row.s_distinct = struct_arm.loo_distinct;
     row.d_distinct = dec_arm.loo_distinct;
     summary.push(row);
@@ -610,7 +624,9 @@ fn main() {
     println!("\n── flappy v2 (laya-flappy-v2, frozen record) ────────────");
     let f_states = load_flappy(&micro_dump::default_fixture("flappy", "v2"));
     let n = validate_flappy(&f_states);
-    println!("decode layer: {n}/{n} option sentences decode · re-render byte-identical · fills == semantic forward; v/h recover EXACTLY");
+    println!(
+        "decode layer: {n}/{n} option sentences decode · re-render byte-identical · fills == semantic forward; v/h recover EXACTLY"
+    );
 
     let argmaxes_f: Vec<usize> = f_states.iter().map(|(f, _)| f.argmax).collect();
     let offsets_f = offsets_of(f_states.iter().map(|(f, _)| f.options.len()));
@@ -663,8 +679,7 @@ fn main() {
     let dec_raws_f: Vec<[f64; FLAPPY_DECODED_F]> = f_states
         .iter()
         .flat_map(|(f, _)| {
-            let (rel, v, h) =
-                decode_flappy_state(&gs, &f.state_sentence).expect("validated above");
+            let (rel, v, h) = decode_flappy_state(&gs, &f.state_sentence).expect("validated above");
             f.options.iter().map(move |o| {
                 let post = decode_flappy_option(&go, &o.sentence).expect("validated above");
                 flappy_decoded_features(post, rel, v, h)
@@ -677,10 +692,16 @@ fn main() {
         offsets_f.clone(),
         &argmaxes_f,
     );
-    let mut row = report_arena("flappy", f_states.len(), &struct_arm_f, &dec_arm_f, &[
-        "encodes: post POSITION BAND only (v2 dropped the motion clause — the measured confound)",
-        "drops:   exact post_rel, post_v, in_gap, edge_margin; pre-rel is banded; v/h exact",
-    ]);
+    let mut row = report_arena(
+        "flappy",
+        f_states.len(),
+        &struct_arm_f,
+        &dec_arm_f,
+        &[
+            "encodes: post POSITION BAND only (v2 dropped the motion clause — the measured confound)",
+            "drops:   exact post_rel, post_v, in_gap, edge_margin; pre-rel is banded; v/h exact",
+        ],
+    );
     row.s_distinct = struct_arm_f.loo_distinct;
     row.d_distinct = dec_arm_f.loo_distinct;
     summary.push(row);
@@ -689,15 +710,25 @@ fn main() {
     println!("\n── flappy v3 (laya-flappy-v3, Issue 876 widening) ────────");
     let f3_states = load_flappy_v3(&micro_dump::default_fixture("flappy", "v3"));
     let n3 = validate_flappy_v3(&f3_states);
-    println!("decode layer: {n3}/{n3} option sentences decode · re-render byte-identical · fills == semantic forward; v/h recover EXACTLY");
+    println!(
+        "decode layer: {n3}/{n3} option sentences decode · re-render byte-identical · fills == semantic forward; v/h recover EXACTLY"
+    );
 
     // The controlled-comparison premise: the v3 fixture carries the IDENTICAL
     // state set as the v2 record (same seed, same enumerator exclusions) —
     // only the render (and hence the oracle's reads) moved.
-    assert_eq!(f3_states.len(), f_states.len(), "v2/v3 corpora must match in size");
+    assert_eq!(
+        f3_states.len(),
+        f_states.len(),
+        "v2/v3 corpora must match in size"
+    );
     for ((f3, s3), (f2, s2)) in f3_states.iter().zip(&f_states) {
         assert_eq!(f3.state_id, f2.state_id, "v2/v3 state order must match");
-        assert_eq!(s3, s2, "{}: v2/v3 seed states must be identical", f3.state_id);
+        assert_eq!(
+            s3, s2,
+            "{}: v2/v3 seed states must be identical",
+            f3.state_id
+        );
     }
     println!(
         "controlled comparison: {} states identical to the v2 record — only the render moved",
@@ -790,10 +821,16 @@ fn main() {
         "flappy v3 decoded arm discrimination floor: {} distinct picks",
         dec_arm_3.loo_distinct
     );
-    let mut row = report_arena("flappy3", f3_states.len(), &struct_arm_3, &dec_arm_3, &[
-        "encodes: post_rel in cells (band+offset+h; tails at ±(h+1)), post_v exact, pre_rel (band ±2), pre_v/h",
-        "drops:   crash-tail post_rel collapses to ±(h+1); |pre_rel| ≥ 2 collapses to ±2",
-    ]);
+    let mut row = report_arena(
+        "flappy3",
+        f3_states.len(),
+        &struct_arm_3,
+        &dec_arm_3,
+        &[
+            "encodes: post_rel in cells (band+offset+h; tails at ±(h+1)), post_v exact, pre_rel (band ±2), pre_v/h",
+            "drops:   crash-tail post_rel collapses to ±(h+1); |pre_rel| ≥ 2 collapses to ±2",
+        ],
+    );
     row.s_distinct = struct_arm_3.loo_distinct;
     row.d_distinct = dec_arm_3.loo_distinct;
     summary.push(row);
@@ -802,7 +839,9 @@ fn main() {
     println!("\n── lanes (laya-lanes-v1) ────────────────────────────────────");
     let l_states = load_lanes(&micro_dump::default_fixture("lanes", "v1"));
     let n = validate_lanes(&l_states);
-    println!("decode layer: {n}/{n} lane sentences decode · re-render byte-identical · decode == semantic forward");
+    println!(
+        "decode layer: {n}/{n} lane sentences decode · re-render byte-identical · decode == semantic forward"
+    );
 
     let argmaxes_l: Vec<usize> = l_states.iter().map(|(f, _)| f.argmax).collect();
     let offsets_l = offsets_of(l_states.iter().map(|(f, _)| f.options.len()));
@@ -823,8 +862,8 @@ fn main() {
     let mut matched = 0usize;
     for (f, s) in &l_states {
         let sents: Vec<&str> = f.options.iter().map(|o| o.sentence.as_str()).collect();
-        let dec = decode_lanes_state(&gl, &[sents[0], sents[1], sents[2]])
-            .expect("validated above");
+        let dec =
+            decode_lanes_state(&gl, &[sents[0], sents[1], sents[2]]).expect("validated above");
         for lane in 0..3 {
             assert_eq!(
                 lanes_decoded_features(&dec, lane),
@@ -835,11 +874,17 @@ fn main() {
             matched += 1;
         }
     }
-    println!("lossless anchor: {matched}/{matched} decoded rows bit-identical to the structured rows");
+    println!(
+        "lossless anchor: {matched}/{matched} decoded rows bit-identical to the structured rows"
+    );
 
     let raws_l: Vec<[f64; 8]> = l_states
         .iter()
-        .flat_map(|(_, s)| (0..3).map(|lane| lanes_sim::feature_row(s, lane)).collect::<Vec<_>>())
+        .flat_map(|(_, s)| {
+            (0..3)
+                .map(|lane| lanes_sim::feature_row(s, lane))
+                .collect::<Vec<_>>()
+        })
         .collect();
     let struct_arm_l = run_arm(
         standardize::<8, 9>(&raws_l),
@@ -868,8 +913,8 @@ fn main() {
         .iter()
         .flat_map(|(f, _)| {
             let sents: Vec<&str> = f.options.iter().map(|o| o.sentence.as_str()).collect();
-            let dec = decode_lanes_state(&gl, &[sents[0], sents[1], sents[2]])
-                .expect("validated above");
+            let dec =
+                decode_lanes_state(&gl, &[sents[0], sents[1], sents[2]]).expect("validated above");
             (0..3)
                 .map(|lane| lanes_decoded_features(&dec, lane))
                 .collect::<Vec<_>>()
@@ -885,27 +930,43 @@ fn main() {
         dec_arm_l.digest, struct_arm_l.digest,
         "lossless anchor: identical corpora must fit the identical head"
     );
-    let mut row = report_arena("lanes", l_states.len(), &struct_arm_l, &dec_arm_l, &[
-        "encodes: EVERYTHING the structured features read (blocked/close/far, the three nouns, neighbors, clears) — the render is lossless here",
-        "",
-    ]);
+    let mut row = report_arena(
+        "lanes",
+        l_states.len(),
+        &struct_arm_l,
+        &dec_arm_l,
+        &[
+            "encodes: EVERYTHING the structured features read (blocked/close/far, the three nouns, neighbors, clears) — the render is lossless here",
+            "",
+        ],
+    );
     row.s_distinct = struct_arm_l.loo_distinct;
     row.d_distinct = dec_arm_l.loo_distinct;
     summary.push(row);
 
     // ── Summary ──────────────────────────────────────────────────────────
     println!("\n== summary — the agreement delta (decoded − structured) ==");
-    println!("  arena   | structured in/LOO | decoded in/LOO | Δin  | Δloo | LOO flips | distinct s/d");
+    println!(
+        "  arena   | structured in/LOO | decoded in/LOO | Δin  | Δloo | LOO flips | distinct s/d"
+    );
     for r in &summary {
         println!(
             "  {:<7} | {:>2}/{:<3} · {:>2}/{:<3} | {:>2}/{:<3} · {:>2}/{:<3} | {:>3} | {:>4} | {}/{} | {}/{}",
             r.name,
-            r.s_in, r.n_states, r.s_loo, r.n_states,
-            r.d_in, r.n_states, r.d_loo, r.n_states,
+            r.s_in,
+            r.n_states,
+            r.s_loo,
+            r.n_states,
+            r.d_in,
+            r.n_states,
+            r.d_loo,
+            r.n_states,
             r.d_in as i64 - r.s_in as i64,
             r.d_loo as i64 - r.s_loo as i64,
-            r.flips, r.n_states,
-            r.s_distinct, r.d_distinct,
+            r.flips,
+            r.n_states,
+            r.s_distinct,
+            r.d_distinct,
         );
     }
     println!(
@@ -961,7 +1022,11 @@ fn report_arena(
         "discrimination (distinct LOO picks): structured {} · decoded {} [floor ≥ 2] {}",
         s.loo_distinct,
         d.loo_distinct,
-        if s.loo_distinct >= 2 && d.loo_distinct >= 2 { "PASS" } else { "FAIL" }
+        if s.loo_distinct >= 2 && d.loo_distinct >= 2 {
+            "PASS"
+        } else {
+            "FAIL"
+        }
     );
     println!("  render coverage: {}", coverage[0]);
     if !coverage[1].is_empty() {

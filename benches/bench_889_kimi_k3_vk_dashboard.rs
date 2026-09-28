@@ -50,10 +50,8 @@ use katgpt_core::fitted_anchor_table::LayeredVkCalibration;
 use katgpt_core::simd::simd_matmul_rows;
 use katgpt_rs::kimi_k3::decoder_layer::{KimiAttentionState, KimiAttentionWeights};
 use katgpt_rs::kimi_k3::loader::load_kimi_k3;
-use katgpt_rs::kimi_k3::model::{
-    KimiK3ModelConfig, KimiK3Runtime, kimi_k3_forward_token_traced,
-};
-use katgpt_rs::kimi_k3::tiktoken::{load_tiktoken_bpe, TiktokenTokenizer};
+use katgpt_rs::kimi_k3::model::{KimiK3ModelConfig, KimiK3Runtime, kimi_k3_forward_token_traced};
+use katgpt_rs::kimi_k3::tiktoken::{TiktokenTokenizer, load_tiktoken_bpe};
 
 fn main() {
     // ── Args ────────────────────────────────────────────────────────────────
@@ -96,9 +94,8 @@ fn main() {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let model_dir = std::env::var("KIMI_K3_MODEL_DIR")
         .unwrap_or_else(|_| format!("{manifest_dir}/data/kimi-k3-0.40b"));
-    let corpus_path = corpus_arg.unwrap_or_else(|| {
-        PathBuf::from(format!("{manifest_dir}/../riir-train/data/chat_probe"))
-    });
+    let corpus_path = corpus_arg
+        .unwrap_or_else(|| PathBuf::from(format!("{manifest_dir}/../riir-train/data/chat_probe")));
 
     // ── Model (REAL weights required — random weights measure Xavier noise,
     //    not the architecture's trained behavior; the dashboard would be a
@@ -143,7 +140,9 @@ fn main() {
          latent d_c={d_c} d_h={d_h} d_r={} n_h={n_h}",
         config.num_layers,
         mla_layers,
-        (0..config.num_layers).filter(|l| !mla_layers.contains(l)).collect::<Vec<_>>(),
+        (0..config.num_layers)
+            .filter(|l| !mla_layers.contains(l))
+            .collect::<Vec<_>>(),
         mla.qk_rope_head_dim
     );
 
@@ -212,7 +211,13 @@ fn main() {
     for chunk in tokens.chunks(seq_len) {
         reset_runtime_caches(&config, &mut runtime);
         for &token in chunk {
-            kimi_k3_forward_token_traced(&config, &weights, &mut runtime, token as u32, &mut traj_scratch);
+            kimi_k3_forward_token_traced(
+                &config,
+                &weights,
+                &mut runtime,
+                token as u32,
+                &mut traj_scratch,
+            );
         }
         // Tap replay — bit-identical to the forward's step-3 up-projections
         // (same simd_matmul_rows, same cached normed latents).
@@ -309,8 +314,14 @@ fn main() {
         let row_vk: Vec<String> = (0..n_h)
             .map(|h| format!("{:.4}", r_vk_all[li].aggregate_over(h * hd, (h + 1) * hd)))
             .collect();
-        out.push_str(&format!("| layer {model_layer} ρ(V) | {} |\n", row_v.join(" | ")));
-        out.push_str(&format!("| layer {model_layer} ρ(V−K) | {} |\n", row_vk.join(" | ")));
+        out.push_str(&format!(
+            "| layer {model_layer} ρ(V) | {} |\n",
+            row_v.join(" | ")
+        ));
+        out.push_str(&format!(
+            "| layer {model_layer} ρ(V−K) | {} |\n",
+            row_vk.join(" | ")
+        ));
     }
     // Zipf coverage (the storage dial read).
     let cov = tables.layers[0].v.coverage_curve();
@@ -342,7 +353,9 @@ fn main() {
         "- KDA layers {:?}: NO KV cache (fixed-size recurrent state). P1 (V-quant), \
          P2 (K=V+ retrofit), P3 (cache halving) have no substrate to act on — \
          fixture-class NULL by construction, independent of any ρ value.\n",
-        (0..config.num_layers).filter(|l| !mla_layers.contains(l)).collect::<Vec<_>>()
+        (0..config.num_layers)
+            .filter(|l| !mla_layers.contains(l))
+            .collect::<Vec<_>>()
     ));
     out.push_str(&format!(
         "- MLA layers {mla_layers:?}: the cache stores the {d_c}-d latent + {}-d shared rope \

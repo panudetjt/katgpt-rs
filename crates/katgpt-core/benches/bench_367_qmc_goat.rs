@@ -150,12 +150,12 @@ fn normal_cdf(x: f64) -> f64 {
 
 fn gate_g1_marginal_exactness() -> bool {
     const VOCAB: usize = 32;
-const K: usize = 64;
-const T: usize = 4;
-const N_BATCHES: usize = 20_000;
-const ALPHA_PER_TEST: f64 = 0.01;
+    const K: usize = 64;
+    const T: usize = 4;
+    const N_BATCHES: usize = 20_000;
+    const ALPHA_PER_TEST: f64 = 0.01;
 
-println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!("G1 — Marginal exactness (chi-square GoF per (rollout, position))");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
@@ -175,31 +175,30 @@ println!("\n━━━━━━━━━━━━━━━━━━━━━━�
 
         for batch in 0..N_BATCHES {
             if let Some(idx) = src_idx {
-                    let mut src = make_source(idx, 1000 + idx as u64 * 1000 + batch as u64);
-                    let mut uniforms = vec![0.0f32; K];
-                    let mut rollouts: Vec<Vec<usize>> =
-                        (0..K).map(|_| Vec::with_capacity(T)).collect();
-                    sample_k_from_distribution_qmc(
-                        &probs_refs,
-                        &mut *src,
-                        K,
-                        &mut uniforms,
-                        &mut rollouts,
-                    );
-                    for (i, rollout) in rollouts.iter().enumerate() {
-                        for (t, &tok) in rollout.iter().enumerate() {
-                            observed[i][t][tok] += 1;
-                        }
-                    }
-                } else {
-                    let mut rng = Rng::new(5000 + batch as u64);
-                    for obs_i in observed.iter_mut().take(K) {
-                        for t in 0..T {
-                            let tok = sample_from_distribution(&marginals[t], &mut rng);
-                            obs_i[t][tok] += 1;
-                        }
+                let mut src = make_source(idx, 1000 + idx as u64 * 1000 + batch as u64);
+                let mut uniforms = vec![0.0f32; K];
+                let mut rollouts: Vec<Vec<usize>> = (0..K).map(|_| Vec::with_capacity(T)).collect();
+                sample_k_from_distribution_qmc(
+                    &probs_refs,
+                    &mut *src,
+                    K,
+                    &mut uniforms,
+                    &mut rollouts,
+                );
+                for (i, rollout) in rollouts.iter().enumerate() {
+                    for (t, &tok) in rollout.iter().enumerate() {
+                        observed[i][t][tok] += 1;
                     }
                 }
+            } else {
+                let mut rng = Rng::new(5000 + batch as u64);
+                for obs_i in observed.iter_mut().take(K) {
+                    for t in 0..T {
+                        let tok = sample_from_distribution(&marginals[t], &mut rng);
+                        obs_i[t][tok] += 1;
+                    }
+                }
+            }
         }
 
         let mut min_p = f64::INFINITY;
@@ -263,13 +262,13 @@ println!("\n━━━━━━━━━━━━━━━━━━━━━━�
 
 fn gate_g2_sample_efficiency() -> bool {
     const T: usize = 4;
-const N_BATCHES: usize = 20_000;
-const TARGET: [usize; T] = [3, 5, 2, 7];
-const K_MAX: usize = 32;
-const PASS_THRESHOLD: f64 = 0.5;
-const TARGET_RATIO: f64 = 0.75;
+    const N_BATCHES: usize = 20_000;
+    const TARGET: [usize; T] = [3, 5, 2, 7];
+    const K_MAX: usize = 32;
+    const PASS_THRESHOLD: f64 = 0.5;
+    const TARGET_RATIO: f64 = 0.75;
 
-println!(
+    println!(
         "\n\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}"
     );
     println!("G2 \u{2014} Sample efficiency (K_qmc / K_iid at matched pass@k \u{2265} 0.5)");
@@ -371,7 +370,8 @@ println!(
         .collect();
     let k_iid = iid_pak
         .iter()
-        .find(|(_, p)| *p >= PASS_THRESHOLD).map_or(K_MAX + 1, |(k, _)| *k);
+        .find(|(_, p)| *p >= PASS_THRESHOLD)
+        .map_or(K_MAX + 1, |(k, _)| *k);
 
     println!(
         "  pass@k (i.i.d.): K@>=0.5 = {}  (pass@k at K={:?})",
@@ -390,7 +390,8 @@ println!(
             .collect();
         let k_qmc = pak
             .iter()
-            .find(|(_, p)| *p >= PASS_THRESHOLD).map_or(K_MAX + 1, |(k, _)| *k);
+            .find(|(_, p)| *p >= PASS_THRESHOLD)
+            .map_or(K_MAX + 1, |(k, _)| *k);
         let ratio = if k_iid > 0 {
             k_qmc as f64 / k_iid as f64
         } else {
@@ -524,11 +525,11 @@ fn gate_g3_no_regression() -> bool {
 
 fn gate_g4_zero_alloc() -> bool {
     const VOCAB: usize = 32;
-const K: usize = 64;
-const T: usize = 4;
-const N_CALLS: usize = 100;
+    const K: usize = 64;
+    const T: usize = 4;
+    const N_CALLS: usize = 100;
 
-println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!("G4 — Zero-allocation hot path (100 steady-state calls)");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
@@ -587,10 +588,10 @@ println!("\n━━━━━━━━━━━━━━━━━━━━━━�
 
 fn gate_g5_sub_us_overhead() -> bool {
     const WARMUP: usize = 1_000;
-const ITERS: usize = 100_000;
-const TARGET_NS: f64 = 1000.0;
+    const ITERS: usize = 100_000;
+    const TARGET_NS: f64 = 1000.0;
 
-println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!("G5 — Sub-µs overhead (QMC draw + rescale per rollout, < 1000 ns)");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
@@ -639,9 +640,7 @@ println!("\n━━━━━━━━━━━━━━━━━━━━━━�
         }
         let elapsed_ns = start.elapsed().as_nanos() as f64 / ITERS as f64;
         let per_rollout_ns = elapsed_ns / k as f64;
-        println!(
-            "  K={k:>3}  total={elapsed_ns:>8.1} ns  per-rollout={per_rollout_ns:>7.2} ns",
-        );
+        println!("  K={k:>3}  total={elapsed_ns:>8.1} ns  per-rollout={per_rollout_ns:>7.2} ns",);
     }
 
     println!(

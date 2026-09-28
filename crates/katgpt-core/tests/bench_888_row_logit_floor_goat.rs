@@ -95,7 +95,10 @@ fn gaussian_row(n: usize, sigma: f32, seed: u32) -> Vec<f32> {
 /// `mask_frac` of the context masked to −∞ (the causal tail).
 fn row(n: usize, sigma: f32, n_sink: usize, lift: f32, mask_frac: f32, seed: u32) -> Vec<f32> {
     let mut r = gaussian_row(n, sigma, seed);
-    let ctx_max = r[n_sink..].iter().copied().fold(f32::NEG_INFINITY, f32::max);
+    let ctx_max = r[n_sink..]
+        .iter()
+        .copied()
+        .fold(f32::NEG_INFINITY, f32::max);
     for x in &mut r[..n_sink] {
         *x = ctx_max + lift;
     }
@@ -120,7 +123,11 @@ fn softmax_f64(x: &[f32]) -> Vec<f64> {
 }
 
 fn tv(a: &[f32], b: &[f64]) -> f64 {
-    0.5 * a.iter().zip(b).map(|(x, y)| (*x as f64 - y).abs()).sum::<f64>()
+    0.5 * a
+        .iter()
+        .zip(b)
+        .map(|(x, y)| (*x as f64 - y).abs())
+        .sum::<f64>()
 }
 
 /// TV of the conditional distribution over the non-sink keys.
@@ -147,7 +154,11 @@ fn coded_softmax(raw: &[f32], n_sink: usize, width: f32, bits: u8) -> (Vec<f32>,
     codec.exp_lut_into(width, rf.m_r - shift, &mut lut);
     let mut p = vec![0.0f32; r.len()];
     softmax_coded_into(&r[..s], &codes, shift, &lut, &mut p);
-    (p, rf.n_floored, codec.envelope(width, rf.n_floored).total_tv())
+    (
+        p,
+        rf.n_floored,
+        codec.envelope(width, rf.n_floored).total_tv(),
+    )
 }
 
 fn box_state() {
@@ -298,7 +309,9 @@ fn main() {
     gate(
         "G1a envelope holds",
         worst_slack >= 0.0 && cell_fails == 0,
-        format!("{cells} cells ({cell_fails} over), min (envelope − measured) slack {worst_slack:.3e}"),
+        format!(
+            "{cells} cells ({cell_fails} over), min (envelope − measured) slack {worst_slack:.3e}"
+        ),
     );
 
     // G1b — trap 3: sink exemption OFF.

@@ -16,7 +16,10 @@
 //! symmetric positive (semi-)definite and write into caller-provided buffers.
 //! `cholesky_f32` panics on a non-positive-definite leading minor — the ridge
 //! diagonal `+λI` added by the caller is what guarantees positive-definiteness.
-//! `λ > 0` is a hard precondition for every public entry point here.
+//! `λ > 0` is a hard precondition for every public entry point here. Fit paths
+//! that must degrade instead of panic use the non-panicking twins
+//! [`try_cholesky_f32`] / [`try_ridge_solve_woodbury_f32`] (KARC's
+//! `fit_woodbury` returns `FitError::Singular`; Issue 904).
 //!
 //! # Determinism
 //!
@@ -179,12 +182,42 @@ pub fn chol_solve_f64(
 /// the strict upper triangle of `l` is left untouched (callers should zero it
 /// first or only read the lower triangle).
 ///
-/// Panics if `A` is not positive definite beyond a small relative tolerance
-/// (f32-precision safety margin: a pivot within `-k·ε·‖A‖_max` of zero is
-/// clamped to a tiny positive floor so near-singular ridge Grams with small
-/// `λ` do not spuriously fail). Inner dot products use [`simd_dot_f32`].
+/// A Cholesky pivot fell to `pivot ≤ -tol` — the input's leading minor is not
+/// positive definite beyond f32 accumulation noise, and the near-singular
+/// clamp (which absorbs pivots in `(-tol, 0]`) refused it.
+///
+/// `pivot` and `tol` are carried so a caller's log line can print exactly what
+/// the panicking [`cholesky_f32`] assert prints.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct NotPositiveDefinite {
+    /// The offending pivot (at or below `-tol`).
+    pub pivot: f32,
+    /// The relative tolerance the pivot was tested against (`a_max · k · 2⁻²³`).
+    pub tol: f32,
+}
+
+impl core::fmt::Display for NotPositiveDefinite {
+    #[cold]
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "matrix not positive definite (pivot {} < -{})",
+            self.pivot, self.tol
+        )
+    }
+}
+
+impl std::error::Error for NotPositiveDefinite {}
+
+/// Non-panicking [`cholesky_f32`]: returns [`NotPositiveDefinite`] instead of
+/// asserting when a pivot falls below `-tol`. The success path is the same
+/// loop (bit-identical factorisation); only the failure mode differs. Fit
+/// paths with a warn-and-degrade contract call this — KARC's `fit_woodbury`
+/// maps the error to [`crate::karc::FitError::Singular`] (Issue 904, where the
+/// panic bypassed every `tick_karc` caller's warn-and-keep arm); the panicking
+/// form stays for callers that want the assert.
 #[inline]
-pub fn cholesky_f32(l: &mut [f32], a: &[f32], k: usize) {
+pub fn try_cholesky_f32(l: &mut [f32], a: &[f32], k: usize) -> Result<(), NotPositiveDefinite> {
     // Estimate the matrix scale for the relative tolerance.
     let mut a_max = 1.0f32;
     for &v in a.iter().take(k * k) {
@@ -211,10 +244,9 @@ pub fn cholesky_f32(l: &mut [f32], a: &[f32], k: usize) {
         };
         let mut diag = a[j_row + j] - sum;
         if diag <= 0.0 {
-            assert!(
-                diag > -tol,
-                "matrix not positive definite in cholesky_f32 (pivot {diag} < -{tol})"
-            );
+            if diag <= -tol {
+                return Err(NotPositiveDefinite { pivot: diag, tol });
+            }
             diag = floor; // clamp near-singular pivot
         }
         let diag_sqrt = diag.sqrt();
@@ -231,6 +263,29 @@ pub fn cholesky_f32(l: &mut [f32], a: &[f32], k: usize) {
             l[i_row + j] = (a[i_row + j] - s) / diag_sqrt;
             i += 1;
         }
+    }
+    Ok(())
+}
+
+/// Cholesky factorisation `A = L·Lᵀ` of an SPD matrix `A` (row-major, `k×k`).
+///
+/// Writes the lower-triangular factor (including the diagonal) into `l`;
+/// the strict upper triangle of `l` is left untouched (callers should zero it
+/// first or only read the lower triangle).
+///
+/// Panics if `A` is not positive definite beyond a small relative tolerance
+/// (f32-precision safety margin: a pivot within `-k·ε·‖A‖_max` of zero is
+/// clamped to a tiny positive floor so near-singular ridge Grams with small
+/// `λ` do not spuriously fail). Inner dot products use [`simd_dot_f32`].
+/// Prefer [`try_cholesky_f32`] when the caller has a degrade path.
+#[inline]
+pub fn cholesky_f32(l: &mut [f32], a: &[f32], k: usize) {
+    match try_cholesky_f32(l, a, k) {
+        Ok(()) => {}
+        Err(e) => panic!(
+            "matrix not positive definite in cholesky_f32 (pivot {} < -{})",
+            e.pivot, e.tol
+        ),
     }
 }
 
@@ -450,27 +505,15 @@ pub fn ridge_solve_direct_f32(
     solve_upper_triangular_transposed_strided(w_t, l_scratch, z_scratch, d_h, n_out);
 }
 
-/// Woodbury (sample-space) ridge solve for the `d_h > N` regime.
-///
-/// Solves the same ridge problem as [`ridge_solve_direct_f32`] but via the
-/// Woodbury identity (paper Eq. 40–41): when the feature dimension `d_h`
-/// exceeds the sample count `N`, inverting the `N × N` sample-space Gram is
-/// cheaper than the `d_h × d_h` feature-space Gram. Produces the same `Wᵀ`
-/// (`d_h × n_out`) up to floating-point ordering differences between the two
-/// factorisations.
-///
-/// Inputs:
-/// - `sample_gram_reg = X Xᵀ + λI` (`N × N`, SPD)
-/// - `y` = targets `Y` (`N × n_out`, row-major; one row per sample)
-/// - `x` = features `X` (`N × d_h`, row-major; one row per sample)
-///
-/// Output: `w_t = Xᵀ · (X Xᵀ + λI)⁻¹ · Y`, shape `d_h × n_out`.
-///
-/// Scratch: `l_scratch` (`N*N`), `z_scratch` (`N*n_out`),
-/// `xt_z_scratch` accumulator is folded into `w_t` directly.
+/// Non-panicking [`ridge_solve_woodbury_f32"]: returns [`NotPositiveDefinite`] when the
+/// sample Gram's Cholesky pivot falls below the relative tolerance, instead of
+/// asserting. The success path is the same loop (bit-identical `w_t`); only
+/// the failure mode differs. KARC's `fit_woodbury` consumes this so an
+/// indefinite f32 sample Gram degrades to `FitError::Singular` through the
+/// caller's warn-and-keep arm instead of panicking the tick loop (Issue 904).
 #[inline]
 #[allow(clippy::too_many_arguments)] // Woodbury dual-form ridge solve API: (w_t, 2× scratch, gram, y, x, n, d_h, n_out) is intrinsic
-pub fn ridge_solve_woodbury_f32(
+pub fn try_ridge_solve_woodbury_f32(
     w_t: &mut [f32],
     l_scratch: &mut [f32],
     z_scratch: &mut [f32],
@@ -480,8 +523,8 @@ pub fn ridge_solve_woodbury_f32(
     n: usize,
     d_h: usize,
     n_out: usize,
-) {
-    cholesky_f32(l_scratch, sample_gram_reg, n);
+) -> Result<(), NotPositiveDefinite> {
+    try_cholesky_f32(l_scratch, sample_gram_reg, n)?;
     // Z = (X Xᵀ + λI)⁻¹ Y, shape N × n_out.
     // Two triangular solves in-place: lower-substitute into z_scratch, then
     // back-substitute in-place (the back-sub reads x[j] for j>i which the
@@ -507,6 +550,64 @@ pub fn ridge_solve_woodbury_f32(
             }
             w_t[i * n_out + col] = s;
         }
+    }
+    Ok(())
+}
+
+/// Woodbury (sample-space) ridge solve for the `d_h > N` regime.
+///
+/// Panicking form of [`try_ridge_solve_woodbury_f32`] (same loop, same
+/// bit-identical `w_t` on success; the failure mode is the historical
+/// `cholesky_f32` assert, message preserved).
+///
+/// Solves the same ridge problem as [`ridge_solve_direct_f32`] but via the
+/// Woodbury identity (paper Eq. 40–41): when the feature dimension `d_h`
+/// exceeds the sample count `N`, inverting the `N × N` sample-space Gram is
+/// cheaper than the `d_h × d_h` feature-space Gram. Produces the same `Wᵀ`
+/// (`d_h × n_out`) up to floating-point ordering differences between the two
+/// factorisations.
+///
+/// Inputs:
+/// - `sample_gram_reg = X Xᵀ + λI` (`N × N`, SPD)
+/// - `y` = targets `Y` (`N × n_out`, row-major; one row per sample)
+/// - `x` = features `X` (`N × d_h`, row-major; one row per sample)
+///
+/// Output: `w_t = Xᵀ · (X Xᵀ + λI)⁻¹ · Y`, shape `d_h × n_out`.
+///
+/// Scratch: `l_scratch` (`N*N`), `z_scratch` (`N*n_out`),
+/// `xt_z_scratch` accumulator is folded into `w_t` directly.
+///
+/// Panics if the sample Gram is not positive definite beyond the relative
+/// tolerance (see [`try_ridge_solve_woodbury_f32`] for the Result form).
+#[inline]
+#[allow(clippy::too_many_arguments)] // Woodbury dual-form ridge solve API: (w_t, 2× scratch, gram, y, x, n, d_h, n_out) is intrinsic
+pub fn ridge_solve_woodbury_f32(
+    w_t: &mut [f32],
+    l_scratch: &mut [f32],
+    z_scratch: &mut [f32],
+    sample_gram_reg: &[f32], // X Xᵀ + λI, N × N
+    y: &[f32],               // N × n_out
+    x: &[f32],               // N × d_h
+    n: usize,
+    d_h: usize,
+    n_out: usize,
+) {
+    match try_ridge_solve_woodbury_f32(
+        w_t,
+        l_scratch,
+        z_scratch,
+        sample_gram_reg,
+        y,
+        x,
+        n,
+        d_h,
+        n_out,
+    ) {
+        Ok(()) => {}
+        Err(e) => panic!(
+            "matrix not positive definite in cholesky_f32 (pivot {} < -{})",
+            e.pivot, e.tol
+        ),
     }
 }
 
@@ -642,5 +743,124 @@ mod tests {
         // Expect w ≈ [1, 1].
         assert!(approx_eq(w_t[0], 1.0, 1e-3), "woodbury w[0]={}", w_t[0]);
         assert!(approx_eq(w_t[1], 1.0, 1e-3), "woodbury w[1]={}", w_t[1]);
+    }
+
+    #[test]
+    fn try_cholesky_ok_on_pd_and_errs_on_indefinite() {
+        // PD control: [[4,2],[2,3]] → l00=2, l10=1, pivot₁ = 3-1 = 2 > 0.
+        let a_pd = vec![4.0, 2.0, 2.0, 3.0];
+        let mut l = vec![0.0; 4];
+        assert!(try_cholesky_f32(&mut l, &a_pd, 2).is_ok());
+        assert!(approx_eq(l[0], 2.0, 1e-6));
+        assert!(approx_eq(l[3], 2.0f32.sqrt(), 1e-6));
+
+        // Indefinite: [[2,3],[3,2]] (eigenvalues 5, -1). Pivot₁ = 2 - 3²/2 =
+        // -2.5, far below the relative tolerance → Err with both fields set.
+        let a_indef = vec![2.0, 3.0, 3.0, 2.0];
+        let mut l2 = vec![0.0; 4];
+        let err = try_cholesky_f32(&mut l2, &a_indef, 2).unwrap_err();
+        assert!(approx_eq(err.pivot, -2.5, 1e-5), "pivot={}", err.pivot);
+        assert!(
+            err.pivot <= -err.tol,
+            "pivot {} vs tol {}",
+            err.pivot,
+            err.tol
+        );
+        assert!(
+            err.to_string()
+                .starts_with("matrix not positive definite (pivot"),
+            "display={}",
+            err
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "matrix not positive definite in cholesky_f32")]
+    fn cholesky_f32_still_panics_on_indefinite_input() {
+        // The panicking form keeps its historical contract (Issue 904 kept it
+        // for callers that want the assert); only the fit path degrades.
+        let a_indef = vec![2.0, 3.0, 3.0, 2.0];
+        let mut l = vec![0.0; 4];
+        cholesky_f32(&mut l, &a_indef, 2);
+    }
+
+    #[test]
+    fn try_woodbury_errs_on_indefinite_sample_gram() {
+        // The Issue-904 failure mechanism, deterministic and in exact powers
+        // of two: rows 0/1 colinear → pivot₁ lands on exactly 0.0, clamped to
+        // the a_max·2⁻²⁴ floor → l₁₁ = 2⁻¹¹ → the next column's entry l₂₁ =
+        // (2 - 1) / 2⁻¹¹ = 2¹¹ → pivot₂ = 1 - 0.25 - 2²² ≈ -4.2e6 < -tol.
+        // The f32 Woodbury fit path returned Err (FitError::Singular) here;
+        // before Issue 904 it panicked the tick loop.
+        let n = 3;
+        let sample_gram: Vec<f32> = vec![
+            4.0, 4.0, 1.0, //
+            4.0, 4.0, 2.0, //
+            1.0, 2.0, 1.0,
+        ];
+        let x = vec![1.0, 0.0, 0.0, 1.0, 1.0, 1.0]; // 3×2 row-major
+        let y = vec![1.0, 2.0, 3.0]; // 3×1
+        let mut w_t = vec![0.0; 2];
+        let mut l = vec![0.0; n * n];
+        let mut z = vec![0.0; n];
+        let err =
+            try_ridge_solve_woodbury_f32(&mut w_t, &mut l, &mut z, &sample_gram, &y, &x, n, 2, 1)
+                .unwrap_err();
+        assert!(
+            err.pivot <= -err.tol,
+            "pivot {} vs tol {}",
+            err.pivot,
+            err.tol
+        );
+        assert!(
+            err.pivot < -1e6,
+            "expected the floor-clamp cascade, pivot={}",
+            err.pivot
+        );
+    }
+
+    #[test]
+    fn try_woodbury_matches_panicking_form_on_pd_input() {
+        // Same loop, same bits on the success path — the two APIs must agree
+        // exactly so the degrade path cannot change any healthy fit.
+        let n = 3;
+        let d_h = 2;
+        let sample_gram: Vec<f32> = vec![
+            4.0, 2.0, 0.0, //
+            2.0, 3.0, 0.0, //
+            0.0, 0.0, 2.0,
+        ];
+        let x = vec![1.0, 0.0, 0.0, 1.0, 1.0, 1.0]; // 3×2 row-major
+        let y = vec![1.0, 1.0, 2.0]; // 3×1
+        let mut w_try = vec![0.0; d_h];
+        let mut l1 = vec![0.0; n * n];
+        let mut z1 = vec![0.0; n];
+        try_ridge_solve_woodbury_f32(
+            &mut w_try,
+            &mut l1,
+            &mut z1,
+            &sample_gram,
+            &y,
+            &x,
+            n,
+            d_h,
+            1,
+        )
+        .unwrap();
+        let mut w_panic = vec![0.0; d_h];
+        let mut l2 = vec![0.0; n * n];
+        let mut z2 = vec![0.0; n];
+        ridge_solve_woodbury_f32(
+            &mut w_panic,
+            &mut l2,
+            &mut z2,
+            &sample_gram,
+            &y,
+            &x,
+            n,
+            d_h,
+            1,
+        );
+        assert_eq!(w_try, w_panic, "try/panicking forms must be bit-identical");
     }
 }

@@ -86,8 +86,8 @@
 #![cfg(feature = "usage_rate_eviction")]
 
 use katgpt_core::kv_eviction::{
-    observe, runaway_gate, score, select_evict, select_evict_into, RunawayStats, UsageRow,
-    UsageScoreTable,
+    RunawayStats, UsageRow, UsageScoreTable, observe, runaway_gate, score, select_evict,
+    select_evict_into,
 };
 use std::time::Instant;
 
@@ -174,8 +174,14 @@ fn sample_token(rng: &mut SimpleRng, phase: f32) -> usize {
 fn age_bias_fixture() -> ((bool, bool), bool) {
     let tick = 1_002u64;
     // Tie arm.
-    let mut old = UsageRow { cum_mass: 0.0, admission_tick: 0 };
-    let mut hot = UsageRow { cum_mass: 0.0, admission_tick: 1_000 };
+    let mut old = UsageRow {
+        cum_mass: 0.0,
+        admission_tick: 0,
+    };
+    let mut hot = UsageRow {
+        cum_mass: 0.0,
+        admission_tick: 1_000,
+    };
     for step in 0..1000u64 {
         observe(&mut old, 0.001, step);
     }
@@ -192,8 +198,14 @@ fn age_bias_fixture() -> ((bool, bool), bool) {
     let tie_ok = rate_tie == vec![0]; // mass/age strictly evicts old-cold
 
     // Strict arm.
-    let mut old2 = UsageRow { cum_mass: 0.0, admission_tick: 0 };
-    let mut hot2 = UsageRow { cum_mass: 0.0, admission_tick: 1_000 };
+    let mut old2 = UsageRow {
+        cum_mass: 0.0,
+        admission_tick: 0,
+    };
+    let mut hot2 = UsageRow {
+        cum_mass: 0.0,
+        admission_tick: 1_000,
+    };
     for step in 0..1000u64 {
         observe(&mut old2, 0.0011, step);
     }
@@ -349,7 +361,10 @@ impl SimState {
                     scores.push(self.table.row(i).cum_mass);
                 }
             }
-            Policy::MassAge | Policy::MassAgeSink | Policy::EgaUsage | Policy::MassAgeKeystone
+            Policy::MassAge
+            | Policy::MassAgeSink
+            | Policy::EgaUsage
+            | Policy::MassAgeKeystone
             | Policy::EgaKeystone => {
                 // per LIVE row (the table's live prefix includes dead slots)
                 for &i in &live_idx {
@@ -363,9 +378,9 @@ impl SimState {
             }
             // The null family has no score: evict() draws fresh uniform
             // tickets per eviction. This arm is unreachable from evict().
-            Policy::Rand | Policy::RandKeystone => unreachable!(
-                "null family draws tickets in evict(), never through policy_scores"
-            ),
+            Policy::Rand | Policy::RandKeystone => {
+                unreachable!("null family draws tickets in evict(), never through policy_scores")
+            }
         }
         if self.policy == Policy::EgaUsage {
             // fusion: admission prior (static z-scored energy) x online
@@ -419,9 +434,10 @@ impl SimState {
         // other arms pin nothing.
         let pin_mask: Vec<bool> = match self.policy {
             Policy::MassAgeSink => live_idx.iter().map(|&i| i == 0).collect(),
-            _ if self.policy.keystone_pinned() => {
-                live_idx.iter().map(|&i| self.rows[i].token >= NEEDLE_BASE).collect()
-            }
+            _ if self.policy.keystone_pinned() => live_idx
+                .iter()
+                .map(|&i| self.rows[i].token >= NEEDLE_BASE)
+                .collect(),
             _ => vec![false; live_idx.len()],
         };
         let mut victims = Vec::new();
@@ -439,9 +455,7 @@ impl SimState {
         let mut live_tokens: Vec<(usize, f32)> = Vec::new();
         let mut total = 0.0f32;
         for r in self.rows.iter().filter(|r| r.alive) {
-            if r.token < NEEDLE_BASE
-                && !live_tokens.iter().any(|(t, _)| *t == r.token)
-            {
+            if r.token < NEEDLE_BASE && !live_tokens.iter().any(|(t, _)| *t == r.token) {
                 let w = token_probability(r.token, phase);
                 live_tokens.push((r.token, w));
                 total += w;
@@ -668,9 +682,7 @@ fn kendall_tau(a: &[usize], b: &[usize]) -> f32 {
 
 fn main() {
     println!("=== Plan 585 / Bench 697: usage-rate (mass/age) KV eviction GOAT ===");
-    println!(
-        "modelless constructed induction-pair KV; drifted-Zipf workload (see header doc)\n"
-    );
+    println!("modelless constructed induction-pair KV; drifted-Zipf workload (see header doc)\n");
 
     // ── T3.1 age-bias fixture ──
     let ((tie_ok, tie_raw_indifferent), strict_ok) = age_bias_fixture();
@@ -800,12 +812,13 @@ fn main() {
         && run_keystones[0] == run_keystones[1]
         && run_evictions[0] == run_evictions[1]
         && run_outlens[0] == run_outlens[1];
-    println!("\n  G1 GATE (matrix double-run bit-identical): {}", pass_fail(g1));
+    println!(
+        "\n  G1 GATE (matrix double-run bit-identical): {}",
+        pass_fail(g1)
+    );
 
     // ── T3.6/T3.7 null control + protection factorial ──
-    println!(
-        "\nT3.6/T3.7 null control + protection factorial (Research 531, arXiv:2609.03430):"
-    );
+    println!("\nT3.6/T3.7 null control + protection factorial (Research 531, arXiv:2609.03430):");
     let fac_policies = [
         Policy::MassAge,
         Policy::MassAgeKeystone,
@@ -862,13 +875,10 @@ fn main() {
     // protection alone — a demote-the-loser input, recorded either way.
     let ma_i = idx_of(Policy::MassAge);
     let null_i = idx_of(Policy::Rand);
-    println!("  T3.6 non-vacuity (unpinned null vs unpinned mass_age):", );
+    println!("  T3.6 non-vacuity (unpinned null vs unpinned mass_age):",);
     println!(
         "    cap=16 collapse cell: rand {}/{} vs mass_age {}/{} (passcode regime: both at floor expected)",
-        run_tables[0][null_i][0],
-        total_per_cell,
-        run_tables[0][ma_i][0],
-        total_per_cell
+        run_tables[0][null_i][0], total_per_cell, run_tables[0][ma_i][0], total_per_cell
     );
     let regime_cis = [1usize, 2, 3]; // caps 32/48/64 — mass_age's claimed regime
     let mut signal_wins: Vec<usize> = Vec::new();
@@ -888,7 +898,11 @@ fn main() {
             total_per_cell,
             nu,
             total_per_cell,
-            if ma > nu { "signal WIN" } else { "TIE — signal adds nothing here" }
+            if ma > nu {
+                "signal WIN"
+            } else {
+                "TIE — signal adds nothing here"
+            }
         );
     }
     let signal_value = signal_ties.is_empty();
@@ -966,21 +980,24 @@ fn main() {
     let all = t31 && g8_all && g1 && canary_ok && ns_per_row < 10.0 && pin_honored;
     if all {
         if signal_value {
-            println!("\n=== VERDICT: ALL GATES PASS — null control: mass_age signal CONFIRMED at every regime cap ===");
+            println!(
+                "\n=== VERDICT: ALL GATES PASS — null control: mass_age signal CONFIRMED at every regime cap ==="
+            );
         } else {
-            println!("\n=== VERDICT: ALL GATES PASS — null control TIE recorded (see SIGNAL VERDICT above; T3.8 registered alternative live) ===");
+            println!(
+                "\n=== VERDICT: ALL GATES PASS — null control TIE recorded (see SIGNAL VERDICT above; T3.8 registered alternative live) ==="
+            );
         }
     } else {
-        println!("\n=== VERDICT: MIXED — {} regime miss(es); boundary recorded honestly (negative artifact + opt-in per plan rule) ===", g8_misses.len());
+        println!(
+            "\n=== VERDICT: MIXED — {} regime miss(es); boundary recorded honestly (negative artifact + opt-in per plan rule) ===",
+            g8_misses.len()
+        );
     }
 }
 
 fn pass_fail(b: bool) -> &'static str {
-    if b {
-        "PASS"
-    } else {
-        "FAIL"
-    }
+    if b { "PASS" } else { "FAIL" }
 }
 
 fn g2_update_latency() -> f64 {
@@ -1044,7 +1061,10 @@ fn run_tau_section() {
             .map(|(i, _)| (i, st.table.row(i).cum_mass))
             .collect();
         ranked.sort_by(|a, b| b.1.total_cmp(&a.1));
-        (ranked.iter().map(|(i, _)| *i).collect(), ranked.iter().map(|(_, m)| *m).collect())
+        (
+            ranked.iter().map(|(i, _)| *i).collect(),
+            ranked.iter().map(|(_, m)| *m).collect(),
+        )
     };
     let mut head_rankings: Vec<Vec<usize>> = Vec::new();
     let mut summed: Vec<f32> = Vec::new();

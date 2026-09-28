@@ -623,8 +623,18 @@ impl MiScratch {
         let signs = self.frozen_signs.as_slice();
         let (pa, pb) = (&mut self.proj_a, &mut self.proj_b);
         for i in 0..n {
-            project_row_into(&x[i * d..(i + 1) * d], signs, k, &mut pa[i * k..(i + 1) * k]);
-            project_row_into(&y[i * d..(i + 1) * d], signs, k, &mut pb[i * k..(i + 1) * k]);
+            project_row_into(
+                &x[i * d..(i + 1) * d],
+                signs,
+                k,
+                &mut pa[i * k..(i + 1) * k],
+            );
+            project_row_into(
+                &y[i * d..(i + 1) * d],
+                signs,
+                k,
+                &mut pb[i * k..(i + 1) * k],
+            );
         }
         self.proj_n = n;
     }
@@ -634,7 +644,10 @@ impl MiScratch {
     /// [`MiScratch::project_frozen`] at `≥ n` rows.
     pub fn score_joint_cached(&mut self, n: usize) {
         let k = self.frozen_k.clamp(1, FROZEN_PROJ_MAX_K);
-        assert!(self.proj_n >= n, "project_frozen must run before the cached score pass");
+        assert!(
+            self.proj_n >= n,
+            "project_frozen must run before the cached score pass"
+        );
         let scale = (k as f64).sqrt();
         for i in 0..n {
             let s = crate::simd::simd_dot_f32(
@@ -650,7 +663,10 @@ impl MiScratch {
     /// (identity to `score_perm(Critic::FrozenProj, …)` bit-for-bit).
     pub fn score_perm_cached(&mut self, n: usize, src: PermSource) {
         let k = self.frozen_k.clamp(1, FROZEN_PROJ_MAX_K);
-        assert!(self.proj_n >= n, "project_frozen must run before the cached score pass");
+        assert!(
+            self.proj_n >= n,
+            "project_frozen must run before the cached score pass"
+        );
         self.invert_perm(n);
         let scale = (k as f64).sqrt();
         for i in 0..n {
@@ -853,8 +869,16 @@ mod tests {
             b.score_perm_cached(n, PermSource::Current);
 
             for i in 0..n {
-                assert_eq!(a.joint[i].to_bits(), b.joint[i].to_bits(), "joint[{i}] @{n}x{d}");
-                assert_eq!(a.perm[i].to_bits(), b.perm[i].to_bits(), "perm[{i}] @{n}x{d}");
+                assert_eq!(
+                    a.joint[i].to_bits(),
+                    b.joint[i].to_bits(),
+                    "joint[{i}] @{n}x{d}"
+                );
+                assert_eq!(
+                    a.perm[i].to_bits(),
+                    b.perm[i].to_bits(),
+                    "perm[{i}] @{n}x{d}"
+                );
             }
         }
     }

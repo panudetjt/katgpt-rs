@@ -253,7 +253,10 @@ pub mod sweep {
     {
         let dim = w0.len();
         let m = spec.draws.max(64);
-        debug_assert!(scratch.dirs.len() >= m * dim, "scratch sized for a larger dim/draws");
+        debug_assert!(
+            scratch.dirs.len() >= m * dim,
+            "scratch sized for a larger dim/draws"
+        );
         debug_assert!(scratch.deficits.len() >= m, "scratch deficits under-sized");
         let l0 = loss(w0);
 
@@ -415,7 +418,10 @@ mod tests {
                 let regular = (a as f64) * (b as f64) / 2.0;
                 let naive_half = (r as f64) * ((a + b) as f64) / 2.0;
                 assert!(lambda <= regular + 1e-12, "λ ≤ ab/2: a={a} b={b} r={r}");
-                assert!(lambda <= naive_half + 1e-12, "λ ≤ r(a+b)/2: a={a} b={b} r={r}");
+                assert!(
+                    lambda <= naive_half + 1e-12,
+                    "λ ≤ r(a+b)/2: a={a} b={b} r={r}"
+                );
             }
         }
     }
@@ -459,7 +465,10 @@ mod tests {
         let w = sigmoid_wbic_weight(a, b, 5.0);
         let w_rev = sigmoid_wbic_weight(b, a, 5.0);
         assert!(w > 0.5);
-        assert!((w + w_rev - 1.0).abs() < 1e-6, "antisymmetric pair sums to 1");
+        assert!(
+            (w + w_rev - 1.0).abs() < 1e-6,
+            "antisymmetric pair sums to 1"
+        );
         assert!((sigmoid_wbic_weight(a, b, 1e9) - 0.5).abs() < 1e-6);
         assert!(sigmoid_wbic_weight(a, b, 1e-3) > 0.999999);
         assert!((sigmoid_wbic_weight(a, a, 5.0) - 0.5).abs() < 1e-9);
@@ -498,8 +507,7 @@ mod tests {
                     if apq.abs() < 1e-15 {
                         continue;
                     }
-                    let theta =
-                        (a[q * dim + q] - a[p * dim + p]) / (2.0 * apq);
+                    let theta = (a[q * dim + q] - a[p * dim + p]) / (2.0 * apq);
                     let t = theta.signum() / (theta.abs() + (theta * theta + 1.0).sqrt());
                     let c = 1.0 / (t * t + 1.0).sqrt();
                     let s = t * c;
@@ -588,12 +596,7 @@ mod tests {
                 // Skip near-null directions (r* tiny vs rows — none in tests).
                 let scale = 1.0 / ei.max(1e-12).sqrt();
                 let col: Vec<f64> = (0..rows)
-                    .map(|k| {
-                        (0..r_star)
-                            .map(|m| g[k * r_star + m] * vi[m])
-                            .sum::<f64>()
-                            * scale
-                    })
+                    .map(|k| (0..r_star).map(|m| g[k * r_star + m] * vi[m]).sum::<f64>() * scale)
                     .collect();
                 let norm: f64 = col.iter().map(|x| x * x).sum::<f64>().sqrt();
                 q_cols.push(col.into_iter().map(|x| x / norm).collect());
@@ -662,8 +665,7 @@ mod tests {
                     // ŷ_ra = Σ_{i<k} (C vᵢ)_ra · (vᵢ·x_j)
                     let mut pred = 0.0f64;
                     for i in 0..k {
-                        let vdotx: f64 =
-                            (0..b).map(|cb| vvecs[i][cb] * xs[j][cb]).sum();
+                        let vdotx: f64 = (0..b).map(|cb| vvecs[i][cb] * xs[j][cb]).sum();
                         pred += cv[i][ra] * vdotx;
                     }
                     let resid = ys[j][ra] - pred;
@@ -858,9 +860,7 @@ mod tests {
                     .iter()
                     .enumerate()
                     .filter(|(j, _)| *j != k)
-                    .map(|(_, wj)| {
-                        f64::from(sigmoid_wbic_weight(*wk, *wj, tau))
-                    })
+                    .map(|(_, wj)| f64::from(sigmoid_wbic_weight(*wk, *wj, tau)))
                     .product::<f64>()
             })
             .collect();
@@ -893,8 +893,9 @@ mod tests {
             let mut gram = vec![0.0f64; r_star * r_star];
             for i in 0..r_star {
                 for j in 0..r_star {
-                    gram[i * r_star + j] =
-                        (0..rows).map(|k| g[k * r_star + i] * g[k * r_star + j]).sum();
+                    gram[i * r_star + j] = (0..rows)
+                        .map(|k| g[k * r_star + i] * g[k * r_star + j])
+                        .sum();
                 }
             }
             let (eigs, vecs) = jacobi_eigen_desc(&gram, r_star, 40);
@@ -902,12 +903,7 @@ mod tests {
             for (ei, vi) in eigs.iter().zip(vecs.iter()) {
                 let scale = 1.0 / ei.max(1e-12).sqrt();
                 let col: Vec<f64> = (0..rows)
-                    .map(|k| {
-                        (0..r_star)
-                            .map(|m| g[k * r_star + m] * vi[m])
-                            .sum::<f64>()
-                            * scale
-                    })
+                    .map(|k| (0..r_star).map(|m| g[k * r_star + m] * vi[m]).sum::<f64>() * scale)
                     .collect();
                 let norm = col.iter().map(|x| x * x).sum::<f64>().sqrt();
                 q_cols.push(col.into_iter().map(|x| x / norm).collect());
@@ -1049,7 +1045,13 @@ mod tests {
         let ns = [250usize, 500, 1_000, 2_000];
 
         // Per-arm per-cell sums.
-        let arms = ["bayes_gap", "bic_floor", "const_1e-3", "const_1e-2", "const_1e-1"];
+        let arms = [
+            "bayes_gap",
+            "bic_floor",
+            "const_1e-3",
+            "const_1e-2",
+            "const_1e-1",
+        ];
         let mut crps = [0.0f64; 5];
         let mut wink = [0.0f64; 5];
         let mut cov = [0.0f64; 5];
@@ -1061,23 +1063,17 @@ mod tests {
                 let mut gaps = Vec::with_capacity(REPS);
                 let mut k_stars = Vec::with_capacity(REPS);
                 for rep in 0..REPS {
-                    let seed = 0xF100_0000
-                        + ((f_idx * 16 + n_idx) as u64) * 1_000
-                        + rep as u64;
-                    let (gap, k_star, _scores) =
-                        gap_replication(seed, A, B, *n, *sigma, sv, TAU);
+                    let seed = 0xF100_0000 + ((f_idx * 16 + n_idx) as u64) * 1_000 + rep as u64;
+                    let (gap, k_star, _scores) = gap_replication(seed, A, B, *n, *sigma, sv, TAU);
                     gaps.push(gap);
                     k_stars.push(k_star);
                 }
                 // Common spread s (identical machinery for every arm).
                 let mean: f64 = gaps.iter().sum::<f64>() / gaps.len() as f64;
-                let s = (gaps
-                    .iter()
-                    .map(|g| (g - mean) * (g - mean))
-                    .sum::<f64>()
+                let s = (gaps.iter().map(|g| (g - mean) * (g - mean)).sum::<f64>()
                     / (gaps.len() - 1) as f64)
-                .sqrt()
-                .max(1e-9);
+                    .sqrt()
+                    .max(1e-9);
                 // Per-replication centers for each arm.
                 for (g, k) in gaps.iter().zip(k_stars.iter()) {
                     let lambda = rlct_reduced_rank(A, B, *k);
@@ -1089,8 +1085,7 @@ mod tests {
                         1e-1,
                     ];
                     for (arm, center) in arms.iter().zip(centers.iter()) {
-                        crps[arm_index(arm)] +=
-                            crps_gaussian(*g, *center, s) / s;
+                        crps[arm_index(arm)] += crps_gaussian(*g, *center, s) / s;
                         let lo = center - 1.959964 * s;
                         let hi = center + 1.959964 * s;
                         wink[arm_index(arm)] += winkler(*g, lo, hi) / s;
@@ -1158,7 +1153,12 @@ mod tests {
     mod sweep_tests {
         use super::super::sweep::*;
 
-        fn estimate<L: FnMut(&[f64]) -> f64>(dim: usize, spec: &NoiseSweepSpec, loss: L, seed: u64) -> f64 {
+        fn estimate<L: FnMut(&[f64]) -> f64>(
+            dim: usize,
+            spec: &NoiseSweepSpec,
+            loss: L,
+            seed: u64,
+        ) -> f64 {
             let mut scratch = NoiseSweepScratch::new(dim, spec);
             let w0 = vec![0.0; dim];
             noise_sweep_lambda(spec, &w0, loss, &mut scratch, seed)
@@ -1334,7 +1334,13 @@ mod tests {
             let mut scratch = NoiseSweepScratch::new(4, &spec);
             let w0 = [0.0_f64; 4];
             let t0 = std::time::Instant::now();
-            let lam = noise_sweep_lambda(&spec, &w0, |w| 0.5 * w.iter().map(|x| x * x).sum::<f64>(), &mut scratch, 7);
+            let lam = noise_sweep_lambda(
+                &spec,
+                &w0,
+                |w| 0.5 * w.iter().map(|x| x * x).sum::<f64>(),
+                &mut scratch,
+                7,
+            );
             let el = t0.elapsed();
             assert!(lam.is_finite());
             assert!(
@@ -1352,12 +1358,30 @@ mod tests {
         fn sweep_diagnostics() {
             let spec = NoiseSweepSpec::default();
             for d in [2_usize, 4] {
-                let lam = estimate(d, &spec, |w| 0.5 * w.iter().map(|x| x * x).sum::<f64>(), 0x5EED_0782);
-                println!("bowl      d={d:2}  λ̂={lam:8.4}  target={:<5} rel={:+7.2}%", d as f64 / 2.0, (lam / (d as f64 / 2.0) - 1.0) * 100.0);
+                let lam = estimate(
+                    d,
+                    &spec,
+                    |w| 0.5 * w.iter().map(|x| x * x).sum::<f64>(),
+                    0x5EED_0782,
+                );
+                println!(
+                    "bowl      d={d:2}  λ̂={lam:8.4}  target={:<5} rel={:+7.2}%",
+                    d as f64 / 2.0,
+                    (lam / (d as f64 / 2.0) - 1.0) * 100.0
+                );
             }
             for d in [2_usize, 4, 8] {
-                let lam = estimate(d, &spec, |w| w.iter().map(|x| x.powi(4)).sum::<f64>(), 0x5EED_0782);
-                println!("quartic   d={d:2}  λ̂={lam:8.4}  target={:<5} rel={:+7.2}%", d as f64 / 4.0, (lam / (d as f64 / 4.0) - 1.0) * 100.0);
+                let lam = estimate(
+                    d,
+                    &spec,
+                    |w| w.iter().map(|x| x.powi(4)).sum::<f64>(),
+                    0x5EED_0782,
+                );
+                println!(
+                    "quartic   d={d:2}  λ̂={lam:8.4}  target={:<5} rel={:+7.2}%",
+                    d as f64 / 4.0,
+                    (lam / (d as f64 / 4.0) - 1.0) * 100.0
+                );
             }
             let mut planted = [0.0_f64; 6];
             fill_gaussian_dirs(&mut planted, 99);
@@ -1374,11 +1398,20 @@ mod tests {
             };
             let mut scratch = NoiseSweepScratch::new(6, &spec);
             let lam = noise_sweep_lambda(&spec, &planted, rrr_loss, &mut scratch, 0x5EED_0782);
-            println!("rrr  a=b=3 r=1   λ̂={lam:8.4}  target=2.5   rel={:+7.2}%", (lam / 2.5 - 1.0) * 100.0);
+            println!(
+                "rrr  a=b=3 r=1   λ̂={lam:8.4}  target=2.5   rel={:+7.2}%",
+                (lam / 2.5 - 1.0) * 100.0
+            );
             let truth = toy_truth();
             for n in [32_usize, 96] {
                 let mut scratch = NoiseSweepScratch::new(TOY_DIM, &spec);
-                let lam = noise_sweep_lambda(&spec, &truth, |w| toy_loss_n(w, &truth, n), &mut scratch, 0x5EED_0782);
+                let lam = noise_sweep_lambda(
+                    &spec,
+                    &truth,
+                    |w| toy_loss_n(w, &truth, n),
+                    &mut scratch,
+                    0x5EED_0782,
+                );
                 println!("relu toy d=21 N={n:2}  λ̂={lam:8.4}  ref≈0.526 (SGLD)  d/2=10.5");
             }
             // The sample-wall probe: 16× draws moves the ladder's mass
@@ -1390,7 +1423,13 @@ mod tests {
                     ..Default::default()
                 };
                 let mut scratch = NoiseSweepScratch::new(TOY_DIM, &deep);
-                let lam = noise_sweep_lambda(&deep, &truth, |w| toy_loss_n(w, &truth, 32), &mut scratch, 0x5EED_0782);
+                let lam = noise_sweep_lambda(
+                    &deep,
+                    &truth,
+                    |w| toy_loss_n(w, &truth, 32),
+                    &mut scratch,
+                    0x5EED_0782,
+                );
                 println!("relu toy d=21 N=32 m=16384  λ̂={lam:8.4}  (wall probe)");
             }
         }

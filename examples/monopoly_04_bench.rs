@@ -129,6 +129,12 @@ fn main() {
     let (p99, p99_s) = nearest_rank(&game_times, 0.99);
     println!("─── Latency Distribution ────────────────────────────────────────");
     println!("  p50: {p50}µs ({:.2}ms)", p50 as f64 / 1000.0);
-    println!("  p90: {p90}µs ({:.2}ms)  [support {p90_s}]", p90 as f64 / 1000.0);
-    println!("  p99: {p99}µs ({:.2}ms)  [support {p99_s}]", p99 as f64 / 1000.0);
+    println!(
+        "  p90: {p90}µs ({:.2}ms)  [support {p90_s}]",
+        p90 as f64 / 1000.0
+    );
+    println!(
+        "  p99: {p99}µs ({:.2}ms)  [support {p99_s}]",
+        p99 as f64 / 1000.0
+    );
 }

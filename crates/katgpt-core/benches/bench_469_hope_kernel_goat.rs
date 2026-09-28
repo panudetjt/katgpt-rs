@@ -57,9 +57,9 @@
 #![cfg(feature = "hope_capacity")]
 
 use katgpt_core::hope::{
-    hope_block_eviction_cost, hope_capacity, hope_greedy_select, hope_merge_cost,
-    hope_prune_cost, optimal_rank1_parent_into_scratch, relu_cross_kernel_approx,
-    relu_self_kernel, warped_correlation, Rank1Operator,
+    Rank1Operator, hope_block_eviction_cost, hope_capacity, hope_greedy_select, hope_merge_cost,
+    hope_prune_cost, optimal_rank1_parent_into_scratch, relu_cross_kernel_approx, relu_self_kernel,
+    warped_correlation,
 };
 use std::hint::black_box;
 use std::time::Instant;
@@ -78,10 +78,18 @@ struct GateResult {
 
 impl GateResult {
     fn pass(name: &'static str, detail: impl Into<String>) -> Self {
-        Self { name, passed: true, detail: detail.into() }
+        Self {
+            name,
+            passed: true,
+            detail: detail.into(),
+        }
     }
     fn fail(name: &'static str, detail: impl Into<String>) -> Self {
-        Self { name, passed: false, detail: detail.into() }
+        Self {
+            name,
+            passed: false,
+            detail: detail.into(),
+        }
     }
 }
 
@@ -98,14 +106,27 @@ struct OwnedRank1 {
 }
 
 impl Rank1Operator for OwnedRank1 {
-    fn w_in(&self) -> &[f32] { &self.w_in }
-    fn w_out(&self) -> &[f32] { &self.w_out }
-    fn gamma(&self) -> f32 { self.gamma }
-    fn beta(&self) -> f32 { self.beta }
+    fn w_in(&self) -> &[f32] {
+        &self.w_in
+    }
+    fn w_out(&self) -> &[f32] {
+        &self.w_out
+    }
+    fn gamma(&self) -> f32 {
+        self.gamma
+    }
+    fn beta(&self) -> f32 {
+        self.beta
+    }
 }
 
 fn owned(w_in: &[f32], w_out: &[f32], gamma: f32, beta: f32) -> OwnedRank1 {
-    OwnedRank1 { w_in: w_in.to_vec(), w_out: w_out.to_vec(), gamma, beta }
+    OwnedRank1 {
+        w_in: w_in.to_vec(),
+        w_out: w_out.to_vec(),
+        gamma,
+        beta,
+    }
 }
 
 // ─── Fixture: HLA-scale D=8 directions ──────────────────────────────────────
@@ -116,9 +137,15 @@ fn owned(w_in: &[f32], w_out: &[f32], gamma: f32, beta: f32) -> OwnedRank1 {
 
 const D_HLA: usize = 8;
 
-fn fixture_w_in_i() -> [f32; D_HLA] { [0.3, -0.5, 0.8, 0.1, 0.9, -0.2, 0.4, 0.0] }
-fn fixture_w_in_j() -> [f32; D_HLA] { [0.7, 0.2, -0.4, 0.6, 0.1, -0.3, 0.5, 0.8] }
-fn fixture_w_out() -> [f32; 2]      { [1.0, 0.5] }
+fn fixture_w_in_i() -> [f32; D_HLA] {
+    [0.3, -0.5, 0.8, 0.1, 0.9, -0.2, 0.4, 0.0]
+}
+fn fixture_w_in_j() -> [f32; D_HLA] {
+    [0.7, 0.2, -0.4, 0.6, 0.1, -0.3, 0.5, 0.8]
+}
+fn fixture_w_out() -> [f32; 2] {
+    [1.0, 0.5]
+}
 
 // (median_ns helper removed: G2 now reports the mean over ITERS×BATCH calls
 // for sub-ns precision, not the per-batch median.)
@@ -171,9 +198,17 @@ fn gate_g1_correctness_sanity() -> GateResult {
     let mut v_scratch = [0.0_f32; 2];
     let mut k_self = 0.0_f32;
     let s_star = optimal_rank1_parent_into_scratch(
-        &op_i, &op_j, 1.0, &mut u_scratch, &mut v_scratch, &mut k_self,
+        &op_i,
+        &op_j,
+        1.0,
+        &mut u_scratch,
+        &mut v_scratch,
+        &mut k_self,
     );
-    assert!(s_star.is_finite() && s_star > 0.0, "G1: s_star = {s_star}, expected > 0");
+    assert!(
+        s_star.is_finite() && s_star > 0.0,
+        "G1: s_star = {s_star}, expected > 0"
+    );
 
     GateResult::pass(
         "G1 correctness sanity",
@@ -349,7 +384,9 @@ fn gate_g4_alloc_free() -> GateResult {
     }
 
     alloc_gate!("relu_self_kernel", { relu_self_kernel(1.0, 0.5) });
-    alloc_gate!("warped_correlation", { warped_correlation(&w_i, &w_j, 1.0, 1.5) });
+    alloc_gate!("warped_correlation", {
+        warped_correlation(&w_i, &w_j, 1.0, 1.5)
+    });
     alloc_gate!("relu_cross_kernel_approx", {
         relu_cross_kernel_approx(&w_i, &w_j, 1.0, 1.5)
     });
@@ -373,9 +410,7 @@ fn gate_g4_alloc_free() -> GateResult {
         )
     });
 
-    println!(
-        "\n--- G4: alloc-free hot path (CountingAllocator, {ALLOCS_CALLS} calls each) ---"
-    );
+    println!("\n--- G4: alloc-free hot path (CountingAllocator, {ALLOCS_CALLS} calls each) ---");
     for (name, delta) in &reports {
         println!("  {name:<40} {delta:>3} allocs");
     }
@@ -393,12 +428,8 @@ fn gate_g4_alloc_free() -> GateResult {
 // ─── main ───────────────────────────────────────────────────────────────────
 
 fn main() {
-    println!(
-        "=== Plan 469 - HOPE Hilbert-Schmidt Capacity Kernel GOAT Gate (Phase 4 T4.1) ==="
-    );
-    println!(
-        "    Paper: arXiv:2607.21366 (Mobahi & Bartlett, Google DeepMind 2026-07-24)"
-    );
+    println!("=== Plan 469 - HOPE Hilbert-Schmidt Capacity Kernel GOAT Gate (Phase 4 T4.1) ===");
+    println!("    Paper: arXiv:2607.21366 (Mobahi & Bartlett, Google DeepMind 2026-07-24)");
     println!("    D_HLA = {D_HLA}, ITERS = {ITERS}, ALLOCS_CALLS = {ALLOCS_CALLS}\n");
 
     let g1 = gate_g1_correctness_sanity();

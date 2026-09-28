@@ -427,15 +427,15 @@ pub fn kinematic_extrapolate_into<const D: usize>(
     let dt3 = dt2 * dt;
     for ch in 0..D {
         out[ch] = if let Sched::GeometricDrag { rho } = *sched {
-                let g = drag_schedule_weight(row.b1, rho);
-                state.pos[ch] + row.b1 * dt * state.vel[ch] + dt2 * state.acc[ch] * g
-            } else {
-                let j3 = sched.jerk_for(state.vel[ch], state.jerk[ch]).unwrap_or(0.0);
-                let t1 = row.b1 * dt * state.vel[ch];
-                let t2 = row.b2 * dt2 * state.acc[ch];
-                let t3 = row.b3 * dt3 * j3;
-                (state.pos[ch] + t1) + t2 + t3
-            };
+            let g = drag_schedule_weight(row.b1, rho);
+            state.pos[ch] + row.b1 * dt * state.vel[ch] + dt2 * state.acc[ch] * g
+        } else {
+            let j3 = sched.jerk_for(state.vel[ch], state.jerk[ch]).unwrap_or(0.0);
+            let t1 = row.b1 * dt * state.vel[ch];
+            let t2 = row.b2 * dt2 * state.acc[ch];
+            let t3 = row.b3 * dt3 * j3;
+            (state.pos[ch] + t1) + t2 + t3
+        };
     }
     Ok(())
 }

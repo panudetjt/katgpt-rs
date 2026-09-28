@@ -353,11 +353,19 @@ mod tests {
         // Center of the output = center of input = 5.0.
         // Corners/edges see zeros from padding → output = input value only
         // if the kernel center aligns (it does for all positions).
-        assert!((out[4] - 5.0).abs() < 1e-6, "center should be 5.0, got {}", out[4]);
+        assert!(
+            (out[4] - 5.0).abs() < 1e-6,
+            "center should be 5.0, got {}",
+            out[4]
+        );
         // Corner (0,0): patch = [0,0,0, 0,1,0, 0,0,0] (only center input=1).
         // dot with weight = 1*1 = 1.0 (center of the 3×3 window at (0,0) is
         // input[0][0] = 1.0, rest is zero-padded).
-        assert!((out[0] - 1.0).abs() < 1e-6, "corner (0,0) should be 1.0, got {}", out[0]);
+        assert!(
+            (out[0] - 1.0).abs() < 1e-6,
+            "corner (0,0) should be 1.0, got {}",
+            out[0]
+        );
     }
 
     #[test]

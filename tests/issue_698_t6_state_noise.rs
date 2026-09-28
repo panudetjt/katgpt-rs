@@ -227,12 +227,8 @@ fn measure_arm(
 
     let logits_at = |t: usize, r: usize| run_once(&config, weights, residual_gate, sdpa_gate, t, r);
 
-    let ref_logits: Vec<Vec<f32>> = (0..N_PROMPTS)
-        .map(|t| logits_at(t, R_REF))
-        .collect();
-    let probe_logits: Vec<Vec<f32>> = (0..N_PROMPTS)
-        .map(|t| logits_at(t, R_REF_PROBE))
-        .collect();
+    let ref_logits: Vec<Vec<f32>> = (0..N_PROMPTS).map(|t| logits_at(t, R_REF)).collect();
+    let probe_logits: Vec<Vec<f32>> = (0..N_PROMPTS).map(|t| logits_at(t, R_REF_PROBE)).collect();
     let ref_drift = (0..N_PROMPTS)
         .map(|t| kl(&ref_logits[t], &probe_logits[t]))
         .sum::<f32>()
@@ -308,7 +304,10 @@ fn t698_t6_state_noise_wash() {
 
     // Harness parity vs T1's pinned spectrum (tolerant — T7 convention).
     for (r, pin_bits) in T1_PINS {
-        let idx = R_GRID.iter().position(|&g| g == r).expect("grid contains r");
+        let idx = R_GRID
+            .iter()
+            .position(|&g| g == r)
+            .expect("grid contains r");
         let pin = f32::from_bits(pin_bits);
         let rel = ((base_loss[idx] - pin) / pin).abs();
         assert!(
@@ -336,11 +335,7 @@ fn t698_t6_state_noise_wash() {
             } else {
                 run_once(&base_cfg, &weights, &base_gate, &sdpa_gate, t, r)
             };
-            assert_eq!(
-                z.len(),
-                b.len(),
-                "scale-0 logits length mismatch at r={r}"
-            );
+            assert_eq!(z.len(), b.len(), "scale-0 logits length mismatch at r={r}");
             for (i, (za, ba)) in z.iter().zip(b.iter()).enumerate() {
                 assert_eq!(
                     za.to_bits(),
@@ -431,13 +426,17 @@ fn t698_t6_state_noise_wash() {
     // ── Non-vacuity: s20 actually perturbs ───────────────────────
     let s20_cfg = make_config(LoopStabilityMode::StateNoise { scale: 0.20 });
     let s20_gate = ResidualGate::new(R_REF, weights_config.n_embd);
-    let differs = (0..N_PROMPTS)
-        .any(|t| {
-            let n = run_once(&s20_cfg, &weights, &s20_gate, &sdpa_gate, t, 8);
-            let b = run_once(&base_cfg, &weights, &base_gate, &sdpa_gate, t, 8);
-            n.iter().zip(b.iter()).any(|(x, y)| x.to_bits() != y.to_bits())
-        });
-    assert!(differs, "non-vacuity: s20 logits must differ from base somewhere");
+    let differs = (0..N_PROMPTS).any(|t| {
+        let n = run_once(&s20_cfg, &weights, &s20_gate, &sdpa_gate, t, 8);
+        let b = run_once(&base_cfg, &weights, &base_gate, &sdpa_gate, t, 8);
+        n.iter()
+            .zip(b.iter())
+            .any(|(x, y)| x.to_bits() != y.to_bits())
+    });
+    assert!(
+        differs,
+        "non-vacuity: s20 logits must differ from base somewhere"
+    );
 
     // ── Report ───────────────────────────────────────────────────
     let loss8_base = base_loss[3];
@@ -456,8 +455,14 @@ fn t698_t6_state_noise_wash() {
     for (arm, res) in arms.iter().zip(results.iter()) {
         println!(
             "  {:<7} {:>8.3e} {:>8.3e} {:>8.3e} {:>8.3e} {:>8.3e}   {:>8.3e}  {:>8.3e}",
-            arm.name, res.loss[0], res.loss[1], res.loss[2], res.loss[3], res.loss[4],
-            res.ref_drift, res.dest_bias
+            arm.name,
+            res.loss[0],
+            res.loss[1],
+            res.loss[2],
+            res.loss[3],
+            res.loss[4],
+            res.ref_drift,
+            res.dest_bias
         );
     }
     println!();
@@ -486,9 +491,7 @@ fn t698_t6_state_noise_wash() {
         println!(
             "      own +0.018 ablation band at EVERY scale up to 20% — and the 1–5% deltas are"
         );
-        println!(
-            "      NEGATIVE: per-step noise slightly IMPROVES matched-budget quality here (a"
-        );
+        println!("      NEGATIVE: per-step noise slightly IMPROVES matched-budget quality here (a");
         println!(
             "      mid-run regularizer), the OPPOSITE sign of the paper's trained-weight penalty."
         );

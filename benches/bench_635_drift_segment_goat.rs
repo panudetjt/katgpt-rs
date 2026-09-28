@@ -173,7 +173,11 @@ fn gen_stream(seed: u64, n_regimes: usize) -> Stream {
         }
         needles.push((start, ndir, j));
     }
-    Stream { keys, values, needles }
+    Stream {
+        keys,
+        values,
+        needles,
+    }
 }
 
 // ── Arm (a): single-state accumulator ───────────────────────────────────────
@@ -203,7 +207,10 @@ struct FixedArm {
 
 impl FixedArm {
     fn new() -> Self {
-        Self { slots: Vec::with_capacity(K), pos: 0 }
+        Self {
+            slots: Vec::with_capacity(K),
+            pos: 0,
+        }
     }
 
     fn observe(&mut self, k: &[f32; D], v: &[f32; D]) {
@@ -284,7 +291,9 @@ fn recall(slots: &[DriftSlot<D>], needles: &[(usize, [f32; D], usize)]) -> f32 {
 
 fn main() {
     println!("bench_635 DriftSegmentStore GOAT (Issue 652 / Research 482 / arXiv:2606.10650)");
-    println!("config: D={D} K={K} tau={TAU} beta={BETA} needles={N_NEEDLES}x{NEEDLE_SPAN}tok segment={SEGMENT} seeds={SEEDS}\n");
+    println!(
+        "config: D={D} K={K} tau={TAU} beta={BETA} needles={N_NEEDLES}x{NEEDLE_SPAN}tok segment={SEGMENT} seeds={SEEDS}\n"
+    );
 
     // ── G1: needle recall, paired streams (same stream feeds all arms) ──
     let mut cp = [0f32; 3]; // change-point recalls (a, b, c)
@@ -314,8 +323,14 @@ fn main() {
 
     println!("G1 needle recall (mean over {SEEDS} seeds, paired streams)");
     println!("  stream          single   fixed-LFU   drift    (c)-(b)");
-    println!("  change-point    {:>6.3}   {:>8.3}   {:>5.3}   {:+7.2}pp", cp[0], cp[1], cp[2], gain_cp);
-    println!("  stationary      {:>6.3}   {:>8.3}   {:>5.3}   {:+7.2}pp", st[0], st[1], st[2], gain_st);
+    println!(
+        "  change-point    {:>6.3}   {:>8.3}   {:>5.3}   {:+7.2}pp",
+        cp[0], cp[1], cp[2], gain_cp
+    );
+    println!(
+        "  stationary      {:>6.3}   {:>8.3}   {:>5.3}   {:+7.2}pp",
+        st[0], st[1], st[2], gain_st
+    );
     println!(
         "  G1: {} (target: change-point >= +10pp, stationary >= -2pp)\n",
         verdict(g1_pass)
@@ -379,8 +394,13 @@ fn main() {
     let ns_readout = t0.elapsed().as_nanos() as f64 / n_ro as f64;
 
     println!("G2 latency (ns/token, release)");
-    println!("  single={ns_single:.0}  fixed-LFU={ns_fixed:.0}  drift={ns_drift:.0}  readout={ns_readout:.0} ns/query");
-    println!("  drift/single ratio = {:.2}x (target: small constant — O(d + K)/token)\n", ns_drift / ns_single.max(1.0));
+    println!(
+        "  single={ns_single:.0}  fixed-LFU={ns_fixed:.0}  drift={ns_drift:.0}  readout={ns_readout:.0} ns/query"
+    );
+    println!(
+        "  drift/single ratio = {:.2}x (target: small constant — O(d + K)/token)\n",
+        ns_drift / ns_single.max(1.0)
+    );
 
     // ── G4: alloc-free steady state (arm c) ─────────────────────────────
     let mut store = DriftSegmentStore::<K, D>::new(TAU, BETA);
@@ -405,7 +425,10 @@ fn main() {
     }
     let allocs = ALLOC_COUNT.load(std::sync::atomic::Ordering::Relaxed) - before;
     let g4_pass = allocs == 0;
-    println!("G4 alloc-free: {allocs} allocations across 1000 steady tokens (observe+readout) — {}", verdict(g4_pass));
+    println!(
+        "G4 alloc-free: {allocs} allocations across 1000 steady tokens (observe+readout) — {}",
+        verdict(g4_pass)
+    );
 
     // ── Verdict ──────────────────────────────────────────────────────────
     let all = g1_pass && g4_pass;

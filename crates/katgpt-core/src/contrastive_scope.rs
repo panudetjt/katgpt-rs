@@ -119,8 +119,8 @@ impl ContrastiveScoreBuilder {
         let v = self.vocab as f32;
         let p_out = (self.counts_out[w as usize] as f32 + self.alpha)
             / (self.n_out as f32 + self.alpha * v);
-        let p_in = (self.counts_in[w as usize] as f32 + self.alpha)
-            / (self.n_in as f32 + self.alpha * v);
+        let p_in =
+            (self.counts_in[w as usize] as f32 + self.alpha) / (self.n_in as f32 + self.alpha * v);
         p_out.log2() - p_in.log2()
     }
 
@@ -128,7 +128,9 @@ impl ContrastiveScoreBuilder {
     /// once — the `log_ratio_vec` the document scorer consumes).
     #[must_use]
     pub fn finish(self) -> ContrastiveScoreTable {
-        let scores = (0..self.vocab as u32).map(|w| self.score(w)).collect::<Vec<_>>();
+        let scores = (0..self.vocab as u32)
+            .map(|w| self.score(w))
+            .collect::<Vec<_>>();
         let frozen = self.freeze_bytes();
         let commitment = *blake3::hash(&frozen).as_bytes();
         ContrastiveScoreTable {
@@ -563,13 +565,27 @@ mod tests {
         let t = toy_table();
         // κ = 0.5 (consumer-pinned class): a 12-token in-scope doc has
         // D ≈ −84 → −κD ≈ +42, inside the exact-saturation region.
-        let gate = ScopeGate { kappa: 0.5, theta: 8.0 };
+        let gate = ScopeGate {
+            kappa: 0.5,
+            theta: 8.0,
+        };
         let c = 0.87f32;
         let in_doc: Vec<u32> = [0, 1, 2].iter().cycle().take(12).cloned().collect();
         let v = gate.apply_to_tokens(&t, c, &in_doc);
-        assert!(v.d < -50.0, "in-scope D should be strongly negative, got {}", v.d);
-        assert!(-gate.kappa * v.d >= 40.0, "fixture must sit in the exact-saturation region");
-        assert_eq!(v.haircut.to_bits(), c.to_bits(), "bit-identical haircut in-scope");
+        assert!(
+            v.d < -50.0,
+            "in-scope D should be strongly negative, got {}",
+            v.d
+        );
+        assert!(
+            -gate.kappa * v.d >= 40.0,
+            "fixture must sit in the exact-saturation region"
+        );
+        assert_eq!(
+            v.haircut.to_bits(),
+            c.to_bits(),
+            "bit-identical haircut in-scope"
+        );
         assert!(!v.declined);
         // OOS doc: discounted (to exactly 0 here — the mirror saturation) and
         // declined.
@@ -587,7 +603,10 @@ mod tests {
     /// T3 decline wiring: θ explicit; `D > θ` exactly.
     #[test]
     fn t3_decline_threshold_semantics() {
-        let gate = ScopeGate { kappa: 0.1, theta: 5.0 };
+        let gate = ScopeGate {
+            kappa: 0.1,
+            theta: 5.0,
+        };
         let v_below = gate.apply(1.0, 5.0);
         assert!(!v_below.declined, "D == θ is NOT declined (strict >)");
         let v_above = gate.apply(1.0, 5.0 + 1e-3);
@@ -600,12 +619,29 @@ mod tests {
         let t = toy_table();
         // κ = 0.5 with 12-token probes: in-side sits in the exact-saturation
         // region (haircut == confidence bit-identically).
-        let gate = ScopeGate { kappa: 0.5, theta: 8.0 };
+        let gate = ScopeGate {
+            kappa: 0.5,
+            theta: 8.0,
+        };
         let in_probe: Vec<Vec<u32>> = (0..10)
-            .map(|i| [0, 1, 2, (i % 3) as u32].iter().cycle().take(12).cloned().collect())
+            .map(|i| {
+                [0, 1, 2, (i % 3) as u32]
+                    .iter()
+                    .cycle()
+                    .take(12)
+                    .cloned()
+                    .collect()
+            })
             .collect();
         let out_probe: Vec<Vec<u32>> = (0..10)
-            .map(|i| [3, 4, 5, (3 + i % 3) as u32].iter().cycle().take(12).cloned().collect())
+            .map(|i| {
+                [3, 4, 5, (3 + i % 3) as u32]
+                    .iter()
+                    .cycle()
+                    .take(12)
+                    .cloned()
+                    .collect()
+            })
             .collect();
         let in_refs: Vec<&[u32]> = in_probe.iter().map(|v| v.as_slice()).collect();
         let out_refs: Vec<&[u32]> = out_probe.iter().map(|v| v.as_slice()).collect();
@@ -613,17 +649,27 @@ mod tests {
         // Clean battery: in ≈ unchanged, out heavily declined.
         assert!(report.mean_d_in < 0.0);
         assert!(report.mean_d_out > 0.0);
-        assert!((report.mean_haircut_in - 0.9).abs() < 1e-6, "in-side unchanged (fp-mean tolerance)");
+        assert!(
+            (report.mean_haircut_in - 0.9).abs() < 1e-6,
+            "in-side unchanged (fp-mean tolerance)"
+        );
         assert!(report.mean_haircut_out < 0.45);
         assert!(report.decline_rate_out >= 0.9);
-        assert!(report.leak_suspects.is_empty(), "clean battery has no leak suspects");
+        assert!(
+            report.leak_suspects.is_empty(),
+            "clean battery has no leak suspects"
+        );
         // Seeded leak: inject ONE out-scope doc into the in-probe set — the
         // battery must flag it as a leak suspect (D > θ).
         let mut leaky_in = in_probe.clone();
         leaky_in[3] = [3, 3, 4, 5].iter().cycle().take(12).cloned().collect();
         let leaky_refs: Vec<&[u32]> = leaky_in.iter().map(|v| v.as_slice()).collect();
         let leaky = oos_probe_battery(&t, &gate, &leaky_refs, &out_refs, 0.9);
-        assert_eq!(leaky.leak_suspects, vec![3], "seeded leak at index 3 must be caught");
+        assert_eq!(
+            leaky.leak_suspects,
+            vec![3],
+            "seeded leak at index 3 must be caught"
+        );
     }
 
     /// Commitment + freeze/thaw round-trip (tamper-evidence).

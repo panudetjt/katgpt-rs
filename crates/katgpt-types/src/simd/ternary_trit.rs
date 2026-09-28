@@ -45,12 +45,12 @@
 
 #![allow(clippy::needless_range_loop)]
 
-#[cfg(feature = "ternary_trit_pack")]
-use super::simd_level;
 #[cfg(all(feature = "ternary_trit_pack", target_arch = "aarch64"))]
 use super::SimdLevel;
 #[cfg(feature = "ternary_trit_pack")]
-use crate::{GROUP_SIZE, TRITS_PER_BYTE, TernaryTritWeights, TRIT_LUT};
+use super::simd_level;
+#[cfg(feature = "ternary_trit_pack")]
+use crate::{GROUP_SIZE, TRIT_LUT, TRITS_PER_BYTE, TernaryTritWeights};
 
 /// Decode scratch length.
 ///
@@ -186,14 +186,12 @@ unsafe fn neon_row_range(w: &TernaryTritWeights, x: &[f32], y: &mut [f32], row_o
                     acc3 = vfmaq_f32(acc3, f3, vld1q_f32(xp.add(12)));
                 }
 
-                let mut group_acc = vaddvq_f32(vaddq_f32(
-                    vaddq_f32(acc0, acc1),
-                    vaddq_f32(acc2, acc3),
-                ));
+                let mut group_acc =
+                    vaddvq_f32(vaddq_f32(vaddq_f32(acc0, acc1), vaddq_f32(acc2, acc3)));
                 // Tail: fewer than 16 weights left in a ragged final group.
                 for j in chunks * 16..live {
-                    group_acc += *scratch.get_unchecked(base + j) as f32
-                        * *x.get_unchecked(w_start + j);
+                    group_acc +=
+                        *scratch.get_unchecked(base + j) as f32 * *x.get_unchecked(w_start + j);
                 }
 
                 row_sum += w.group_scale[group_base + g].to_f32() * group_acc;
@@ -220,12 +218,7 @@ unsafe fn neon_row_range(w: &TernaryTritWeights, x: &[f32], y: &mut [f32], row_o
 /// Caller guarantees `x.len() == w.cols` and `row_offset + y.len() <= w.rows`.
 #[cfg(all(feature = "ternary_trit_pack", target_arch = "x86_64"))]
 #[target_feature(enable = "avx2,fma")]
-unsafe fn avx2_trit_row_range(
-    w: &TernaryTritWeights,
-    x: &[f32],
-    y: &mut [f32],
-    row_offset: usize,
-) {
+unsafe fn avx2_trit_row_range(w: &TernaryTritWeights, x: &[f32], y: &mut [f32], row_offset: usize) {
     use super::horizontal::horizontal_sum_256;
     use core::arch::x86_64::*;
     unsafe {
@@ -352,7 +345,7 @@ pub fn simd_ternary_trit_matvec_parallel(w: &TernaryTritWeights, x: &[f32], y: &
     /// Same value as the bit-plane tier's threshold — see the doc comment.
     const PARALLEL_ROW_MIN: usize = 256;
 
-assert_eq!(x.len(), w.cols, "x vector length must match weight cols");
+    assert_eq!(x.len(), w.cols, "x vector length must match weight cols");
     assert_eq!(y.len(), w.rows, "y vector length must match weight rows");
 
     if w.rows < PARALLEL_ROW_MIN {
@@ -363,24 +356,26 @@ assert_eq!(x.len(), w.cols, "x vector length must match weight cols");
     // One chunk per worker: each row already carries `cols` worth of work, so
     // fewer larger tasks beat many small ones.
     let chunk = w.rows.div_ceil(rayon::current_num_threads().max(1));
-    y.par_chunks_mut(chunk).enumerate().for_each(|(ci, y_chunk)| {
-        let row_offset = ci * chunk;
-        #[cfg(target_arch = "aarch64")]
-        {
-            if matches!(simd_level(), SimdLevel::Neon) {
-                unsafe { neon_row_range(w, x, y_chunk, row_offset) };
-                return;
+    y.par_chunks_mut(chunk)
+        .enumerate()
+        .for_each(|(ci, y_chunk)| {
+            let row_offset = ci * chunk;
+            #[cfg(target_arch = "aarch64")]
+            {
+                if matches!(simd_level(), SimdLevel::Neon) {
+                    unsafe { neon_row_range(w, x, y_chunk, row_offset) };
+                    return;
+                }
             }
-        }
-        #[cfg(target_arch = "x86_64")]
-        {
-            if super::is_avx2_fma_available() {
-                unsafe { avx2_trit_row_range(w, x, y_chunk, row_offset) };
-                return;
+            #[cfg(target_arch = "x86_64")]
+            {
+                if super::is_avx2_fma_available() {
+                    unsafe { avx2_trit_row_range(w, x, y_chunk, row_offset) };
+                    return;
+                }
             }
-        }
-        scalar_row_range(w, x, y_chunk, row_offset);
-    });
+            scalar_row_range(w, x, y_chunk, row_offset);
+        });
 }
 
 #[cfg(all(test, feature = "ternary_trit_pack"))]

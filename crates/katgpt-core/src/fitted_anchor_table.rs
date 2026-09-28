@@ -350,11 +350,7 @@ impl R2Report {
         let start = start.min(end);
         let ssb: f64 = self.ss_between_dim[start..end].iter().sum();
         let sst: f64 = self.ss_total_dim[start..end].iter().sum();
-        if sst > 0.0 {
-            (ssb / sst) as f32
-        } else {
-            0.0
-        }
+        if sst > 0.0 { (ssb / sst) as f32 } else { 0.0 }
     }
 }
 
@@ -503,7 +499,11 @@ mod tests {
         t.observe(1, &[2.0, 0.0]);
         let r = t.r_squared();
         assert!((r.ss_total_dim[0] - 4.0).abs() < 1e-9);
-        assert!(r.ss_between_dim[0].abs() < 1e-9, "SSB dim0 = {}", r.ss_between_dim[0]);
+        assert!(
+            r.ss_between_dim[0].abs() < 1e-9,
+            "SSB dim0 = {}",
+            r.ss_between_dim[0]
+        );
         assert!(r.ss_between_dim[1].abs() < 1e-9);
         assert!(r.aggregate.abs() < 1e-6);
     }
@@ -534,14 +534,14 @@ mod tests {
             t.observe_tail(&[-30.0]);
             t.observe_tail(&[-30.0]);
             t.r_squared()
-            };
-            // Full tracking: three internally-homogeneous keys ⇒ ρ = 1.
-            // Lumped: the tail fuses keys {−10,−10} and {−30,−30} into one
-            // group of mean −20 ⇒ their internal split is invisible ⇒ ρ
-            // strictly below the full-tracking value, above 0, with SST exact.
-            assert!((lumped.ss_total_dim[0] - full.ss_total_dim[0]).abs() < 1e-9);
-            assert!(lumped.aggregate > 0.0 && lumped.aggregate < full.aggregate);
-            assert!(lumped.tracked_mass < 1.0);
+        };
+        // Full tracking: three internally-homogeneous keys ⇒ ρ = 1.
+        // Lumped: the tail fuses keys {−10,−10} and {−30,−30} into one
+        // group of mean −20 ⇒ their internal split is invisible ⇒ ρ
+        // strictly below the full-tracking value, above 0, with SST exact.
+        assert!((lumped.ss_total_dim[0] - full.ss_total_dim[0]).abs() < 1e-9);
+        assert!(lumped.aggregate > 0.0 && lumped.aggregate < full.aggregate);
+        assert!(lumped.tracked_mass < 1.0);
     }
 
     /// Shrinkage law: factor 1 at λ=0, monotone ↓ in λ, 0 as λ→∞; the

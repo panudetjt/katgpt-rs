@@ -14,9 +14,7 @@
 
 #![cfg(feature = "switch_cost")]
 
-use katgpt_core::switch_cost::{
-    FactorizedSwitchCost, SwitchCostTable, DEFAULT_ALPHA, cdf_rank,
-};
+use katgpt_core::switch_cost::{DEFAULT_ALPHA, FactorizedSwitchCost, SwitchCostTable, cdf_rank};
 use std::hint::black_box;
 
 /// Spearman rank correlation over paired samples (no external crate).
@@ -113,10 +111,7 @@ fn simulate(trials_per_pair: u32, solo_trials: u32, seed: u64) -> (Vec<f32>, Vec
         }
         v
     };
-    (
-        flat(&|a, b| exact.ske(a, b)),
-        flat(&|a, b| fact.ske(a, b)),
-    )
+    (flat(&|a, b| exact.ske(a, b)), flat(&|a, b| fact.ske(a, b)))
 }
 
 /// G1-A/B: the factorized variant (O(N·F) counters) must reproduce the exact
@@ -163,7 +158,10 @@ fn deterministic_and_stable_across_seeds() {
     }
     let (e3, _) = simulate(300, 200, 8);
     let rho = spearman(&e1, &e3);
-    assert!(rho >= 0.75, "cross-seed Spearman {rho:.3} — estimator unstable");
+    assert!(
+        rho >= 0.75,
+        "cross-seed Spearman {rho:.3} — estimator unstable"
+    );
 }
 
 /// Warm-up shape (Research 484 §6.1): cold = exactly neutral; the armed gate
@@ -184,7 +182,11 @@ fn warmup_cold_to_armed_progression() {
         t.record_solo(0, k < 9);
         t.record_solo(1, k < 9);
     }
-    assert!(t.ske(0, 1) > 2.0, "3/10 pair after 9/10 solos: {}", t.ske(0, 1));
+    assert!(
+        t.ske(0, 1) > 2.0,
+        "3/10 pair after 9/10 solos: {}",
+        t.ske(0, 1)
+    );
 }
 
 /// Consumer shape: `cdf_rank` makes the entropy reward scale-free (Gap 6).

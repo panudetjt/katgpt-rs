@@ -121,9 +121,9 @@ pub use katgpt_forward::{
     ClusterCost, ClusterHeadView, ClusterInit, ClusterLayout, ClusterScratch, ClusterStop,
     LayoutRefusal, PackedHeadView, TiedPolicy, cluster_classifier_from_map,
     cluster_layout_from_map, cluster_map_from_embeddings, cluster_map_from_embeddings_with_init,
-    cluster_map_round_robin, cluster_radii_from_map, clustered_lm_head,
-    clustered_lm_head_bounded, clustered_lm_head_packed, forward, forward_base,
-    select_topk_indices, select_topk_indices_into_buf, standard_lm_head,
+    cluster_map_round_robin, cluster_radii_from_map, clustered_lm_head, clustered_lm_head_bounded,
+    clustered_lm_head_packed, forward, forward_base, select_topk_indices,
+    select_topk_indices_into_buf, standard_lm_head,
 };
 // `attention_head` is `unsafe fn` — re-export publicly for root's other
 // forward variants and tests that call it inside `unsafe { ... }` blocks.
@@ -170,9 +170,9 @@ pub use variants::forward_with_domain_latent;
 // `lt2_deep_stability` (DEFAULT-OFF) so the stabilization path compiles to
 // nothing without it.
 pub mod loop_deep;
-pub use loop_deep::{LoopDeepRun, LoopDeepStats};
 #[cfg(feature = "lt2_deep_stability")]
 pub use loop_deep::{DirectionScales, LoopDamping, project_lambda};
+pub use loop_deep::{LoopDeepRun, LoopDeepStats};
 
 #[cfg(feature = "collapse_aware_thinking")]
 pub use generators::generate_with_collapse_detection;

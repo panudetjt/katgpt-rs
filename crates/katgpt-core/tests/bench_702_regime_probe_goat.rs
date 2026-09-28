@@ -196,7 +196,10 @@ impl Generalizer {
                 pooled[s][a] += row[a];
             }
         }
-        Self { counts: counts.to_vec(), pooled }
+        Self {
+            counts: counts.to_vec(),
+            pooled,
+        }
     }
 
     fn dist(&self, ctx: usize) -> [f32; V] {
@@ -263,7 +266,11 @@ impl<F: Fn(usize) -> [f32; V]> FrozenRenovator for SequenceRenovator<F> {
 /// logits via `ln p` (softmax(log p) = p — exact, entropy is invariant to
 /// the constant normalizer). Feeding the probabilities themselves as logits
 /// would double-softmax and squash every entropy into a narrow band.
-fn entropy_sample(dist_at: &dyn Fn(usize) -> [f32; V], sequences: &[Vec<usize>], out: &mut Vec<f32>) {
+fn entropy_sample(
+    dist_at: &dyn Fn(usize) -> [f32; V],
+    sequences: &[Vec<usize>],
+    out: &mut Vec<f32>,
+) {
     out.clear();
     for seq in sequences {
         for i in K..L {
@@ -374,7 +381,9 @@ fn measure_load(
         report,
     );
     let mem_train_recovery = report.recovery_rate;
-    let gen_ren = SequenceRenovator { dist_at: smoothed_dist };
+    let gen_ren = SequenceRenovator {
+        dist_at: smoothed_dist,
+    };
     basin_probe_into(
         &gen_ren,
         train_target,
@@ -498,8 +507,16 @@ fn g1_memorizer_vs_generalizer_across_load_sweep() {
     );
 
     // ── C. Regime classification from the detector alone ─────────────────
-    assert_eq!(classify(&lo.gap_mem), Regime::Memorizing, "G1 C: memorizer @ low load");
-    assert_eq!(classify(&lo.gap_gen), Regime::Generalized, "G1 C: generalizer @ low load");
+    assert_eq!(
+        classify(&lo.gap_mem),
+        Regime::Memorizing,
+        "G1 C: memorizer @ low load"
+    );
+    assert_eq!(
+        classify(&lo.gap_gen),
+        Regime::Generalized,
+        "G1 C: generalizer @ low load"
+    );
     assert_eq!(
         classify(&hi.gap_mem),
         Regime::Generalized,
@@ -586,11 +603,7 @@ fn kappa_achieved(
 
 /// Competitor-score std at one key (the natural noise scale for the
 /// Bernoulli posterior of the Hebbian renovator).
-fn score_sigma_at(
-    mem: &HebbianKernelMemory<HEBB_D>,
-    value_refs: &[&[f32]],
-    key: &[f32],
-) -> f32 {
+fn score_sigma_at(mem: &HebbianKernelMemory<HEBB_D>, value_refs: &[&[f32]], key: &[f32]) -> f32 {
     let mut scratch_phi = vec![0.0f32; mem.config.m];
     let mut fwd = vec![0.0f32; HEBB_D];
     let mut scores = vec![0.0f32; value_refs.len()];
@@ -638,12 +651,18 @@ impl FrozenRenovator for HebbianKeyRenovator<'_> {
         probe.copy_from_slice(x);
         // Completion with bit i = 0 (±1 key).
         probe[i] = 0;
-        let z0: Vec<f32> = probe.iter().map(|&b| if b == 0 { -1.0 } else { 1.0 }).collect();
+        let z0: Vec<f32> = probe
+            .iter()
+            .map(|&b| if b == 0 { -1.0 } else { 1.0 })
+            .collect();
         self.mem
             .retrieval_scores_into(&z0, self.values, &mut scratch_phi, &mut fwd, &mut scores0);
         // Completion with bit i = 1.
         probe[i] = 1;
-        let z1: Vec<f32> = probe.iter().map(|&b| if b == 0 { -1.0 } else { 1.0 }).collect();
+        let z1: Vec<f32> = probe
+            .iter()
+            .map(|&b| if b == 0 { -1.0 } else { 1.0 })
+            .collect();
         self.mem
             .retrieval_scores_into(&z1, self.values, &mut scratch_phi, &mut fwd, &mut scores1);
         let s0 = scores0.iter().copied().fold(f32::NEG_INFINITY, f32::max);
@@ -723,7 +742,15 @@ fn g2_flip_tolerance_vs_gardner_bound() {
             let mut rho_c = 0.0f32;
             for k in 1..=20usize {
                 let rho = k as f32 / HEBB_D as f32;
-                basin_probe_into(&ren, &original, rho, 3, 0x7402_5EED, &mut scratch, &mut report);
+                basin_probe_into(
+                    &ren,
+                    &original,
+                    rho,
+                    3,
+                    0x7402_5EED,
+                    &mut scratch,
+                    &mut report,
+                );
                 if report.overlap >= 0.99 {
                     rho_c = rho;
                 } else {
@@ -832,7 +859,11 @@ fn g2_diagnostic_single_bit_and_per_rho() {
     let key_refs: Vec<&[f32]> = keys.iter().map(|k| k.as_slice()).collect();
     let value_refs: Vec<&[f32]> = values.iter().map(|v| v.as_slice()).collect();
     let mem = HebbianKernelMemory::<HEBB_D>::construct(
-        &key_refs, &value_refs, &fact_map, config, 0x7402_FEED,
+        &key_refs,
+        &value_refs,
+        &fact_map,
+        config,
+        0x7402_FEED,
     )
     .expect("hebbian construction");
     let original = key_to_tokens(&keys[0]);
@@ -861,7 +892,11 @@ fn g2_diagnostic_single_bit_and_per_rho() {
             bad_sites.push(j);
         }
     }
-    println!("single-bit renovation failures: {}/{} sites", bad_sites.len(), HEBB_D);
+    println!(
+        "single-bit renovation failures: {}/{} sites",
+        bad_sites.len(),
+        HEBB_D
+    );
 
     // (a2) WHY? Raw scores at the key vs 1-bit flips for the first 8 sites.
     // If ⟨v_0, MLP(k_0^(j))⟩ > ⟨v_0, MLP(k_0)⟩ systematically, the
@@ -873,7 +908,10 @@ fn g2_diagnostic_single_bit_and_per_rho() {
         let mut fwd = vec![0.0f32; HEBB_D];
         let v0 = value_refs[0];
         let mut score_at = |z_tokens: &[usize]| -> (f32, f32) {
-            let z: Vec<f32> = z_tokens.iter().map(|&b| if b == 0 { -1.0 } else { 1.0 }).collect();
+            let z: Vec<f32> = z_tokens
+                .iter()
+                .map(|&b| if b == 0 { -1.0 } else { 1.0 })
+                .collect();
             mem.forward_into(&z, &mut scratch_phi, &mut fwd);
             let own = katgpt_core::simd::simd_dot_f32(v0, &fwd, HEBB_D);
             let mut best = f32::NEG_INFINITY;
@@ -904,7 +942,15 @@ fn g2_diagnostic_single_bit_and_per_rho() {
     let mut report = BasinReport::default();
     for k in 1..=40usize {
         let rho = k as f32 / HEBB_D as f32;
-        basin_probe_into(&ren, &original, rho, 3, 0x7402_5EED, &mut scratch, &mut report);
+        basin_probe_into(
+            &ren,
+            &original,
+            rho,
+            3,
+            0x7402_5EED,
+            &mut scratch,
+            &mut report,
+        );
         println!(
             "rho={rho:.4} ({} bits): overlap={:.4} recovered={}/{}",
             k, report.overlap, report.recovered, report.n_corrupted
@@ -934,7 +980,10 @@ fn g3_bit_determinism_across_fresh_reruns() {
         a.gap_gen.artifact, b.gap_gen.artifact,
         "gen gap artifact must be bit-identical"
     );
-    assert_eq!(a.gap_mem, b.gap_mem, "mem gap reports must be content-equal");
+    assert_eq!(
+        a.gap_mem, b.gap_mem,
+        "mem gap reports must be content-equal"
+    );
     assert_eq!(a.mem_train_recovery, b.mem_train_recovery);
     assert_eq!(a.gen_train_recovery, b.gen_train_recovery);
 

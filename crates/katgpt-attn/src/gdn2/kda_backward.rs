@@ -51,8 +51,8 @@ fn clamp_f64_to_f32(val: f64) -> f32 {
     }
 }
 
-use crate::gdn2::kda_forward::{KdaConfig, KdaForwardScratch, KdaLayerCache, KdaWeights};
 use crate::gdn2::kda_forward::kda_forward_token;
+use crate::gdn2::kda_forward::{KdaConfig, KdaForwardScratch, KdaLayerCache, KdaWeights};
 use katgpt_core::simd::{
     simd_outer_product_acc, simd_sum_sq, simd_transpose_matvec_acc, simd_transpose_matvec_into,
 };
@@ -211,8 +211,7 @@ pub fn kda_forward_token_with_saved(
     let conv_buf_k = cache.k_conv.buf.clone();
     let conv_buf_v = cache.v_conv.buf.clone();
     let conv_buf_idx = cache.q_conv.buf_idx;
-    let s_prev_per_head: Vec<Vec<f32>> =
-        cache.heads.iter().map(|hd| hd.s.clone()).collect();
+    let s_prev_per_head: Vec<Vec<f32>> = cache.heads.iter().map(|hd| hd.s.clone()).collect();
 
     // Run the stock forward (fills scratch + mutates cache in-place).
     let output_ref = kda_forward_token(config, weights, cache, scratch, h);
@@ -220,7 +219,8 @@ pub fn kda_forward_token_with_saved(
 
     // Reconstruct per-head activations from the now-filled scratch + saved S_{t-1}.
     let mut head_acts = Vec::with_capacity(n_h);
-    #[allow(clippy::needless_range_loop)] // head indexes s_prev_per_head + weights.a_log + cache.heads + scratch.beta + stride offset
+    #[allow(clippy::needless_range_loop)]
+    // head indexes s_prev_per_head + weights.a_log + cache.heads + scratch.beta + stride offset
     for head in 0..n_h {
         let off = head * dk;
         let s_prev = &s_prev_per_head[head];
@@ -252,7 +252,11 @@ pub fn kda_forward_token_with_saved(
             let g = -alpha_head * softplus(gp);
             gk[i] = g;
             let a = g.exp();
-            a_decay[i] = if a < config.alpha_eps { config.alpha_eps } else { a };
+            a_decay[i] = if a < config.alpha_eps {
+                config.alpha_eps
+            } else {
+                a
+            };
         }
 
         // S' = decay(S_{t-1}).
@@ -576,13 +580,18 @@ pub fn kda_core_backward(
         // dbeta_h total = dbeta_from_delta + dbeta_from_read
         //   (= dbeta_from_delta + Σ_i derase_b[i], since erase_b[i] = beta_h).
         let dbeta_h_total = clamp_f64_to_f32(dbeta_from_delta_f64 + dbeta_from_read_f64);
-        dbeta_pre[head] = clamp_f64_to_f32(dbeta_h_total as f64 * ha.beta_h as f64 * (1.0 - ha.beta_h as f64));
+        dbeta_pre[head] =
+            clamp_f64_to_f32(dbeta_h_total as f64 * ha.beta_h as f64 * (1.0 - ha.beta_h as f64));
 
         // a[i] = max(exp(gk[i]), alpha_eps) — relu-clamp
         let mut dalpha_head_f64 = 0.0f64;
         for i in 0..dk {
             let exp_gk = ha.gk[i].exp();
-            let mask = if ha.a_decay[i] > config.alpha_eps { 1.0 } else { 0.0 };
+            let mask = if ha.a_decay[i] > config.alpha_eps {
+                1.0
+            } else {
+                0.0
+            };
             dgk[i] = clamp_f64_to_f32((da_decay[i] as f64) * (exp_gk as f64) * mask);
             dalpha_head_f64 += (dgk[i] as f64) * (-softplus(ha.g_plus[i]) as f64);
             dg_plus[i] = clamp_f64_to_f32(
@@ -687,7 +696,15 @@ pub fn kda_backward_token(
     dh_out.fill(0.0);
 
     // ── Steps 5→2: core backward (recurrence + norm + gates). ─────────────
-    let core = kda_core_backward(config, weights, saved, d_output, ds_next, grads, ds_prev_out);
+    let core = kda_core_backward(
+        config,
+        weights,
+        saved,
+        d_output,
+        ds_next,
+        grads,
+        ds_prev_out,
+    );
 
     // ── Step 1 backward: ShortConv + SiLU (k=0 tap only — single-token scope).
     // Forward: z_q_conv[c] = silu( Σ_k weight[c,k] · buf_q[c, slot(k)] )
@@ -743,16 +760,72 @@ pub fn kda_backward_token(
 
     // ── Step 0 backward: projections ──────────────────────────────────────
     // Each: y = W · h.  dL/dW += outer(dL/dy, h).  dL/dh += Wᵀ · dL/dy.
-    proj_backward(&mut grads.q_proj, dh_out, &dz_q_conv, &saved.h, &weights.q_proj, proj, d);
-    proj_backward(&mut grads.k_proj, dh_out, &dz_k_conv, &saved.h, &weights.k_proj, proj, d);
-    proj_backward(&mut grads.v_proj, dh_out, &dz_v_conv, &saved.h, &weights.v_proj, proj, d);
-    proj_backward(&mut grads.g_proj, dh_out, &core.dg_out_full, &saved.h, &weights.g_proj, proj, d);
-    proj_backward(&mut grads.beta_proj, dh_out, &core.dbeta_pre, &saved.h, &weights.beta_proj, n_h, d);
+    proj_backward(
+        &mut grads.q_proj,
+        dh_out,
+        &dz_q_conv,
+        &saved.h,
+        &weights.q_proj,
+        proj,
+        d,
+    );
+    proj_backward(
+        &mut grads.k_proj,
+        dh_out,
+        &dz_k_conv,
+        &saved.h,
+        &weights.k_proj,
+        proj,
+        d,
+    );
+    proj_backward(
+        &mut grads.v_proj,
+        dh_out,
+        &dz_v_conv,
+        &saved.h,
+        &weights.v_proj,
+        proj,
+        d,
+    );
+    proj_backward(
+        &mut grads.g_proj,
+        dh_out,
+        &core.dg_out_full,
+        &saved.h,
+        &weights.g_proj,
+        proj,
+        d,
+    );
+    proj_backward(
+        &mut grads.beta_proj,
+        dh_out,
+        &core.dbeta_pre,
+        &saved.h,
+        &weights.beta_proj,
+        n_h,
+        d,
+    );
 
     // Two-stage gate: f_a_hid = W^{f_a} · h, then g_raw = W^{f_b} · f_a_hid.
     let mut df_a_hidden = vec![0.0f32; dk];
-    proj_backward(&mut grads.f_b_proj, &mut df_a_hidden, &core.dg_raw, &saved.f_a_hidden, &weights.f_b_proj, proj, dk);
-    proj_backward(&mut grads.f_a_proj, dh_out, &df_a_hidden, &saved.h, &weights.f_a_proj, dk, d);
+    proj_backward(
+        &mut grads.f_b_proj,
+        &mut df_a_hidden,
+        &core.dg_raw,
+        &saved.f_a_hidden,
+        &weights.f_b_proj,
+        proj,
+        dk,
+    );
+    proj_backward(
+        &mut grads.f_a_proj,
+        dh_out,
+        &df_a_hidden,
+        &saved.h,
+        &weights.f_a_proj,
+        dk,
+        d,
+    );
 }
 
 // ─── Multi-token backward (Plan 318 Phase C C5) ─────────────────────────────
@@ -863,8 +936,8 @@ pub fn kda_backward_sequence(
             let t_past = t as isize - k as isize;
             if t_past < 0 {
                 break; // Ring buffer was zero before the sequence start; those
-                       // contributions are zero (z=0 → dweight term = 0; and
-                       // there's no dz accumulator for t < 0).
+                // contributions are zero (z=0 → dweight term = 0; and
+                // there's no dz accumulator for t < 0).
             }
             let tp = t_past as usize;
             let z_q_tp = &saved_tokens[tp].z_q;
@@ -894,16 +967,72 @@ pub fn kda_backward_sequence(
         // Each: y = W · h.  dL/dW += outer(dL/dy, h).  dL/dh += Wᵀ · dL/dy.
         let dh_t = &mut dh_outs[t];
         dh_t.fill(0.0);
-        proj_backward(&mut grads.q_proj, dh_t, &dz_q_accum[t], &saved_tokens[t].h, &weights.q_proj, proj, d);
-        proj_backward(&mut grads.k_proj, dh_t, &dz_k_accum[t], &saved_tokens[t].h, &weights.k_proj, proj, d);
-        proj_backward(&mut grads.v_proj, dh_t, &dz_v_accum[t], &saved_tokens[t].h, &weights.v_proj, proj, d);
-        proj_backward(&mut grads.g_proj, dh_t, &core.dg_out_full, &saved_tokens[t].h, &weights.g_proj, proj, d);
-        proj_backward(&mut grads.beta_proj, dh_t, &core.dbeta_pre, &saved_tokens[t].h, &weights.beta_proj, n_h, d);
+        proj_backward(
+            &mut grads.q_proj,
+            dh_t,
+            &dz_q_accum[t],
+            &saved_tokens[t].h,
+            &weights.q_proj,
+            proj,
+            d,
+        );
+        proj_backward(
+            &mut grads.k_proj,
+            dh_t,
+            &dz_k_accum[t],
+            &saved_tokens[t].h,
+            &weights.k_proj,
+            proj,
+            d,
+        );
+        proj_backward(
+            &mut grads.v_proj,
+            dh_t,
+            &dz_v_accum[t],
+            &saved_tokens[t].h,
+            &weights.v_proj,
+            proj,
+            d,
+        );
+        proj_backward(
+            &mut grads.g_proj,
+            dh_t,
+            &core.dg_out_full,
+            &saved_tokens[t].h,
+            &weights.g_proj,
+            proj,
+            d,
+        );
+        proj_backward(
+            &mut grads.beta_proj,
+            dh_t,
+            &core.dbeta_pre,
+            &saved_tokens[t].h,
+            &weights.beta_proj,
+            n_h,
+            d,
+        );
 
         // Two-stage gate: f_a_hid = W^{f_a} · h, then g_raw = W^{f_b} · f_a_hid.
         let mut df_a_hidden = vec![0.0f32; dk];
-        proj_backward(&mut grads.f_b_proj, &mut df_a_hidden, &core.dg_raw, &saved_tokens[t].f_a_hidden, &weights.f_b_proj, proj, dk);
-        proj_backward(&mut grads.f_a_proj, dh_t, &df_a_hidden, &saved_tokens[t].h, &weights.f_a_proj, dk, d);
+        proj_backward(
+            &mut grads.f_b_proj,
+            &mut df_a_hidden,
+            &core.dg_raw,
+            &saved_tokens[t].f_a_hidden,
+            &weights.f_b_proj,
+            proj,
+            dk,
+        );
+        proj_backward(
+            &mut grads.f_a_proj,
+            dh_t,
+            &df_a_hidden,
+            &saved_tokens[t].h,
+            &weights.f_a_proj,
+            dk,
+            d,
+        );
 
         // ── Thread ds_prev → ds_next for the next (t-1) iteration. ─────────
         core::mem::swap(&mut ds_next, &mut ds_prev);
@@ -924,11 +1053,11 @@ pub fn kda_backward_sequence(
  */
 #[allow(clippy::too_many_arguments)]
 pub fn backward_conv_silu(
-    z_conv_saved: &[f32],      // post-SiLU values [proj]
-    dz_conv: &mut [f32],        // IN: grad w.r.t. post-SiLU; OUT: dL/dz_preconv [proj]
-    conv_buf: &[f32],          // ring buffer snapshot (pre-forward) [proj*ks]
-    conv_weight: &[f32],       // [proj*ks]
-    conv_buf_idx: usize,       // ring index (pre-forward)
+    z_conv_saved: &[f32], // post-SiLU values [proj]
+    dz_conv: &mut [f32],  // IN: grad w.r.t. post-SiLU; OUT: dL/dz_preconv [proj]
+    conv_buf: &[f32],     // ring buffer snapshot (pre-forward) [proj*ks]
+    conv_weight: &[f32],  // [proj*ks]
+    conv_buf_idx: usize,  // ring index (pre-forward)
     kernel_size: usize,
     n_channels: usize,
     grad_conv_weight: &mut [f32], // accumulated
@@ -1061,7 +1190,9 @@ mod tests {
     fn forward_with_saved_matches_stock() {
         let config = small_config();
         let weights = KdaWeights::random(&config, 42);
-        let h: Vec<f32> = (0..config.hidden_size).map(|i| (i as f32) * 0.1 - 0.5).collect();
+        let h: Vec<f32> = (0..config.hidden_size)
+            .map(|i| (i as f32) * 0.1 - 0.5)
+            .collect();
 
         let mut cache1 = KdaLayerCache::new(&config);
         let mut scratch1 = KdaForwardScratch::new(&config);
@@ -1069,10 +1200,17 @@ mod tests {
 
         let mut cache2 = KdaLayerCache::new(&config);
         let mut scratch2 = KdaForwardScratch::new(&config);
-        let (out2, _saved) = kda_forward_token_with_saved(&config, &weights, &mut cache2, &mut scratch2, &h);
+        let (out2, _saved) =
+            kda_forward_token_with_saved(&config, &weights, &mut cache2, &mut scratch2, &h);
 
         for i in 0..config.hidden_size {
-            assert!((out1[i] - out2[i]).abs() < 1e-5, "output mismatch at {}: {} vs {}", i, out1[i], out2[i]);
+            assert!(
+                (out1[i] - out2[i]).abs() < 1e-5,
+                "output mismatch at {}: {} vs {}",
+                i,
+                out1[i],
+                out2[i]
+            );
         }
     }
 
@@ -1081,19 +1219,35 @@ mod tests {
     fn backward_smoke_finite() {
         let config = small_config();
         let weights = KdaWeights::random(&config, 42);
-        let h: Vec<f32> = (0..config.hidden_size).map(|i| (i as f32) * 0.1 - 0.5).collect();
+        let h: Vec<f32> = (0..config.hidden_size)
+            .map(|i| (i as f32) * 0.1 - 0.5)
+            .collect();
 
         let mut cache = KdaLayerCache::new(&config);
         let mut fwd_scratch = KdaForwardScratch::new(&config);
-        let (_output, saved) = kda_forward_token_with_saved(&config, &weights, &mut cache, &mut fwd_scratch, &h);
+        let (_output, saved) =
+            kda_forward_token_with_saved(&config, &weights, &mut cache, &mut fwd_scratch, &h);
 
         let d_output = vec![0.1f32; config.hidden_size];
         let mut dh = vec![0.0f32; config.hidden_size];
         let mut grads = KdaGradients::zeros_like(&weights);
-        let ds_next: Vec<Vec<f32>> = (0..config.n_heads).map(|_| vec![0.0; config.head_dim * config.head_dim]).collect();
-        let mut ds_prev: Vec<Vec<f32>> = (0..config.n_heads).map(|_| vec![0.0; config.head_dim * config.head_dim]).collect();
+        let ds_next: Vec<Vec<f32>> = (0..config.n_heads)
+            .map(|_| vec![0.0; config.head_dim * config.head_dim])
+            .collect();
+        let mut ds_prev: Vec<Vec<f32>> = (0..config.n_heads)
+            .map(|_| vec![0.0; config.head_dim * config.head_dim])
+            .collect();
 
-        kda_backward_token(&config, &weights, &saved, &d_output, &mut dh, &mut grads, &ds_next, &mut ds_prev);
+        kda_backward_token(
+            &config,
+            &weights,
+            &saved,
+            &d_output,
+            &mut dh,
+            &mut grads,
+            &ds_next,
+            &mut ds_prev,
+        );
 
         for &g in &dh {
             assert!(g.is_finite(), "non-finite dh: {g}");
@@ -1111,11 +1265,14 @@ mod tests {
     fn saved_activations_s_post_consistent() {
         let config = small_config();
         let weights = KdaWeights::random(&config, 42);
-        let h: Vec<f32> = (0..config.hidden_size).map(|i| (i as f32) * 0.1 - 0.5).collect();
+        let h: Vec<f32> = (0..config.hidden_size)
+            .map(|i| (i as f32) * 0.1 - 0.5)
+            .collect();
 
         let mut cache = KdaLayerCache::new(&config);
         let mut fwd_scratch = KdaForwardScratch::new(&config);
-        let (_output, saved) = kda_forward_token_with_saved(&config, &weights, &mut cache, &mut fwd_scratch, &h);
+        let (_output, saved) =
+            kda_forward_token_with_saved(&config, &weights, &mut cache, &mut fwd_scratch, &h);
 
         let dk = config.head_dim;
         for head in 0..config.n_heads {

@@ -159,8 +159,7 @@ impl SsmaxMode {
     pub fn resolve_s_l(&self) -> f32 {
         match self {
             Self::Fixed { s_l } => *s_l,
-            Self::Adaptive { rolling_delta }
-            | Self::HoldConcentration { rolling_delta, .. } => {
+            Self::Adaptive { rolling_delta } | Self::HoldConcentration { rolling_delta, .. } => {
                 (1.0_f32 / rolling_delta.max(1e-3)).clamp(0.1, 10.0)
             }
         }
@@ -183,7 +182,11 @@ impl SsmaxMode {
     pub fn multiplier(&self, log_n: f32) -> f32 {
         match self {
             Self::Fixed { .. } | Self::Adaptive { .. } => self.resolve_s_l() * log_n,
-            Self::HoldConcentration { c, k, rolling_delta } => {
+            Self::HoldConcentration {
+                c,
+                k,
+                rolling_delta,
+            } => {
                 if log_n <= 0.0 {
                     return 1.0; // n ≤ 1 (or the SsmaxConfig n≤1 convention): no sharpening
                 }
@@ -236,9 +239,7 @@ impl SsmaxConfig {
     pub fn from_mode(mode: &SsmaxMode, n: usize) -> Self {
         let log_n = if n <= 1 { 0.0 } else { (n as f32).ln() };
         let s_l = match mode {
-            SsmaxMode::HoldConcentration { .. } if log_n > 0.0 => {
-                mode.multiplier(log_n) / log_n
-            }
+            SsmaxMode::HoldConcentration { .. } if log_n > 0.0 => mode.multiplier(log_n) / log_n,
             _ => mode.resolve_s_l(),
         };
         Self { s_l, log_n }
@@ -668,7 +669,11 @@ mod tests {
         // exactly c (within f32 rounding + the [0.1,10] s_L band).
         let (n, k, c) = (1000_usize, 1_usize, 0.9_f32);
         let delta = 0.5_f32; // the rolling-Δ̂ estimate matches the row's true gap
-        let mode = SsmaxMode::HoldConcentration { c, k, rolling_delta: delta };
+        let mode = SsmaxMode::HoldConcentration {
+            c,
+            k,
+            rolling_delta: delta,
+        };
         let m = mode.multiplier((n as f32).ln());
         // exact-form check (inside the clamp band)
         let ln_ratio = ((n as f32 - k as f32) * c / (k as f32 * (1.0 - c))).ln();
@@ -689,14 +694,28 @@ mod tests {
     #[test]
     fn hold_concentration_identity_degenerates() {
         // k ≥ n → identity
-        let m = SsmaxMode::HoldConcentration { c: 0.9, k: 8, rolling_delta: 0.5 }.multiplier((8.0_f32).ln());
+        let m = SsmaxMode::HoldConcentration {
+            c: 0.9,
+            k: 8,
+            rolling_delta: 0.5,
+        }
+        .multiplier((8.0_f32).ln());
         assert_eq!(m, 1.0);
         // n ≤ 1 → identity
-        let m = SsmaxMode::HoldConcentration { c: 0.9, k: 1, rolling_delta: 0.5 }.multiplier(0.0);
+        let m = SsmaxMode::HoldConcentration {
+            c: 0.9,
+            k: 1,
+            rolling_delta: 0.5,
+        }
+        .multiplier(0.0);
         assert_eq!(m, 1.0);
         // demand at/below the uniform share (c ≤ k/n) → identity
-        let m = SsmaxMode::HoldConcentration { c: 0.4, k: 500, rolling_delta: 0.5 }
-            .multiplier((1000.0_f32).ln());
+        let m = SsmaxMode::HoldConcentration {
+            c: 0.4,
+            k: 500,
+            rolling_delta: 0.5,
+        }
+        .multiplier((1000.0_f32).ln());
         assert_eq!(m, 1.0);
     }
 
@@ -704,21 +723,37 @@ mod tests {
     fn hold_concentration_monotone_in_n_and_c() {
         // More keys (bigger n) or a higher demand (bigger c) need a bigger
         // multiplier — the Lemma-2 growth SSMax exists to cancel.
-        let mode = |c: f32| SsmaxMode::HoldConcentration { c, k: 1, rolling_delta: 0.5 };
+        let mode = |c: f32| SsmaxMode::HoldConcentration {
+            c,
+            k: 1,
+            rolling_delta: 0.5,
+        };
         let m_100 = mode(0.9).multiplier(100.0_f32.ln());
         let m_10k = mode(0.9).multiplier(10_000.0_f32.ln());
-        assert!(m_10k > m_100, "multiplier must grow with n: {m_10k} !> {m_100}");
+        assert!(
+            m_10k > m_100,
+            "multiplier must grow with n: {m_10k} !> {m_100}"
+        );
         let m_low = mode(0.5).multiplier(1000.0_f32.ln());
         let m_high = mode(0.99).multiplier(1000.0_f32.ln());
-        assert!(m_high > m_low, "multiplier must grow with c: {m_high} !> {m_low}");
+        assert!(
+            m_high > m_low,
+            "multiplier must grow with c: {m_high} !> {m_low}"
+        );
     }
 
     #[test]
     fn hold_concentration_resolve_s_l_is_the_large_n_limit() {
         // resolve_s_l (n-free) = 1/Δ̂ clamped — identical to Adaptive; the
         // finite-n exactness lives in multiplier()/from_mode.
-        let hc = SsmaxMode::HoldConcentration { c: 0.9, k: 1, rolling_delta: 0.25 };
-        let ad = SsmaxMode::Adaptive { rolling_delta: 0.25 };
+        let hc = SsmaxMode::HoldConcentration {
+            c: 0.9,
+            k: 1,
+            rolling_delta: 0.25,
+        };
+        let ad = SsmaxMode::Adaptive {
+            rolling_delta: 0.25,
+        };
         assert_eq!(hc.resolve_s_l(), ad.resolve_s_l());
         assert!((hc.resolve_s_l() - 4.0).abs() < TOL);
         // finite-n multiplier is exact (n-aware), not resolve_s_l·log_n:
@@ -728,7 +763,11 @@ mod tests {
 
     #[test]
     fn hold_concentration_config_caches_exact_form() {
-        let mode = SsmaxMode::HoldConcentration { c: 0.9, k: 1, rolling_delta: 0.5 };
+        let mode = SsmaxMode::HoldConcentration {
+            c: 0.9,
+            k: 1,
+            rolling_delta: 0.5,
+        };
         let n = 10_000_usize;
         let cfg = SsmaxConfig::from_mode(&mode, n);
         let direct = mode.multiplier((n as f32).ln());
@@ -746,10 +785,18 @@ mod tests {
     fn hold_concentration_delta_floor_and_clamp_band() {
         // Δ̂ → 0 explodes the analytic multiplier; the s_L band caps it at
         // 10·log_n, and Δ̂ is floored at 1e-3 (the Adaptive convention).
-        let mode = SsmaxMode::HoldConcentration { c: 0.99, k: 1, rolling_delta: 1e-9 };
+        let mode = SsmaxMode::HoldConcentration {
+            c: 0.99,
+            k: 1,
+            rolling_delta: 1e-9,
+        };
         let log_n = 1000.0_f32.ln();
         let m = mode.multiplier(log_n);
-        assert!((m - 10.0 * log_n).abs() < 1e-3, "clamp cap: {m} vs {}", 10.0 * log_n);
+        assert!(
+            (m - 10.0 * log_n).abs() < 1e-3,
+            "clamp cap: {m} vs {}",
+            10.0 * log_n
+        );
     }
 }
 

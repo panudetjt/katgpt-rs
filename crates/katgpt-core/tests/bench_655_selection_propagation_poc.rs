@@ -226,7 +226,11 @@ fn build_world(cfg: &ChainWorldConfig) -> ChainWorld {
         let base = c * (cfg.chain_len + cfg.distractors_per_chain);
         // Chain: m_k -> m_{k+1}, high reliability.
         for k in 0..cfg.chain_len - 1 {
-            edges.push((base + k, base + k + 1, rng.next_range(CHAIN_EDGE_W.0, CHAIN_EDGE_W.1)));
+            edges.push((
+                base + k,
+                base + k + 1,
+                rng.next_range(CHAIN_EDGE_W.0, CHAIN_EDGE_W.1),
+            ));
         }
         // Head -> distractors, low reliability.
         for d in 0..cfg.distractors_per_chain {
@@ -291,11 +295,21 @@ fn build_world(cfg: &ChainWorldConfig) -> ChainWorld {
                 q[j] = embeds[head * D + j] + 0.15 * rng.next_gaussian();
             }
             normalize(&mut q);
-            ChainQuery { query: q, chain: chain.clone() }
+            ChainQuery {
+                query: q,
+                chain: chain.clone(),
+            }
         })
         .collect();
 
-    ChainWorld { n, embeds, offsets, targets, weights, queries }
+    ChainWorld {
+        n,
+        embeds,
+        offsets,
+        targets,
+        weights,
+        queries,
+    }
 }
 
 // ── Competitor 1: single-hop ───────────────────────────────────────────────
@@ -314,10 +328,7 @@ fn top_k_indices(scores: &[f32], k: usize, scratch: &mut Vec<usize>) {
     scratch.clear();
     scratch.extend(0..scores.len());
     // Partial selection: nth_element-style via sort (n ≤ ~1k in this POC).
-    scratch.sort_by(|&a, &b| {
-        scores[b].total_cmp(&scores[a])
-            .then(a.cmp(&b))
-    });
+    scratch.sort_by(|&a, &b| scores[b].total_cmp(&scores[a]).then(a.cmp(&b)));
     scratch.truncate(k);
 }
 
@@ -405,7 +416,10 @@ fn propagation_select(
         scores_scratch.push(katgpt_core::sigmoid(seed_beta * s));
     }
     let mut final_scores = vec![0.0f32; world.n];
-    let cfg = PropagationConfig { blend, ..Default::default() };
+    let cfg = PropagationConfig {
+        blend,
+        ..Default::default()
+    };
     let outcome = propagate_selection_to_fixpoint_into(
         &world.offsets,
         &world.targets,
@@ -472,7 +486,18 @@ fn eval_bfs_decay(
 ) -> SelectorStats {
     // Shipped defaults: k_hop=2, λ=1.5 (GraphRagConfig::default), 1 query
     // entity (the query mentions one entity — the KEEP door).
-    bfs_decay_select(world, &world.queries[qi].query, k, 2, 1.5, 1, sims, idx, dist, fused);
+    bfs_decay_select(
+        world,
+        &world.queries[qi].query,
+        k,
+        2,
+        1.5,
+        1,
+        sims,
+        idx,
+        dist,
+        fused,
+    );
     SelectorStats {
         chain_recall: recall_at(idx, &world.queries[qi].chain),
         tail_recall: recall_at(idx, tail_truth(&world.queries[qi].chain)),
@@ -490,7 +515,15 @@ fn eval_propagation(
 ) -> SelectorStats {
     let mut out: Vec<usize> = Vec::new();
     let _iters = propagation_select(
-        world, &world.queries[qi].query, k, blend, 4.0, prop_scratch, scores, idx, &mut out,
+        world,
+        &world.queries[qi].query,
+        k,
+        blend,
+        4.0,
+        prop_scratch,
+        scores,
+        idx,
+        &mut out,
     );
     SelectorStats {
         chain_recall: recall_at(&out, &world.queries[qi].chain),
@@ -506,11 +539,7 @@ struct Cell {
     k: usize,
 }
 
-fn run_cell(
-    cell: &Cell,
-    seeds: &[u64],
-    cfg_base: &ChainWorldConfig,
-) -> [f64; 8] {
+fn run_cell(cell: &Cell, seeds: &[u64], cfg_base: &ChainWorldConfig) -> [f64; 8] {
     // Returns [single_chain, single_tail, bfs_chain, bfs_tail, mass_chain,
     // mass_tail, mean_chain, mean_tail] averaged over all instances.
     let mut acc = [0.0f64; 8];
@@ -536,13 +565,31 @@ fn run_cell(
             let s = eval_single_hop(&world, qi, cell.k, &mut sims, &mut idx);
             acc[0] += s.chain_recall;
             acc[1] += s.tail_recall;
-            let b = eval_bfs_decay(&world, qi, cell.k, &mut sims, &mut idx, &mut dist, &mut fused);
+            let b = eval_bfs_decay(
+                &world, qi, cell.k, &mut sims, &mut idx, &mut dist, &mut fused,
+            );
             acc[2] += b.chain_recall;
             acc[3] += b.tail_recall;
-            let m = eval_propagation(&world, qi, cell.k, PropagationBlend::Mass, &mut prop_scratch, &mut scores, &mut idx);
+            let m = eval_propagation(
+                &world,
+                qi,
+                cell.k,
+                PropagationBlend::Mass,
+                &mut prop_scratch,
+                &mut scores,
+                &mut idx,
+            );
             acc[4] += m.chain_recall;
             acc[5] += m.tail_recall;
-            let n = eval_propagation(&world, qi, cell.k, PropagationBlend::Mean, &mut prop_scratch, &mut scores, &mut idx);
+            let n = eval_propagation(
+                &world,
+                qi,
+                cell.k,
+                PropagationBlend::Mean,
+                &mut prop_scratch,
+                &mut scores,
+                &mut idx,
+            );
             acc[6] += n.chain_recall;
             acc[7] += n.tail_recall;
             instances += 1;
@@ -553,8 +600,6 @@ fn run_cell(
     }
     acc
 }
-
-
 
 /// Full sweep: hop × distractors × budget. Prints the verdict table.
 fn run_sweep() -> Vec<(Cell, [f64; 8])> {
@@ -572,12 +617,20 @@ fn run_sweep() -> Vec<(Cell, [f64; 8])> {
     };
 
     let mut rows = Vec::with_capacity(hops.len());
-    eprintln!("hop | distr |  k | single-hop chain/tail | BFS-decay chain/tail | prop(Mass) chain/tail | prop(Mean) chain/tail");
-    eprintln!("----|-------|----|----------------------|----------------------|----------------------|--------------------");
+    eprintln!(
+        "hop | distr |  k | single-hop chain/tail | BFS-decay chain/tail | prop(Mass) chain/tail | prop(Mean) chain/tail"
+    );
+    eprintln!(
+        "----|-------|----|----------------------|----------------------|----------------------|--------------------"
+    );
     for &hop in &hops {
         for &dr in &distractor_levels {
             for &k in &budgets {
-                let cell = Cell { hop, distractors: dr, k };
+                let cell = Cell {
+                    hop,
+                    distractors: dr,
+                    k,
+                };
                 let acc = run_cell(&cell, &seeds, &cfg_base);
                 eprintln!(
                     " {hop}  | {dr:5} | {k:2} |   {0:.3} / {1:.3}      |   {2:.3} / {3:.3}      |   {4:.3} / {5:.3}      |   {6:.3} / {7:.3}",
@@ -633,17 +686,20 @@ fn g1_propagation_beats_bfs_decay_on_multihop() {
     assert!(
         means[4] >= means[2] - 1e-9,
         "G1 FAIL: propagation(Mass) chain recall {0:.3} < BFS-decay {1:.3} on h≥2",
-        means[4], means[2]
+        means[4],
+        means[2]
     );
     assert!(
         means[5] >= means[3] - 1e-9,
         "G1 FAIL: propagation(Mass) tail recall {0:.3} < BFS-decay {1:.3} on h≥2",
-        means[5], means[3]
+        means[5],
+        means[3]
     );
     assert!(
         means[5] > means[1],
         "G1 FAIL: propagation(Mass) tail recall {0:.3} does not beat single-hop {1:.3} on h≥2",
-        means[5], means[1]
+        means[5],
+        means[1]
     );
     // Honest reporting: every per-cell loss is printed above (losses count).
 }
@@ -666,7 +722,11 @@ fn g1_control_one_hop_and_no_distractors_ties() {
     // 1-hop, low distractors (4), mid budget. The prediction is a tie; a
     // propagation WIN is equally acceptable (it never under-ranks the chain
     // it owns) — the gate is tie-or-better.
-    let cell = Cell { hop: 1, distractors: 4, k: 8 };
+    let cell = Cell {
+        hop: 1,
+        distractors: 4,
+        k: 8,
+    };
     let acc = run_cell(&cell, &seeds, &cfg_base);
     eprintln!(
         "control h=1 d=4 k=8: single {0:.3}/{1:.3} bfs {2:.3}/{3:.3} mass {4:.3}/{5:.3}",
@@ -675,17 +735,23 @@ fn g1_control_one_hop_and_no_distractors_ties() {
     assert!(
         acc[4] >= acc[2] - 0.05,
         "1-hop control: propagation chain recall {0:.3} fell >5pp below BFS {1:.3}",
-        acc[4], acc[2]
+        acc[4],
+        acc[2]
     );
     assert!(
         acc[5] >= acc[3] - 0.05,
         "1-hop control: propagation tail recall {0:.3} fell >5pp below BFS {1:.3}",
-        acc[5], acc[3]
+        acc[5],
+        acc[3]
     );
 
     // Multi-hop with NO distractors: BFS's best case — nothing under-ranks.
     // Propagation must still match it (weights see a clean chain).
-    let cell = Cell { hop: 3, distractors: 0, k: 8 };
+    let cell = Cell {
+        hop: 3,
+        distractors: 0,
+        k: 8,
+    };
     let acc = run_cell(&cell, &seeds, &cfg_base);
     eprintln!(
         "control h=3 d=0 k=8: single {0:.3}/{1:.3} bfs {2:.3}/{3:.3} mass {4:.3}/{5:.3}",
@@ -694,12 +760,14 @@ fn g1_control_one_hop_and_no_distractors_ties() {
     assert!(
         acc[4] >= acc[2] - 0.05,
         "no-distractor control: propagation chain recall {0:.3} < BFS {1:.3} (weights must not hurt a clean chain)",
-        acc[4], acc[2]
+        acc[4],
+        acc[2]
     );
     assert!(
         acc[5] >= acc[3] - 0.05,
         "no-distractor control: propagation tail recall {0:.3} < BFS {1:.3}",
-        acc[5], acc[3]
+        acc[5],
+        acc[3]
     );
 }
 

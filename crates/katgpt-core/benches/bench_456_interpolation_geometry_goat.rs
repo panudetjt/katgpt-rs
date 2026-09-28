@@ -131,9 +131,7 @@ fn gate_g1_correctness() -> bool {
 
 fn gate_g2_perf() -> bool {
     println!();
-    println!(
-        "── G2: perf at n={N_ANCHORS} × d={DIM} ─────────────────────────────"
-    );
+    println!("── G2: perf at n={N_ANCHORS} × d={DIM} ─────────────────────────────");
 
     let space = EuclideanLatentSpace::<DIM>;
     let mut rng = FixtureRng::new(42);
@@ -190,7 +188,7 @@ fn gate_g2_perf() -> bool {
 fn gate_g4_zero_alloc() -> bool {
     use std::sync::atomic::Ordering;
 
-println!();
+    println!();
     println!("── G4: zero-alloc hot path ───────────────────────────────────");
 
     let space = EuclideanLatentSpace::<DIM>;
@@ -263,12 +261,8 @@ fn main() {
     println!("║ Issue 158 — Interpolation Geometry GOAT Gate (G1+G2+G4)     ║");
     println!("╚══════════════════════════════════════════════════════════════╝");
     println!();
-    println!(
-        "Config: n={N_ANCHORS} anchors, dim={DIM} (NeuronShard::style_weights scale)"
-    );
-    println!(
-        "       {TIMED_RUNS} timed runs (median), {WARMUP} warmup, seed=42"
-    );
+    println!("Config: n={N_ANCHORS} anchors, dim={DIM} (NeuronShard::style_weights scale)");
+    println!("       {TIMED_RUNS} timed runs (median), {WARMUP} warmup, seed=42");
 
     let g1 = gate_g1_correctness();
     let g2 = gate_g2_perf();

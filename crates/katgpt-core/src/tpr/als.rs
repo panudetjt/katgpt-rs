@@ -28,7 +28,7 @@ use super::types::{
     AlsConfig, AlsInput, AlsReport, L21, SCHEMA_VERSION, TPR_MAX_PROJECTION_K, TprArtifact,
     TprError, TprScheme,
 };
-use crate::linalg::{cholesky_f32, chol_solve_f32, ridge_solve_direct_f32, spd_inverse_f32};
+use crate::linalg::{chol_solve_f32, cholesky_f32, ridge_solve_direct_f32, spd_inverse_f32};
 
 /// The mutable ALS state one sweep can move, in the order `als_fit`'s
 /// destructuring assignment expects: `(fillers, scheme, w, bias, cores)`.
@@ -94,13 +94,15 @@ fn role_row(scheme: &TprScheme, p: usize, m: usize, out: &mut [f32]) {
 #[inline]
 fn axpy_bind(core: &mut [f32], r: &[f32], f: &[f32], d: usize, sign: f32) {
     for (blk, &rw) in r.iter().enumerate() {
-        if rw == 0.0 { continue } else {
-                let w = sign * rw;
-                let off = blk * d;
-                for (j, &fv) in f.iter().enumerate() {
-                    core[off + j] = w.mul_add(fv, core[off + j]);
-                }
+        if rw == 0.0 {
+            continue;
+        } else {
+            let w = sign * rw;
+            let off = blk * d;
+            for (j, &fv) in f.iter().enumerate() {
+                core[off + j] = w.mul_add(fv, core[off + j]);
             }
+        }
     }
 }
 
@@ -156,24 +158,26 @@ fn solve_wb(
         // Gram: upper-left K×K from c·cᵀ, last row/col from the intercept.
         for a in 0..k {
             let ca = c[a];
-            if ca == 0.0 {} else {
-                    let row = a * p;
-                    for b in 0..k {
-                        gram[row + b] = ca.mul_add(c[b], gram[row + b]);
-                    }
-                    gram[row + k] += ca;
-                    gram[k * p + a] += ca;
+            if ca == 0.0 {
+            } else {
+                let row = a * p;
+                for b in 0..k {
+                    gram[row + b] = ca.mul_add(c[b], gram[row + b]);
                 }
+                gram[row + k] += ca;
+                gram[k * p + a] += ca;
+            }
         }
         gram[k * p + k] += 1.0;
         // Cross-covariance XᵀE.
         for (a, &ca) in c.iter().enumerate() {
-            if ca == 0.0 {} else {
-                    let row = a * dim;
-                    for (i, &ev) in e.iter().enumerate() {
-                        cov[row + i] = ca.mul_add(ev, cov[row + i]);
-                    }
+            if ca == 0.0 {
+            } else {
+                let row = a * dim;
+                for (i, &ev) in e.iter().enumerate() {
+                    cov[row + i] = ca.mul_add(ev, cov[row + i]);
                 }
+            }
         }
         let row = k * dim;
         for (i, &ev) in e.iter().enumerate() {
@@ -262,12 +266,13 @@ fn free_cores(
     for i in 0..dim {
         for a in 0..k {
             let wa = w_at(w, dim, d, i, a);
-            if wa == 0.0 {} else {
-                    let row = a * k;
-                    for b in 0..k {
-                        gram[row + b] = wa.mul_add(w_at(w, dim, d, i, b), gram[row + b]);
-                    }
+            if wa == 0.0 {
+            } else {
+                let row = a * k;
+                for b in 0..k {
+                    gram[row + b] = wa.mul_add(w_at(w, dim, d, i, b), gram[row + b]);
                 }
+            }
         }
     }
     for a in 0..k {
@@ -282,16 +287,21 @@ fn free_cores(
         let e = &states[s * dim..(s + 1) * dim];
         for i in 0..dim {
             let sv = e[i] - bias[i];
-            if sv == 0.0 {} else {
-                    for j in 0..k {
-                        rhs[j * n + s] = w_at(w, dim, d, i, j).mul_add(sv, rhs[j * n + s]);
-                    }
+            if sv == 0.0 {
+            } else {
+                for j in 0..k {
+                    rhs[j * n + s] = w_at(w, dim, d, i, j).mul_add(sv, rhs[j * n + s]);
                 }
+            }
         }
     }
     cholesky_f32(l, &gram[..k * k], k);
     chol_solve_f32(&mut out[..k * n], &mut z[..k * n], l, &rhs[..k * n], k, n);
-    if all_finite(&out[..k * n]) { Ok(()) } else { Err(TprError::NonFinite("free cores")) }
+    if all_finite(&out[..k * n]) {
+        Ok(())
+    } else {
+        Err(TprError::NonFinite("free cores"))
+    }
 }
 
 /// Per-filler and per-role occurrence indices, built once per fit.
@@ -355,13 +365,15 @@ fn filler_block(
             role_row(scheme, p as usize, m, row);
             let core = &resid[s as usize * k..(s as usize + 1) * k];
             for (blk, &rw) in row.iter().enumerate() {
-                if rw == 0.0 { continue } else {
-                        let off = blk * d;
-                        for j in 0..d {
-                            num[j] = rw.mul_add(core[off + j], num[j]);
-                        }
-                        den = rw.mul_add(rw, den);
+                if rw == 0.0 {
+                    continue;
+                } else {
+                    let off = blk * d;
+                    for j in 0..d {
+                        num[j] = rw.mul_add(core[off + j], num[j]);
                     }
+                    den = rw.mul_add(rw, den);
+                }
             }
         }
         for j in 0..d {
@@ -469,12 +481,16 @@ fn unbind_basis(roles: &[f32], n_slots: usize, m: usize) -> (Vec<f32>, f32, f32)
             break;
         }
         let norm = best_n2.max(0.0).sqrt();
-        let q: Vec<f32> = if norm > 1e-12 { work[best * m..(best + 1) * m]
+        let q: Vec<f32> = if norm > 1e-12 {
+            work[best * m..(best + 1) * m]
                 .iter()
                 .map(|v| v / norm)
-                .collect() } else { (0..m)
+                .collect()
+        } else {
+            (0..m)
                 .map(|i| if i == best % m { 1.0 } else { 0.0 })
-                .collect() };
+                .collect()
+        };
         basis[best * m..(best + 1) * m].copy_from_slice(&q);
         done[best] = true;
         for p in 0..n_slots {
@@ -514,10 +530,12 @@ fn unbind_basis(roles: &[f32], n_slots: usize, m: usize) -> (Vec<f32>, f32, f32)
 }
 
 fn percentile(sorted: &[f32], q: f32) -> f32 {
-    if sorted.is_empty() { 0.0 } else {
-            let idx = ((sorted.len() - 1) as f32 * q).round() as usize;
-            sorted[idx.min(sorted.len() - 1)]
-        }
+    if sorted.is_empty() {
+        0.0
+    } else {
+        let idx = ((sorted.len() - 1) as f32 * q).round() as usize;
+        sorted[idx.min(sorted.len() - 1)]
+    }
 }
 
 /// Fit a TPR artifact by ridge-ALS (Issue 707 T5).
@@ -525,10 +543,7 @@ fn percentile(sorted: &[f32], q: f32) -> f32 {
 /// Returns the frozen (BLAKE3-committed) artifact and the certificate bundle
 /// the GOAT gates read. Deterministic: same input + config → bit-identical
 /// bytes.
-pub fn als_fit(
-    input: AlsInput<'_>,
-    cfg: &AlsConfig,
-) -> Result<(TprArtifact, AlsReport), TprError> {
+pub fn als_fit(input: AlsInput<'_>, cfg: &AlsConfig) -> Result<(TprArtifact, AlsReport), TprError> {
     let dim = input.dim;
     let d = cfg.d;
     let m = cfg.scheme.arity();
@@ -671,7 +686,13 @@ pub fn als_fit(
         // (which would ship the worse fit), the proposal is rejected and the
         // last accepted iterate is returned — the artifact is then, by
         // construction, the minimum of the recorded trajectory.
-        let snap = (fillers.clone(), scheme.clone(), w.clone(), bias.clone(), cores.clone());
+        let snap = (
+            fillers.clone(),
+            scheme.clone(),
+            w.clone(),
+            bias.clone(),
+            cores.clone(),
+        );
         free_cores(
             input.states,
             &w,
@@ -774,8 +795,13 @@ pub fn als_fit(
         prev = ssr;
         if ssr < best_ssr {
             best_ssr = ssr;
-            let snap: AlsIterate =
-                (fillers.clone(), scheme.clone(), w.clone(), bias.clone(), cores.clone());
+            let snap: AlsIterate = (
+                fillers.clone(),
+                scheme.clone(),
+                w.clone(),
+                bias.clone(),
+                cores.clone(),
+            );
             best_snap = Some(snap);
         }
         if converged {
@@ -786,7 +812,9 @@ pub fn als_fit(
     // within-tolerance uphill step (Issue 712). Also covers the
     // monotone-reject path: `snap` there is the last accepted state, which
     // the best-tracking subsumes when an earlier sweep was strictly better.
-    if prev > best_ssr && let Some(best) = best_snap.take() {
+    if prev > best_ssr
+        && let Some(best) = best_snap.take()
+    {
         (fillers, scheme, w, bias, cores) = best;
         prev = best_ssr;
     }
@@ -866,7 +894,11 @@ pub fn als_fit(
             centered_energy += dv * dv;
         }
     }
-    let energy_fraction = if centered_energy > 0.0 { (final_ssr / centered_energy) as f32 } else { 0.0 };
+    let energy_fraction = if centered_energy > 0.0 {
+        (final_ssr / centered_energy) as f32
+    } else {
+        0.0
+    };
 
     report.final_ssr = final_ssr;
     report.sweeps = sweeps;
@@ -895,30 +927,35 @@ pub fn als_fit(
 
     // Cached projection Cholesky (T4).
     let projection_lambda = cfg.ridge_lambda.max(MIN_PROJECTION_LAMBDA);
-    let projection_inv = if !(cfg.build_projection && k <= TPR_MAX_PROJECTION_K) { None } else {
-            let mut g = vec![0.0f32; k * k];
-            for i in 0..dim {
-                for a in 0..k {
-                    let wa = w_at(&w, dim, d, i, a);
-                    if wa == 0.0 {} else {
-                            let r = a * k;
-                            for b in 0..k {
-                                g[r + b] = wa.mul_add(w_at(&w, dim, d, i, b), g[r + b]);
-                            }
-                        }
-                }
-            }
+    let projection_inv = if !(cfg.build_projection && k <= TPR_MAX_PROJECTION_K) {
+        None
+    } else {
+        let mut g = vec![0.0f32; k * k];
+        for i in 0..dim {
             for a in 0..k {
-                g[a * k + a] += projection_lambda;
-            }
-            if !all_finite(&g) { None } else {
-                    let mut inv = vec![0.0f32; k * k];
-                    let mut l = vec![0.0f32; k * k];
-                    let mut inv_l = vec![0.0f32; k * k];
-                    spd_inverse_f32(&mut inv, &mut l, &mut inv_l, &g, k);
-                    if all_finite(&inv) { Some(inv) } else { None }
+                let wa = w_at(&w, dim, d, i, a);
+                if wa == 0.0 {
+                } else {
+                    let r = a * k;
+                    for b in 0..k {
+                        g[r + b] = wa.mul_add(w_at(&w, dim, d, i, b), g[r + b]);
+                    }
                 }
-        };
+            }
+        }
+        for a in 0..k {
+            g[a * k + a] += projection_lambda;
+        }
+        if !all_finite(&g) {
+            None
+        } else {
+            let mut inv = vec![0.0f32; k * k];
+            let mut l = vec![0.0f32; k * k];
+            let mut inv_l = vec![0.0f32; k * k];
+            spd_inverse_f32(&mut inv, &mut l, &mut inv_l, &g, k);
+            if all_finite(&inv) { Some(inv) } else { None }
+        }
+    };
 
     let bic_label = match &scheme {
         TprScheme::Orthogonal { arity } => format!("orthogonal:m{arity}:d{d}"),
@@ -961,11 +998,15 @@ pub fn als_fit(
 
 #[inline]
 fn check(got: usize, expected: usize, what: &'static str) -> Result<(), TprError> {
-    if got == expected { Ok(()) } else { Err(TprError::DimMismatch {
+    if got == expected {
+        Ok(())
+    } else {
+        Err(TprError::DimMismatch {
             what,
             expected,
             got,
-        }) }
+        })
+    }
 }
 
 /// Parameter count of a fitted artifact — the BIC complexity term (T7).

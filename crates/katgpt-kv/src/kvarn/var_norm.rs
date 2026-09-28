@@ -225,8 +225,14 @@ pub fn variance_normalize_into(
     // but we reuse `inv_col` as the per-column reciprocal scratch inside
     // `apply_scales_into` instead of allocating a fresh one.
     use katgpt_core::simd::fast_exp;
-    let s_col: Vec<f32> = log_s_col_best[..cols].iter().map(|&l| fast_exp(l)).collect();
-    let s_row: Vec<f32> = log_s_row_best[..rows].iter().map(|&l| fast_exp(l)).collect();
+    let s_col: Vec<f32> = log_s_col_best[..cols]
+        .iter()
+        .map(|&l| fast_exp(l))
+        .collect();
+    let s_row: Vec<f32> = log_s_row_best[..rows]
+        .iter()
+        .map(|&l| fast_exp(l))
+        .collect();
     apply_scales_into(tile, rows, cols, &s_row, &s_col, inv_col);
 
     VarianceNormScales { s_col, s_row }

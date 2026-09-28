@@ -211,14 +211,13 @@ pub fn forward_looped<'a>(
     // instead of a Config field: no constructor ripple). Feature-gated so the
     // no-probe build carries no parameter at all (the `gain_cost_halt`
     // precedent).
-    #[cfg(feature = "cadence_gate")]
-    residual_exit: Option<
+    #[cfg(feature = "cadence_gate")] residual_exit: Option<
         &mut katgpt_core::convergence_cadence::LoopResidualExit,
     >,
 ) -> &'a mut [f32] {
     use crate::types::HybridPattern;
 
-cache.advance_pos(pos);
+    cache.advance_pos(pos);
 
     let n = config.n_embd;
     let hd = config.head_dim;
@@ -614,9 +613,8 @@ cache.advance_pos(pos);
                     let candidate = _gate_scratch_logits
                         .iter()
                         .enumerate()
-                        .max_by(|(_, a), (_, b)| {
-                            katgpt_core::float_order::cmp_for_max(**a, **b)
-                        }).map_or(0, |(i, _)| i);
+                        .max_by(|(_, a), (_, b)| katgpt_core::float_order::cmp_for_max(**a, **b))
+                        .map_or(0, |(i, _)| i);
                     if !gate.should_recurse(&_gate_prev_logits, &_gate_scratch_logits, candidate) {
                         // Dead compute detected: this iteration did not
                         // improve the candidate's prediction, so further
@@ -884,11 +882,7 @@ fn add_blake3_state_noise(x: &mut [f32], pos: usize, tau: usize, scale: f32) {
         let bits = u32::from_le_bytes(bytes) & 0x00FF_FFFF;
         let u = (bits as f32) * (1.0 / 16777216.0);
         // Box–Muller takes ln(u1): clamp the measure-zero 0.0.
-        if u == 0.0 {
-            f32::EPSILON
-        } else {
-            u
-        }
+        if u == 0.0 { f32::EPSILON } else { u }
     };
 
     let n2 = n & !1; // largest even ≤ n — full Box–Muller pairs

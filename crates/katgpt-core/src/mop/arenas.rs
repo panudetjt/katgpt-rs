@@ -50,10 +50,7 @@ fn is_trap_or_food(r: usize, c: usize) -> bool {
 }
 
 /// Build the 4-room gridworld kernel + mask.
-pub fn four_room_gridworld() -> (
-    [[[f32; GRID_N]; GRID_A]; GRID_N],
-    [[u8; GRID_A]; GRID_N],
-) {
+pub fn four_room_gridworld() -> ([[[f32; GRID_N]; GRID_A]; GRID_N], [[u8; GRID_A]; GRID_N]) {
     let mut p = [[[0.0f32; GRID_N]; GRID_A]; GRID_N];
     let mut mask = [[0u8; GRID_A]; GRID_N];
 
@@ -84,11 +81,7 @@ pub fn four_room_gridworld() -> (
                     s
                 } else {
                     let (nr, nc) = (nr as usize, nc as usize);
-                    if is_wall(nr, nc) {
-                        s
-                    } else {
-                        cell(nr, nc)
-                    }
+                    if is_wall(nr, nc) { s } else { cell(nr, nc) }
                 };
                 p[s][k][target] = 1.0;
             }
@@ -108,22 +101,14 @@ pub const RING_A: usize = 3;
 /// DEAD absorbing state index.
 pub const RING_DEAD: usize = 16;
 
-pub fn ring_world() -> (
-    [[[f32; RING_N]; RING_A]; RING_N],
-    [[u8; RING_A]; RING_N],
-) {
+pub fn ring_world() -> ([[[f32; RING_N]; RING_A]; RING_N], [[u8; RING_A]; RING_N]) {
     ring_world_noisy(0.0)
 }
 
 /// Noisy ring: with slip probability `slip ∈ [0, 0.5)`, the CW action
 /// instead moves CCW (and vice versa); STAY stays deterministic. `slip = 0`
 /// is the deterministic ring. Exercises `H(S'|s,a) > 0` (the β term).
-pub fn ring_world_noisy(
-    slip: f32,
-) -> (
-    [[[f32; RING_N]; RING_A]; RING_N],
-    [[u8; RING_A]; RING_N],
-) {
+pub fn ring_world_noisy(slip: f32) -> ([[[f32; RING_N]; RING_A]; RING_N], [[u8; RING_A]; RING_N]) {
     let mut p = [[[0.0f32; RING_N]; RING_A]; RING_N];
     let mut mask = [[1u8; RING_A]; RING_N];
     // DEAD: single stay action.

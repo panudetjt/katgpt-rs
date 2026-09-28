@@ -115,7 +115,11 @@ pub fn validate_bindings(
     }
 
     residuals.sort_by(|a, b| crate::float_order::asc(*a, *b));
-    rep.residual_p50 = if residuals.is_empty() { 0.0 } else { residuals[(residuals.len() - 1) / 2] };
+    rep.residual_p50 = if residuals.is_empty() {
+        0.0
+    } else {
+        residuals[(residuals.len() - 1) / 2]
+    };
     rep.residual_max = residuals.last().copied().unwrap_or(0.0);
     rep.unbind_cos_mean = match cos_count {
         0 => 0.0,
@@ -195,13 +199,15 @@ impl AtomicNull {
     /// Fraction of `candidates` this dictionary has an entry for — the
     /// vacuity check.
     pub fn coverage(&self, candidates: &[TprBindings]) -> f32 {
-        if candidates.is_empty() { 0.0 } else {
-                let hit = candidates
-                    .iter()
-                    .filter(|c| self.table.contains_key(&bind_key(c)))
-                    .count();
-                hit as f32 / candidates.len() as f32
-            }
+        if candidates.is_empty() {
+            0.0
+        } else {
+            let hit = candidates
+                .iter()
+                .filter(|c| self.table.contains_key(&bind_key(c)))
+                .count();
+            hit as f32 / candidates.len() as f32
+        }
     }
 
     /// Top-1 accuracy over `candidates`, scoring each by distance to its
@@ -274,11 +280,13 @@ fn l2(a: &[f32], b: &[f32]) -> f32 {
 /// is the [`AtomicNull::coverage`] discipline missing one function over.
 #[must_use]
 pub fn candidate_pool_coverage(truth: &[TprBindings], candidates: &[TprBindings]) -> f32 {
-    if truth.is_empty() { 0.0 } else {
-            let pool: std::collections::HashSet<_> = candidates.iter().map(bind_key).collect();
-            let hit = truth.iter().filter(|t| pool.contains(&bind_key(t))).count();
-            hit as f32 / truth.len() as f32
-        }
+    if truth.is_empty() {
+        0.0
+    } else {
+        let pool: std::collections::HashSet<_> = candidates.iter().map(bind_key).collect();
+        let hit = truth.iter().filter(|t| pool.contains(&bind_key(t))).count();
+        hit as f32 / truth.len() as f32
+    }
 }
 
 /// **T4 (Issue 711)** — [`withheld_pair_top1`] with the two quantities its
@@ -313,14 +321,22 @@ impl WithheldPairReport {
     /// number answers neither (Issue 711).
     #[must_use]
     pub fn verdict(&self) -> Option<f32> {
-        if self.spread.role_determined_by_filler() { None } else { Some(self.top1) }
+        if self.spread.role_determined_by_filler() {
+            None
+        } else {
+            Some(self.top1)
+        }
     }
 
     /// `top1` rescaled onto the answerable subset — what the primitive scored
     /// on the states it *could* have scored. `None` on an unanswerable pool.
     #[must_use]
     pub fn per_answerable(&self) -> Option<f32> {
-        if self.coverage > 0.0 { Some(self.top1 / self.coverage) } else { None }
+        if self.coverage > 0.0 {
+            Some(self.top1 / self.coverage)
+        } else {
+            None
+        }
     }
 }
 
@@ -498,10 +514,15 @@ impl ObservedPairs {
     /// is a prediction.
     #[must_use]
     pub fn observed_fraction(&self, queries: &[(u16, u16)]) -> f32 {
-        if queries.is_empty() { 0.0 } else {
-                let hit = queries.iter().filter(|(r, f)| self.contains(*r, *f)).count();
-                hit as f32 / queries.len() as f32
-            }
+        if queries.is_empty() {
+            0.0
+        } else {
+            let hit = queries
+                .iter()
+                .filter(|(r, f)| self.contains(*r, *f))
+                .count();
+            hit as f32 / queries.len() as f32
+        }
     }
 }
 
@@ -586,7 +607,11 @@ impl BowRouterReport {
     /// structure question is not posed on this corpus at all.
     #[must_use]
     pub fn verdict(&self) -> Option<bool> {
-        if self.vacuous || self.spread.role_determined_by_filler() { None } else { Some(self.structured) }
+        if self.vacuous || self.spread.role_determined_by_filler() {
+            None
+        } else {
+            Some(self.structured)
+        }
     }
 }
 
@@ -628,7 +653,13 @@ pub fn bow_router(
 
     let r_bow = bow_rep.residual_energy_fraction;
     let r_full = full_rep.residual_energy_fraction;
-    let ratio = if r_full > 1e-9 { r_bow / r_full } else if r_bow > 1e-9 { f32::MAX } else { 1.0 };
+    let ratio = if r_full > 1e-9 {
+        r_bow / r_full
+    } else if r_bow > 1e-9 {
+        f32::MAX
+    } else {
+        1.0
+    };
     Ok(BowRouterReport {
         r_bow,
         r_full,
@@ -710,7 +741,11 @@ pub fn role_shuffle_is_vacuous(bindings: &[TprBindings], mode: RoleShuffleMode) 
 /// `vacuous` flag then says.
 #[must_use]
 pub fn role_shuffle_mode_for(bindings: &[TprBindings]) -> RoleShuffleMode {
-    if role_shuffle_is_vacuous(bindings, RoleShuffleMode::WithinState) { RoleShuffleMode::CrossState } else { RoleShuffleMode::WithinState }
+    if role_shuffle_is_vacuous(bindings, RoleShuffleMode::WithinState) {
+        RoleShuffleMode::CrossState
+    } else {
+        RoleShuffleMode::WithinState
+    }
 }
 
 /// **T6 (c) control** — role-shuffle report.
@@ -754,7 +789,11 @@ impl ShuffledRoleReport {
     /// when the role is a deterministic function of the filler.
     #[must_use]
     pub fn verdict(&self) -> Option<bool> {
-        if self.vacuous || self.spread.role_determined_by_filler() { None } else { Some(self.degraded) }
+        if self.vacuous || self.spread.role_determined_by_filler() {
+            None
+        } else {
+            Some(self.degraded)
+        }
     }
 }
 
@@ -888,7 +927,13 @@ pub fn shuffled_role_control_with(
     let (_, shuf_rep) = als_fit(shuf_input, cfg)?;
     let r_true = true_rep.residual_energy_fraction;
     let r_shuffled = shuf_rep.residual_energy_fraction;
-    let ratio = if r_true > 1e-9 { r_shuffled / r_true } else if r_shuffled > 1e-9 { f32::MAX } else { 1.0 };
+    let ratio = if r_true > 1e-9 {
+        r_shuffled / r_true
+    } else if r_shuffled > 1e-9 {
+        f32::MAX
+    } else {
+        1.0
+    };
     Ok(ShuffledRoleReport {
         r_true,
         r_shuffled,

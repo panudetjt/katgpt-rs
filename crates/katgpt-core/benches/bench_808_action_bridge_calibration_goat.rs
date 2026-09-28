@@ -40,9 +40,7 @@ counting_allocator!();
 
 use katgpt_core::ActionBridge;
 use katgpt_core::bridge::calibrated::CalibratedActionBridge;
-use katgpt_core::sigmoid_calibration::{
-    brier_score, expected_calibration_error, log_loss,
-};
+use katgpt_core::sigmoid_calibration::{brier_score, expected_calibration_error, log_loss};
 use std::hint::black_box;
 
 /// Deterministic SplitMix64 (the workspace-bench idiom — no rand dep).
@@ -95,15 +93,7 @@ fn planted_true_p(raw_conf: f32) -> f32 {
 
 /// One decision draw: latent q → the bridge's (action, raw confidence).
 fn make_bridge() -> ActionBridge<N_ACTIONS, LATENT_D> {
-    ActionBridge::new(
-        [
-            [1, 0, -1],
-            [0, 1, 1],
-            [-1, -1, 0],
-            [1, 1, 1],
-        ],
-        THRESHOLD,
-    )
+    ActionBridge::new([[1, 0, -1], [0, 1, 1], [-1, -1, 0], [1, 1, 1]], THRESHOLD)
 }
 
 /// Build `n` decisions: q-values in [-3, 3]^D with varied scale so raw
@@ -139,7 +129,10 @@ fn main() {
         let succeeded = fit_rng.next_unit() < planted_true_p(raw_conf);
         calibrated.observe(raw_conf, succeeded);
     }
-    assert!(calibrated.refit(), "planted fixture must move the parameters");
+    assert!(
+        calibrated.refit(),
+        "planted fixture must move the parameters"
+    );
     let (t, b) = calibrated.params();
 
     // ── Evaluate on the held-out test split ──────────────────────────────
@@ -272,7 +265,10 @@ fn main() {
     println!();
     println!("───────────────────────────────────────────────────────────────");
     let pass = g1 && g1_recovery && g2 && g3a && g3b && g3c && g4_delta.is_none_or(|d| d == 0);
-    assert!(g1, "G1 FAILED: ECE cal {ece_cal:.4} (≤0.05, < raw {ece_raw:.4})");
+    assert!(
+        g1,
+        "G1 FAILED: ECE cal {ece_cal:.4} (≤0.05, < raw {ece_raw:.4})"
+    );
     assert!(
         g1_recovery,
         "G1 FAILED: planted recovery ({t:.3}, {b:.3}) vs ({t_planted:.3}, {b_planted:.3})"
@@ -282,7 +278,10 @@ fn main() {
         "G2 FAILED: logloss cal {ll_cal:.4} / raw {ll_raw:.4} / floor {ll_floor:.4}; brier cal {br_cal:.4} / raw {br_raw:.4} / floor {br_floor:.4}"
     );
     assert!(g3a, "G3a FAILED: cold start drifted");
-    assert!(g3b, "G3b FAILED: {winner_mismatches} winner mismatches after refit");
+    assert!(
+        g3b,
+        "G3b FAILED: {winner_mismatches} winner mismatches after refit"
+    );
     assert!(
         g3c,
         "G3c FAILED: abstain rate moved AWAY from oracle (raw err {:.4} → cal err {:.4})",
@@ -307,9 +306,5 @@ fn main() {
 }
 
 fn ok(v: bool) -> &'static str {
-    if v {
-        "✅"
-    } else {
-        "❌"
-    }
+    if v { "✅" } else { "❌" }
 }

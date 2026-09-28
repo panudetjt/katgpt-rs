@@ -81,9 +81,7 @@ fn build_retrieval_task(n: usize, delta: f32) -> (Vec<f32>, usize) {
 
 /// Numerically stable softmax mass on the gold key.
 fn softmax_gold_mass(logits: &[f32], gold_idx: usize) -> f32 {
-    let max = logits
-        .iter()
-        .fold(f32::NEG_INFINITY, |a, &b| a.max(b));
+    let max = logits.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
     let sum: f64 = logits.iter().map(|&x| ((x - max) as f64).exp()).sum();
     let gold = ((logits[gold_idx] - max) as f64).exp();
     (gold / sum) as f32
@@ -94,7 +92,8 @@ fn argmax_index(logits: &[f32]) -> usize {
     logits
         .iter()
         .enumerate()
-        .max_by(|(_, a), (_, b)| katgpt_core::float_order::cmp_for_max(**a, **b)).map_or(0, |(i, _)| i)
+        .max_by(|(_, a), (_, b)| katgpt_core::float_order::cmp_for_max(**a, **b))
+        .map_or(0, |(i, _)| i)
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -116,7 +115,10 @@ fn section_1_dilution_problem() {
     println!();
 
     let ns: &[usize] = &[64, 1_000, 10_000, 100_000];
-    println!("  {:>10}  {:>14}  {:>10}", "N", "gold_mass_base", "argmax_ok");
+    println!(
+        "  {:>10}  {:>14}  {:>10}",
+        "N", "gold_mass_base", "argmax_ok"
+    );
     println!("  ──────────────────────────────────────────────────────────");
     for &n in ns {
         let (logits, gold_idx) = build_retrieval_task(n, DELTA);
@@ -175,9 +177,7 @@ fn section_2_fixed_mode() {
         } else {
             f32::INFINITY
         };
-        println!(
-            "  {n:>10}  {log_n:>10.3}  {base_mass:>14.6}  {ssmax_mass:>14.6}  {ratio:>9.1}×"
-        );
+        println!("  {n:>10}  {log_n:>10.3}  {base_mass:>14.6}  {ssmax_mass:>14.6}  {ratio:>9.1}×");
     }
     println!();
     println!("  → SSMax with s_L=1.0 recovers 60× at N=10k, 191× at N=100k. The");
@@ -286,11 +286,12 @@ fn section_4_api_surface() {
     println!();
 
     let mode_fixed = SsmaxMode::Fixed { s_l: 1.0 };
-    let mode_adapt = SsmaxMode::Adaptive {
-        rolling_delta: 0.5,
-    };
+    let mode_adapt = SsmaxMode::Adaptive { rolling_delta: 0.5 };
 
-    println!("  {:>8}  {:>12}  {:>14}  {:>14}  {:>8}", "N", "mode", "config_mult", "call_mult", "agree?");
+    println!(
+        "  {:>8}  {:>12}  {:>14}  {:>14}  {:>8}",
+        "N", "mode", "config_mult", "call_mult", "agree?"
+    );
     println!("  ────────────────────────────────────────────────────────────────────────");
     for &n in &[64_usize, 1_000, 10_000] {
         for (label, mode) in [("Fixed(1.0)", &mode_fixed), ("Adapt(0.5)", &mode_adapt)] {
@@ -300,7 +301,11 @@ fn section_4_api_surface() {
             let agree = (config.multiplier() - call_mult).abs() < 1e-6;
             println!(
                 "  {:>8}  {:>12}  {:>14.4}  {:>14.4}  {:>8}",
-                n, label, config.multiplier(), call_mult, if agree { "✓" } else { "✗" }
+                n,
+                label,
+                config.multiplier(),
+                call_mult,
+                if agree { "✓" } else { "✗" }
             );
         }
     }
@@ -313,9 +318,7 @@ fn section_4_api_surface() {
     // Identity at multiplier = 1: s_L · log(N) = 1 ⇒ log(N) = 1/s_L ⇒ N = e^{1/s_L}.
     let s_l = 1.0_f32;
     let n_identity = (1.0 / s_l).exp();
-    println!(
-        "  Identity point (multiplier = 1): s_L={s_l}, N = e^(1/s_L) = {n_identity:.2}"
-    );
+    println!("  Identity point (multiplier = 1): s_L={s_l}, N = e^(1/s_L) = {n_identity:.2}");
     println!("  At this N, SSMax is a no-op (multiplies by 1.0). Below this N,");
     println!("  SSMax is milder than base (multiplier < 1); above, sharper.");
     println!();
@@ -359,13 +362,19 @@ fn section_5_invariants() {
         );
         let adapt_argmax = argmax_index(&adapt);
 
-        let ok = base_argmax == fixed_argmax && fixed_argmax == adapt_argmax && adapt_argmax == gold_idx;
+        let ok =
+            base_argmax == fixed_argmax && fixed_argmax == adapt_argmax && adapt_argmax == gold_idx;
         if !ok {
             all_ok = false;
         }
         println!(
             "    N={:<6} base_argmax={} ssmax_fixed={} ssmax_adapt={} gold={}  {}",
-            n, base_argmax, fixed_argmax, adapt_argmax, gold_idx, if ok { "✓" } else { "✗" }
+            n,
+            base_argmax,
+            fixed_argmax,
+            adapt_argmax,
+            gold_idx,
+            if ok { "✓" } else { "✗" }
         );
     }
     println!(
@@ -377,14 +386,18 @@ fn section_5_invariants() {
     // (b) Empty slice is a no-op.
     let mut empty: [f32; 0] = [];
     apply_ssmax_inplace(&mut empty, &SsmaxMode::Fixed { s_l: 5.0 }, 10.0);
-    println!("  Empty slice after apply_ssmax_inplace: len={} (no-op) ✓", empty.len());
+    println!(
+        "  Empty slice after apply_ssmax_inplace: len={} (no-op) ✓",
+        empty.len()
+    );
     println!();
 
     // (c) N ≤ 1 → log_n = 0 → multiplier = 0 → logits zeroed (uniform softmax).
     let config = SsmaxConfig::from_mode(&SsmaxMode::Fixed { s_l: 1.0 }, 1);
     println!(
         "  N=1: SsmaxConfig.log_n = {:.4} (convention ln(1)=0), multiplier = {:.4}",
-        config.log_n, config.multiplier()
+        config.log_n,
+        config.multiplier()
     );
     println!("  → Single-token softmax([3.14]) = [1.0]; SSMax zeroes the logit but");
     println!("    softmax([0.0]) = [1.0] too. No-op by convention for N ≤ 1. ✓");

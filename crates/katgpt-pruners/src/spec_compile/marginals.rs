@@ -322,9 +322,7 @@ mod tests {
             rules: vec![SpecRule {
                 depth: None,
                 prefix: Vec::new(),
-                allowed: CompactBitmap::from_token_indices(
-                    b"<>".iter().map(|&b| b as usize),
-                ),
+                allowed: CompactBitmap::from_token_indices(b"<>".iter().map(|&b| b as usize)),
                 is_allowlist: false, // blocklist
             }],
             vocab_size: 256,
@@ -341,9 +339,7 @@ mod tests {
                 SpecRule {
                     depth: Some(0),
                     prefix: Vec::new(),
-                    allowed: CompactBitmap::from_token_indices(
-                        b"{[".iter().map(|&b| b as usize),
-                    ),
+                    allowed: CompactBitmap::from_token_indices(b"{[".iter().map(|&b| b as usize)),
                     is_allowlist: true,
                 },
                 // Global: JSON-safe chars
@@ -562,9 +558,7 @@ mod tests {
             rules: vec![],
             vocab_size: 256,
             global_allowed: CompactBitmap::empty(),
-            global_blocked: CompactBitmap::from_token_indices(
-                b"<>".iter().map(|&b| b as usize),
-            ),
+            global_blocked: CompactBitmap::from_token_indices(b"<>".iter().map(|&b| b as usize)),
         };
         let marginals = SpecMarginals::from_spec(&spec);
 

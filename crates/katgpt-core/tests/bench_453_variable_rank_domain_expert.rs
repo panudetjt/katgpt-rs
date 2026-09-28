@@ -36,7 +36,12 @@ impl<const D: usize> DirectionField<D> {
             *d = ((x * 0.1).sin() + (x * 0.07).cos()) * 0.5;
         }
         // Normalize to unit length
-        let norm: f32 = direction.iter().map(|v| v * v).sum::<f32>().sqrt().max(1e-8);
+        let norm: f32 = direction
+            .iter()
+            .map(|v| v * v)
+            .sum::<f32>()
+            .sqrt()
+            .max(1e-8);
         for v in direction.iter_mut() {
             *v /= norm;
         }
@@ -52,7 +57,11 @@ impl<const D: usize> DirectionField<D> {
 impl<const D: usize> ArchetypeFieldSource<D> for DirectionField<D> {
     fn evolve<'a>(&self, z: &[f32], dz_scratch: &'a mut [f32]) -> &'a mut [f32] {
         // f_k(z) = direction_k · dot(z, direction_k)
-        let dot: f32 = z.iter().zip(self.direction.iter()).map(|(zi, di)| zi * di).sum();
+        let dot: f32 = z
+            .iter()
+            .zip(self.direction.iter())
+            .map(|(zi, di)| zi * di)
+            .sum();
         for (dz, di) in dz_scratch[..D].iter_mut().zip(self.direction.iter()) {
             *dz = di * dot;
         }
@@ -121,7 +130,8 @@ fn domain_gate(activity: &[f32; 3]) -> usize {
     activity
         .iter()
         .enumerate()
-        .max_by(|(_, a), (_, b)| katgpt_core::float_order::cmp_for_max(**a, **b)).map_or(0, |(i, _)| i)
+        .max_by(|(_, a), (_, b)| katgpt_core::float_order::cmp_for_max(**a, **b))
+        .map_or(0, |(i, _)| i)
 }
 
 // ─── Baseline: uniform CommittedFieldBlend<3, 32> ───────────────────────────
@@ -157,12 +167,14 @@ impl Baseline {
 
         // Apply blend with overridden pi (per-NPC personality)
         self.blend.pi = *pi_override;
-        self.blend.apply_blended(&fields_ref, z, &mut scratch, &mut out);
+        self.blend
+            .apply_blended(&fields_ref, z, &mut scratch, &mut out);
 
         // Winning archetype = highest gate weight = highest pi (sigmoid monotonic)
         let winner = (0..3)
             .map(|k| (k, pi_override[k]))
-            .max_by(|(_, a), (_, b)| katgpt_core::float_order::cmp_for_max(*a, *b)).map_or(0, |(k, _)| k);
+            .max_by(|(_, a), (_, b)| katgpt_core::float_order::cmp_for_max(*a, *b))
+            .map_or(0, |(k, _)| k);
 
         (out, winner)
     }
@@ -203,11 +215,13 @@ impl MoveCluster {
         let mut out = [0.0f32; 8];
 
         self.blend.pi = *pi_override;
-        self.blend.apply_blended(&fields_ref, z_proj, &mut scratch, &mut out);
+        self.blend
+            .apply_blended(&fields_ref, z_proj, &mut scratch, &mut out);
 
         let winner = (0..12)
             .map(|k| (k, pi_override[k]))
-            .max_by(|(_, a), (_, b)| katgpt_core::float_order::cmp_for_max(*a, *b)).map_or(0, |(k, _)| k);
+            .max_by(|(_, a), (_, b)| katgpt_core::float_order::cmp_for_max(*a, *b))
+            .map_or(0, |(k, _)| k);
 
         (out, winner)
     }
@@ -231,11 +245,13 @@ impl CombatCluster {
         let mut out = [0.0f32; 16];
 
         self.blend.pi = *pi_override;
-        self.blend.apply_blended(&fields_ref, z_proj, &mut scratch, &mut out);
+        self.blend
+            .apply_blended(&fields_ref, z_proj, &mut scratch, &mut out);
 
         let winner = (0..6)
             .map(|k| (k, pi_override[k]))
-            .max_by(|(_, a), (_, b)| katgpt_core::float_order::cmp_for_max(*a, *b)).map_or(0, |(k, _)| k);
+            .max_by(|(_, a), (_, b)| katgpt_core::float_order::cmp_for_max(*a, *b))
+            .map_or(0, |(k, _)| k);
 
         (out, winner)
     }
@@ -260,11 +276,13 @@ impl QuestCluster {
         let mut out = [0.0f32; 32];
 
         self.blend.pi = *pi_override;
-        self.blend.apply_blended(&fields_ref, z, &mut scratch, &mut out);
+        self.blend
+            .apply_blended(&fields_ref, z, &mut scratch, &mut out);
 
         let winner = (0..3)
             .map(|k| (k, pi_override[k]))
-            .max_by(|(_, a), (_, b)| katgpt_core::float_order::cmp_for_max(*a, *b)).map_or(0, |(k, _)| k);
+            .max_by(|(_, a), (_, b)| katgpt_core::float_order::cmp_for_max(*a, *b))
+            .map_or(0, |(k, _)| k);
 
         (out, winner)
     }
@@ -292,11 +310,7 @@ fn poc_variable_rank_domain_expert() {
             let (state, activity) = npc_state(seed);
             let domain = domain_gate(&activity);
             // Per-NPC personality weights for each domain
-            let pi_baseline = [
-                prng(seed + 10),
-                prng(seed + 20),
-                prng(seed + 30),
-            ];
+            let pi_baseline = [prng(seed + 10), prng(seed + 20), prng(seed + 30)];
             let pi_move = std::array::from_fn(|k| prng(seed + 100 + k as u64));
             let pi_combat = std::array::from_fn(|k| prng(seed + 200 + k as u64));
             (state, pi_baseline, pi_move, pi_combat, domain)
@@ -374,18 +388,36 @@ fn poc_variable_rank_domain_expert() {
     println!("╠══════════════════════════════════════════════════════════════╣");
     println!("║  BASELINE: CommittedFieldBlend<3, 32> (uniform D=32)       ║");
     println!("║    Archetype wins: {baseline_counts:?}");
-    println!("║    Entropy:        {:.4} bits (max=log₂(3)={:.4})", baseline_entropy, (3.0f32).log2());
+    println!(
+        "║    Entropy:        {:.4} bits (max=log₂(3)={:.4})",
+        baseline_entropy,
+        (3.0f32).log2()
+    );
     println!("║    Latency:        {baseline_latency_ns:.1} ns/NPC");
     println!("╠══════════════════════════════════════════════════════════════╣");
     println!("║  VARIABLE-RANK: domain gate → project → per-domain blend    ║");
-    println!("║    Domain split:  move={} combat={} quest={}",
-        domain_counts[0], domain_counts[1], domain_counts[2]);
+    println!(
+        "║    Domain split:  move={} combat={} quest={}",
+        domain_counts[0], domain_counts[1], domain_counts[2]
+    );
     println!("║    Move wins:     {move_counts:?}");
     println!("║    Combat wins:   {combat_counts:?}");
     println!("║    Quest wins:    {quest_counts:?}");
-    println!("║    Move entropy:  {:.4} bits (max=log₂(12)={:.4})", move_entropy, (12.0f32).log2());
-    println!("║    Combat entropy:{:.4} bits (max=log₂(6)={:.4})", combat_entropy, (6.0f32).log2());
-    println!("║    Quest entropy: {:.4} bits (max=log₂(3)={:.4})", quest_entropy, (3.0f32).log2());
+    println!(
+        "║    Move entropy:  {:.4} bits (max=log₂(12)={:.4})",
+        move_entropy,
+        (12.0f32).log2()
+    );
+    println!(
+        "║    Combat entropy:{:.4} bits (max=log₂(6)={:.4})",
+        combat_entropy,
+        (6.0f32).log2()
+    );
+    println!(
+        "║    Quest entropy: {:.4} bits (max=log₂(3)={:.4})",
+        quest_entropy,
+        (3.0f32).log2()
+    );
     println!("║    Weighted avg:  {variable_entropy:.4} bits");
     println!("║    Latency:       {variable_latency_ns:.1} ns/NPC");
     println!("╠══════════════════════════════════════════════════════════════╣");
@@ -394,9 +426,21 @@ fn poc_variable_rank_domain_expert() {
     println!("║    Latency ratio:  {latency_ratio:.2}× (variable / baseline)");
     println!("╠══════════════════════════════════════════════════════════════╣");
     println!("║  GATES                                                      ║");
-    println!("║    G1 correctness: {} (all {} NPCs processed)", if g1_pass { "✅ PASS" } else { "❌ FAIL" }, N_NPCS);
-    println!("║    G2 latency:     {} (≤2.0× baseline, got {:.2}×)", if g2_pass { "✅ PASS" } else { "❌ FAIL" }, latency_ratio);
-    println!("║    G3 entropy:     {} (≥1.0× baseline, got {:.2}×)", if g3_pass { "✅ PASS" } else { "❌ FAIL" }, entropy_ratio);
+    println!(
+        "║    G1 correctness: {} (all {} NPCs processed)",
+        if g1_pass { "✅ PASS" } else { "❌ FAIL" },
+        N_NPCS
+    );
+    println!(
+        "║    G2 latency:     {} (≤2.0× baseline, got {:.2}×)",
+        if g2_pass { "✅ PASS" } else { "❌ FAIL" },
+        latency_ratio
+    );
+    println!(
+        "║    G3 entropy:     {} (≥1.0× baseline, got {:.2}×)",
+        if g3_pass { "✅ PASS" } else { "❌ FAIL" },
+        entropy_ratio
+    );
     println!("╠══════════════════════════════════════════════════════════════╣");
 
     let all_pass = g1_pass && g2_pass && g3_pass;

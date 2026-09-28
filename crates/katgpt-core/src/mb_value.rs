@@ -458,8 +458,7 @@ impl MbCircuit {
         );
         let n_actions = if self.n_action_dims > 0 {
             assert!(
-                !action_codes.is_empty()
-                    && action_codes.len().is_multiple_of(self.n_action_dims),
+                !action_codes.is_empty() && action_codes.len().is_multiple_of(self.n_action_dims),
                 "calibrate: action_codes must be K × n_action_dims"
             );
             action_codes.len() / self.n_action_dims
@@ -570,7 +569,9 @@ impl MbCircuit {
 
         // Readout: equal group weight, V = 0 at start.
         let n_app = (0..self.n_approach).filter(|&m| connected[m]).count();
-        let n_avd = (self.n_approach..self.n_mbon).filter(|&m| connected[m]).count();
+        let n_avd = (self.n_approach..self.n_mbon)
+            .filter(|&m| connected[m])
+            .count();
         for (m, r) in self.readout.iter_mut().enumerate() {
             *r = if !connected[m] {
                 0.0
@@ -590,14 +591,10 @@ impl MbCircuit {
         // f_m = mean fraction of the active code connected to MBON m;
         // eta from the desired ΔV-per-RPE (scale-free across circuit sizes).
         let eff_app: f64 = (0..self.n_approach)
-            .map(|m| {
-                (conn_count[m] as f64 / code_norm) * self.readout[m].max(0.0) as f64
-            })
+            .map(|m| (conn_count[m] as f64 / code_norm) * self.readout[m].max(0.0) as f64)
             .sum();
         let eff_avd: f64 = (self.n_approach..self.n_mbon)
-            .map(|m| {
-                (conn_count[m] as f64 / code_norm) * (-self.readout[m]).max(0.0) as f64
-            })
+            .map(|m| (conn_count[m] as f64 / code_norm) * (-self.readout[m]).max(0.0) as f64)
             .sum();
         let denom = eff_app + eff_avd;
         self.eta = if denom > 1e-12 {

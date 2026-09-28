@@ -1505,8 +1505,16 @@ mod tests {
         );
         // ...and it must actually reach the useful end of the range, not just
         // be monotone somewhere near zero.
-        assert!(tight.stability_score > 0.9, "tight = {}", tight.stability_score);
-        assert!(wide.stability_score < 0.1, "wide = {}", wide.stability_score);
+        assert!(
+            tight.stability_score > 0.9,
+            "tight = {}",
+            tight.stability_score
+        );
+        assert!(
+            wide.stability_score < 0.1,
+            "wide = {}",
+            wide.stability_score
+        );
 
         // A single perfectly repeatable observation is perfectly stable. The
         // old form scored it 0.0 — maximally UNstable — which is the defect at
@@ -1535,9 +1543,15 @@ mod tests {
         let known: Vec<u64> = (100..200).collect(); // n = 100, max = 199
         let snap = StabilitySnapshot::compute(&known);
         assert_eq!(snap.total_steps, 100);
-        assert_eq!(snap.p99_ns, 198, "p99 of 100 samples is the 99th, not the max");
+        assert_eq!(
+            snap.p99_ns, 198,
+            "p99 of 100 samples is the 99th, not the max"
+        );
         assert_eq!(snap.p99_tail_support, 2);
-        assert!(snap.p99_ns < *known.last().unwrap(), "p99 must not be the max here");
+        assert!(
+            snap.p99_ns < *known.last().unwrap(),
+            "p99 must not be the max here"
+        );
 
         // Empty and single-sample arms keep their support honest.
         assert_eq!(StabilitySnapshot::compute(&[]).p99_tail_support, 0);

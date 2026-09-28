@@ -17,10 +17,10 @@
 // ALGORITHM IS BIT-IDENTICAL TO UPSTREAM.
 
 #![allow(dead_code)] // ProbeView + prefetch_l2 + probe_pair remain substrate for the
-                     // future SIMD-batched pretokenization pipeline (the chunk-level prefetch
-                     // path — see Research 456 §2.2). ShortPretokenCache::get_or_slot +
-                     // insert_at + with_pow2_capacity ARE wired via
-                     // `FastBpeEncoder::flush_pretoken` (Issue 191 Phase 2.7, 2026-07-25).
+// future SIMD-batched pretokenization pipeline (the chunk-level prefetch
+// path — see Research 456 §2.2). ShortPretokenCache::get_or_slot +
+// insert_at + with_pow2_capacity ARE wired via
+// `FastBpeEncoder::flush_pretoken` (Issue 191 Phase 2.7, 2026-07-25).
 
 use crate::fast_bpe::pretokenize_keys::pretoken_key_hash;
 use std::alloc::{Layout, alloc, dealloc, handle_alloc_error};
@@ -484,7 +484,11 @@ mod tests {
         assert_eq!(cache.len(), keys.len());
         for (i, &key) in keys.iter().enumerate() {
             let h = pretoken_key_hash(key);
-            assert_eq!(cache.get_or_slot(key, h), Ok((i as u64, !(i as u64))), "key {i}");
+            assert_eq!(
+                cache.get_or_slot(key, h),
+                Ok((i as u64, !(i as u64))),
+                "key {i}"
+            );
         }
     }
 }

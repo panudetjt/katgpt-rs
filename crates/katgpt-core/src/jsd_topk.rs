@@ -132,9 +132,8 @@ fn select_topk(src: &[f32], k: usize, scratch: &mut [f32]) -> f32 {
     }
     // Partition so that scratch[..k] holds the K largest src-values
     // (unordered) as encoded indices.
-    scratch[..n].select_nth_unstable_by(k - 1, |a, b| {
-        src[*b as usize].total_cmp(&src[*a as usize])
-    });
+    scratch[..n]
+        .select_nth_unstable_by(k - 1, |a, b| src[*b as usize].total_cmp(&src[*a as usize]));
     let head = &mut scratch[..k];
     head.sort_unstable_by(|a, b| a.total_cmp(b));
     head.iter().map(|e| src[*e as usize]).sum()
@@ -316,7 +315,9 @@ pub fn jsd_topk_sets(p: &[(u32, f32)], q: &[(u32, f32)], out: &mut f32) {
         "jsd_topk_sets: index sets must be sorted ascending and unique"
     );
     debug_assert!(
-        p.iter().chain(q.iter()).all(|t| t.1.is_finite() && t.1 >= 0.0),
+        p.iter()
+            .chain(q.iter())
+            .all(|t| t.1.is_finite() && t.1 >= 0.0),
         "jsd_topk_sets: masses must be finite and non-negative"
     );
 
@@ -492,10 +493,7 @@ mod tests {
         for k in [1usize, 8, 64, 512] {
             let fw = jsd_topk(&p, &q, k);
             let bw = jsd_topk(&q, &p, k);
-            assert!(
-                (fw - bw).abs() <= 1e-7,
-                "asymmetry at k={k}: {fw} vs {bw}"
-            );
+            assert!((fw - bw).abs() <= 1e-7, "asymmetry at k={k}: {fw} vs {bw}");
         }
     }
 
@@ -651,10 +649,7 @@ mod tests {
                 let sp: Vec<f32> = p.iter().map(|&x| x * s).collect();
                 let sq: Vec<f32> = q.iter().map(|&x| x * s).collect();
                 let v = jsd_topk(&sp, &sq, k);
-                assert!(
-                    (v - base).abs() <= TOL,
-                    "scale {s} k={k}: {v} vs {base}"
-                );
+                assert!((v - base).abs() <= TOL, "scale {s} k={k}: {v} vs {base}");
             }
         }
     }

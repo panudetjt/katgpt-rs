@@ -34,7 +34,10 @@ fn g4_zero_alloc_steady_state() {
         b.observe_out(&[2048 + i % 2048, 2048 + i % 1301]);
     }
     let table = b.finish();
-    let gate = ScopeGate { kappa: 0.05, theta: 8.0 };
+    let gate = ScopeGate {
+        kappa: 0.05,
+        theta: 8.0,
+    };
     let doc: Vec<u32> = (0..10_000u32).map(|i| (i * 7 + 3) % 4096).collect();
     let pairs: Vec<(u32, f32)> = (0..2048u32).map(|w| (w, (w % 5) as f32 + 1.0)).collect();
     let probe_a: Vec<u32> = (0..64u32).map(|i| i % 2048).collect();
@@ -52,12 +55,18 @@ fn g4_zero_alloc_steady_state() {
         }
         black_box(acc);
     });
-    assert_eq!(allocs, 0, "steady-state contrastive_scope paths allocated {allocs}×");
+    assert_eq!(
+        allocs, 0,
+        "steady-state contrastive_scope paths allocated {allocs}×"
+    );
 
     // The battery is a cold audit statistic — its single documented Vec
     // (the report) is the only allocation allowed per call.
     let before = ALLOC_COUNT.load(std::sync::atomic::Ordering::Relaxed);
     let _report = oos_probe_battery(&table, &gate, &probes_in, &probes_out, 0.9);
     let battery_allocs = ALLOC_COUNT.load(std::sync::atomic::Ordering::Relaxed) - before;
-    assert!(battery_allocs <= 2, "battery allocated {battery_allocs}× (report Vec expected)");
+    assert!(
+        battery_allocs <= 2,
+        "battery allocated {battery_allocs}× (report Vec expected)"
+    );
 }

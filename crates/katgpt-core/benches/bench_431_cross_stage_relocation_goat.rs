@@ -144,9 +144,7 @@ fn bench_g2_operator_overhead() {
         });
 
         let overhead = (apply_ns / baseline_ns - 1.0) * 100.0;
-        println!(
-            "{width:>6} {apply_ns:>14.1} {baseline_ns:>14.1} {overhead:>9.1}%"
-        );
+        println!("{width:>6} {apply_ns:>14.1} {baseline_ns:>14.1} {overhead:>9.1}%");
     }
     println!();
 }
@@ -241,9 +239,7 @@ fn bench_g3_scan_overhead() {
         });
 
         let overhead = (scan_ns / hand_ns - 1.0) * 100.0;
-        println!(
-            "{n_stages:>6} {n_cells:>10} {scan_ns:>18.1} {hand_ns:>18.1} {overhead:>9.1}%"
-        );
+        println!("{n_stages:>6} {n_cells:>10} {scan_ns:>18.1} {hand_ns:>18.1} {overhead:>9.1}%");
     }
     println!();
 }

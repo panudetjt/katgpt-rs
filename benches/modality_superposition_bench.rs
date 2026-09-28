@@ -299,7 +299,11 @@ fn report(states: &[[f32; 8]; 1 << N_KINDS]) -> SuperpositionReport {
 }
 
 fn print_report(name: &str, r: &SuperpositionReport) {
-    let sat = if r.max_abs_h > 0.99 { " ⚠ SATURATED" } else { "" };
+    let sat = if r.max_abs_h > 0.99 {
+        " ⚠ SATURATED"
+    } else {
+        ""
+    };
     println!(
         "{:<30} cos = {:>8.4}   ratio = {:>7.4}   worst-pair = {:>8.4}   max|Δdim| = {:>6.4}   max|h| = {:.3}{}",
         name, r.cos_full, r.ratio_full, r.worst_pair_cos, r.max_dim_dev, r.max_abs_h, sat
@@ -375,11 +379,7 @@ fn predictability_err(states: &[[f32; 8]; 1 << N_KINDS]) -> f32 {
         acc += norm8(&diff) / ni;
         n += 1;
     }
-    if n == 0 {
-        f32::NAN
-    } else {
-        acc / n as f32
-    }
+    if n == 0 { f32::NAN } else { acc / n as f32 }
 }
 
 // ─── G2 — latency ───────────────────────────────────────────────────────────
@@ -427,9 +427,17 @@ fn main() {
     let t0 = std::time::Instant::now();
 
     println!("═.modality superposition bench (Issue 777 / Research 556 / FLYNN arXiv:2607.00025)═");
-    println!("stimulus kinds  = {STIMULUS:?}  (Σ = {:.2})", STIMULUS.iter().sum::<f32>());
-    println!("conditions      = ∅ + 6 singles + 15 pairs + full ({} states/kernel)", 1 << N_KINDS);
-    println!("reference       = FLYNN connectome cos 0.9998 ratio 1.004 · matched small-world cos 0.9439");
+    println!(
+        "stimulus kinds  = {STIMULUS:?}  (Σ = {:.2})",
+        STIMULUS.iter().sum::<f32>()
+    );
+    println!(
+        "conditions      = ∅ + 6 singles + 15 pairs + full ({} states/kernel)",
+        1 << N_KINDS
+    );
+    println!(
+        "reference       = FLYNN connectome cos 0.9998 ratio 1.004 · matched small-world cos 0.9439"
+    );
     println!();
 
     let mut states = [[0.0f32; 8]; 1 << N_KINDS];
@@ -460,7 +468,10 @@ fn main() {
             *slot = h;
             drift_max = drift_max.max(drift);
         }
-        print_report(&format!("AttractorKernel seed={seed} T=64"), &report(&states));
+        print_report(
+            &format!("AttractorKernel seed={seed} T=64"),
+            &report(&states),
+        );
         if drift_max > 1e-3 {
             println!(
                 "{:<30} ⚠ NOT CONVERGED at T=64 (max last-step drift {drift_max:.4}) — oscillation is itself a superposition failure",
@@ -515,12 +526,8 @@ fn main() {
         "G2 latency (≤ 50 ns/tick D=8 budget; default path bit-untouched, pinned) . {}",
         if g2 { "PASS" } else { "FAIL" }
     );
-    println!(
-        "   (G3 no-regression: default evolve_belief path byte-identical — pinned by"
-    );
-    println!(
-        "    evolve_belief_is_byte_identical_to_inline_reference + suite, feature-off build)"
-    );
+    println!("   (G3 no-regression: default evolve_belief path byte-identical — pinned by");
+    println!("    evolve_belief_is_byte_identical_to_inline_reference + suite, feature-off build)");
     println!(
         "G3 quality-under-ablation (0 argmax flips, predictability < 1e-3) ............. {}",
         if g3_t3 { "PASS" } else { "FAIL" }
@@ -531,7 +538,11 @@ fn main() {
     let all = g1 && g2 && g3_t3;
     println!(
         "verdict: {} — record in Issue 777; promotion decision per feature-flag discipline",
-        if all { "ALL GATES PASS" } else { "GATE FAILURE" }
+        if all {
+            "ALL GATES PASS"
+        } else {
+            "GATE FAILURE"
+        }
     );
 
     println!();

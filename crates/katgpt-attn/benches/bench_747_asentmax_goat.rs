@@ -84,11 +84,7 @@ impl Rng {
 ///   the σ√(2 ln n) axis.
 ///
 /// Returns (query, summaries, planted_indices).
-fn build_task(
-    n: usize,
-    sigma_row: f32,
-    seed: u64,
-) -> (Vec<f32>, Vec<Vec<f32>>, Vec<usize>) {
+fn build_task(n: usize, sigma_row: f32, seed: u64) -> (Vec<f32>, Vec<Vec<f32>>, Vec<usize>) {
     let mut rng = Rng::new(seed);
 
     // Unit query direction.
@@ -358,11 +354,11 @@ fn main() {
     // choice, implied recall, and per-block efficiency honestly (the
     // derived max−mean budget is a concentration detector — see the
     // compute_derived_k "Which Δ̂ to feed" note).
-    println!(
-        "\n── P1: derived-k vs sigmoid budget (planted k=8, recall@k = min(k,8)/8) ──"
-    );
+    println!("\n── P1: derived-k vs sigmoid budget (planted k=8, recall@k = min(k,8)/8) ──");
     println!("     n     σ │ sig_k der_k │ sig_recall der_recall │ sig_eff der_eff");
-    use katgpt_attn::dash_attn::adaptive_k::{compute_adaptive_k, compute_derived_k_from_scores, AdaptiveKConfig};
+    use katgpt_attn::dash_attn::adaptive_k::{
+        AdaptiveKConfig, compute_adaptive_k, compute_derived_k_from_scores,
+    };
     let kconfig = AdaptiveKConfig::new(4, 32);
     for &sigma in sigmas {
         for &n in ns {
@@ -391,8 +387,10 @@ fn main() {
             let mean = |v: &[f32]| v.iter().sum::<f32>() / v.len() as f32;
             let k_sig = mean(&sigs);
             let k_der = mean(&deriveds);
-            let r_sig = recalls.iter().map(|&(s, _)| s).sum::<usize>() as f32 / recalls.len() as f32 / 8.0;
-            let r_der = recalls.iter().map(|&(_, d)| d).sum::<usize>() as f32 / recalls.len() as f32 / 8.0;
+            let r_sig =
+                recalls.iter().map(|&(s, _)| s).sum::<usize>() as f32 / recalls.len() as f32 / 8.0;
+            let r_der =
+                recalls.iter().map(|&(_, d)| d).sum::<usize>() as f32 / recalls.len() as f32 / 8.0;
             let eff_sig = r_sig / k_sig.max(1.0);
             let eff_der = r_der / k_der.max(1.0);
             println!(
@@ -427,13 +425,9 @@ fn main() {
     // zero, so the compute AND memory beyond the window are free. Model:
     // Kamath range law E[z-range] = 2σ√(2 ln n) over ALiBi geometric
     // slopes; measured: full-row entmax cost vs windowed-row cost.
-    println!(
-        "\n── P2 G2: ALiBi×entmax eviction window @ n=1M (model + measured) ──"
-    );
+    println!("\n── P2 G2: ALiBi×entmax eviction window @ n=1M (model + measured) ──");
     use katgpt_attn::dash_attn::entmax::{entmax_1p5_into, entmax_support_into};
-    use katgpt_attn::dash_attn::eviction_window::{
-        alibi_entmax_window_1p5, evicted_kv_fraction,
-    };
+    use katgpt_attn::dash_attn::eviction_window::{alibi_entmax_window_1p5, evicted_kv_fraction};
     let n_big = 1u64 << 20; // 1,048,576 tokens
     // Reference KV geometry (per layer): 32 heads × head_dim 128 × f16 × (K+V).
     const BYTES_PER_TOKEN_PER_LAYER: f64 = 32.0 * 128.0 * 2.0 * 2.0;
@@ -475,9 +469,7 @@ fn main() {
     // Measured: full-row entmax vs windowed-row entmax at n=1M. The
     // windowed row is the steepest head's kept suffix (σ=2 arm).
     let mut rng = Rng::new(0x747);
-    let row_full: Vec<f32> = (0..n_big)
-        .map(|_| rng.normal() * 2.0)
-        .collect();
+    let row_full: Vec<f32> = (0..n_big).map(|_| rng.normal() * 2.0).collect();
     let sigma = 2.0f32;
     let z_range = 2.0 * sigma * (2.0 * (n_big as f32).ln()).sqrt();
     let d_steepest = alibi_entmax_window_1p5(-z_range / 2.0, z_range / 2.0, 0.5);
@@ -489,7 +481,11 @@ fn main() {
     let t0 = Instant::now();
     let reps = 3u32;
     for _ in 0..reps {
-        entmax_1p5_into(black_box(&row_full), &mut sorted_scratch, &mut probs_scratch);
+        entmax_1p5_into(
+            black_box(&row_full),
+            &mut sorted_scratch,
+            &mut probs_scratch,
+        );
     }
     let full_us = t0.elapsed().as_micros() as f64 / reps as f64;
     entmax_support_into(&probs_scratch, &mut support_buf);
@@ -519,13 +515,7 @@ fn main() {
     // re-sort the whole row every step).
     println!("     n │ full resort µs/step");
     let mut full_cost_at_512k = 0.0f64;
-    for &ck in &[
-        4_096_usize,
-        16_384,
-        65_536,
-        262_144,
-        524_288,
-    ] {
+    for &ck in &[4_096_usize, 16_384, 65_536, 262_144, 524_288] {
         let mut rng = Rng::new(0x747_747);
         let row: Vec<f32> = (0..ck).map(|_| rng.normal()).collect();
         let t0 = Instant::now();
@@ -547,7 +537,11 @@ fn main() {
     let t0 = Instant::now();
     let mut events = 0usize;
     for i in 0..n_stream {
-        let s = if i < 5 { 7.0 + rng.unit() } else { rng.normal() };
+        let s = if i < 5 {
+            7.0 + rng.unit()
+        } else {
+            rng.normal()
+        };
         if inc.push(s) {
             events += 1;
         }
@@ -564,9 +558,7 @@ fn main() {
     println!(
         "  incremental: {events} events over {n_stream} pushes, mean {inc_mean_us:.3} µs/step, tail(10k @ n≈512k) {inc_tail_us:.3} µs/step"
     );
-    println!(
-        "  full resort @ 512k: {full_cost_at_512k:.1} µs/step — tail speedup {ratio:.0}×"
-    );
+    println!("  full resort @ 512k: {full_cost_at_512k:.1} µs/step — tail speedup {ratio:.0}×");
     let p3_pass = events <= 64 && inc_tail_us < full_cost_at_512k / 20.0;
     println!(
         "  P3 verdict: {} (events ≤ 64 and tail ≥ 20× cheaper than full resort)",

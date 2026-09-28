@@ -132,8 +132,12 @@ impl AttnResWeights {
     pub fn random(hidden_size: usize, seed: u64) -> Self {
         use katgpt_core::Rng;
         let mut rng = Rng::new(seed);
-        let norm_weight = (0..hidden_size).map(|_| rng.uniform() * 0.02 - 0.01).collect();
-        let proj_weight = (0..hidden_size).map(|_| rng.uniform() * 0.02 - 0.01).collect();
+        let norm_weight = (0..hidden_size)
+            .map(|_| rng.uniform() * 0.02 - 0.01)
+            .collect();
+        let proj_weight = (0..hidden_size)
+            .map(|_| rng.uniform() * 0.02 - 0.01)
+            .collect();
         Self {
             norm_weight,
             proj_weight,
@@ -426,7 +430,10 @@ mod tests {
         let config = AttnResConfig::kimi_k3_0_40b();
         assert_eq!(config.hidden_size, 1024);
         assert_eq!(config.block_size, 4);
-        assert!((config.rms_eps - 1e-5).abs() < 1e-10, "rms_eps must be 1e-5");
+        assert!(
+            (config.rms_eps - 1e-5).abs() < 1e-10,
+            "rms_eps must be 1e-5"
+        );
     }
 
     #[test]

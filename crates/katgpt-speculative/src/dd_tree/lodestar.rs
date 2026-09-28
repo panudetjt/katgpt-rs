@@ -170,23 +170,23 @@ pub fn build_dd_tree_lodestar(
                                 seq_len - span_depth - 1,
                             );
                             if let Some((token, prob)) = forced {
-                                    let d = horizon.min_completion_distance(
-                                        span_depth,
-                                        token,
-                                        &span_parents_buf,
-                                    );
-                                    if d == u32::MAX || (d as usize) > seq_len - span_depth - 1 {
-                                        valid = false;
-                                        break;
-                                    }
-                                    span_score += prob.ln();
-                                    span_path = span_path.push(token as u32, span_depth);
-                                    span_parents_buf.push(token);
-                                    span_depth += 1;
-                                } else {
+                                let d = horizon.min_completion_distance(
+                                    span_depth,
+                                    token,
+                                    &span_parents_buf,
+                                );
+                                if d == u32::MAX || (d as usize) > seq_len - span_depth - 1 {
                                     valid = false;
                                     break;
                                 }
+                                span_score += prob.ln();
+                                span_path = span_path.push(token as u32, span_depth);
+                                span_parents_buf.push(token);
+                                span_depth += 1;
+                            } else {
+                                valid = false;
+                                break;
+                            }
                         }
 
                         if valid && span_depth <= seq_len {

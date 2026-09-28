@@ -140,9 +140,7 @@ fn main() {
             gate_ns.as_nanos() as f64 / calls_per_iter,
             gate_ns.as_nanos()
         );
-        println!(
-            "  overhead: {overhead_per_call_ns:.2} ns/call ({overhead_pct:.1}% relative)"
-        );
+        println!("  overhead: {overhead_per_call_ns:.2} ns/call ({overhead_pct:.1}% relative)");
         println!("  allocs:   {allocs}");
 
         // G3: absolute overhead per call must be ≤ 5 ns (single comparison +

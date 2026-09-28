@@ -38,7 +38,7 @@ use katgpt_core::template_decode::{DecodeError, Grammar, Seg, Template};
 
 use crate::flappy_sim::{self, Action, FlappyState};
 use crate::lanes_sim::{self, LanesState};
-use crate::tetris_sim::{self, Board, OutcomeFeatures, Placement, Piece, SideBand};
+use crate::tetris_sim::{self, Board, OutcomeFeatures, Piece, Placement, SideBand};
 
 // ── Vocabularies (fill index = feature ordinal; ORDER IS CONTRACT) ──────
 
@@ -170,7 +170,7 @@ static T_TETRIS_SPOT: [Seg; 11] = [
     Seg::Slot(2), // TETRIS_SURFACE
     Seg::Lit(", and "),
     Seg::Slot(3), // TETRIS_HEIGHT
-    Seg::Lit(""),  // separator only — the two fills are adjacent in the sentence
+    Seg::Lit(""), // separator only — the two fills are adjacent in the sentence
     Seg::Slot(4), // TETRIS_CLEARS ("" renders as nothing)
     Seg::Lit("."),
 ];
@@ -245,7 +245,11 @@ static T_FLAPPY_STATE: [Seg; 7] = [
     Seg::Slot(2), // FLAPPY_GAP
     Seg::Lit(". The pipe is just ahead."),
 ];
-static T_LANES_CLEAR: [Seg; 3] = [Seg::Lit("The "), Seg::Slot(0), Seg::Lit(" lane is clear ahead.")];
+static T_LANES_CLEAR: [Seg; 3] = [
+    Seg::Lit("The "),
+    Seg::Slot(0),
+    Seg::Lit(" lane is clear ahead."),
+];
 static T_LANES_BLOCKED: [Seg; 7] = [
     Seg::Lit("The "),
     Seg::Slot(0), // LANES_LANE
@@ -548,13 +552,25 @@ pub fn flappy_v3_decoded_features(
     let (band, offset) = (post[0], post[1]);
     let hh = h;
     let post_rel: i32 = match band {
-        0 => -(hh + 1),                          // Below: tail → boundary
-        1 => -hh,                                // SqueezeBottom: exact
-        2 => if offset == 1 { -1 } else { -2 },  // Lower: just-under exact
-        3 => 0,                                  // Middle: exact
-        4 => if offset == 3 { 1 } else { 2 },    // Upper: just-over exact
-        5 => hh,                                 // SqueezeTop: exact
-        _ => hh + 1,                             // Above: tail → boundary
+        0 => -(hh + 1), // Below: tail → boundary
+        1 => -hh,       // SqueezeBottom: exact
+        2 => {
+            if offset == 1 {
+                -1
+            } else {
+                -2
+            }
+        } // Lower: just-under exact
+        3 => 0,         // Middle: exact
+        4 => {
+            if offset == 3 {
+                1
+            } else {
+                2
+            }
+        } // Upper: just-over exact
+        5 => hh,        // SqueezeTop: exact
+        _ => hh + 1,    // Above: tail → boundary
     };
     let pre_rel: i32 = match rel {
         0 => 2,
@@ -718,10 +734,7 @@ pub fn tetris_piece_fill(id: &str) -> u8 {
 /// [hw, tallest, lowest, holes2, piece], template 0); `Err` = the FLAT
 /// shape (fills [hw, holes2, piece], template 1). The spread's region
 /// ordinals are 0 = left / 1 = middle / 2 = right (`TETRIS_SIDE3` order).
-pub fn tetris_state_forward(
-    board: &Board,
-    piece_fill: u8,
-) -> Result<[u8; 5], [u8; 3]> {
+pub fn tetris_state_forward(board: &Board, piece_fill: u8) -> Result<[u8; 5], [u8; 3]> {
     let h = board.heights();
     let max_h = *h.iter().max().unwrap_or(&0);
     let hw = match max_h {
@@ -803,8 +816,8 @@ mod tests {
             let f = tetris_sim::outcome_features(&board, &p);
             let sentence = render_spot_sentence(&board, &p, &f);
             let g = tetris_spot();
-            let dec = decode_tetris_spot(&g, &sentence)
-                .unwrap_or_else(|e| panic!("{sentence:?}: {e:?}"));
+            let dec =
+                decode_tetris_spot(&g, &sentence).unwrap_or_else(|e| panic!("{sentence:?}: {e:?}"));
             assert_eq!(
                 dec,
                 tetris_spot_forward(&board, &p, &f),
@@ -1016,8 +1029,7 @@ mod tests {
         let (mut spread_n, mut flat_n) = (0usize, 0usize);
         for piece in Piece::ALL {
             for next in Piece::ALL {
-                let rendered =
-                    tetris_sim::render_state_sentence_with_preview(&board, piece, next);
+                let rendered = tetris_sim::render_state_sentence_with_preview(&board, piece, next);
                 let fwd = tetris_state_forward_v4(
                     &board,
                     tetris_piece_fill(piece.id()),
@@ -1064,8 +1076,7 @@ mod tests {
             }
             for piece in Piece::ALL {
                 for next in Piece::ALL {
-                    let rendered =
-                        tetris_sim::render_state_sentence_with_preview(&b, piece, next);
+                    let rendered = tetris_sim::render_state_sentence_with_preview(&b, piece, next);
                     let fwd = tetris_state_forward_v4(
                         &b,
                         tetris_piece_fill(piece.id()),

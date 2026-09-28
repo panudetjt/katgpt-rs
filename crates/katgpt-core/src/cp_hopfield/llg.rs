@@ -89,7 +89,11 @@ impl RecallResult {
 /// Panics if the three slices have differing lengths.
 pub fn lie_bracket_into(s: &[f32], b: &[f32], sc: &StructureConstants, out: &mut [f32]) {
     assert_eq!(s.len(), b.len(), "cp_hopfield: lie_bracket length mismatch");
-    assert_eq!(s.len(), out.len(), "cp_hopfield: lie_bracket length mismatch");
+    assert_eq!(
+        s.len(),
+        out.len(),
+        "cp_hopfield: lie_bracket length mismatch"
+    );
     out.fill(0.0);
     for t in sc.f_triples() {
         out[t.i as usize] += t.val * s[t.j as usize] * b[t.k as usize];

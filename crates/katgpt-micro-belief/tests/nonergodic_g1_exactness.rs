@@ -12,7 +12,7 @@
 //! T2.1).
 
 use katgpt_micro_belief::{
-    bernoulli_pair, BernoulliCoin, ComponentModel, Mess3Block, NonergodicFilter,
+    BernoulliCoin, ComponentModel, Mess3Block, NonergodicFilter, bernoulli_pair,
 };
 
 const TOL: f64 = 1e-5;
@@ -124,10 +124,7 @@ fn check_sequence<const K: usize, const D: usize>(
     for (i, &t) in seq.iter().enumerate() {
         f.tick(t);
         let sum: f32 = f.weights().iter().sum();
-        assert!(
-            (sum as f64 - 1.0).abs() <= TOL,
-            "{ctx} tick {i}: Σw={sum}"
-        );
+        assert!((sum as f64 - 1.0).abs() <= TOL, "{ctx} tick {i}: Σw={sum}");
     }
     if let Some(wref) = reference_posterior(specs, prior, seq) {
         for (n, &w) in wref.iter().enumerate() {
@@ -210,13 +207,21 @@ fn exact_two_coins_blog_exhaustive_l12() {
 
 #[test]
 fn exact_three_coins_exhaustive_l12() {
-    let specs = [RefModel::Coin(0.25), RefModel::Coin(0.5), RefModel::Coin(0.75)];
+    let specs = [
+        RefModel::Coin(0.25),
+        RefModel::Coin(0.5),
+        RefModel::Coin(0.75),
+    ];
     sweep_exhaustive::<3, 1>("three_coins_l12", &specs, [1.0 / 3.0; 3], 12);
 }
 
 #[test]
 fn exact_three_coins_nonuniform_prior_l10() {
-    let specs = [RefModel::Coin(0.25), RefModel::Coin(0.5), RefModel::Coin(0.75)];
+    let specs = [
+        RefModel::Coin(0.25),
+        RefModel::Coin(0.5),
+        RefModel::Coin(0.75),
+    ];
     sweep_exhaustive::<3, 1>("three_coins_prior_l10", &specs, [0.5, 0.3, 0.2], 10);
 }
 
@@ -224,8 +229,14 @@ fn exact_three_coins_nonuniform_prior_l10() {
 fn exact_two_mess3_blog_exhaustive_l8() {
     // The blog's exact composed pair: Mess3A (α=0.6, x=0.15), Mess3B (α=0.66, x=0.5).
     let specs = [
-        RefModel::Mess3 { alpha: 0.6, x: 0.15 },
-        RefModel::Mess3 { alpha: 0.66, x: 0.5 },
+        RefModel::Mess3 {
+            alpha: 0.6,
+            x: 0.15,
+        },
+        RefModel::Mess3 {
+            alpha: 0.66,
+            x: 0.5,
+        },
     ];
     sweep_exhaustive::<2, 3>("two_mess3_blog_l8", &specs, [0.5, 0.5], 8);
 }
@@ -233,8 +244,14 @@ fn exact_two_mess3_blog_exhaustive_l8() {
 #[test]
 fn exact_two_mess3_random_l12() {
     let specs = [
-        RefModel::Mess3 { alpha: 0.6, x: 0.15 },
-        RefModel::Mess3 { alpha: 0.66, x: 0.5 },
+        RefModel::Mess3 {
+            alpha: 0.6,
+            x: 0.15,
+        },
+        RefModel::Mess3 {
+            alpha: 0.66,
+            x: 0.5,
+        },
     ];
     sweep_random::<2, 3>("two_mess3_random_l12", &specs, [0.5, 0.5], 12, 1000, 592);
 }
@@ -242,22 +259,53 @@ fn exact_two_mess3_random_l12() {
 #[test]
 fn exact_three_mess3_l7_and_random_l12() {
     let specs = [
-        RefModel::Mess3 { alpha: 0.6, x: 0.15 },
-        RefModel::Mess3 { alpha: 0.66, x: 0.5 },
-        RefModel::Mess3 { alpha: 0.45, x: 0.25 },
+        RefModel::Mess3 {
+            alpha: 0.6,
+            x: 0.15,
+        },
+        RefModel::Mess3 {
+            alpha: 0.66,
+            x: 0.5,
+        },
+        RefModel::Mess3 {
+            alpha: 0.45,
+            x: 0.25,
+        },
     ];
     sweep_exhaustive::<3, 3>("three_mess3_l7", &specs, [0.4, 0.35, 0.25], 7);
-    sweep_random::<3, 3>("three_mess3_random_l12", &specs, [0.4, 0.35, 0.25], 12, 1000, 1592);
+    sweep_random::<3, 3>(
+        "three_mess3_random_l12",
+        &specs,
+        [0.4, 0.35, 0.25],
+        12,
+        1000,
+        1592,
+    );
 }
 
 #[test]
 fn exact_five_mess3_l6_and_random_l12() {
     let specs = [
-        RefModel::Mess3 { alpha: 0.6, x: 0.15 },
-        RefModel::Mess3 { alpha: 0.66, x: 0.5 },
-        RefModel::Mess3 { alpha: 0.45, x: 0.25 },
-        RefModel::Mess3 { alpha: 0.75, x: 0.30 },
-        RefModel::Mess3 { alpha: 0.55, x: 0.42 },
+        RefModel::Mess3 {
+            alpha: 0.6,
+            x: 0.15,
+        },
+        RefModel::Mess3 {
+            alpha: 0.66,
+            x: 0.5,
+        },
+        RefModel::Mess3 {
+            alpha: 0.45,
+            x: 0.25,
+        },
+        RefModel::Mess3 {
+            alpha: 0.75,
+            x: 0.30,
+        },
+        RefModel::Mess3 {
+            alpha: 0.55,
+            x: 0.42,
+        },
     ];
     sweep_exhaustive::<5, 3>("five_mess3_l6", &specs, [0.2; 5], 6);
     sweep_random::<5, 3>("five_mess3_random_l12", &specs, [0.2; 5], 12, 500, 2592);
@@ -289,7 +337,11 @@ fn collapse_monotonicity_in_expectation() {
             }
         }
     }
-    let (m10, m30, m60) = (m10 / streams as f64, m30 / streams as f64, m60 / streams as f64);
+    let (m10, m30, m60) = (
+        m10 / streams as f64,
+        m30 / streams as f64,
+        m60 / streams as f64,
+    );
     println!("mean max w @10={m10:.4} @30={m30:.4} @60={m60:.4}");
     assert!(
         m10 < m30 && m30 < m60,

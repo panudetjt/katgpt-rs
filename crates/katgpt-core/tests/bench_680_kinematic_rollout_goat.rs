@@ -68,7 +68,8 @@ fn g1_multi_seed_determinism() {
             kinematic_extrapolate_into(&st, 8, &Sched::Measured, &mut predicted).ok();
             let vel_before = st.vel;
             st.observe_into(&f.pos, f.tick).unwrap();
-            let snap = RegimeSnapshot::from_state(&st, &prev_vel, running_acc, f.extent, sigma_rate);
+            let snap =
+                RegimeSnapshot::from_state(&st, &prev_vel, running_acc, f.extent, sigma_rate);
             let v = clf.classify(&snap);
             running_acc += 0.1 * (snap.acc_mag - running_acc);
             prev_vel = st.vel;
@@ -78,7 +79,9 @@ fn g1_multi_seed_determinism() {
                 .wrapping_add(predicted[1].to_bits() as u64)
                 .wrapping_add(format!("{v:?}").len() as u64);
             if let Some(ev) = mon.update(predicted[0] - f.pos[0], &vel_before, &st.vel, 1.0) {
-                h = h.wrapping_mul(33).wrapping_add(format!("{ev:?}").len() as u64);
+                h = h
+                    .wrapping_mul(33)
+                    .wrapping_add(format!("{ev:?}").len() as u64);
             }
         }
         h
@@ -225,7 +228,10 @@ fn t32_id_ood_gap_table() {
                 "segment {name} k={k}: OOD error nonzero"
             );
         }
-        println!("  {name:>9}: ID {:?} OOD {:?}", per_seg_id[si], per_seg_ood[si]);
+        println!(
+            "  {name:>9}: ID {:?} OOD {:?}",
+            per_seg_id[si], per_seg_ood[si]
+        );
     }
     // The paper's numbers for contrast: ID-OOD error gap ratio ~23.9×
     // (single-task, 256²). Ours: both arms identically zero — the ratio is
@@ -254,8 +260,13 @@ fn g2_ns_cost_table() {
     let sched = Sched::ZeroJerk;
     let mut out = [0.0f32; 4];
     let ns_extrap = best_of_3(1_000_000, || {
-        kinematic_extrapolate_into(black_box(&st), black_box(100), black_box(&sched), black_box(&mut out))
-            .unwrap();
+        kinematic_extrapolate_into(
+            black_box(&st),
+            black_box(100),
+            black_box(&sched),
+            black_box(&mut out),
+        )
+        .unwrap();
         black_box(out[0]);
     });
     println!("G2 single-target extrapolate (d=4, k=100, ZeroJerk): {ns_extrap:.2} ns");
@@ -267,8 +278,13 @@ fn g2_ns_cost_table() {
     // ConstJerk arm (adds the t3 term).
     let sched_cj = Sched::ConstJerk { j: 0.25 };
     let ns_cj = best_of_3(1_000_000, || {
-        kinematic_extrapolate_into(black_box(&st), black_box(100), black_box(&sched_cj), black_box(&mut out))
-            .unwrap();
+        kinematic_extrapolate_into(
+            black_box(&st),
+            black_box(100),
+            black_box(&sched_cj),
+            black_box(&mut out),
+        )
+        .unwrap();
         black_box(out[0]);
     });
     println!("G2 single-target extrapolate (d=4, k=100, ConstJerk): {ns_cj:.2} ns");
@@ -277,8 +293,13 @@ fn g2_ns_cost_table() {
     // GeometricDrag arm (powf cost — separate budget).
     let sched_gd = Sched::GeometricDrag { rho: 0.5 };
     let ns_gd = best_of_3(200_000, || {
-        kinematic_extrapolate_into(black_box(&st), black_box(100), black_box(&sched_gd), black_box(&mut out))
-            .unwrap();
+        kinematic_extrapolate_into(
+            black_box(&st),
+            black_box(100),
+            black_box(&sched_gd),
+            black_box(&mut out),
+        )
+        .unwrap();
         black_box(out[0]);
     });
     println!("G2 single-target extrapolate (d=4, k=100, GeometricDrag): {ns_gd:.2} ns");
@@ -312,24 +333,40 @@ fn g2_ns_cost_table() {
 
     // ── perception operators ─────────────────────────────────────────
     let ns_ttc = best_of_3(1_000_000, || {
-        black_box(time_to_contact(black_box(0.75), black_box(0.8125), black_box(1.0)));
+        black_box(time_to_contact(
+            black_box(0.75),
+            black_box(0.8125),
+            black_box(1.0),
+        ));
     });
     println!("G2 time_to_contact: {ns_ttc:.2} ns");
     assert!(ns_ttc < 10.0, "ttc over budget: {ns_ttc:.2} ns");
 
     let eps = Eps::from_obs_noise(0.05, 1.0);
     let ns_horizon = best_of_3(100_000, || {
-        black_box(extrapolation_horizon(black_box(1.0), black_box(&eps), black_box(10.0)));
+        black_box(extrapolation_horizon(
+            black_box(1.0),
+            black_box(&eps),
+            black_box(10.0),
+        ));
     });
     println!("G2 extrapolation_horizon (scan to k*): {ns_horizon:.1} ns");
-    assert!(ns_horizon < 2_000.0, "horizon over budget: {ns_horizon:.1} ns");
+    assert!(
+        ns_horizon < 2_000.0,
+        "horizon over budget: {ns_horizon:.1} ns"
+    );
 
     let p1 = [0.0f32, 0.0];
     let v1 = [1.0f32, 0.25];
     let p2 = [10.0f32, 5.0];
     let v2 = [-2.0f32, 0.0];
     let ns_ca = best_of_3(1_000_000, || {
-        black_box(closest_approach(black_box(&p1), black_box(&v1), black_box(&p2), black_box(&v2)));
+        black_box(closest_approach(
+            black_box(&p1),
+            black_box(&v1),
+            black_box(&p2),
+            black_box(&v2),
+        ));
     });
     println!("G2 closest_approach (d=2): {ns_ca:.2} ns");
     assert!(ns_ca < 20.0, "closest_approach over budget: {ns_ca:.2} ns");
@@ -351,14 +388,22 @@ fn g2_ns_cost_table() {
         black_box(clf.classify(black_box(&snap)));
     });
     println!("G2 regime classify (d=2): {ns_regime:.2} ns");
-    assert!(ns_regime < 50.0, "regime classify over budget: {ns_regime:.2} ns");
+    assert!(
+        ns_regime < 50.0,
+        "regime classify over budget: {ns_regime:.2} ns"
+    );
 
     // Residual monitor update (d=2).
     let mut mon = ResidualMonitor::new(ResidualConfig::default());
     let vb = [1.0f32, 0.5];
     let va = [1.0f32, 0.5];
     let ns_mon = best_of_3(500_000, || {
-        black_box(mon.update(black_box(0.01), black_box(&vb), black_box(&va), black_box(1.0)));
+        black_box(mon.update(
+            black_box(0.01),
+            black_box(&vb),
+            black_box(&va),
+            black_box(1.0),
+        ));
     });
     println!("G2 residual monitor update (d=2): {ns_mon:.2} ns");
     assert!(ns_mon < 50.0, "monitor over budget: {ns_mon:.2} ns");

@@ -631,9 +631,7 @@ fn topk_accumulate(
         // order the front; the downstream accumulation iterates `for &j in top`
         // and the order is preserved bit-identically to the previous full-sort
         // (both use sort_unstable_by, so tie-breaking is identical).
-        let cmp_alpha = |&a: &usize, &b: &usize| {
-            scratch_alpha[b].total_cmp(&scratch_alpha[a])
-        };
+        let cmp_alpha = |&a: &usize, &b: &usize| scratch_alpha[b].total_cmp(&scratch_alpha[a]);
         if effective_k > 0 {
             let (front, _, _) = idx.select_nth_unstable_by(effective_k - 1, cmp_alpha);
             front.sort_unstable_by(cmp_alpha);
@@ -1109,9 +1107,7 @@ fn topk_accumulate_weighted(
             scratch_alpha[j] = sigmoid(dot * scale);
         }
         // Partial sort: select top-effective_k indices by α (descending).
-        let cmp_alpha = |&a: &usize, &b: &usize| {
-            scratch_alpha[b].total_cmp(&scratch_alpha[a])
-        };
+        let cmp_alpha = |&a: &usize, &b: &usize| scratch_alpha[b].total_cmp(&scratch_alpha[a]);
         if effective_k > 0 {
             let (front, _, _) = idx.select_nth_unstable_by(effective_k - 1, cmp_alpha);
             front.sort_unstable_by(cmp_alpha);
@@ -1620,7 +1616,18 @@ mod tests {
             let mut sk = vec![0.0; n * k];
             let mut sa = vec![0.0; n];
             set_sigmoid_attention_into(
-                &states, &w, &w, None, &mut plain_out, &cfg, n, d, k, &mut sq, &mut sk, &mut sa,
+                &states,
+                &w,
+                &w,
+                None,
+                &mut plain_out,
+                &cfg,
+                n,
+                d,
+                k,
+                &mut sq,
+                &mut sk,
+                &mut sa,
             )
             .unwrap();
         }
@@ -1632,8 +1639,19 @@ mod tests {
             let mut sk = vec![0.0; n * k];
             let mut sa = vec![0.0; n];
             clr_weighted_set_attention_into(
-                &states, &w, &w, None, &reliability, &mut weighted_out, &cfg, n, d, k,
-                &mut sq, &mut sk, &mut sa,
+                &states,
+                &w,
+                &w,
+                None,
+                &reliability,
+                &mut weighted_out,
+                &cfg,
+                n,
+                d,
+                k,
+                &mut sq,
+                &mut sk,
+                &mut sa,
             )
             .unwrap();
         }
@@ -1660,7 +1678,9 @@ mod tests {
 
         let mut s = 0xABCD_1234_u64;
         let mut lcg = || {
-            s = s.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            s = s
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
             ((s >> 32) as f32) / (u32::MAX as f32)
         };
         let states: Vec<f32> = (0..n * d).map(|_| lcg()).collect();
@@ -1672,7 +1692,18 @@ mod tests {
         let mut weighted_out = vec![0.0f32; n * d];
         let (mut sq, mut sk, mut sa) = (vec![0.0; n * k], vec![0.0; n * k], vec![0.0; n]);
         set_sigmoid_attention_into(
-            &states, &w, &w, None, &mut plain_out, &cfg, n, d, k, &mut sq, &mut sk, &mut sa,
+            &states,
+            &w,
+            &w,
+            None,
+            &mut plain_out,
+            &cfg,
+            n,
+            d,
+            k,
+            &mut sq,
+            &mut sk,
+            &mut sa,
         )
         .unwrap();
         // Reset scratch (topk path uses thread_local buffers internally).
@@ -1680,8 +1711,19 @@ mod tests {
         sk.iter_mut().for_each(|x| *x = 0.0);
         sa.iter_mut().for_each(|x| *x = 0.0);
         clr_weighted_set_attention_into(
-            &states, &w, &w, None, &reliability, &mut weighted_out, &cfg, n, d, k,
-            &mut sq, &mut sk, &mut sa,
+            &states,
+            &w,
+            &w,
+            None,
+            &reliability,
+            &mut weighted_out,
+            &cfg,
+            n,
+            d,
+            k,
+            &mut sq,
+            &mut sk,
+            &mut sa,
         )
         .unwrap();
 
@@ -1733,8 +1775,19 @@ mod tests {
         let cfg = SetAttentionConfig::default();
         for _ in 0..100 {
             clr_weighted_set_attention_into(
-                &states, &w, &w, None, &reliability, &mut output, &cfg, n, d, k,
-                &mut sq, &mut sk, &mut sa,
+                &states,
+                &w,
+                &w,
+                None,
+                &reliability,
+                &mut output,
+                &cfg,
+                n,
+                d,
+                k,
+                &mut sq,
+                &mut sk,
+                &mut sa,
             )
             .unwrap();
         }
@@ -1757,8 +1810,19 @@ mod tests {
         let (mut sq, mut sk, mut sa) = (vec![0.0; n * k], vec![0.0; n * k], vec![0.0; n]);
         let cfg = SetAttentionConfig::default();
         clr_weighted_set_attention_into(
-            &states, &w, &w, None, &reliability, &mut output, &cfg, n, d, k,
-            &mut sq, &mut sk, &mut sa,
+            &states,
+            &w,
+            &w,
+            None,
+            &reliability,
+            &mut output,
+            &cfg,
+            n,
+            d,
+            k,
+            &mut sq,
+            &mut sk,
+            &mut sa,
         )
         .unwrap();
         for i in 0..n * d {
@@ -1780,12 +1844,26 @@ mod tests {
         let (mut sq, mut sk, mut sa) = (vec![0.0; n * k], vec![0.0; n * k], vec![0.0; n]);
         let cfg = SetAttentionConfig::default();
         let result = clr_weighted_set_attention_into(
-            &states, &w, &w, None, &reliability, &mut output, &cfg, n, d, k,
-            &mut sq, &mut sk, &mut sa,
+            &states,
+            &w,
+            &w,
+            None,
+            &reliability,
+            &mut output,
+            &cfg,
+            n,
+            d,
+            k,
+            &mut sq,
+            &mut sk,
+            &mut sa,
         );
         assert!(matches!(
             result,
-            Err(SetAttentionError::ReliabilityLenMismatch { expected: 8, got: 7 })
+            Err(SetAttentionError::ReliabilityLenMismatch {
+                expected: 8,
+                got: 7
+            })
         ));
     }
 
@@ -1817,12 +1895,34 @@ mod tests {
         // Warm up.
         for _ in 0..1000 {
             set_sigmoid_attention_into(
-                &states, &w, &w, None, &mut output, &cfg, n, d, k, &mut sq, &mut sk, &mut sa,
+                &states,
+                &w,
+                &w,
+                None,
+                &mut output,
+                &cfg,
+                n,
+                d,
+                k,
+                &mut sq,
+                &mut sk,
+                &mut sa,
             )
             .unwrap();
             clr_weighted_set_attention_into(
-                &states, &w, &w, None, &reliability, &mut output, &cfg, n, d, k,
-                &mut sq, &mut sk, &mut sa,
+                &states,
+                &w,
+                &w,
+                None,
+                &reliability,
+                &mut output,
+                &cfg,
+                n,
+                d,
+                k,
+                &mut sq,
+                &mut sk,
+                &mut sa,
             )
             .unwrap();
         }

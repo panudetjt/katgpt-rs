@@ -16,9 +16,7 @@
 
 #![cfg(feature = "switch_cost")]
 
-use katgpt_core::switch_cost::{
-    FactorizedSwitchCost, SwitchCostTable, DEFAULT_ALPHA, cdf_rank,
-};
+use katgpt_core::switch_cost::{DEFAULT_ALPHA, FactorizedSwitchCost, SwitchCostTable, cdf_rank};
 use std::hint::black_box;
 
 #[path = "common/mod.rs"]
@@ -70,5 +68,8 @@ fn g4_zero_alloc_steady_state() {
         acc += cdf_rank(2.5, &sample);
         black_box(acc);
     });
-    assert_eq!(allocs, 0, "steady-state switch_cost paths allocated {allocs}×");
+    assert_eq!(
+        allocs, 0,
+        "steady-state switch_cost paths allocated {allocs}×"
+    );
 }

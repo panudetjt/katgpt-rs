@@ -1,4 +1,3 @@
-
 use super::*;
 
 /// Mock binary pruner: rejects any token_idx >= threshold.

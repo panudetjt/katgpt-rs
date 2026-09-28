@@ -815,7 +815,13 @@ impl ResidualGate {
     /// symmetry and ignored.
     #[inline]
     #[allow(non_snake_case)]
-    pub fn new_conditional(_loop_count: usize, _dim: usize, beta: f32, theta: f32, bias: f32) -> Self {
+    pub fn new_conditional(
+        _loop_count: usize,
+        _dim: usize,
+        beta: f32,
+        theta: f32,
+        bias: f32,
+    ) -> Self {
         Self {
             gates: Vec::new(),
             convex_schedule: None,
@@ -864,7 +870,11 @@ impl ResidualGate {
     #[inline]
     pub fn convex_gate_at(&self, tau: usize) -> Option<f32> {
         let s = self.convex_schedule.as_ref()?;
-        Some(s.get(tau).copied().unwrap_or_else(|| *s.last().unwrap_or(&1.0)))
+        Some(
+            s.get(tau)
+                .copied()
+                .unwrap_or_else(|| *s.last().unwrap_or(&1.0)),
+        )
     }
 
     /// The adaptive copy weight at loop `tau` (Issue 698 T8):
@@ -1166,7 +1176,11 @@ mod issue698_conditional_gate_tests {
         let a = [0.5f32; 8];
         let b = [0.25f32; 8];
         // No conditional installed → None (plain gates stay additive).
-        assert!(ResidualGate::new(32, 8).conditional_gate_at(5, &a, &b).is_none());
+        assert!(
+            ResidualGate::new(32, 8)
+                .conditional_gate_at(5, &a, &b)
+                .is_none()
+        );
         // τ < 2 → None (the cosine needs two carried states).
         assert!(g.conditional_gate_at(0, &a, &b).is_none());
         assert!(g.conditional_gate_at(1, &a, &b).is_none());

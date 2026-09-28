@@ -86,12 +86,22 @@ impl std::fmt::Display for ProbeArtifactError {
         match self {
             Self::BadMagic(m) => write!(f, "bad magic: expected {MAGIC:?}, got {m:?}"),
             Self::UnsupportedFormatVersion(v) => {
-                write!(f, "unsupported format version: {v} (expected {FORMAT_VERSION})")
+                write!(
+                    f,
+                    "unsupported format version: {v} (expected {FORMAT_VERSION})"
+                )
             }
             Self::CommitmentMismatch => {
-                write!(f, "BLAKE3 commitment mismatch — artifact tampered or corrupted")
+                write!(
+                    f,
+                    "BLAKE3 commitment mismatch — artifact tampered or corrupted"
+                )
             }
-            Self::Truncated { field, expected, got } => {
+            Self::Truncated {
+                field,
+                expected,
+                got,
+            } => {
                 write!(f, "truncated {field}: expected {expected} bytes, got {got}")
             }
             Self::InvalidShape(msg) => write!(f, "invalid shape: {msg}"),
@@ -167,11 +177,7 @@ impl ProbeArtifact {
         let n = self.mlp.n_embd;
         let concat_dim = 2 * n;
         // Weight f32 count: norm(2*concat) + fc1(n*concat + n) + fc2/fc3(2*(n*n + n)) + head(vocab*n)
-        let f32_count = 2 * concat_dim
-            + n * concat_dim
-            + n
-            + 2 * (n * n + n)
-            + self.vocab * n;
+        let f32_count = 2 * concat_dim + n * concat_dim + n + 2 * (n * n + n) + self.vocab * n;
         let mut buf = Vec::with_capacity(HEADER_LEN + 4 * f32_count);
         buf.extend_from_slice(&MAGIC);
         buf.extend_from_slice(&FORMAT_VERSION.to_le_bytes());
@@ -237,7 +243,9 @@ impl ProbeArtifact {
         let n_embd = u32::from_le_bytes(payload[20..24].try_into().unwrap()) as usize;
         let vocab = u32::from_le_bytes(payload[24..28].try_into().unwrap()) as usize;
         if n_embd == 0 {
-            return Err(ProbeArtifactError::InvalidShape("n_embd must be > 0".into()));
+            return Err(ProbeArtifactError::InvalidShape(
+                "n_embd must be > 0".into(),
+            ));
         }
         if vocab == 0 {
             return Err(ProbeArtifactError::InvalidShape("vocab must be > 0".into()));
@@ -245,27 +253,32 @@ impl ProbeArtifact {
 
         let concat_dim = 2 * n_embd;
         let mut off = HEADER_LEN;
-        let mut take = |field: &'static str, count: usize| -> Result<Vec<f32>, ProbeArtifactError> {
-            let byte_len = count * 4;
-            let end = off
-                .checked_add(byte_len)
-                .ok_or(ProbeArtifactError::Truncated { field, expected: byte_len, got: 0 })?;
-            if end > payload.len() {
-                return Err(ProbeArtifactError::Truncated {
-                    field,
-                    expected: byte_len,
-                    got: payload.len() - off,
-                });
-            }
-            let slice = &payload[off..end];
-            off = end;
-            Ok(slice
-                .as_chunks::<4>()
-                .0
-                .iter()
-                .map(|c| f32::from_le_bytes(*c))
-                .collect())
-        };
+        let mut take =
+            |field: &'static str, count: usize| -> Result<Vec<f32>, ProbeArtifactError> {
+                let byte_len = count * 4;
+                let end = off
+                    .checked_add(byte_len)
+                    .ok_or(ProbeArtifactError::Truncated {
+                        field,
+                        expected: byte_len,
+                        got: 0,
+                    })?;
+                if end > payload.len() {
+                    return Err(ProbeArtifactError::Truncated {
+                        field,
+                        expected: byte_len,
+                        got: payload.len() - off,
+                    });
+                }
+                let slice = &payload[off..end];
+                off = end;
+                Ok(slice
+                    .as_chunks::<4>()
+                    .0
+                    .iter()
+                    .map(|c| f32::from_le_bytes(*c))
+                    .collect())
+            };
 
         let norm_weight = take("norm_weight", concat_dim)?;
         let norm_bias = take("norm_bias", concat_dim)?;
@@ -312,8 +325,7 @@ impl ProbeArtifact {
 
     /// Read + verify an artifact from a file.
     pub fn load_from_bin(path: &Path) -> Result<Self, ProbeArtifactError> {
-        let bytes =
-            std::fs::read(path).map_err(|e| ProbeArtifactError::Io(e.to_string()))?;
+        let bytes = std::fs::read(path).map_err(|e| ProbeArtifactError::Io(e.to_string()))?;
         Self::from_bytes(&bytes)
     }
 }
@@ -325,7 +337,9 @@ mod tests {
 
     fn fixture(vocab: usize, n_embd: usize) -> ProbeArtifact {
         let mlp = LatentDynamicsMLP::random_init(n_embd);
-        let lm_head: Vec<f32> = (0..vocab * n_embd).map(|i| (i as f32) * 0.05 - 1.0).collect();
+        let lm_head: Vec<f32> = (0..vocab * n_embd)
+            .map(|i| (i as f32) * 0.05 - 1.0)
+            .collect();
         ProbeArtifact::from_parts(mlp, lm_head, 0, 7).expect("fixture artifact")
     }
 
@@ -333,7 +347,10 @@ mod tests {
     fn from_parts_computes_blake3_over_payload() {
         let artifact = fixture(11, 8);
         let expected = *blake3::hash(&artifact.payload_bytes()).as_bytes();
-        assert_eq!(artifact.blake3, expected, "commitment must be BLAKE3(payload)");
+        assert_eq!(
+            artifact.blake3, expected,
+            "commitment must be BLAKE3(payload)"
+        );
         assert_eq!(artifact.vocab, 11);
         assert_eq!(artifact.mlp.n_embd, 8);
         assert_eq!(artifact.version, 7);
@@ -377,7 +394,11 @@ mod tests {
         let path = dir.path().join("probe_artifact_test.bin");
         artifact.save_to_bin(&path).expect("save");
         let loaded = ProbeArtifact::load_from_bin(&path).expect("load");
-        assert_eq!(loaded.to_bytes(), artifact.to_bytes(), "file roundtrip must be byte-exact");
+        assert_eq!(
+            loaded.to_bytes(),
+            artifact.to_bytes(),
+            "file roundtrip must be byte-exact"
+        );
     }
 
     #[test]

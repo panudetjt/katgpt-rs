@@ -44,14 +44,12 @@
 
 use katgpt_attn::gdn2::kda_forward::KdaWeights;
 use katgpt_attn::mla::MlaWeights;
-use katgpt_core::latent_trajectory_geometry::{from_states, LatentTrajectoryGeometry};
+use katgpt_core::latent_trajectory_geometry::{LatentTrajectoryGeometry, from_states};
 use katgpt_rs::kimi_k3::decoder_layer::{
     KimiAttentionWeights, KimiDecoderLayerWeights, KimiFfnConfig, KimiFfnWeights,
 };
 use katgpt_rs::kimi_k3::loader::{KimiK3ModelWeights, load_kimi_k3};
-use katgpt_rs::kimi_k3::model::{
-    KimiK3ModelConfig, KimiK3Runtime, kimi_k3_forward_token_traced,
-};
+use katgpt_rs::kimi_k3::model::{KimiK3ModelConfig, KimiK3Runtime, kimi_k3_forward_token_traced};
 use katgpt_transformer::attn_res::AttnResWeights;
 use katgpt_transformer::moe::{MoeWeights, SwiGluExpertWeights};
 
@@ -120,7 +118,9 @@ fn build_random_weights(config: &KimiK3ModelConfig, seed: u64) -> KimiK3ModelWei
             let ffn = if is_dense {
                 // Dense layer uses SiTU MLP. Get intermediate_size from config.
                 let intermediate = match &config.dense_ffn_config {
-                    KimiFfnConfig::Dense { intermediate_size, .. } => *intermediate_size,
+                    KimiFfnConfig::Dense {
+                        intermediate_size, ..
+                    } => *intermediate_size,
                     _ => unreachable!("layer 0 must be Dense"),
                 };
                 let mut expert_rng = Lcg::new(layer_seed.wrapping_add(1));
@@ -287,9 +287,11 @@ fn main() {
         println!("Weights: random (Xavier-scaled, seed=42) — NOT real model.safetensors");
         print!("Building random Kimi-K3 weights ... ");
         let w = build_random_weights(&config, 42);
-        println!("done (embed={}k floats, {} layers)",
+        println!(
+            "done (embed={}k floats, {} layers)",
             w.embed_weight.len() / 1024,
-            w.layers.len());
+            w.layers.len()
+        );
         w
     };
     println!();
@@ -302,15 +304,21 @@ fn main() {
     println!();
     println!("── Test 1: per-token depth trajectory (no KV context) ────────");
     println!("  Each token processed in isolation (reset → 1 traced forward).");
-    println!("  Trajectory = [embed → layer0 → ... → layer{}] ({} states, D={})",
-        n_layers - 1, n_layers + 1, d);
+    println!(
+        "  Trajectory = [embed → layer0 → ... → layer{}] ({} states, D={})",
+        n_layers - 1,
+        n_layers + 1,
+        d
+    );
     println!();
 
     let test_tokens: Vec<u32> = vec![1, 2, 5, 10, 42, 100, 200, 500];
     let mut geoms_t1: Vec<TokenGeometry> = Vec::with_capacity(test_tokens.len());
 
-    println!("  {:>8}  {:>10}  {:>12}  {:>12}  {:>12}  {:>8}",
-        "token", "n_steps", "length", "mean_curv", "min_cos", "finite");
+    println!(
+        "  {:>8}  {:>10}  {:>12}  {:>12}  {:>12}  {:>8}",
+        "token", "n_steps", "length", "mean_curv", "min_cos", "finite"
+    );
     println!("  {}", "-".repeat(70));
 
     for &tok in &test_tokens {
@@ -329,24 +337,37 @@ fn main() {
             all_finite,
         });
 
-        println!("  {:>8}  {:>10}  {:>12.4}  {:>12.4}  {:>12.4}  {:>8}",
-            tok, geom.n_steps, geom.length, geom.mean_curvature,
-            geom.min_adjacent_cosine, if all_finite { "YES" } else { "NO" });
+        println!(
+            "  {:>8}  {:>10}  {:>12.4}  {:>12.4}  {:>12.4}  {:>8}",
+            tok,
+            geom.n_steps,
+            geom.length,
+            geom.mean_curvature,
+            geom.min_adjacent_cosine,
+            if all_finite { "YES" } else { "NO" }
+        );
     }
 
     let stats_t1 = compute_stats(&geoms_t1);
     println!();
-    println!("  length:   mean={:.4}, std={:.4}, min={:.4}, max={:.4}",
-        stats_t1.mean_length, stats_t1.std_length, stats_t1.min_length, stats_t1.max_length);
-    println!("  curvature: mean={:.4} rad, std={:.4} rad",
-        stats_t1.mean_curvature, stats_t1.std_curvature);
-    println!("  distinct pairs: {}/{} ({:.0}%)",
-        stats_t1.n_distinct_pairs, stats_t1.n_total_pairs,
+    println!(
+        "  length:   mean={:.4}, std={:.4}, min={:.4}, max={:.4}",
+        stats_t1.mean_length, stats_t1.std_length, stats_t1.min_length, stats_t1.max_length
+    );
+    println!(
+        "  curvature: mean={:.4} rad, std={:.4} rad",
+        stats_t1.mean_curvature, stats_t1.std_curvature
+    );
+    println!(
+        "  distinct pairs: {}/{} ({:.0}%)",
+        stats_t1.n_distinct_pairs,
+        stats_t1.n_total_pairs,
         if stats_t1.n_total_pairs > 0 {
             stats_t1.n_distinct_pairs as f32 / stats_t1.n_total_pairs as f32 * 100.0
         } else {
             0.0
-        });
+        }
+    );
 
     // ── Test 2: trajectory variation across sequence positions ───────────
     println!();
@@ -358,8 +379,10 @@ fn main() {
     let prompt: Vec<u32> = vec![10, 20, 30, 40, 50, 60, 70, 80];
     let mut geoms_t2: Vec<TokenGeometry> = Vec::with_capacity(prompt.len());
 
-    println!("  {:>8}  {:>8}  {:>10}  {:>12}  {:>12}  {:>12}  {:>8}",
-        "seq_pos", "token", "n_steps", "length", "mean_curv", "min_cos", "finite");
+    println!(
+        "  {:>8}  {:>8}  {:>10}  {:>12}  {:>12}  {:>12}  {:>8}",
+        "seq_pos", "token", "n_steps", "length", "mean_curv", "min_cos", "finite"
+    );
     println!("  {}", "-".repeat(80));
 
     runtime.reset();
@@ -378,17 +401,28 @@ fn main() {
             all_finite,
         });
 
-        println!("  {:>8}  {:>8}  {:>10}  {:>12.4}  {:>12.4}  {:>12.4}  {:>8}",
-            pos, tok, geom.n_steps, geom.length, geom.mean_curvature,
-            geom.min_adjacent_cosine, if all_finite { "YES" } else { "NO" });
+        println!(
+            "  {:>8}  {:>8}  {:>10}  {:>12.4}  {:>12.4}  {:>12.4}  {:>8}",
+            pos,
+            tok,
+            geom.n_steps,
+            geom.length,
+            geom.mean_curvature,
+            geom.min_adjacent_cosine,
+            if all_finite { "YES" } else { "NO" }
+        );
     }
 
     let stats_t2 = compute_stats(&geoms_t2);
     println!();
-    println!("  length:   mean={:.4}, std={:.4}, min={:.4}, max={:.4}",
-        stats_t2.mean_length, stats_t2.std_length, stats_t2.min_length, stats_t2.max_length);
-    println!("  curvature: mean={:.4} rad, std={:.4} rad",
-        stats_t2.mean_curvature, stats_t2.std_curvature);
+    println!(
+        "  length:   mean={:.4}, std={:.4}, min={:.4}, max={:.4}",
+        stats_t2.mean_length, stats_t2.std_length, stats_t2.min_length, stats_t2.max_length
+    );
+    println!(
+        "  curvature: mean={:.4} rad, std={:.4} rad",
+        stats_t2.mean_curvature, stats_t2.std_curvature
+    );
 
     // ── Test 3: trajectory with untraced prefix (realistic context) ──────
     println!();
@@ -402,8 +436,10 @@ fn main() {
 
     let mut geoms_t3: Vec<TokenGeometry> = Vec::with_capacity(trace_tokens.len());
 
-    println!("  {:>8}  {:>8}  {:>10}  {:>12}  {:>12}  {:>12}  {:>8}",
-        "seq_pos", "token", "n_steps", "length", "mean_curv", "min_cos", "finite");
+    println!(
+        "  {:>8}  {:>8}  {:>10}  {:>12}  {:>12}  {:>12}  {:>8}",
+        "seq_pos", "token", "n_steps", "length", "mean_curv", "min_cos", "finite"
+    );
     println!("  {}", "-".repeat(80));
 
     runtime.reset();
@@ -430,15 +466,28 @@ fn main() {
             all_finite,
         });
 
-        println!("  {:>8}  {:>8}  {:>10}  {:>12.4}  {:>12.4}  {:>12.4}  {:>8}",
-            context.len() + i, tok, geom.n_steps, geom.length, geom.mean_curvature,
-            geom.min_adjacent_cosine, if all_finite { "YES" } else { "NO" });
+        println!(
+            "  {:>8}  {:>8}  {:>10}  {:>12.4}  {:>12.4}  {:>12.4}  {:>8}",
+            context.len() + i,
+            tok,
+            geom.n_steps,
+            geom.length,
+            geom.mean_curvature,
+            geom.min_adjacent_cosine,
+            if all_finite { "YES" } else { "NO" }
+        );
     }
 
     let stats_t3 = compute_stats(&geoms_t3);
     println!();
-    println!("  length:   mean={:.4}, std={:.4}", stats_t3.mean_length, stats_t3.std_length);
-    println!("  curvature: mean={:.4} rad, std={:.4} rad", stats_t3.mean_curvature, stats_t3.std_curvature);
+    println!(
+        "  length:   mean={:.4}, std={:.4}",
+        stats_t3.mean_length, stats_t3.std_length
+    );
+    println!(
+        "  curvature: mean={:.4} rad, std={:.4} rad",
+        stats_t3.mean_curvature, stats_t3.std_curvature
+    );
 
     // ── Verdicts ──────────────────────────────────────────────────────────
     println!();
@@ -448,20 +497,29 @@ fn main() {
     println!("├───────┼──────────────────────────────────────────────────┼────────┤");
 
     // G1: all finite + in-range.
-    let all_finite = geoms_t1.iter().chain(&geoms_t2).chain(&geoms_t3)
+    let all_finite = geoms_t1
+        .iter()
+        .chain(&geoms_t2)
+        .chain(&geoms_t3)
         .all(|g| g.all_finite);
     print_verdict("G1", "all geometry finite + in-range (D=1024)", all_finite);
 
     // G2: non-degenerate (length > 0 — layers actually transform hidden).
-    let non_degenerate = geoms_t1.iter().chain(&geoms_t2).chain(&geoms_t3)
+    let non_degenerate = geoms_t1
+        .iter()
+        .chain(&geoms_t2)
+        .chain(&geoms_t3)
         .all(|g| g.geom.length > 0.0);
     print_verdict("G2", "non-degenerate (length > 0)", non_degenerate);
 
     // G3: discriminative across tokens (Test 1).
-    let discrim_t1 = stats_t1.n_distinct_pairs as f32
-        / stats_t1.n_total_pairs.max(1) as f32;
+    let discrim_t1 = stats_t1.n_distinct_pairs as f32 / stats_t1.n_total_pairs.max(1) as f32;
     let g3_pass = discrim_t1 > 0.3;
-    print_verdict("G3", "discriminative across tokens (>30% distinct)", g3_pass);
+    print_verdict(
+        "G3",
+        "discriminative across tokens (>30% distinct)",
+        g3_pass,
+    );
 
     // G4: varies across sequence positions (Test 2).
     let varies_pos = stats_t2.std_length > 0.0 || stats_t2.std_curvature > 0.0;
@@ -473,8 +531,10 @@ fn main() {
     // ── Overall verdict ───────────────────────────────────────────────────
     let all_pass = all_finite && non_degenerate && g3_pass && varies_pos;
     if all_pass {
-        println!("═ T5.4 VALIDATED on {} Kimi-K3 weights ═",
-            if use_real { "REAL" } else { "random" });
+        println!(
+            "═ T5.4 VALIDATED on {} Kimi-K3 weights ═",
+            if use_real { "REAL" } else { "random" }
+        );
         println!();
         println!("`latent_trajectory_geometry::from_states` produces finite,");
         println!("non-degenerate, discriminative geometry at D=1024 on the real");
@@ -500,9 +560,16 @@ fn main() {
         .filter(|(_, f)| *f)
         .map(|(g, _)| *g)
         .collect();
-        println!("═ T5.4 PARTIAL ({}) — {} failed: {} ═",
-            if use_real { "REAL weights" } else { "random weights" },
-            failed.len(), failed.join(", "));
+        println!(
+            "═ T5.4 PARTIAL ({}) — {} failed: {} ═",
+            if use_real {
+                "REAL weights"
+            } else {
+                "random weights"
+            },
+            failed.len(),
+            failed.join(", ")
+        );
         println!();
         if !all_finite {
             println!("  G1 FAIL: NaN/Inf or out-of-range geometry at D=1024.");
@@ -513,8 +580,10 @@ fn main() {
             println!("    Check if weights produce valid forward passes.");
         }
         if !g3_pass {
-            println!("  G3 FAIL: geometry does not discriminate across tokens ({:.0}%).",
-                discrim_t1 * 100.0);
+            println!(
+                "  G3 FAIL: geometry does not discriminate across tokens ({:.0}%).",
+                discrim_t1 * 100.0
+            );
             if !use_real {
                 println!("    EXPECTED with random weights — random transformations are");
                 println!("    input-invariant. Re-test with real model.safetensors to");

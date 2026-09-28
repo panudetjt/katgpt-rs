@@ -133,7 +133,9 @@ struct HistogramVisitor {
 impl HistogramVisitor {
     fn new() -> Self {
         Self {
-            histogram: AstHistogram { counts: [0; N_AST_BINS] },
+            histogram: AstHistogram {
+                counts: [0; N_AST_BINS],
+            },
         }
     }
 
@@ -417,8 +419,13 @@ mod tests {
     fn normalized_sums_to_one_or_zero() {
         let h = ast_histogram("fn a() -> u8 { 1 }").expect("parses");
         let sum: f32 = h.normalized().iter().sum();
-        assert!((sum - 1.0).abs() < 1e-6, "normalized must sum to 1, got {sum}");
-        let empty = AstHistogram { counts: [0; N_AST_BINS] };
+        assert!(
+            (sum - 1.0).abs() < 1e-6,
+            "normalized must sum to 1, got {sum}"
+        );
+        let empty = AstHistogram {
+            counts: [0; N_AST_BINS],
+        };
         assert!(
             empty.normalized().iter().all(|&v| v == 0.0),
             "empty must normalize to zeros"

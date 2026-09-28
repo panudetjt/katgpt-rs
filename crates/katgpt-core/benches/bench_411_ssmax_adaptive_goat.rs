@@ -110,7 +110,7 @@ fn attention_output_cosine_sim(logits: &[f32], gold_index: usize, d_model: usize
 fn main() {
     use std::sync::atomic::Ordering;
 
-println!("══════════════════════════════════════════════════════════════════");
+    println!("══════════════════════════════════════════════════════════════════");
     println!("  Plan 411 S2 — SSMax Rolling-Δ Estimator GOAT gate");
     println!("  Δ (true gold-distractor gap) = {DELTA}");
     println!("══════════════════════════════════════════════════════════════════\n");
@@ -269,9 +269,7 @@ println!("═══════════════════════�
     let warm_s_l = warm_mode.resolve_s_l();
     let fixed_s_l = SsmaxMode::Fixed { s_l: 1.0 }.resolve_s_l();
     let g5_pass = (warm_s_l - fixed_s_l).abs() < 1e-6;
-    println!(
-        "  Warm-start s_L = {warm_s_l:.6}, Fixed s_L = {fixed_s_l:.6}"
-    );
+    println!("  Warm-start s_L = {warm_s_l:.6}, Fixed s_L = {fixed_s_l:.6}");
     println!(
         "\nG5 (no-regression): {}\n",
         if g5_pass { "✅ PASS" } else { "❌ FAIL" }

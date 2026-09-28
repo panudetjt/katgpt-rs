@@ -15,7 +15,7 @@
 #![cfg(feature = "switch_cost")]
 
 use fastrand::Rng;
-use katgpt_core::switch_cost::{FactorizedSwitchCost, SwitchCostTable, DEFAULT_ALPHA};
+use katgpt_core::switch_cost::{DEFAULT_ALPHA, FactorizedSwitchCost, SwitchCostTable};
 
 const IDLE: usize = 0;
 const HUNT: usize = 1;
@@ -120,10 +120,7 @@ fn main() {
     let calm_day = [IDLE, HUNT, IDLE, TAME, SLEEP];
     let panic_day = [IDLE, HUNT, FLEE, HUNT, FLEE, TAME, SLEEP];
     println!("\nSequence entropy (Eq. 4):");
-    println!(
-        "  calm routine  {:>5.2}",
-        table.sequence_entropy(&calm_day)
-    );
+    println!("  calm routine  {:>5.2}", table.sequence_entropy(&calm_day));
     println!(
         "  panic routine {:>5.2}",
         table.sequence_entropy(&panic_day)

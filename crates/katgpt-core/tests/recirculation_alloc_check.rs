@@ -46,5 +46,8 @@ fn g4_zero_alloc_steady_state_cross_step_loop() {
         }
         black_box(acc);
     });
-    assert_eq!(allocs, 0, "steady-state recirculation loop allocated {allocs}×");
+    assert_eq!(
+        allocs, 0,
+        "steady-state recirculation loop allocated {allocs}×"
+    );
 }

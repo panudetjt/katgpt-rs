@@ -35,7 +35,11 @@ where
 
 /// Rank all documents by cosine against the query, best first.
 fn dense_ranking(fixture: &LimitFixture) -> impl Fn(usize) -> Vec<usize> + '_ {
-    let doc_emb: Vec<[f32; 8]> = fixture.docs.iter().map(|d| modelless_embed_8(&d.text)).collect();
+    let doc_emb: Vec<[f32; 8]> = fixture
+        .docs
+        .iter()
+        .map(|d| modelless_embed_8(&d.text))
+        .collect();
     let q_emb: Vec<[f32; 8]> = fixture
         .queries
         .iter()
@@ -93,7 +97,10 @@ fn limit_small_recall_by_leg() {
         plain.queries.len(),
         chance_recall(plain.docs.len(), 2)
     );
-    println!("{:<22} {:>9} {:>9} {:>9}", "leg / variant", "R@2", "R@10", "R@20");
+    println!(
+        "{:<22} {:>9} {:>9} {:>9}",
+        "leg / variant", "R@2", "R@10", "R@20"
+    );
     println!("{}", "-".repeat(54));
 
     let cap_iter = [("plain", &plain), ("synonym", &syn)];
@@ -103,13 +110,19 @@ fn limit_small_recall_by_leg() {
         let d2 = mean_recall(fx, 2, &dense);
         let d10 = mean_recall(fx, 10, &dense);
         let d20 = mean_recall(fx, 20, dense);
-        println!("{:<22} {d2:>9.3} {d10:>9.3} {d20:>9.3}", format!("dense 8-D / {label}"));
+        println!(
+            "{:<22} {d2:>9.3} {d10:>9.3} {d20:>9.3}",
+            format!("dense 8-D / {label}")
+        );
 
         let lex = lexical_ranking(fx);
         let l2 = mean_recall(fx, 2, &lex);
         let l10 = mean_recall(fx, 10, &lex);
         let l20 = mean_recall(fx, 20, lex);
-        println!("{:<22} {l2:>9.3} {l10:>9.3} {l20:>9.3}", format!("lexical / {label}"));
+        println!(
+            "{:<22} {l2:>9.3} {l10:>9.3} {l20:>9.3}",
+            format!("lexical / {label}")
+        );
         results.push((label, d2, d10, d20, l2, l10, l20));
     }
 

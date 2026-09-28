@@ -12,12 +12,12 @@
 
 #![cfg(all(feature = "elf_sde", feature = "bandit"))]
 
+#[cfg(feature = "eqr_convergence")]
+use katgpt_rs::speculative::dd_tree::RestartMode;
 use katgpt_rs::speculative::dd_tree::{
     WidthScaleConfig, WidthSelectionMode, best_of_k_rollouts, build_dd_tree_sde, extract_best_path,
     inject_sde_noise,
 };
-#[cfg(feature = "eqr_convergence")]
-use katgpt_rs::speculative::dd_tree::RestartMode;
 use katgpt_rs::speculative::types::{EarlyStopGate, NoScreeningPruner, SdeConfig};
 use katgpt_rs::transformer::TransformerWeights;
 use katgpt_rs::types::{Config, Rng};

@@ -1,4 +1,3 @@
-
 use super::*;
 
 /// Mock implementation to verify trait compiles and is object-safe.

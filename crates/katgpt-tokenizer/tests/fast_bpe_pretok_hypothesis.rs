@@ -138,16 +138,19 @@ fn g1_whitespace_pretokenization_bit_identical_medium_vocab() {
         let pretok = encode_with_whitespace_pretokenization(&tokenizer, text);
         let first_diff = whole.iter().zip(pretok.iter()).position(|(a, b)| a != b);
         assert_eq!(
-            whole, pretok,
+            whole,
+            pretok,
             "Hypothesis FAILED on medium vocab (len={}): first divergence at {:?}\n  whole[{}..{}]={:?}\n  pretok[{}..{}]={:?}",
             text.len(),
             first_diff,
             first_diff.unwrap_or(0).saturating_sub(3),
             first_diff.unwrap_or(0) + 3,
-            &whole[first_diff.unwrap_or(0).saturating_sub(3)..(first_diff.unwrap_or(0) + 3).min(whole.len())],
+            &whole[first_diff.unwrap_or(0).saturating_sub(3)
+                ..(first_diff.unwrap_or(0) + 3).min(whole.len())],
             first_diff.unwrap_or(0).saturating_sub(3),
             first_diff.unwrap_or(0) + 3,
-            &pretok[first_diff.unwrap_or(0).saturating_sub(3)..(first_diff.unwrap_or(0) + 3).min(pretok.len())],
+            &pretok[first_diff.unwrap_or(0).saturating_sub(3)
+                ..(first_diff.unwrap_or(0) + 3).min(pretok.len())],
         );
     }
 }
@@ -163,7 +166,8 @@ fn g1_whitespace_pretokenization_bit_identical_corpus_repeated() {
     let whole = BpeTokenizerImpl::encode(&tokenizer, corpus);
     let pretok = encode_with_whitespace_pretokenization(&tokenizer, corpus);
     assert_eq!(
-        whole, pretok,
+        whole,
+        pretok,
         "Hypothesis FAILED on corpus_repeat ({} chars): sequences differ in length (whole={}, pretok={})",
         corpus.len(),
         whole.len(),

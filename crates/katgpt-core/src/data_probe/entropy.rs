@@ -105,7 +105,8 @@ pub fn knn_differential_entropy(
         sum_ln_eps += eps_k.ln();
     }
 
-    digamma(n as f64) - digamma(k as f64) + ln_euclidean_unit_ball_volume(d)
+    digamma(n as f64) - digamma(k as f64)
+        + ln_euclidean_unit_ball_volume(d)
         + (d as f64 / n as f64) * sum_ln_eps
 }
 
@@ -235,7 +236,8 @@ pub fn digamma(x: f64) -> f64 {
     let inv = 1.0 / z;
     let inv2 = inv * inv;
     // ψ(z) ≈ ln z − 1/(2z) − 1/(12z²) + 1/(120z⁴) − 1/(252z⁶) + 1/(240z⁸)
-    acc + z.ln() - 0.5 * inv
+    acc + z.ln()
+        - 0.5 * inv
         - inv2 * (1.0 / 12.0 - inv2 * (1.0 / 120.0 - inv2 * (1.0 / 252.0 - inv2 / 240.0)))
 }
 
@@ -309,7 +311,10 @@ mod tests {
             (2, std::f64::consts::PI.ln()),
             (3, (4.0 * std::f64::consts::PI / 3.0).ln()),
             (4, (std::f64::consts::PI * std::f64::consts::PI / 2.0).ln()),
-            (5, (8.0 * std::f64::consts::PI * std::f64::consts::PI / 15.0).ln()),
+            (
+                5,
+                (8.0 * std::f64::consts::PI * std::f64::consts::PI / 15.0).ln(),
+            ),
         ];
         for (d, expect) in cases {
             assert!(

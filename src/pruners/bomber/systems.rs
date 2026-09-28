@@ -7,10 +7,10 @@ use bevy_ecs::prelude::*;
 
 use super::arena::ArenaGrid;
 use super::{
-    ARENA_H, ARENA_W, Alive, BOMB_FUSE_TICKS, Blast, Bomb, BombCount, BombFuse, BombRange, BombType,
-    BomberAction, Cell, DEFAULT_BLAST_RANGE, DEFAULT_MAX_BOMBS, DEFAULT_SPEED, GameEvent, GameRng,
-    GridPos, Player, PlayerEntities, PowerUp, PowerUpKind, SPAWN_POSITIONS, ScoreBoard, Speed,
-    TICK_LIMIT, TickCounter,
+    ARENA_H, ARENA_W, Alive, BOMB_FUSE_TICKS, Blast, Bomb, BombCount, BombFuse, BombRange,
+    BombType, BomberAction, Cell, DEFAULT_BLAST_RANGE, DEFAULT_MAX_BOMBS, DEFAULT_SPEED, GameEvent,
+    GameRng, GridPos, Player, PlayerEntities, PowerUp, PowerUpKind, SPAWN_POSITIONS, ScoreBoard,
+    Speed, TICK_LIMIT, TickCounter,
 };
 
 // ---------------------------------------------------------------------------
@@ -53,7 +53,11 @@ struct CellSet {
 impl CellSet {
     #[inline]
     fn index(x: i32, y: i32) -> Option<usize> {
-        if x >= 0 && y >= 0 && (x as usize) < ARENA_W && (y as usize) < ARENA_H { Some(y as usize * ARENA_W + x as usize) } else { None }
+        if x >= 0 && y >= 0 && (x as usize) < ARENA_W && (y as usize) < ARENA_H {
+            Some(y as usize * ARENA_W + x as usize)
+        } else {
+            None
+        }
     }
 
     /// Insert `(x, y)`; returns `true` if it was not already present
@@ -68,10 +72,14 @@ impl CellSet {
                 *word |= mask;
                 fresh
             }
-            None => if self.oob.contains(&(x, y)) { false } else {
+            None => {
+                if self.oob.contains(&(x, y)) {
+                    false
+                } else {
                     self.oob.push((x, y));
                     true
-                },
+                }
+            }
         }
     }
 
@@ -496,7 +504,9 @@ fn apply_movement(world: &mut World, actions: [Option<BomberAction>; 4]) {
         // Resource lookup hoisted out of the per-player loop.
         let grid = world.resource::<ArenaGrid>();
         for (entity, player, pos) in q.iter(world) {
-            let Some(action) = actions.get(player.id as usize).copied().flatten() else { continue };
+            let Some(action) = actions.get(player.id as usize).copied().flatten() else {
+                continue;
+            };
             let (dx, dy) = match action {
                 BomberAction::Up => (0, -1),
                 BomberAction::Down => (0, 1),
@@ -699,14 +709,14 @@ fn collect_powerups(world: &mut World) {
                 }
             }
         }
-        let pid = world
-            .get::<Player>(player_entity).map_or(0, |p| p.id);
+        let pid = world.get::<Player>(player_entity).map_or(0, |p| p.id);
 
         // Only first player to reach this entity emits event and despawns
         if !collected_entities.contains(&pu_entity) {
             collected_entities.push(pu_entity);
             let pu_pos = world
-                .get::<GridPos>(pu_entity).map_or((0, 0), |g| (g.x, g.y));
+                .get::<GridPos>(pu_entity)
+                .map_or((0, 0), |g| (g.x, g.y));
             world.write_message(GameEvent::PowerUpCollected {
                 player: pid,
                 kind,

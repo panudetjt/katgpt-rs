@@ -158,7 +158,10 @@ mod tests {
         let mut out = [0.0f32; 4];
         conv.forward(&x, &mut out);
         // tap 0 = 1.0 weights x[c]; past samples are zero → out = x.
-        assert_eq!(out, x, "identity weights + zero state should pass x through");
+        assert_eq!(
+            out, x,
+            "identity weights + zero state should pass x through"
+        );
     }
 
     #[test]
@@ -202,7 +205,10 @@ mod tests {
         assert_eq!(out[0], 10.0);
         // 5th push: 1 is evicted, state becomes [2,3,4,5], out = 2+3+4+5 = 14
         conv.forward(&[5.0], &mut out);
-        assert_eq!(out[0], 14.0, "5th push should evict the 1st (kernel_size=4)");
+        assert_eq!(
+            out[0], 14.0,
+            "5th push should evict the 1st (kernel_size=4)"
+        );
         // 6th push: state becomes [3,4,5,6], out = 3+4+5+6 = 18
         conv.forward(&[6.0], &mut out);
         assert_eq!(out[0], 18.0);
@@ -228,7 +234,10 @@ mod tests {
 
         conv.forward(&[20.0, 2.0], &mut out);
         // Channel 0: 20 + 10 = 30. Channel 1: 2 * 2 = 4.
-        assert_eq!(out[0], 30.0, "channel 0 step 2 (uses channel 0's past only)");
+        assert_eq!(
+            out[0], 30.0,
+            "channel 0 step 2 (uses channel 0's past only)"
+        );
         assert_eq!(out[1], 4.0, "channel 1 step 2 (uses channel 1's past only)");
     }
 
@@ -244,7 +253,10 @@ mod tests {
         // After reset, history is gone.
         conv.reset();
         conv.forward(&[10.0], &mut out);
-        assert_eq!(out[0], 10.0, "after reset, only the current sample contributes");
+        assert_eq!(
+            out[0], 10.0,
+            "after reset, only the current sample contributes"
+        );
     }
 
     #[test]
@@ -272,7 +284,13 @@ mod tests {
 
         let mut out = [0.0f32; 2];
         // Push [ch0, ch1] = [(1,10), (2,20), (3,30), (4,40), (5,50)]
-        for (a, b) in [(1.0, 10.0), (2.0, 20.0), (3.0, 30.0), (4.0, 40.0), (5.0, 50.0)] {
+        for (a, b) in [
+            (1.0, 10.0),
+            (2.0, 20.0),
+            (3.0, 30.0),
+            (4.0, 40.0),
+            (5.0, 50.0),
+        ] {
             conv.forward(&[a, b], &mut out);
         }
         // Channel 0: last 4 of [1,2,3,4,5] = [2,3,4,5], sum = 14.

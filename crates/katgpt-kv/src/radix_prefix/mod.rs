@@ -121,7 +121,10 @@ impl fmt::Display for TreeError {
                 "pages chunk-major len {got}, expected {expected} (chunks × n_layers)"
             ),
             TreeError::PathMismatch { chunk } => {
-                write!(f, "supplied tables diverge from indexed path at chunk {chunk}")
+                write!(
+                    f,
+                    "supplied tables diverge from indexed path at chunk {chunk}"
+                )
             }
         }
     }
@@ -293,16 +296,10 @@ impl RadixPrefixTree {
         let mut matched = 0usize;
         let mut lcp = 0usize;
         while matched < total_chunks {
-            let Some(child) = self.node(node)
-                .children
-                .iter()
-                .copied()
-                .find(|&c| {
-                    let span = &self.node(c).tokens;
-                    span.len() >= pt
-                        && span[..pt] == tokens[matched * pt..(matched + 1) * pt]
-                })
-            else {
+            let Some(child) = self.node(node).children.iter().copied().find(|&c| {
+                let span = &self.node(c).tokens;
+                span.len() >= pt && span[..pt] == tokens[matched * pt..(matched + 1) * pt]
+            }) else {
                 break;
             };
             let span_chunks = self.node(child).tokens.len() / pt;

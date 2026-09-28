@@ -35,8 +35,8 @@
 use katgpt_rs::kimi_k3::{
     loader::KimiK3ModelWeights,
     model::{
-        KimiK3ModelConfig, KimiK3Runtime, PauseConfig, PauseStrategy,
-        kimi_k3_forward_token, kimi_k3_inject_pause,
+        KimiK3ModelConfig, KimiK3Runtime, PauseConfig, PauseStrategy, kimi_k3_forward_token,
+        kimi_k3_inject_pause,
     },
 };
 
@@ -121,8 +121,15 @@ fn feed_prompt_get_logits(
         last_token = tok;
     }
 
-    kimi_k3_inject_pause(config, weights, &mut runtime, pause, last_token, &last_logits)
-        .to_vec()
+    kimi_k3_inject_pause(
+        config,
+        weights,
+        &mut runtime,
+        pause,
+        last_token,
+        &last_logits,
+    )
+    .to_vec()
 }
 
 fn main() {

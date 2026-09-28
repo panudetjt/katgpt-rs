@@ -104,7 +104,10 @@ fn median_ns(reps: usize, inner: usize, mut f: impl FnMut()) -> f64 {
     // headroom over the reps=9 used at the call sites; bump if a future call
     // site needs more.
     const MAX_REPS: usize = 32;
-    assert!(reps <= MAX_REPS, "median_ns reps={reps} exceeds MAX_REPS={MAX_REPS}");
+    assert!(
+        reps <= MAX_REPS,
+        "median_ns reps={reps} exceeds MAX_REPS={MAX_REPS}"
+    );
     let mut samples = [0.0f64; MAX_REPS];
     for slot in samples.iter_mut().take(reps) {
         let t = Instant::now();
@@ -265,11 +268,19 @@ fn regression_sub_threshold_batch_does_not_panic() {
             let xb = &x[b * cols..(b + 1) * cols];
             let mut one = vec![0.0f32; rows];
             simd_ternary_group_matvec(&gw, xb, &mut one);
-            assert_eq!(&y_g[b * rows..(b + 1) * rows], &one[..], "group batch={batch} b={b}");
+            assert_eq!(
+                &y_g[b * rows..(b + 1) * rows],
+                &one[..],
+                "group batch={batch} b={b}"
+            );
 
             let mut one_t = vec![0.0f32; rows];
             simd_ternary_matvec(&tw, xb, &mut one_t);
-            assert_eq!(&y_t[b * rows..(b + 1) * rows], &one_t[..], "row batch={batch} b={b}");
+            assert_eq!(
+                &y_t[b * rows..(b + 1) * rows],
+                &one_t[..],
+                "row batch={batch} b={b}"
+            );
         }
     }
 }

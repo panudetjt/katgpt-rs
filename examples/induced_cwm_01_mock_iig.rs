@@ -275,13 +275,10 @@ fn run_ismcts_and_collect_stats(
         .edges
         .iter()
         .max_by(|(ka, va), (kb, vb)| match va.visits.cmp(&vb.visits) {
-            std::cmp::Ordering::Equal => {
-                match va.mean_value().total_cmp(&vb.mean_value())
-                {
-                    std::cmp::Ordering::Equal => ka.cmp(kb),
-                    ord => ord,
-                }
-            }
+            std::cmp::Ordering::Equal => match va.mean_value().total_cmp(&vb.mean_value()) {
+                std::cmp::Ordering::Equal => ka.cmp(kb),
+                ord => ord,
+            },
             ord => ord,
         })
         .map(|(k, _)| *k)

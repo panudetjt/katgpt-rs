@@ -1,4 +1,3 @@
-
 use super::*;
 
 fn make_func(instrs: Vec<WasmInstr>) -> FuncBody {

@@ -47,7 +47,8 @@ use wasmi::{Config, Engine, Linker, Module, Store, TypedFunc};
 // Same path convention as `wasmi_puct_bench.rs`: the `wasm-opt` output
 // (pre-`wasm-bindgen`) preserves raw `#[no_mangle] extern "C"` exports that
 // `wasm-bindgen --target web` would strip.
-const WASM_PATH: &str = "/tmp/moka-puct-204/wasm32-unknown-unknown/release/katgpt_moka_wasm.opt.wasm";
+const WASM_PATH: &str =
+    "/tmp/moka-puct-204/wasm32-unknown-unknown/release/katgpt_moka_wasm.opt.wasm";
 
 const MAX_MOVES: usize = 200;
 const OPENING_MOVES: usize = 4;
@@ -74,9 +75,13 @@ fn setup_wasmi() -> (Store<()>, wasmi::Instance) {
         if let wasmi::ExternType::Func(func_ty) = import.ty() {
             let name_for_trap = format!("{}::{}", import.module(), import.name());
             let stub = wasmi::Func::new(&mut store, func_ty.clone(), move |_, _, _| {
-                panic!("unexpected call into JS-interop stub {name_for_trap} during wasmi benchmark");
+                panic!(
+                    "unexpected call into JS-interop stub {name_for_trap} during wasmi benchmark"
+                );
             });
-            linker.define(import.module(), import.name(), stub).expect("define stub import");
+            linker
+                .define(import.module(), import.name(), stub)
+                .expect("define stub import");
         }
     }
 
@@ -117,15 +122,33 @@ impl Arena {
             init_f32: instance
                 .get_typed_func(store, "wasmi_arena_init_f32")
                 .expect("wasmi_arena_init_f32"),
-            reset: instance.get_typed_func(store, "wasmi_arena_reset").expect("wasmi_arena_reset"),
-            play: instance.get_typed_func(store, "wasmi_arena_play").expect("wasmi_arena_play"),
-            legal_count: instance.get_typed_func(store, "wasmi_arena_legal_count").expect("wasmi_arena_legal_count"),
-            legal_move: instance.get_typed_func(store, "wasmi_arena_legal_move").expect("wasmi_arena_legal_move"),
-            search_puct: instance.get_typed_func(store, "wasmi_arena_search_puct").expect("wasmi_arena_search_puct"),
-            search_greedy: instance.get_typed_func(store, "wasmi_arena_search_greedy").expect("wasmi_arena_search_greedy"),
-            is_over: instance.get_typed_func(store, "wasmi_arena_is_over").expect("wasmi_arena_is_over"),
-            to_play: instance.get_typed_func(store, "wasmi_arena_to_play").expect("wasmi_arena_to_play"),
-            reward: instance.get_typed_func(store, "wasmi_arena_reward").expect("wasmi_arena_reward"),
+            reset: instance
+                .get_typed_func(store, "wasmi_arena_reset")
+                .expect("wasmi_arena_reset"),
+            play: instance
+                .get_typed_func(store, "wasmi_arena_play")
+                .expect("wasmi_arena_play"),
+            legal_count: instance
+                .get_typed_func(store, "wasmi_arena_legal_count")
+                .expect("wasmi_arena_legal_count"),
+            legal_move: instance
+                .get_typed_func(store, "wasmi_arena_legal_move")
+                .expect("wasmi_arena_legal_move"),
+            search_puct: instance
+                .get_typed_func(store, "wasmi_arena_search_puct")
+                .expect("wasmi_arena_search_puct"),
+            search_greedy: instance
+                .get_typed_func(store, "wasmi_arena_search_greedy")
+                .expect("wasmi_arena_search_greedy"),
+            is_over: instance
+                .get_typed_func(store, "wasmi_arena_is_over")
+                .expect("wasmi_arena_is_over"),
+            to_play: instance
+                .get_typed_func(store, "wasmi_arena_to_play")
+                .expect("wasmi_arena_to_play"),
+            reward: instance
+                .get_typed_func(store, "wasmi_arena_reward")
+                .expect("wasmi_arena_reward"),
         }
     }
 
@@ -169,7 +192,10 @@ impl Arena {
             if to_play == puct_color {
                 let _ = self.search_puct.call(&mut *store, ()).expect("puct search");
             } else {
-                let _ = self.search_greedy.call(&mut *store, ()).expect("greedy search");
+                let _ = self
+                    .search_greedy
+                    .call(&mut *store, ())
+                    .expect("greedy search");
             }
         }
 
@@ -185,7 +211,7 @@ impl Arena {
 fn wasmi_puct_winrate_vs_greedy() {
     const NUM_GAMES: usize = 20;
 
-let (mut store, instance) = setup_wasmi();
+    let (mut store, instance) = setup_wasmi();
 
     // budget=50, c_puct=1.5, top_k=8, batch_k=1 (sequential) — the native
     // 94% config (Bench 205). batch_k=1 preserves the wasmi parity guarantee
@@ -196,7 +222,10 @@ let (mut store, instance) = setup_wasmi();
     // regression guard — the int8 parity gate lives in `wasmi_puct_int8_winrate.rs`.
     let c_puct_bits = 1.5f32.to_bits();
     let arena = Arena::new(&store, &instance);
-    arena.init_f32.call(&mut store, (50, c_puct_bits, 8, 1)).expect("arena_init_f32");
+    arena
+        .init_f32
+        .call(&mut store, (50, c_puct_bits, 8, 1))
+        .expect("arena_init_f32");
     let start = Instant::now();
     let mut puct_wins = 0usize;
     let mut games_summary: Vec<String> = Vec::with_capacity(NUM_GAMES);
@@ -231,7 +260,11 @@ let (mut store, instance) = setup_wasmi();
     println!("\n=== Issue 204 follow-up: WASM PUCT win-rate parity (wasmi, budget=50) ===");
     println!("Native reference (Bench 205, budget=50): 94.0% (n=100)");
     println!("WASM-via-wasmi result:                    {win_rate:.1}% ({puct_wins}/{NUM_GAMES})");
-    println!("Wall clock: {:.1}s ({:.1}s/game avg)", elapsed.as_secs_f64(), elapsed.as_secs_f64() / NUM_GAMES as f64);
+    println!(
+        "Wall clock: {:.1}s ({:.1}s/game avg)",
+        elapsed.as_secs_f64(),
+        elapsed.as_secs_f64() / NUM_GAMES as f64
+    );
     for line in &games_summary {
         println!("{line}");
     }

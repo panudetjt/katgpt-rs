@@ -69,7 +69,10 @@ impl Lcg {
     }
     fn next_u64(&mut self) -> u64 {
         // Numerical Recipes LCG constants.
-        self.state = self.state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        self.state = self
+            .state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         self.state
     }
     fn next_f32(&mut self) -> f32 {
@@ -258,7 +261,9 @@ fn main() {
     } else {
         0.0
     };
-    println!("  Δ (router - hand-rolled):           {delta_ns:>+7.2} ns / call  ({delta_pct:>+5.1}%)");
+    println!(
+        "  Δ (router - hand-rolled):           {delta_ns:>+7.2} ns / call  ({delta_pct:>+5.1}%)"
+    );
 
     println!("\n── Verdict (Issue 636: router.route should match hand-rolled SoA) ──");
     // The gate is now: does the optimized router.route match the hand-rolled
@@ -268,7 +273,9 @@ fn main() {
     let overhead_is_acceptable = delta_pct.abs() < overhead_threshold_pct;
 
     if overhead_is_acceptable {
-        println!("  ✓ PASS — router.route (flat-cache) is within {delta_pct:.1}% of hand-rolled SoA");
+        println!(
+            "  ✓ PASS — router.route (flat-cache) is within {delta_pct:.1}% of hand-rolled SoA"
+        );
         println!("    The optimization landed: the contiguous flat buffer lets LLVM");
         println!("    vectorize the dot-product scan. No iterator-closure overhead.");
         let per_tick_ns = aos_cold_net * 1000.0;
@@ -279,7 +286,9 @@ fn main() {
         println!("    (LLVM found an even better optimization path for the bank method)");
     } else {
         println!("  ✗ INVESTIGATE — router.route is {delta_pct:.1}% slower than hand-rolled SoA");
-        println!("    The method-call / lifecycle-check overhead exceeds the {overhead_threshold_pct:.0}% budget.");
+        println!(
+            "    The method-call / lifecycle-check overhead exceeds the {overhead_threshold_pct:.0}% budget."
+        );
         println!("    Consider further inlining or a specialized hot-path entry point.");
     }
 

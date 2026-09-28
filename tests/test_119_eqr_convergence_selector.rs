@@ -20,7 +20,8 @@
 use katgpt_core::{Config, ConvergenceSelector, Rng};
 use katgpt_rs::speculative::NoScreeningPruner;
 use katgpt_rs::speculative::dd_tree::{
-    RestartMode, ResidualTracker, WidthScaleConfig, WidthSelectionMode, best_of_k_rollouts, inject_sde_noise,
+    ResidualTracker, RestartMode, WidthScaleConfig, WidthSelectionMode, best_of_k_rollouts,
+    inject_sde_noise,
 };
 use katgpt_rs::speculative::dflash::dflash_predict;
 use katgpt_rs::speculative::types::SdeConfig;

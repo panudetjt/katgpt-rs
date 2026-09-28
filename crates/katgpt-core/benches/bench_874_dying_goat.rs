@@ -15,7 +15,7 @@
 use std::hint::black_box;
 use std::time::Instant;
 
-use katgpt_core::kv_eviction::dying::{death_score, DeathConfig, DeathRow};
+use katgpt_core::kv_eviction::dying::{DeathConfig, DeathRow, death_score};
 
 /// Chunks per measurement (best-of; discards preemption spikes).
 const CHUNKS: usize = 240;
@@ -84,7 +84,8 @@ fn main() {
         best_ns_per_row(|| {
             let mut sink = 0u64;
             for row in rows_ref.iter() {
-                sink += death_score(black_box(row), black_box(tick), black_box(&cfg)).to_bits() as u64;
+                sink +=
+                    death_score(black_box(row), black_box(tick), black_box(&cfg)).to_bits() as u64;
             }
             checksum = checksum.wrapping_add(sink);
             sink

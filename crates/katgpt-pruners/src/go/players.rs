@@ -802,9 +802,7 @@ impl TemplateStats {
 
     fn best_ucb1(&self) -> usize {
         (0..NUM_TEMPLATES)
-            .max_by(|&a, &b| {
-                katgpt_core::float_order::cmp_for_max(self.ucb1(a), self.ucb1(b))
-            })
+            .max_by(|&a, &b| katgpt_core::float_order::cmp_for_max(self.ucb1(a), self.ucb1(b)))
             .unwrap_or(0)
     }
 

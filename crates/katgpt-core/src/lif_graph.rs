@@ -650,11 +650,7 @@ impl LifReservoir {
 #[inline]
 fn decay_g(g: f32, a_s: f32, g_floor: f32) -> f32 {
     let g_next = g * a_s;
-    if g_next.abs() < g_floor {
-        0.0
-    } else {
-        g_next
-    }
+    if g_next.abs() < g_floor { 0.0 } else { g_next }
 }
 
 // ─── Ridge readout (closed-form; consumes the KARC-precedent solver) ────────

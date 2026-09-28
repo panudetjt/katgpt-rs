@@ -48,16 +48,12 @@ use katgpt_attn::gdn2::kda_forward::KdaWeights;
 use katgpt_attn::mla::MlaWeights;
 use katgpt_core::committed_field_blend::ArchetypeFieldSource;
 use katgpt_core::latent_trajectory_geometry::from_states_into;
-use katgpt_core::swe_trajectory_freeze::{
-    GeometrySummaryEncoder, SweTrajectoryFreezer,
-};
+use katgpt_core::swe_trajectory_freeze::{GeometrySummaryEncoder, SweTrajectoryFreezer};
 use katgpt_rs::kimi_k3::decoder_layer::{
     KimiAttentionWeights, KimiDecoderLayerWeights, KimiFfnConfig, KimiFfnWeights,
 };
 use katgpt_rs::kimi_k3::loader::KimiK3ModelWeights;
-use katgpt_rs::kimi_k3::model::{
-    KimiK3ModelConfig, KimiK3Runtime, kimi_k3_forward_token_traced,
-};
+use katgpt_rs::kimi_k3::model::{KimiK3ModelConfig, KimiK3Runtime, kimi_k3_forward_token_traced};
 use katgpt_transformer::attn_res::AttnResWeights;
 use katgpt_transformer::moe::{MoeWeights, SwiGluExpertWeights};
 
@@ -130,7 +126,9 @@ fn build_random_weights(config: &KimiK3ModelConfig, seed: u64) -> KimiK3ModelWei
             let is_dense = layer_idx == 0;
             let ffn = if is_dense {
                 let intermediate = match &config.dense_ffn_config {
-                    KimiFfnConfig::Dense { intermediate_size, .. } => *intermediate_size,
+                    KimiFfnConfig::Dense {
+                        intermediate_size, ..
+                    } => *intermediate_size,
                     _ => unreachable!("layer 0 must be Dense"),
                 };
                 let mut expert_rng = Lcg::new(layer_seed.wrapping_add(1));
@@ -240,9 +238,7 @@ fn extract_summary(
 ) {
     runtime.reset();
     scratch.traj_buf.clear();
-    let _ = kimi_k3_forward_token_traced(
-        config, weights, runtime, token_id, &mut scratch.traj_buf,
-    );
+    let _ = kimi_k3_forward_token_traced(config, weights, runtime, token_id, &mut scratch.traj_buf);
 
     let refs: Vec<&[f32]> = scratch.traj_buf.iter().map(|v| v.as_slice()).collect();
     let geom = from_states_into(&refs, &mut scratch.disp_curr, &mut scratch.disp_prev);
@@ -259,11 +255,15 @@ fn main() {
 
     let config = KimiK3ModelConfig::kimi_k3_0_40b();
     let d = config.hidden_size;
-    println!("Config: D={d}, layers={}, MLA@[3,7], KDA@[0..6], MoE@[1..7]",
-        config.num_layers);
+    println!(
+        "Config: D={d}, layers={}, MLA@[3,7], KDA@[0..6], MoE@[1..7]",
+        config.num_layers
+    );
     println!("Summary dim: {D}, archetypes: {N} (model_a vs model_b)");
-    println!("Tokens: {N_TOKENS} ({N_TRAIN} train + {} test per model)",
-        N_TOKENS - N_TRAIN);
+    println!(
+        "Tokens: {N_TOKENS} ({N_TRAIN} train + {} test per model)",
+        N_TOKENS - N_TRAIN
+    );
     println!();
 
     // ── Load weights: Model A (real if available, else random seed=42) ─────
@@ -318,11 +318,25 @@ fn main() {
 
     for (idx, &tok) in tokens.iter().enumerate() {
         // Model A
-        extract_summary(&config, &weights_a, &mut runtime_a, tok, &encoder, &mut scratch);
+        extract_summary(
+            &config,
+            &weights_a,
+            &mut runtime_a,
+            tok,
+            &encoder,
+            &mut scratch,
+        );
         summaries[0][idx] = scratch.summary;
 
         // Model B
-        extract_summary(&config, &weights_b, &mut runtime_b, tok, &encoder, &mut scratch);
+        extract_summary(
+            &config,
+            &weights_b,
+            &mut runtime_b,
+            tok,
+            &encoder,
+            &mut scratch,
+        );
         summaries[1][idx] = scratch.summary;
     }
     println!("Done.");
@@ -340,7 +354,9 @@ fn main() {
     let mut directions: [[f32; D]; N] = [[0.0_f32; D]; N];
     let mut global_centroid = [0.0_f32; D];
     katgpt_core::swe_trajectory_freeze::derive_directions_and_centroid(
-        &train_summaries, &mut directions, &mut global_centroid,
+        &train_summaries,
+        &mut directions,
+        &mut global_centroid,
     );
 
     // ── Diagnostic: centroids + raw geometry ──────────────────────────────
@@ -357,15 +373,19 @@ fn main() {
             centroid[j] /= N_TRAIN as f32;
         }
         // Print the first 4 features (one block — they're replicated).
-        println!("   {} centroid: length_norm={:.4}, curvature_norm={:.4}, cosine_norm={:.4}, n_steps_norm={:.4}",
-            MODE_NAMES[mode], centroid[0], centroid[1], centroid[2], centroid[3]);
+        println!(
+            "   {} centroid: length_norm={:.4}, curvature_norm={:.4}, cosine_norm={:.4}, n_steps_norm={:.4}",
+            MODE_NAMES[mode], centroid[0], centroid[1], centroid[2], centroid[3]
+        );
     }
     // Print a sample test summary from each model.
     println!("   Sample test summaries:");
     for mode in 0..N {
         let s = &summaries[mode][N_TRAIN]; // first test token
-        println!("   {} test[0]: length_norm={:.4}, curvature_norm={:.4}, cosine_norm={:.4}, n_steps_norm={:.4}",
-            MODE_NAMES[mode], s[0], s[1], s[2], s[3]);
+        println!(
+            "   {} test[0]: length_norm={:.4}, curvature_norm={:.4}, cosine_norm={:.4}, n_steps_norm={:.4}",
+            MODE_NAMES[mode], s[0], s[1], s[2], s[3]
+        );
     }
     // Print dot products with direction_0 for test summaries (centered).
     let mut dot_a_sum = 0.0_f32;
@@ -383,8 +403,14 @@ fn main() {
         dot_b_sum += db;
     }
     let n_test = (N_TOKENS - N_TRAIN) as f32;
-    println!("   mean dot(model_a_test, dir_0) = {:.4}", dot_a_sum / n_test);
-    println!("   mean dot(model_b_test, dir_0) = {:.4}", dot_b_sum / n_test);
+    println!(
+        "   mean dot(model_a_test, dir_0) = {:.4}",
+        dot_a_sum / n_test
+    );
+    println!(
+        "   mean dot(model_b_test, dir_0) = {:.4}",
+        dot_b_sum / n_test
+    );
     println!();
 
     // ── G1: directions non-degenerate ────────────────────────────────
@@ -433,8 +459,10 @@ fn main() {
     let test_tokens: Vec<usize> = (N_TRAIN..N_TOKENS).collect();
 
     println!("── G5: cross-model discrimination on held-out tokens ──");
-    println!("  {:>8}  {:>10}  {:>10}  {:>12}  {:>12}  {:>8}",
-        "token_idx", "true_mode", "argmax_k", "gate_a", "gate_b", "correct");
+    println!(
+        "  {:>8}  {:>10}  {:>10}  {:>12}  {:>12}  {:>8}",
+        "token_idx", "true_mode", "argmax_k", "gate_a", "gate_b", "correct"
+    );
     println!("  {}", "-".repeat(76));
 
     let mut n_correct = 0usize;
@@ -449,16 +477,28 @@ fn main() {
         for mode in 0..N {
             // Re-extract trajectory refs for this token+model.
             let weights = if mode == 0 { &weights_a } else { &weights_b };
-            let runtime = if mode == 0 { &mut runtime_a } else { &mut runtime_b };
+            let runtime = if mode == 0 {
+                &mut runtime_a
+            } else {
+                &mut runtime_b
+            };
             runtime.reset();
             scratch.traj_buf.clear();
             let _ = kimi_k3_forward_token_traced(
-                &config, weights, runtime, tokens[tok_idx], &mut scratch.traj_buf,
+                &config,
+                weights,
+                runtime,
+                tokens[tok_idx],
+                &mut scratch.traj_buf,
             );
             let refs: Vec<&[f32]> = scratch.traj_buf.iter().map(|v| v.as_slice()).collect();
 
             let frozen = freezer.freeze_attempt_into(
-                &refs, &fields, 1, &mut freeze_disp_curr, &mut freeze_disp_prev,
+                &refs,
+                &fields,
+                1,
+                &mut freeze_disp_curr,
+                &mut freeze_disp_prev,
             );
             let gates = frozen.gates();
             let argmax_k = frozen.argmax_archetype();
@@ -469,9 +509,15 @@ fn main() {
             }
             n_total += 1;
 
-            println!("  {:>8}  {:>10}  {:>10}  {:>12.4}  {:>12.4}  {:>8}",
-                tok_idx, MODE_NAMES[mode], argmax_k, gates[0], gates[1],
-                if correct { "YES" } else { "NO" });
+            println!(
+                "  {:>8}  {:>10}  {:>10}  {:>12.4}  {:>12.4}  {:>8}",
+                tok_idx,
+                MODE_NAMES[mode],
+                argmax_k,
+                gates[0],
+                gates[1],
+                if correct { "YES" } else { "NO" }
+            );
         }
     }
 
@@ -488,20 +534,32 @@ fn main() {
     runtime_a.reset();
     scratch.traj_buf.clear();
     let _ = kimi_k3_forward_token_traced(
-        &config, &weights_a, &mut runtime_a, tokens[0], &mut scratch.traj_buf,
+        &config,
+        &weights_a,
+        &mut runtime_a,
+        tokens[0],
+        &mut scratch.traj_buf,
     );
     let refs: Vec<&[f32]> = scratch.traj_buf.iter().map(|v| v.as_slice()).collect();
 
     // Warmup.
     for _ in 0..100 {
         let _ = freezer.freeze_attempt_into(
-            &refs, &fields, 1, &mut freeze_disp_curr, &mut freeze_disp_prev,
+            &refs,
+            &fields,
+            1,
+            &mut freeze_disp_curr,
+            &mut freeze_disp_prev,
         );
     }
     let t0 = std::time::Instant::now();
     for _ in 0..n_iters {
         let _ = freezer.freeze_attempt_into(
-            &refs, &fields, 1, &mut freeze_disp_curr, &mut freeze_disp_prev,
+            &refs,
+            &fields,
+            1,
+            &mut freeze_disp_curr,
+            &mut freeze_disp_prev,
         );
     }
     let elapsed_ns = t0.elapsed().as_nanos() as u64;
@@ -516,9 +574,18 @@ fn main() {
     println!("T5.6 SweTrajectoryFreezer G5 gate (cross-model discrimination):");
     println!("  Model A : {label_a}");
     println!("  Model B : random-137");
-    println!("  G1 directions non-degenerate : {}", if g1_pass { "✅ PASS" } else { "❌ FAIL" });
-    println!("  G2 freeze_attempt latency    : {}", if g2_pass { "✅ PASS" } else { "❌ FAIL" });
-    println!("  G5 cross-model discrimination: {}", if g5_pass { "✅ PASS" } else { "❌ FAIL" });
+    println!(
+        "  G1 directions non-degenerate : {}",
+        if g1_pass { "✅ PASS" } else { "❌ FAIL" }
+    );
+    println!(
+        "  G2 freeze_attempt latency    : {}",
+        if g2_pass { "✅ PASS" } else { "❌ FAIL" }
+    );
+    println!(
+        "  G5 cross-model discrimination: {}",
+        if g5_pass { "✅ PASS" } else { "❌ FAIL" }
+    );
     println!();
     let all_pass = g1_pass && g2_pass && g5_pass;
     if all_pass {
@@ -533,15 +600,11 @@ fn main() {
         println!();
         println!("Layer 4 modelless path validated for snapshot/model discrimination.");
     } else {
-        let failed: Vec<&str> = [
-            ("G1", !g1_pass),
-            ("G2", !g2_pass),
-            ("G5", !g5_pass),
-        ]
-        .iter()
-        .filter(|(_, f)| *f)
-        .map(|(g, _)| *g)
-        .collect();
+        let failed: Vec<&str> = [("G1", !g1_pass), ("G2", !g2_pass), ("G5", !g5_pass)]
+            .iter()
+            .filter(|(_, f)| *f)
+            .map(|(g, _)| *g)
+            .collect();
         println!("GATES FAILED: {} — see analysis above.", failed.join(", "));
         println!();
         if !g5_pass {

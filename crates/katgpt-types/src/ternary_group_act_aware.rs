@@ -72,8 +72,8 @@ pub enum ActAwareScaleFit {
 /// around the weighted mean-abs scale: `0.50, 0.55, …, 1.50` (21 points).
 /// `1.0` sits at index 10 and is evaluated FIRST (the anchor).
 pub const ACT_AWARE_SEARCH_GRID: [f32; 21] = [
-    0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20,
-    1.25, 1.30, 1.35, 1.40, 1.45, 1.50,
+    0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20, 1.25,
+    1.30, 1.35, 1.40, 1.45, 1.50,
 ];
 
 /// Index of the `1.0` anchor inside [`ACT_AWARE_SEARCH_GRID`].
@@ -95,7 +95,11 @@ impl TernaryGroupWeights {
         diag: &[f32],
         fit: ActAwareScaleFit,
     ) -> Self {
-        assert_eq!(diag.len(), cols, "activation diagonal must have one entry per column");
+        assert_eq!(
+            diag.len(),
+            cols,
+            "activation diagonal must have one entry per column"
+        );
         assert!(
             diag.iter().all(|h| h.is_finite() && *h >= 0.0),
             "activation diagonal must be finite and non-negative"
@@ -141,7 +145,11 @@ fn normalized_weights(h: &[f32], out: &mut [f32]) -> bool {
 fn weighted_mean_abs(group: &[f32], u: &[f32]) -> f32 {
     let num: f32 = group.iter().zip(u).map(|(v, w)| v.abs() * w).sum();
     let den: f32 = u.iter().sum();
-    if num > 0.0 { num / den } else { mean_abs_scale(group) }
+    if num > 0.0 {
+        num / den
+    } else {
+        mean_abs_scale(group)
+    }
 }
 
 /// Run the kernel's carry loop at the f16-exact scale `s` and return
@@ -214,7 +222,9 @@ mod tests {
     use super::*;
 
     fn pseudo(seed: &mut u64) -> f32 {
-        *seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        *seed = seed
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         ((*seed >> 40) as f32 / (1u64 << 24) as f32) * 2.0 - 1.0
     }
 
@@ -238,7 +248,11 @@ mod tests {
                 let g_end = (g_start + GROUP_SIZE).min(cols);
                 let group = &row[g_start..g_end];
                 let abs_sum: f32 = group.iter().map(|v| v.abs()).sum();
-                let scale = if abs_sum > 0.0 { abs_sum / group.len() as f32 } else { 1.0 };
+                let scale = if abs_sum > 0.0 {
+                    abs_sum / group.len() as f32
+                } else {
+                    1.0
+                };
                 out.group_scale[group_base + g] = f16::from_f32(scale);
                 let scale = out.group_scale[group_base + g].to_f32();
                 let threshold = 0.5 * scale;
@@ -295,7 +309,10 @@ mod tests {
         for (i, &(r, c)) in SHAPES.iter().enumerate() {
             let w = weights(r, c, 11 + i as u64);
             let new = TernaryGroupWeights::quantize_from_f32(&w, r, c);
-            assert_eq!(payload_bytes(&new), payload_bytes(&legacy_quantize(&w, r, c)));
+            assert_eq!(
+                payload_bytes(&new),
+                payload_bytes(&legacy_quantize(&w, r, c))
+            );
         }
     }
 
@@ -320,7 +337,10 @@ mod tests {
             }
             // An all-zero diagonal carries no information ⇒ the baseline too.
             let zero = vec![0.0f32; c];
-            for fit in [ActAwareScaleFit::WeightedMeanAbs, ActAwareScaleFit::WeightedSearch] {
+            for fit in [
+                ActAwareScaleFit::WeightedMeanAbs,
+                ActAwareScaleFit::WeightedSearch,
+            ] {
                 let aa = TernaryGroupWeights::quantize_from_f32_act_aware(&w, r, c, &zero, fit);
                 assert_eq!(payload_bytes(&aa), base, "zero diag {fit:?}");
             }
@@ -341,9 +361,17 @@ mod tests {
             &diag,
             ActAwareScaleFit::WeightedMeanAbs,
         );
-        assert_eq!(fnv64(&payload_bytes(&aa)), G3_DIGEST, "0x{:016x}", fnv64(&payload_bytes(&aa)));
+        assert_eq!(
+            fnv64(&payload_bytes(&aa)),
+            G3_DIGEST,
+            "0x{:016x}",
+            fnv64(&payload_bytes(&aa))
+        );
         // …and the pre-refactor transcription lands on the same digest.
-        assert_eq!(fnv64(&payload_bytes(&legacy_quantize(&w, 8, 256))), G3_DIGEST);
+        assert_eq!(
+            fnv64(&payload_bytes(&legacy_quantize(&w, 8, 256))),
+            G3_DIGEST
+        );
     }
     const G3_DIGEST: u64 = 0x2d77_e077_501d_6b6c;
 
@@ -418,11 +446,17 @@ mod tests {
         for row in 0..r {
             for g in 0..wma.groups_per_row {
                 let (a, b) = (obj(&wma, row, g), obj(&srch, row, g));
-                assert!(b <= a * (1.0 + 1e-5) + 1e-9, "row {row} g {g}: search {b} > anchor {a}");
+                assert!(
+                    b <= a * (1.0 + 1e-5) + 1e-9,
+                    "row {row} g {g}: search {b} > anchor {a}"
+                );
                 strictly_better += usize::from(b < a * (1.0 - 1e-4));
             }
         }
-        assert!(strictly_better > 0, "search never moved off the anchor — inert");
+        assert!(
+            strictly_better > 0,
+            "search never moved off the anchor — inert"
+        );
     }
 
     #[test]

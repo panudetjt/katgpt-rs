@@ -112,8 +112,8 @@ fn sigmoid(x: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::clr::types::Claim;
     use crate::clr::traits::DirectionVectorSource;
+    use crate::clr::types::Claim;
     use blake3::Hasher;
 
     /// Minimal direction source backed by a single flat `Vec<f32>` of
@@ -163,10 +163,7 @@ mod tests {
         };
         let v = verifier.verify(&claim, 0);
         let expected = 1.0 / (1.0 + (-2.0f32).exp());
-        assert!(
-            (v - expected).abs() < 1e-6,
-            "got {v}, expected {expected}"
-        );
+        assert!((v - expected).abs() < 1e-6, "got {v}, expected {expected}");
     }
 
     #[test]

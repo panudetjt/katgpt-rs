@@ -201,17 +201,16 @@ impl MlaWeights {
 
         let w_dkv = random_matrix(&mut rng, config.kv_lora_rank, d);
         let w_dq = random_matrix(&mut rng, config.q_lora_rank, d);
-        let w_uq =
-            random_matrix(&mut rng, config.d_h() * config.n_heads, config.q_lora_rank);
-        let w_qr =
-            random_matrix(&mut rng, config.d_r() * config.n_heads, config.q_lora_rank);
-        let w_uk =
-            random_matrix(&mut rng, config.d_h() * config.n_heads, config.kv_lora_rank);
-        let w_uv =
-            random_matrix(&mut rng, config.v_head_dim * config.n_heads, config.kv_lora_rank);
+        let w_uq = random_matrix(&mut rng, config.d_h() * config.n_heads, config.q_lora_rank);
+        let w_qr = random_matrix(&mut rng, config.d_r() * config.n_heads, config.q_lora_rank);
+        let w_uk = random_matrix(&mut rng, config.d_h() * config.n_heads, config.kv_lora_rank);
+        let w_uv = random_matrix(
+            &mut rng,
+            config.v_head_dim * config.n_heads,
+            config.kv_lora_rank,
+        );
         let w_kr = random_matrix(&mut rng, config.d_r(), d);
-        let w_o =
-            random_matrix(&mut rng, d, config.v_head_dim * config.n_heads);
+        let w_o = random_matrix(&mut rng, d, config.v_head_dim * config.n_heads);
         // Norm weights: initialized near 1.0 (typical RMSNorm gamma init) with
         // small random perturbation [0.9, 1.1] to exercise the scaling path in
         // G1 tests. The actual trained weights will have drifted from 1.0.
@@ -219,7 +218,11 @@ impl MlaWeights {
         let kv_a_norm_weight = random_norm_weights(&mut rng, config.kv_lora_rank);
         let w_g = if config.use_output_gate {
             // g_proj shape: [v_h*n_h, d] — gate applied to attn_out BEFORE o_proj
-            Some(random_matrix(&mut rng, config.v_head_dim * config.n_heads, d))
+            Some(random_matrix(
+                &mut rng,
+                config.v_head_dim * config.n_heads,
+                d,
+            ))
         } else {
             None
         };
@@ -378,24 +381,24 @@ impl MlaKVCache {
 /// Sized for a single token's decode. Reuse across tokens via `clear()`/overwrite.
 pub struct MlaForwardScratch {
     // Down-projection outputs
-    pub(crate) c_kv: Vec<f32>,      // [d_c]
-    pub(crate) c_q: Vec<f32>,       // [d'_c]
+    pub(crate) c_kv: Vec<f32>, // [d_c]
+    pub(crate) c_q: Vec<f32>,  // [d'_c]
     // Query up-projections
-    pub(crate) q_c: Vec<f32>,       // [d_h * n_h]
-    pub(crate) q_r: Vec<f32>,       // [d_R^h * n_h] — RoPE applied in-place
+    pub(crate) q_c: Vec<f32>, // [d_h * n_h]
+    pub(crate) q_r: Vec<f32>, // [d_R^h * n_h] — RoPE applied in-place
     // Key/value up-projections
-    pub(crate) k_c: Vec<f32>,       // [d_h * n_h]
-    pub(crate) v_c: Vec<f32>,       // [v_h * n_h]
+    pub(crate) k_c: Vec<f32>, // [d_h * n_h]
+    pub(crate) v_c: Vec<f32>, // [v_h * n_h]
     // Shared RoPE key
-    pub(crate) k_r: Vec<f32>,       // [d_R^h]
+    pub(crate) k_r: Vec<f32>, // [d_R^h]
     // Per-head attention output
-    pub(crate) attn_out: Vec<f32>,  // [v_h * n_h]
+    pub(crate) attn_out: Vec<f32>, // [v_h * n_h]
     // Attention scores scratch
-    pub(crate) scores: Vec<f32>,    // [seq_len]
+    pub(crate) scores: Vec<f32>, // [seq_len]
     // Output gate scratch
-    pub(crate) gate_buf: Vec<f32>,  // [d]
+    pub(crate) gate_buf: Vec<f32>, // [d]
     // Output
-    pub(crate) output: Vec<f32>,    // [d]
+    pub(crate) output: Vec<f32>, // [d]
 }
 
 impl MlaForwardScratch {
@@ -532,14 +535,34 @@ pub fn mla_forward_token<'s>(
 
     // Apply latent RMSNorms (actual model: q_a_layernorm, kv_a_layernorm).
     // The normed c_kv is what gets cached + up-projected.
-    rmsnorm_inplace(&mut scratch.c_q, &weights.q_a_norm_weight, config.rms_norm_eps);
-    rmsnorm_inplace(&mut scratch.c_kv, &weights.kv_a_norm_weight, config.rms_norm_eps);
+    rmsnorm_inplace(
+        &mut scratch.c_q,
+        &weights.q_a_norm_weight,
+        config.rms_norm_eps,
+    );
+    rmsnorm_inplace(
+        &mut scratch.c_kv,
+        &weights.kv_a_norm_weight,
+        config.rms_norm_eps,
+    );
 
     // ── Step 2: Query up-projections (from normed c_q) ──────────────────────
     // q_c = W_UQ · c_q   [d_h * n_h]  (content query — NO RoPE)
-    simd_matmul_rows(&mut scratch.q_c, &weights.w_uq, &scratch.c_q, d_h * n_h, d_qc);
+    simd_matmul_rows(
+        &mut scratch.q_c,
+        &weights.w_uq,
+        &scratch.c_q,
+        d_h * n_h,
+        d_qc,
+    );
     // q_r_raw = W_QR · c_q   [d_r * n_h]  (rope query — RoPE applied next, unless use_nope)
-    simd_matmul_rows(&mut scratch.q_r, &weights.w_qr, &scratch.c_q, d_r * n_h, d_qc);
+    simd_matmul_rows(
+        &mut scratch.q_r,
+        &weights.w_qr,
+        &scratch.c_q,
+        d_r * n_h,
+        d_qc,
+    );
     // Apply decoupled RoPE to each head's d_r sub-vector (unless use_nope).
     if !config.use_nope {
         apply_decoupled_rope(rope_freqs, &mut scratch.q_r, d_r, n_h, pos);
@@ -548,8 +571,20 @@ pub fn mla_forward_token<'s>(
     // ── Step 3: Key/value up-projections (from normed c_kv) ─────────────────
     // These compute the current token's k_c/v_c (overwritten in the attention
     // loop below — kept for structural clarity).
-    simd_matmul_rows(&mut scratch.k_c, &weights.w_uk, &scratch.c_kv, d_h * n_h, d_c);
-    simd_matmul_rows(&mut scratch.v_c, &weights.w_uv, &scratch.c_kv, v_h * n_h, d_c);
+    simd_matmul_rows(
+        &mut scratch.k_c,
+        &weights.w_uk,
+        &scratch.c_kv,
+        d_h * n_h,
+        d_c,
+    );
+    simd_matmul_rows(
+        &mut scratch.v_c,
+        &weights.w_uv,
+        &scratch.c_kv,
+        v_h * n_h,
+        d_c,
+    );
 
     // ── Step 4: Shared decoupled RoPE key ──────────────────────────────────
     // k_r_raw = W_KR · h   [d_r]  (shared across all heads — NOT normed;
@@ -677,7 +712,13 @@ pub fn mla_forward_token<'s>(
 
     // ── Step 8: Output projection ──────────────────────────────────────────
     // u = W_O · gated_attn_out   [d]
-    simd_matmul_rows(&mut scratch.output, &weights.w_o, &scratch.attn_out, d, proj_size);
+    simd_matmul_rows(
+        &mut scratch.output,
+        &weights.w_o,
+        &scratch.attn_out,
+        d,
+        proj_size,
+    );
 
     &mut scratch.output[..d]
 }
@@ -687,11 +728,7 @@ mod tests {
     use super::*;
 
     /// Helper: run MLA forward and return the output Vec.
-    fn run_mla(
-        config: &MlaConfig,
-        weights: &MlaWeights,
-        tokens: &[Vec<f32>],
-    ) -> Vec<f32> {
+    fn run_mla(config: &MlaConfig, weights: &MlaWeights, tokens: &[Vec<f32>]) -> Vec<f32> {
         let max_seq = tokens.len();
         let mut cache = MlaKVCache::new(config, max_seq);
         let mut scratch = MlaForwardScratch::new(config, max_seq);
@@ -770,7 +807,10 @@ mod tests {
     fn cache_reset_clears_seq_len() {
         let config = small_config();
         let mut cache = MlaKVCache::new(&config, 8);
-        cache.append(&vec![1.0; config.kv_lora_rank], &vec![2.0; config.qk_rope_head_dim]);
+        cache.append(
+            &vec![1.0; config.kv_lora_rank],
+            &vec![2.0; config.qk_rope_head_dim],
+        );
         assert_eq!(cache.seq_len, 1);
         cache.reset();
         assert_eq!(cache.seq_len, 0);

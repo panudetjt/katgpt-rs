@@ -393,10 +393,12 @@ impl<P: Position> LifelongLaCam<P> {
         //
         // When the flow field is not set, use NoFlow (paper-faithful, zero-cost).
         let no_flow;
-        let flow: &dyn FlowField<P> = if let Some(f) = &self.flow_field { f.as_ref() } else {
-                no_flow = NoFlow;
-                &no_flow
-            };
+        let flow: &dyn FlowField<P> = if let Some(f) = &self.flow_field {
+            f.as_ref()
+        } else {
+            no_flow = NoFlow;
+            &no_flow
+        };
 
         let action = pibt_step_with_budget(
             config,

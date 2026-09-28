@@ -115,10 +115,7 @@ fn main() {
             "G4: tick allocated {allocs} times at K={k} D={d}"
         );
     }
-    assert!(
-        k8d8 < 1000.0,
-        "G2: K=8/D=8 tick {k8d8} ns >= 1000 ns gate"
-    );
+    assert!(k8d8 < 1000.0, "G2: K=8/D=8 tick {k8d8} ns >= 1000 ns gate");
     println!("\nG2 PASS: K=8/D=8 tick = {k8d8:.1} ns (< 1000 ns gate)");
     println!("G4 PASS: 0 allocations at all 9 grid points");
 }

@@ -70,7 +70,9 @@ fn verdict(ok: bool) -> &'static str {
 
 /// Monotone ULP distance over the f32 bit pattern (two's-complement map).
 fn ulp_diff(a: f32, b: f32) -> u32 {
-    (a.to_bits() as i32).wrapping_sub(b.to_bits() as i32).unsigned_abs()
+    (a.to_bits() as i32)
+        .wrapping_sub(b.to_bits() as i32)
+        .unsigned_abs()
 }
 
 /// The f64-computed sigmoid, narrowed — the highest-precision reference
@@ -149,7 +151,10 @@ fn main() {
          {fast_max_ulp} ULP / {fast_max_abs:.3e} abs (grid [-80, 80] step 0.0137 + edges) {}",
         verdict(g1a)
     );
-    assert!(exact_max_ulp <= 4, "exact_sigmoid drifts {exact_max_ulp} ULP from the f64 reference");
+    assert!(
+        exact_max_ulp <= 4,
+        "exact_sigmoid drifts {exact_max_ulp} ULP from the f64 reference"
+    );
     assert!(exact_max_abs <= 1e-6);
     assert!(
         exact_max_ulp < fast_max_ulp,
@@ -199,7 +204,10 @@ fn main() {
         && exact_sigmoid(-50.0) < 1e-17
         && exact_sigmoid(800.0) == 1.0
         && exact_sigmoid(-800.0) == 0.0;
-    println!("G1b f32 bounds (incl. the non-clamped far tail) {}", verdict(f32_bounds_ok));
+    println!(
+        "G1b f32 bounds (incl. the non-clamped far tail) {}",
+        verdict(f32_bounds_ok)
+    );
     assert!(f32_bounds_ok);
 
     // ── G1c: ordered-dot pins ────────────────────────────────────────────
@@ -216,7 +224,10 @@ fn main() {
         verdict(differs_ok),
         verdict(frozen_ok && differs_ok)
     );
-    assert!(frozen_ok, "the sequential fold stopped being sequential: got {ordered_crafted}");
+    assert!(
+        frozen_ok,
+        "the sequential fold stopped being sequential: got {ordered_crafted}"
+    );
     assert!(
         differs_ok,
         "dot_f32_ordered == simd_dot_f32 on the crafted pin input — the kernels have \
@@ -225,9 +236,12 @@ fn main() {
 
     // ── G2: timings (REPORTED, not barred — box state lives in the doc) ──
     let t_fast = best_of_ns_f32(50, 10_000, |i| fast_sigmoid((i % 1000) as f32 * 0.1 - 50.0));
-    let t_exact = best_of_ns_f32(50, 10_000, |i| exact_sigmoid((i % 1000) as f32 * 0.1 - 50.0));
-    let t_exact_f64 =
-        best_of_ns_f32(50, 10_000, |i| exact_sigmoid_f64((i % 1000) as f64 * 0.1 - 50.0) as f32);
+    let t_exact = best_of_ns_f32(50, 10_000, |i| {
+        exact_sigmoid((i % 1000) as f32 * 0.1 - 50.0)
+    });
+    let t_exact_f64 = best_of_ns_f32(50, 10_000, |i| {
+        exact_sigmoid_f64((i % 1000) as f64 * 0.1 - 50.0) as f32
+    });
 
     let mut seed = Xorshift(0x9E3779B97F4A7C15);
     let mut pseudo = || (seed.next_u64() >> 40) as f32 / (1 << 24) as f32 - 8.0;

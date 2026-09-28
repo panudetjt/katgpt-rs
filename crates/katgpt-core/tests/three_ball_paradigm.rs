@@ -149,11 +149,7 @@ struct RunOutcome {
 /// Environment feedback for pick `k` at cell `c` under true rule `(x, y)`.
 fn feedback(c: usize, k: usize, x: usize, y: usize) -> usize {
     if c == x {
-        if k == y {
-            ROW_REWARD
-        } else {
-            ROW_PENALTY
-        }
+        if k == y { ROW_REWARD } else { ROW_PENALTY }
     } else {
         ROW_NONE
     }
@@ -269,11 +265,12 @@ fn run(seed: u64, arm: Arm) -> RunOutcome {
                     let mut stepped = false;
                     for &mv in MOVES.iter() {
                         if let Some(dest) = apply_move(pos, mv)
-                            && manhattan(dest, target) < manhattan(pos, target) {
-                                pos = dest;
-                                stepped = true;
-                                break;
-                            }
+                            && manhattan(dest, target) < manhattan(pos, target)
+                        {
+                            pos = dest;
+                            stepped = true;
+                            break;
+                        }
                     }
                     if !stepped {
                         break 'trials; // boxed in — impossible on this grid
@@ -289,7 +286,11 @@ fn run(seed: u64, arm: Arm) -> RunOutcome {
             // ties resolve to the last max, favoring action over abstention.
             let mut candidates: Vec<Candidate> = Vec::with_capacity(12);
             for g in 0..3 {
-                candidates.push(Candidate { score: 0.0, kind: 1, idx: g });
+                candidates.push(Candidate {
+                    score: 0.0,
+                    kind: 1,
+                    idx: g,
+                });
             }
             match arm {
                 Arm::Full => {
@@ -300,11 +301,14 @@ fn run(seed: u64, arm: Arm) -> RunOutcome {
                             for k in 0..3 {
                                 let action = pick_action(cell, k, &post);
                                 let v = pick_pragmatic(cell, k, &post)
-                                    + W_MODEL_GAIN
-                                        * engine.efe_model_gain(&action, &mut scratch);
+                                    + W_MODEL_GAIN * engine.efe_model_gain(&action, &mut scratch);
                                 s = s.max(v);
                             }
-                            candidates.push(Candidate { score: s, kind: 0, idx: i });
+                            candidates.push(Candidate {
+                                score: s,
+                                kind: 0,
+                                idx: i,
+                            });
                         }
                     }
                     for k in 0..3 {
@@ -329,7 +333,11 @@ fn run(seed: u64, arm: Arm) -> RunOutcome {
                             if !visited[cell] {
                                 s += W_STATE_NOVELTY;
                             }
-                            candidates.push(Candidate { score: s, kind: 0, idx: i });
+                            candidates.push(Candidate {
+                                score: s,
+                                kind: 0,
+                                idx: i,
+                            });
                         }
                     }
                     for k in 0..3 {
@@ -345,11 +353,19 @@ fn run(seed: u64, arm: Arm) -> RunOutcome {
                 Arm::Random => {
                     for (i, &mv) in MOVES.iter().enumerate() {
                         if apply_move(pos, mv).is_some() {
-                            candidates.push(Candidate { score: rng.f64(), kind: 0, idx: i });
+                            candidates.push(Candidate {
+                                score: rng.f64(),
+                                kind: 0,
+                                idx: i,
+                            });
                         }
                     }
                     for k in 0..3 {
-                        candidates.push(Candidate { score: rng.f64(), kind: 2, idx: k });
+                        candidates.push(Candidate {
+                            score: rng.f64(),
+                            kind: 2,
+                            idx: k,
+                        });
                     }
                     // Random gazes already pushed (score 0) — give them a
                     // random score too so they compete honestly.
@@ -363,7 +379,11 @@ fn run(seed: u64, arm: Arm) -> RunOutcome {
                 .iter()
                 .max_by(|a, b| a.score.partial_cmp(&b.score).unwrap())
                 .copied()
-                .unwrap_or(Candidate { score: 0.0, kind: 1, idx: 0 });
+                .unwrap_or(Candidate {
+                    score: 0.0,
+                    kind: 1,
+                    idx: 0,
+                });
             if trace && _trial < 2 {
                 eprintln!(
                     "seed{seed} t{_trial} s{_step} pos={pos:?} best={}?{} score={:.4}",

@@ -66,7 +66,12 @@ pub fn encode_text(text: &str) -> Vec<usize> {
 /// `n_blocks` disjoint windows of `block_len` tokens starting at token offset
 /// `start`. Panics if the stream is too short (a silent short eval set would
 /// shrink the paired-Δ resolution the G1 gate asserts).
-pub fn slice_blocks(tokens: &[usize], start: usize, n_blocks: usize, block_len: usize) -> Vec<Vec<usize>> {
+pub fn slice_blocks(
+    tokens: &[usize],
+    start: usize,
+    n_blocks: usize,
+    block_len: usize,
+) -> Vec<Vec<usize>> {
     assert!(
         start + n_blocks * block_len <= tokens.len(),
         "token stream too short: need {} tokens from offset {}, have {}",
@@ -135,7 +140,11 @@ mod tests {
     #[test]
     fn fixture_encodes_into_the_alphabet() {
         let tokens = encode_text(TEXT_CORPUS);
-        assert!(tokens.len() > 90_000, "fixture unexpectedly small: {}", tokens.len());
+        assert!(
+            tokens.len() > 90_000,
+            "fixture unexpectedly small: {}",
+            tokens.len()
+        );
         assert!(tokens.iter().all(|&t| t < TEXT_ALPHABET));
         // The fixture file carries a provenance header above a `====` divider;
         // the NOVEL body must start at a chapter boundary right after it.
@@ -144,7 +153,11 @@ mod tests {
             .expect("fixture missing its provenance divider")
             .1
             .trim_start();
-        assert!(body.starts_with("CHAPTER"), "fixture misaligned: {:?}", &body[..40.min(body.len())]);
+        assert!(
+            body.starts_with("CHAPTER"),
+            "fixture misaligned: {:?}",
+            &body[..40.min(body.len())]
+        );
     }
 
     #[test]
@@ -179,7 +192,9 @@ mod tests {
         let counts = bigram_counts(&toks, TEXT_ALPHABET);
         let law = bigram_law_smoothed(&counts, TEXT_ALPHABET);
         for row in 0..TEXT_ALPHABET {
-            let s: f64 = law[row * TEXT_ALPHABET..(row + 1) * TEXT_ALPHABET].iter().sum();
+            let s: f64 = law[row * TEXT_ALPHABET..(row + 1) * TEXT_ALPHABET]
+                .iter()
+                .sum();
             assert!((s - 1.0).abs() < 1e-9, "row {row} sums to {s}");
         }
         let h = unigram_entropy_nats(&toks, TEXT_ALPHABET);

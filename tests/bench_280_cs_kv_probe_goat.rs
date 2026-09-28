@@ -63,7 +63,7 @@ fn assert_alloc_tracking_live() {
 fn assert_alloc_tracking_live() {}
 
 use katgpt_kv::cs_kv_probe::{
-    sample_masks, CsKvProbe, CsProbeConfig, DensityBudget, Episode, GatedKvSlice, KvGroupRanking,
+    CsKvProbe, CsProbeConfig, DensityBudget, Episode, GatedKvSlice, KvGroupRanking, sample_masks,
 };
 
 // ─── Allocation tracking (T3.5) ─────────────────────────────────────────
@@ -488,7 +488,7 @@ fn t3_4_feature_disabled_is_passthrough() {
 fn t3_5_apply_zero_alloc() {
     const ITERS: usize = 10_000;
 
-println!("\n=== T3.5: apply zero-allocation ===");
+    println!("\n=== T3.5: apply zero-allocation ===");
     let n_groups = 64_usize;
     let scores: Vec<f32> = (0..n_groups)
         .map(|i| (i as f32).sin() * 0.5 + 0.5)
@@ -578,10 +578,7 @@ println!("\n=== T3.5: apply zero-allocation ===");
 /// Top-K indices by value, descending. Ties broken by index ascending.
 fn top_k_indices(scores: &[f32], k: usize) -> Vec<usize> {
     let mut idx: Vec<usize> = (0..scores.len()).collect();
-    idx.sort_by(|&a, &b| {
-        scores[b].total_cmp(&scores[a])
-            .then_with(|| a.cmp(&b))
-    });
+    idx.sort_by(|&a, &b| scores[b].total_cmp(&scores[a]).then_with(|| a.cmp(&b)));
     idx.truncate(k);
     idx
 }

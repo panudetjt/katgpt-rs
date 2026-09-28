@@ -6,7 +6,7 @@
 //!
 //! Run: `cargo test --features rat_plus_bridge --test bench_225_rat_bridge -- --nocapture`
 
-use katgpt_attn::rat_bridge::{rat_decode_step, DilatedKvAccessor, RatBridgeState};
+use katgpt_attn::rat_bridge::{DilatedKvAccessor, RatBridgeState, rat_decode_step};
 use katgpt_core::types::DilationConfig;
 
 // Issue 855: the load-invariant timing treatment. `best_of_us` panics on an

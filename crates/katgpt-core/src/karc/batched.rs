@@ -76,8 +76,8 @@
 //! - **Runtime consumer:** `riir-ai/.plans/514_karc_mitigations_runtime.md`
 //!   Phase 3 (octree-batched cell-level KARC — the crowd-scale use case).
 
-use crate::simd;
 use crate::karc::{KarcBasis, feature_expand};
+use crate::simd;
 
 mod imp {
     use super::*;
@@ -311,14 +311,7 @@ mod imp {
                 );
             }
             // Run the batched matvec into `out`.
-            karc_batched_matvec_into(
-                &self.wouts,
-                &self.features_buf,
-                out,
-                self.n,
-                d_h,
-                D,
-            );
+            karc_batched_matvec_into(&self.wouts, &self.features_buf, out, self.n, d_h, D);
             // Zero out unfitted NPCs' outputs (caller convention: unfitted NPCs
             // produce zero output, not garbage). This is a tiny tail loop, run
             // once per call, not in the hot inner loop.
@@ -399,12 +392,8 @@ mod tests {
         let n = 4;
 
         // Build deterministic inputs.
-        let wouts: Vec<f32> = (0..n * D * d_h)
-            .map(|i| (i as f32 * 0.001) - 0.5)
-            .collect();
-        let features: Vec<f32> = (0..n * d_h)
-            .map(|i| (i as f32 * 0.002) - 0.5)
-            .collect();
+        let wouts: Vec<f32> = (0..n * D * d_h).map(|i| (i as f32 * 0.001) - 0.5).collect();
+        let features: Vec<f32> = (0..n * d_h).map(|i| (i as f32 * 0.002) - 0.5).collect();
 
         // Run batched.
         let mut out_batched = vec![f32::NAN; n * D];

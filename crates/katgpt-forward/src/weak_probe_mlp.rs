@@ -186,8 +186,7 @@ impl WeakLogitProbe for DropoutHeadProbe {
         for p in input.block_start..input.seq_len {
             // Fixed LCG mask per (position, denoise step) — same stream shape
             // as the study runner, reproducible across runs and boxes.
-            let mut state = (p as u64)
-                .wrapping_mul(0x9E37_79B9_7F4A_7C15)
+            let mut state = (p as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15)
                 ^ (input.step as u64).wrapping_mul(0xBF58_476D_1CE4_E5B9)
                 ^ 0xDEAD_BEEF_CAFE_F00D;
             for i in 0..n {
@@ -221,11 +220,19 @@ mod tests {
 
     fn fixture(vocab: usize, n_embd: usize, tap_layer: usize) -> ProbeArtifact {
         let mlp = LatentDynamicsMLP::random_init(n_embd);
-        let lm_head: Vec<f32> = (0..vocab * n_embd).map(|i| (i as f32) * 0.05 - 1.0).collect();
+        let lm_head: Vec<f32> = (0..vocab * n_embd)
+            .map(|i| (i as f32) * 0.05 - 1.0)
+            .collect();
         ProbeArtifact::from_parts(mlp, lm_head, tap_layer, 1).expect("fixture artifact")
     }
 
-    fn probe_ctx<'a>(tap: &'a [f32], block_start: usize, seq_len: usize, vocab: usize, n_embd: usize) -> ProbeCtx<'a> {
+    fn probe_ctx<'a>(
+        tap: &'a [f32],
+        block_start: usize,
+        seq_len: usize,
+        vocab: usize,
+        n_embd: usize,
+    ) -> ProbeCtx<'a> {
         ProbeCtx {
             xr: tap,
             x_norm: tap,
@@ -336,7 +343,11 @@ mod tests {
         let latent2 = probe.artifact.mlp.forward(h2, &[0.0; 8]);
         let mut expected2 = vec![0.0f32; vocab];
         matmul(&mut expected2, &probe.artifact.lm_head, &latent2, vocab, n);
-        assert_eq!(out[..vocab], expected2, "first output row must be block_start's position");
+        assert_eq!(
+            out[..vocab],
+            expected2,
+            "first output row must be block_start's position"
+        );
     }
 
     #[test]

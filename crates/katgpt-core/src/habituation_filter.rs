@@ -303,8 +303,14 @@ mod tests {
         assert!(!novelty_gate(0.0, 4.0, 0.7));
         assert!(novelty_gate(1.0, 4.0, 0.7));
         assert!(!novelty_gate(-1.0, 4.0, 0.7));
-        assert!(!novelty_gate(0.0, 4.0, 0.5), "σ(0)=0.5 must not pass a 0.5 gate (strict >)");
-        assert!(novelty_gate(0.001, 4.0, 0.5), "any positive novelty passes a 0.5 gate");
+        assert!(
+            !novelty_gate(0.0, 4.0, 0.5),
+            "σ(0)=0.5 must not pass a 0.5 gate (strict >)"
+        );
+        assert!(
+            novelty_gate(0.001, 4.0, 0.5),
+            "any positive novelty passes a 0.5 gate"
+        );
     }
 
     /// Per-channel λ routes by class: threat keeps, ambient cancels.
@@ -318,7 +324,10 @@ mod tests {
             n = f.observe_with(&s, &lambdas);
         }
         assert!((n[0] - 0.8).abs() < 1e-5, "threat channel keeps (1−0.2)·s");
-        assert!((n[1] - 0.2).abs() < 1e-5, "ambient channel cancels to (1−0.8)·s");
+        assert!(
+            (n[1] - 0.2).abs() < 1e-5,
+            "ambient channel cancels to (1−0.8)·s"
+        );
     }
 
     /// DC gain sweep across the λ operating envelope.

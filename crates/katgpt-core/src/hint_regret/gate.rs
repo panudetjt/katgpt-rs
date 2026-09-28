@@ -143,7 +143,10 @@ mod tests {
             let mut w = -2.0f32;
             while w <= 3.0 {
                 let g = learnable_band_gate(w, W_LO, W_HI, kappa);
-                assert!(g > 0.0 && g < 1.0, "gate {g} outside (0,1) at w={w} kappa={kappa}");
+                assert!(
+                    g > 0.0 && g < 1.0,
+                    "gate {g} outside (0,1) at w={w} kappa={kappa}"
+                );
                 w += 0.01;
             }
         }
@@ -239,7 +242,10 @@ mod tests {
             }
             r += 0.05;
         }
-        assert!(counts.iter().all(|&c| c > 0), "some cell unreachable: {counts:?}");
+        assert!(
+            counts.iter().all(|&c| c > 0),
+            "some cell unreachable: {counts:?}"
+        );
     }
 
     #[test]

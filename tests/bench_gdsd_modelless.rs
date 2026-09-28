@@ -644,9 +644,7 @@ fn goat_169_g3_overhead() {
     let median_ratio = ratios[ratios.len() / 2];
     let overhead_pct = (median_ratio - 1.0) * 100.0;
 
-    println!(
-        "   Chunks: {ROUNDS} x {chunk} iters; baseline total {baseline_total_ns} ns"
-    );
+    println!("   Chunks: {ROUNDS} x {chunk} iters; baseline total {baseline_total_ns} ns");
     println!(
         "   Per-round ratio range: {:.4} .. {:.4} (median {:.4})",
         ratios[0],

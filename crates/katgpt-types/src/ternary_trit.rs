@@ -241,7 +241,11 @@ impl TernaryTritWeights {
     /// same `0.5 * scale` threshold, same carry — so the two tiers quantize the
     /// *same* input to the *same* weights. Only the storage differs.
     pub fn quantize_from_f32(weights: &[f32], rows: usize, cols: usize) -> Self {
-        assert_eq!(weights.len(), rows * cols, "weights slice must be rows*cols");
+        assert_eq!(
+            weights.len(),
+            rows * cols,
+            "weights slice must be rows*cols"
+        );
         let mut out = Self::new(rows, cols);
 
         for r in 0..rows {
@@ -254,7 +258,11 @@ impl TernaryTritWeights {
                 let group = &row[g_start..g_end];
 
                 let abs_sum: f32 = group.iter().map(|v| v.abs()).sum();
-                let scale = if abs_sum > 0.0 { abs_sum / group.len() as f32 } else { 1.0 };
+                let scale = if abs_sum > 0.0 {
+                    abs_sum / group.len() as f32
+                } else {
+                    1.0
+                };
                 out.group_scale[group_base + g] = f16::from_f32(scale);
                 // Quantize against the f16-rounded scale the kernel applies,
                 // not the f32 ideal — same reasoning as the bit-plane tier.

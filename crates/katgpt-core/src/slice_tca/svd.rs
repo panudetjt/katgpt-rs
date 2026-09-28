@@ -238,11 +238,7 @@ pub fn route(shares: [f32; 3], theta: f32, alpha: f32) -> [f32; 3] {
 
 /// [`route`] with the calibrated defaults (`ROUTE_THETA`, `ROUTE_ALPHA`).
 pub fn route_default(shares: [f32; 3]) -> [f32; 3] {
-    route(
-        shares,
-        super::types::ROUTE_THETA,
-        super::types::ROUTE_ALPHA,
-    )
+    route(shares, super::types::ROUTE_THETA, super::types::ROUTE_ALPHA)
 }
 
 // ─── T1.2 — single-class fit ────────────────────────────────────────────────

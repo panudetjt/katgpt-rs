@@ -487,23 +487,26 @@ pub fn build_dd_tree_screened_synonyms(
     // folds the leaf + low 8 bits of its parent, mirroring the old packed
     // representation's low 24 bits (truncated at vocab > 65,536 — the feature
     // was always lossy there).
-    let fill_state =
-        |state: &mut [f32], depth: usize, token_idx: usize, parent_path: TreePath, path_len: usize| {
-            state[0] = depth as f32;
-            state[1] = token_idx as f32;
-            // Hash parent path into a single f32
-            let leaf = if path_len > 0 {
-                parent_path.token_at(path_len - 1) & 0xFFFF
-            } else {
-                0
-            };
-            let above = if path_len > 1 {
-                (parent_path.token_at(path_len - 2) & 0xFF) << 16
-            } else {
-                0
-            };
-            state[2] = (leaf | above) as f32;
+    let fill_state = |state: &mut [f32],
+                      depth: usize,
+                      token_idx: usize,
+                      parent_path: TreePath,
+                      path_len: usize| {
+        state[0] = depth as f32;
+        state[1] = token_idx as f32;
+        // Hash parent path into a single f32
+        let leaf = if path_len > 0 {
+            parent_path.token_at(path_len - 1) & 0xFFFF
+        } else {
+            0
         };
+        let above = if path_len > 1 {
+            (parent_path.token_at(path_len - 2) & 0xFF) << 16
+        } else {
+            0
+        };
+        state[2] = (leaf | above) as f32;
+    };
 
     // Helper: check if cluster at depth is already explored, if not mark it
     let check_and_mark =

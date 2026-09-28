@@ -97,10 +97,18 @@ struct GateResult {
 
 impl GateResult {
     fn pass(name: &'static str, detail: impl Into<String>) -> Self {
-        Self { name, passed: true, detail: detail.into() }
+        Self {
+            name,
+            passed: true,
+            detail: detail.into(),
+        }
     }
     fn fail(name: &'static str, detail: impl Into<String>) -> Self {
-        Self { name, passed: false, detail: detail.into() }
+        Self {
+            name,
+            passed: false,
+            detail: detail.into(),
+        }
     }
 }
 
@@ -166,7 +174,6 @@ fn apply_known_givens(src: &[f32], n: usize, d: usize) -> Vec<f32> {
     b
 }
 
-
 // =========================================================================
 // ProcrustesAdapter gates
 // =========================================================================
@@ -179,12 +186,13 @@ fn gate_procrustes_g1_correctness() -> Vec<GateResult> {
     let b = apply_known_givens(&a, n, d);
 
     // Fit ProcrustesAdapter via the substrate (orthogonal_procrustes under the hood).
-    use katgpt_spectral::procrustes::{
-        ProcrustesConfig, ProcrustesScratch, orthogonal_procrustes,
-    };
+    use katgpt_spectral::procrustes::{ProcrustesConfig, ProcrustesScratch, orthogonal_procrustes};
     let mut r_fit = vec![0.0_f32; d * d];
     let mut scratch = ProcrustesScratch::new(n, d);
-    let cfg = ProcrustesConfig { compute_residual: true, ..Default::default() };
+    let cfg = ProcrustesConfig {
+        compute_residual: true,
+        ..Default::default()
+    };
     let report = orthogonal_procrustes(&a, &b, n, d, &mut r_fit, &mut scratch, &cfg)
         .expect("procrustes fit");
 
@@ -193,12 +201,22 @@ fn gate_procrustes_g1_correctness() -> Vec<GateResult> {
     results.push(if report.residual <= 0.01 {
         GateResult::pass(
             "G1.procrustes_residual",
-            format!("residual={:.4}% ≤ 1.0% at n={}, d={}", report.residual * 100.0, n, d),
+            format!(
+                "residual={:.4}% ≤ 1.0% at n={}, d={}",
+                report.residual * 100.0,
+                n,
+                d
+            ),
         )
     } else {
         GateResult::fail(
             "G1.procrustes_residual",
-            format!("residual={:.4}% > 1.0% at n={}, d={}", report.residual * 100.0, n, d),
+            format!(
+                "residual={:.4}% > 1.0% at n={}, d={}",
+                report.residual * 100.0,
+                n,
+                d
+            ),
         )
     });
 
@@ -274,7 +292,10 @@ fn gate_procrustes_g2_perf() -> Vec<GateResult> {
         results.push(if median <= 50_000 {
             GateResult::pass(
                 "G2.procrustes_project_into_d256",
-                format!("median={} ≤ 50µs at d={d} (hot-path-realistic same-arch dim)", fmt_ns(median)),
+                format!(
+                    "median={} ≤ 50µs at d={d} (hot-path-realistic same-arch dim)",
+                    fmt_ns(median)
+                ),
             )
         } else {
             GateResult::fail(
@@ -322,7 +343,10 @@ fn gate_procrustes_g4_alloc_free() -> Vec<GateResult> {
         }
     });
     results.push(if allocs == 0 {
-        GateResult::pass("G4.procrustes_project_into", "0 allocs / 1000 calls".to_string())
+        GateResult::pass(
+            "G4.procrustes_project_into",
+            "0 allocs / 1000 calls".to_string(),
+        )
     } else {
         GateResult::fail(
             "G4.procrustes_project_into",
@@ -382,17 +406,31 @@ fn gate_subspace_g1_correctness() -> Vec<GateResult> {
     results.push(if shapes_ok {
         GateResult::pass(
             "G1.subspace_fit_shapes",
-            format!("v_a={} v_b={} R={} d_a={d_a} d_b={d_b} k={k}", fit.v_a.len(), fit.v_b.len(), fit.rotation.len()),
+            format!(
+                "v_a={} v_b={} R={} d_a={d_a} d_b={d_b} k={k}",
+                fit.v_a.len(),
+                fit.v_b.len(),
+                fit.rotation.len()
+            ),
         )
     } else {
         GateResult::fail(
             "G1.subspace_fit_shapes",
-            format!("shape mismatch: v_a={} v_b={} R={}", fit.v_a.len(), fit.v_b.len(), fit.rotation.len()),
+            format!(
+                "shape mismatch: v_a={} v_b={} R={}",
+                fit.v_a.len(),
+                fit.v_b.len(),
+                fit.rotation.len()
+            ),
         )
     });
 
     // G1b: no NaN in fit (SVD converged).
-    let has_nan = fit.v_a.iter().chain(fit.v_b.iter()).chain(fit.rotation.iter())
+    let has_nan = fit
+        .v_a
+        .iter()
+        .chain(fit.v_b.iter())
+        .chain(fit.rotation.iter())
         .any(|x: &f32| x.is_nan() || x.is_infinite());
     results.push(if !has_nan {
         GateResult::pass("G1.subspace_no_nan", "all fit entries finite".to_string())
@@ -488,7 +526,10 @@ fn gate_subspace_g2_perf() -> Vec<GateResult> {
     results.push(if median <= 50_000 {
         GateResult::pass(
             "G2.subspace_project_into",
-            format!("median={} ≤ 50µs at k={k}, d_b={d_b} (MiniCPM5-1B hidden dim)", fmt_ns(median)),
+            format!(
+                "median={} ≤ 50µs at k={k}, d_b={d_b} (MiniCPM5-1B hidden dim)",
+                fmt_ns(median)
+            ),
         )
     } else {
         GateResult::fail(
@@ -519,7 +560,10 @@ fn gate_subspace_g4_alloc_free() -> Vec<GateResult> {
         }
     });
     results.push(if allocs == 0 {
-        GateResult::pass("G4.subspace_project_into", "0 allocs / 1000 calls".to_string())
+        GateResult::pass(
+            "G4.subspace_project_into",
+            "0 allocs / 1000 calls".to_string(),
+        )
     } else {
         GateResult::fail(
             "G4.subspace_project_into",
@@ -603,7 +647,11 @@ fn gate_mask_g1_correctness() -> Vec<GateResult> {
     let canonical = CanonicalIntent::new("mask_test", seeded_vec(5, d));
     let mut out = vec![0.0_f32; d];
     adapter.project_into(&canonical, &mut out);
-    let max_err = out.iter().zip(canonical.as_slice()).map(|(a, b)| (a - b).abs()).fold(0.0_f32, f32::max);
+    let max_err = out
+        .iter()
+        .zip(canonical.as_slice())
+        .map(|(a, b)| (a - b).abs())
+        .fold(0.0_f32, f32::max);
     results.push(if max_err < 1e-6 {
         GateResult::pass(
             "G1.mask_all_ones_identity",
@@ -626,7 +674,9 @@ fn gate_mask_g1_correctness() -> Vec<GateResult> {
     let adapter_half = MaskAdapter::new(mask, d);
     let mut out_half = vec![0.0_f32; d];
     adapter_half.project_into(&canonical, &mut out_half);
-    let first_half_preserved = out_half[..32].iter().zip(canonical.as_slice()[..32].iter())
+    let first_half_preserved = out_half[..32]
+        .iter()
+        .zip(canonical.as_slice()[..32].iter())
         .all(|(a, b)| (a - b).abs() < 1e-6);
     let second_half_zero = out_half[32..].iter().all(|x| *x == 0.0);
     results.push(if first_half_preserved && second_half_zero {
@@ -637,7 +687,9 @@ fn gate_mask_g1_correctness() -> Vec<GateResult> {
     } else {
         GateResult::fail(
             "G1.mask_half_zero",
-            format!("first_half_preserved={first_half_preserved}, second_half_zero={second_half_zero}"),
+            format!(
+                "first_half_preserved={first_half_preserved}, second_half_zero={second_half_zero}"
+            ),
         )
     });
 

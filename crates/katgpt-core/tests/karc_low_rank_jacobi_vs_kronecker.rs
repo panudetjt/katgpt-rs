@@ -19,8 +19,7 @@
 #![cfg(feature = "karc_forecaster")]
 
 use katgpt_core::karc::{
-    LowRankFitScratch, low_rank_fit, low_rank_fit_warm_start,
-    large_dh::low_rank_fit_jacobi_bstep,
+    LowRankFitScratch, large_dh::low_rank_fit_jacobi_bstep, low_rank_fit, low_rank_fit_warm_start,
 };
 
 /// Build a synthetic 96 × 96 SPD Gram + 96 × 4 cross-covariance that
@@ -32,11 +31,7 @@ fn build_synthetic_problem(d_h: usize, d_out: usize) -> (Vec<f64>, Vec<f64>) {
     let mut gram = vec![0.0f64; d_h * d_h];
     for i in 0..d_h {
         for j in 0..d_h {
-            gram[i * d_h + j] = if i == j {
-                1.0 + (i as f64) * 0.1
-            } else {
-                0.05
-            };
+            gram[i * d_h + j] = if i == j { 1.0 + (i as f64) * 0.1 } else { 0.05 };
         }
     }
     let mut cov = vec![0.0f64; d_h * d_out];
@@ -63,8 +58,17 @@ fn als_jacobi_matches_kronecker_d96_r4() {
     let mut b_kron = vec![0.0f64; r * d_h];
     let mut scr_kron = LowRankFitScratch::with_capacity(d_h, d_out, r);
     let iters_kron = low_rank_fit(
-        &gram, &cov, d_h, d_out, r, lambda, max_iters, tol,
-        &mut a_kron, &mut b_kron, &mut scr_kron,
+        &gram,
+        &cov,
+        d_h,
+        d_out,
+        r,
+        lambda,
+        max_iters,
+        tol,
+        &mut a_kron,
+        &mut b_kron,
+        &mut scr_kron,
     );
 
     // Jacobi path.
@@ -72,8 +76,17 @@ fn als_jacobi_matches_kronecker_d96_r4() {
     let mut b_jac = vec![0.0f64; r * d_h];
     let mut scr_jac = LowRankFitScratch::with_capacity(d_h, d_out, r);
     let iters_jac = low_rank_fit_jacobi_bstep(
-        &gram, &cov, d_h, d_out, r, lambda, max_iters, tol,
-        &mut a_jac, &mut b_jac, &mut scr_jac,
+        &gram,
+        &cov,
+        d_h,
+        d_out,
+        r,
+        lambda,
+        max_iters,
+        tol,
+        &mut a_jac,
+        &mut b_jac,
+        &mut scr_jac,
     );
 
     // Both paths should converge in the same number of iterations (the
@@ -170,9 +183,19 @@ fn als_jacobi_warm_start_matches_kronecker_warm_start() {
     let mut b_kron = vec![0.0f64; r * d_h];
     let mut scr_kron = LowRankFitScratch::with_capacity(d_h, d_out, r);
     let iters_kron = low_rank_fit_warm_start(
-        &gram, &cov, d_h, d_out, r, lambda, max_iters, tol,
-        &a_init, &b_init,
-        &mut a_kron, &mut b_kron, &mut scr_kron,
+        &gram,
+        &cov,
+        d_h,
+        d_out,
+        r,
+        lambda,
+        max_iters,
+        tol,
+        &a_init,
+        &b_init,
+        &mut a_kron,
+        &mut b_kron,
+        &mut scr_kron,
     );
 
     // Jacobi path doesn't have a public warm-start entry point yet, so we
@@ -180,8 +203,12 @@ fn als_jacobi_warm_start_matches_kronecker_warm_start() {
     // produces SOMETHING reasonable (iters > 0 and finite values), to keep
     // this test meaningful as a smoke check on the warm-start path.
     assert!(iters_kron > 0, "Kronecker warm-start should run ≥1 iter");
-    for v in &a_kron { assert!(v.is_finite()); }
-    for v in &b_kron { assert!(v.is_finite()); }
+    for v in &a_kron {
+        assert!(v.is_finite());
+    }
+    for v in &b_kron {
+        assert!(v.is_finite());
+    }
 }
 
 // ─── Issue 186 (Path B): Householder+QL G-path parity ──────────────────────
@@ -214,8 +241,17 @@ fn als_householder_matches_kronecker_d96_r4() {
     let mut b_kron = vec![0.0f64; r * d_h];
     let mut scr_kron = LowRankFitScratch::with_capacity(d_h, d_out, r);
     let iters_kron = low_rank_fit(
-        &gram, &cov, d_h, d_out, r, lambda, max_iters, tol,
-        &mut a_kron, &mut b_kron, &mut scr_kron,
+        &gram,
+        &cov,
+        d_h,
+        d_out,
+        r,
+        lambda,
+        max_iters,
+        tol,
+        &mut a_kron,
+        &mut b_kron,
+        &mut scr_kron,
     );
 
     // Householder+QL path (via the same `low_rank_fit_jacobi_bstep` entry
@@ -224,8 +260,17 @@ fn als_householder_matches_kronecker_d96_r4() {
     let mut b_hh = vec![0.0f64; r * d_h];
     let mut scr_hh = LowRankFitScratch::with_capacity(d_h, d_out, r);
     let iters_hh = low_rank_fit_jacobi_bstep(
-        &gram, &cov, d_h, d_out, r, lambda, max_iters, tol,
-        &mut a_hh, &mut b_hh, &mut scr_hh,
+        &gram,
+        &cov,
+        d_h,
+        d_out,
+        r,
+        lambda,
+        max_iters,
+        tol,
+        &mut a_hh,
+        &mut b_hh,
+        &mut scr_hh,
     );
 
     // Iteration count must match (same optimization landscape; only the

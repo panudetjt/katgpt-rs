@@ -171,9 +171,11 @@ fn is_in_blast_range(pos: GridPos, grid: &ArenaGrid, bomb_pos: (i32, i32), range
             let step = dx.signum();
             let mut x = bx + step;
             while x != pos.x {
-                if let Cell::FixedWall | Cell::DestructibleWall | Cell::PowerUpHidden(_) = grid.get(x, by) {
-                        return false;
-                    }
+                if let Cell::FixedWall | Cell::DestructibleWall | Cell::PowerUpHidden(_) =
+                    grid.get(x, by)
+                {
+                    return false;
+                }
                 x += step;
             }
             return true;
@@ -187,9 +189,11 @@ fn is_in_blast_range(pos: GridPos, grid: &ArenaGrid, bomb_pos: (i32, i32), range
             let step = dy.signum();
             let mut y = by + step;
             while y != pos.y {
-                if let Cell::FixedWall | Cell::DestructibleWall | Cell::PowerUpHidden(_) = grid.get(bx, y) {
-                        return false;
-                    }
+                if let Cell::FixedWall | Cell::DestructibleWall | Cell::PowerUpHidden(_) =
+                    grid.get(bx, y)
+                {
+                    return false;
+                }
                 y += step;
             }
             return true;
@@ -558,7 +562,8 @@ pub fn evaluate_validator(candidate: &ValidatorCandidate, rounds: u32) -> ArenaE
         for _tick in 0..EVAL_TICK_LIMIT {
             // Drain events from previous tick
             {
-                let mut event_reader = world.resource_mut::<bevy_ecs::message::Messages<GameEvent>>();
+                let mut event_reader =
+                    world.resource_mut::<bevy_ecs::message::Messages<GameEvent>>();
                 tick_events.clear();
                 tick_events.extend(event_reader.drain());
             }
@@ -1080,9 +1085,7 @@ impl AgentLoop {
                 .collect();
 
             // 3. Sort by avg_score descending
-            scored.sort_by(|a, b| {
-                katgpt_core::float_order::desc(a.1.avg_score, b.1.avg_score)
-            });
+            scored.sort_by(|a, b| katgpt_core::float_order::desc(a.1.avg_score, b.1.avg_score));
 
             // 4. Update best
             let gen_best_score = scored[0].1.avg_score;

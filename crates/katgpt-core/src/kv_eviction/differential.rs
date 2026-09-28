@@ -287,6 +287,35 @@ impl DifferentialEvictTable {
         sink_pin_mask_into(policy, positions, current_pos, pin_buf);
         self.select_evict_into(k, pin_buf, scores, out);
     }
+
+    /// Keep the rows named by `keep` (ascending indices into the live
+    /// prefix), in order, compacting the table in place: row `keep[j]`
+    /// becomes row `j`, and `len` becomes `keep.len()`. The KV-cache
+    /// compaction twin — when the caller gathers retained cache slots to
+    /// the front, the per-slot `(μ, cur, prev)` rows must gather the same
+    /// way or the side table desynchronizes from the cache it indexes.
+    ///
+    /// O(len), zero allocation, in place (the write index never passes the
+    /// read index, so the left-to-right sweep never overwrites a row it has
+    /// yet to read). `keep` must be ascending with every index `< len`;
+    /// violations are a caller bug (`debug_assert!`). The global query
+    /// counter (`queries`, which drives bucket rotation) is deliberately
+    /// untouched: rotation is a property of TIME, not of slot identity, and
+    /// a gather must not re-phase any slot's bucket. Rows past the new
+    /// `len` hold moved-out data and are only ever read after a
+    /// [`Self::reset_row`] re-admission, which overwrites them.
+    pub fn gather_rows(&mut self, keep: &[usize]) {
+        for (j, &r) in keep.iter().enumerate() {
+            debug_assert!(r < self.len, "gather index {r} out of live prefix");
+            debug_assert!(j == 0 || keep[j - 1] < r, "gather indices must ascend");
+            if r != j {
+                self.mu[j] = self.mu[r];
+                self.cur[j] = self.cur[r];
+                self.prev[j] = self.prev[r];
+            }
+        }
+        self.len = keep.len();
+    }
 }
 
 #[cfg(test)]
@@ -326,6 +355,80 @@ mod tests {
         t.observe_query(&[0.7]);
         assert_eq!(t.specificity(0), 0.7);
         assert_eq!(t.mass_ema(0), 0.7);
+    }
+
+    #[test]
+    fn gather_identity_is_a_no_op() {
+        let mut t = table(8, DiffEvictConfig::new(1.0, 0.5, 4));
+        for q in 0..13 {
+            let a = q as f32 * 0.05;
+            t.observe_query(&[a, 0.3 - a * 0.1, 0.02, 0.4, 0.01, 0.2, 0.03, 0.1]);
+        }
+        let spec_before: Vec<f32> = (0..8).map(|i| t.specificity(i)).collect();
+        let mu_before: Vec<f32> = (0..8).map(|i| t.mass_ema(i)).collect();
+        let queries_before = t.queries();
+        t.gather_rows(&(0..8).collect::<Vec<_>>());
+        assert_eq!(t.len(), 8);
+        assert_eq!(
+            t.queries(),
+            queries_before,
+            "gather must not re-phase buckets"
+        );
+        for i in 0..8 {
+            assert_eq!(t.specificity(i), spec_before[i]);
+            assert_eq!(t.mass_ema(i), mu_before[i]);
+        }
+    }
+
+    #[test]
+    fn gather_moves_rows_with_their_state_and_re_indexes_selection() {
+        // Distinct per-row histories; evict rows 0 and 2 (keep 1, 3, 4) and
+        // verify each survivor carries its exact prior (μ, specificity) at
+        // its NEW index, the live prefix shrank, and selection over the
+        // gathered table picks the same semantic rows.
+        let mut t = table(5, DiffEvictConfig::new(0.8, 0.5, 4));
+        for q in 0..11 {
+            let a = q as f32 * 0.04;
+            t.observe_query(&[0.5, a, 0.2, 0.05 + a * 0.5, 0.3]);
+        }
+        let spec: Vec<f32> = (0..5).map(|i| t.specificity(i)).collect();
+        let mu: Vec<f32> = (0..5).map(|i| t.mass_ema(i)).collect();
+        t.gather_rows(&[1, 3, 4]);
+        assert_eq!(t.len(), 3);
+        assert_eq!(t.specificity(0), spec[1]);
+        assert_eq!(t.mass_ema(0), mu[1]);
+        assert_eq!(t.specificity(1), spec[3]);
+        assert_eq!(t.mass_ema(1), mu[3]);
+        assert_eq!(t.specificity(2), spec[4]);
+        assert_eq!(t.mass_ema(2), mu[4]);
+        // Selection stays index-consistent: the lowest-specificity survivor
+        // is the one whose OLD specificity was lowest among the kept.
+        let mut scores = Vec::new();
+        let mut out = Vec::new();
+        t.select_evict_into(1, &[], &mut scores, &mut out);
+        let kept_spec = [spec[1], spec[3], spec[4]];
+        let min_old = kept_spec
+            .iter()
+            .enumerate()
+            .min_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+            .unwrap()
+            .0;
+        assert_eq!(out, vec![min_old]);
+    }
+
+    #[test]
+    fn gather_then_observe_continues_the_moved_row() {
+        // A gathered row keeps its μ: the next observation updates it from
+        // where it was, not from zero.
+        let mut t = table(3, DiffEvictConfig::new(1.0, 0.5, 8));
+        t.observe_query(&[0.0, 0.0, 0.6]);
+        // μ takes β of the first sample: 0 + 0.5·(0.6 − 0) = 0.3.
+        assert_eq!(t.mass_ema(2), 0.3);
+        t.gather_rows(&[2]);
+        assert_eq!(t.len(), 1);
+        t.observe_query(&[0.2]);
+        // μ ← 0.3 + 0.5·(0.2 − 0.3) = 0.25 — the pre-gather EMA continued.
+        assert!((t.mass_ema(0) - 0.25).abs() < 1e-6);
     }
 
     #[test]

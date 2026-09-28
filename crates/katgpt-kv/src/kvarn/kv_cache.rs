@@ -277,16 +277,14 @@ impl KVarNKVCache {
         // a single allocation + single bounds-checked index.
         let key_tiles: Vec<TileMeta> = (0..cfg.n_layers)
             .flat_map(|_| {
-                (0..n_tiles)
-                    .map(|_| TileMeta::empty(tile_size, key_tile_rows, key_tile_cols))
+                (0..n_tiles).map(|_| TileMeta::empty(tile_size, key_tile_rows, key_tile_cols))
             })
             .collect();
 
         let val_quantized = vec![0u8; cfg.n_layers * n_tiles * val_tile_packed_len];
         let val_tiles: Vec<TileMeta> = (0..cfg.n_layers)
             .flat_map(|_| {
-                (0..n_tiles)
-                    .map(|_| TileMeta::empty(tile_size, val_tile_rows, val_tile_cols))
+                (0..n_tiles).map(|_| TileMeta::empty(tile_size, val_tile_rows, val_tile_cols))
             })
             .collect();
 
@@ -660,7 +658,10 @@ impl KVarNKVCache {
                     ..Default::default()
                 };
                 variance_normalize_into_scales(
-                    tile_data, rows, cols, &config,
+                    tile_data,
+                    rows,
+                    cols,
+                    &config,
                     &mut self.varn_cur[..rows * cols],
                     &mut self.varn_col_s[..cols],
                     &mut self.varn_row_s[..rows],
@@ -725,13 +726,19 @@ impl KVarNKVCache {
         meta.count = count;
         meta.quantized = true;
         meta.var_scales.s_col.clear();
-        meta.var_scales.s_col.extend_from_slice(&self.scratch_var_s_col[..cols]);
+        meta.var_scales
+            .s_col
+            .extend_from_slice(&self.scratch_var_s_col[..cols]);
         meta.var_scales.s_row.clear();
-        meta.var_scales.s_row.extend_from_slice(&self.scratch_var_s_row[..rows]);
+        meta.var_scales
+            .s_row
+            .extend_from_slice(&self.scratch_var_s_row[..rows]);
         meta.rtn_scales.clear();
-        meta.rtn_scales.extend_from_slice(&self.scratch_rtn_scales[..rtn_scales_len]);
+        meta.rtn_scales
+            .extend_from_slice(&self.scratch_rtn_scales[..rtn_scales_len]);
         meta.rtn_zp.clear();
-        meta.rtn_zp.extend_from_slice(&self.scratch_rtn_zp[..rtn_scales_len]);
+        meta.rtn_zp
+            .extend_from_slice(&self.scratch_rtn_zp[..rtn_scales_len]);
 
         let off = self.key_tile_off(layer, tile_idx);
         let quantized = &mut self.key_quantized[off..off + self.key_tile_packed_len];
@@ -773,7 +780,10 @@ impl KVarNKVCache {
                     ..Default::default()
                 };
                 variance_normalize_into_scales(
-                    tile_data, rows, cols, &config,
+                    tile_data,
+                    rows,
+                    cols,
+                    &config,
                     &mut self.varn_cur[..rows * cols],
                     &mut self.varn_col_s[..cols],
                     &mut self.varn_row_s[..rows],
@@ -836,13 +846,19 @@ impl KVarNKVCache {
         meta.count = count;
         meta.quantized = true;
         meta.var_scales.s_col.clear();
-        meta.var_scales.s_col.extend_from_slice(&self.scratch_var_s_col[..cols]);
+        meta.var_scales
+            .s_col
+            .extend_from_slice(&self.scratch_var_s_col[..cols]);
         meta.var_scales.s_row.clear();
-        meta.var_scales.s_row.extend_from_slice(&self.scratch_var_s_row[..rows]);
+        meta.var_scales
+            .s_row
+            .extend_from_slice(&self.scratch_var_s_row[..rows]);
         meta.rtn_scales.clear();
-        meta.rtn_scales.extend_from_slice(&self.scratch_rtn_scales[..rtn_scales_len]);
+        meta.rtn_scales
+            .extend_from_slice(&self.scratch_rtn_scales[..rtn_scales_len]);
         meta.rtn_zp.clear();
-        meta.rtn_zp.extend_from_slice(&self.scratch_rtn_zp[..rtn_scales_len]);
+        meta.rtn_zp
+            .extend_from_slice(&self.scratch_rtn_zp[..rtn_scales_len]);
 
         let off = self.val_tile_off(layer, tile_idx);
         let quantized = &mut self.val_quantized[off..off + self.val_tile_packed_len];
@@ -1015,7 +1031,14 @@ pub fn rtn_quantize_rows_grouped(
     let mut scales = vec![1.0f32; rows * groups_per_row];
     let mut zps = vec![0.0f32; rows * groups_per_row];
     rtn_quantize_rows_grouped_into(
-        tile, rows, cols, bits, group_size, &mut scales, &mut zps, &mut packed,
+        tile,
+        rows,
+        cols,
+        bits,
+        group_size,
+        &mut scales,
+        &mut zps,
+        &mut packed,
     );
     (scales, zps, packed)
 }

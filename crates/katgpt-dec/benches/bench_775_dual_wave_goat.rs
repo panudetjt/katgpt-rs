@@ -62,8 +62,13 @@ fn ticks_to_detect(cx: &CellComplex, params: WaveParams, cap: usize) -> Option<u
 // ===========================================================================
 
 fn g2_reach() -> bool {
-    println!("─ G2 reach (inject at v0, detect |h[L−1]| ≥ {THRESHOLD}; wave α=1 vs heat α=0, same η=¼ ρ=1)");
-    println!("  {:<6}{:>8} {:>9} {:>10} {:>9}   verdict", "L", "wave", "heat", "t_infl=2L", "heat/wave");
+    println!(
+        "─ G2 reach (inject at v0, detect |h[L−1]| ≥ {THRESHOLD}; wave α=1 vs heat α=0, same η=¼ ρ=1)"
+    );
+    println!(
+        "  {:<6}{:>8} {:>9} {:>10} {:>9}   verdict",
+        "L", "wave", "heat", "t_infl=2L", "heat/wave"
+    );
     let mut all_pass = true;
     let mut ratios: Vec<Option<f64>> = Vec::new();
     for &l in &[16usize, 64, 128] {
@@ -101,7 +106,11 @@ fn g2_reach() -> bool {
                     ">cap",
                     2 * l,
                     "—",
-                    if ok { "PASS ✅ (heat > cap)" } else { "FAIL ❌" }
+                    if ok {
+                        "PASS ✅ (heat > cap)"
+                    } else {
+                        "FAIL ❌"
+                    }
                 );
                 ok
             }

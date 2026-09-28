@@ -283,7 +283,11 @@ mod tests {
                 arm.draw_into(seed, sigma, &mut out);
                 assert!(out.iter().any(|&x| x != 0.0));
                 let f = CochainField::from_vec(1, 1, out.clone());
-                assert_eq!(belief_mass_divergence(&cx, &f), 0.0, "seed {seed} σ {sigma}");
+                assert_eq!(
+                    belief_mass_divergence(&cx, &f),
+                    0.0,
+                    "seed {seed} σ {sigma}"
+                );
             }
         }
     }

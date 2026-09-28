@@ -36,11 +36,13 @@ static GLOBAL: CountingAllocator = CountingAllocator {
 
 unsafe impl GlobalAlloc for CountingAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        self.allocated.fetch_add(layout.size() as u64, Ordering::Relaxed);
+        self.allocated
+            .fetch_add(layout.size() as u64, Ordering::Relaxed);
         unsafe { self.inner.alloc(layout) }
     }
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        self.deallocated.fetch_add(layout.size() as u64, Ordering::Relaxed);
+        self.deallocated
+            .fetch_add(layout.size() as u64, Ordering::Relaxed);
         unsafe { self.inner.dealloc(ptr, layout) }
     }
 }
@@ -83,7 +85,12 @@ fn fixture_field<const D: usize>(seed: usize) -> Box<FixtureField<D>> {
         let x = (seed * 37 + i * 13) as f32;
         *slot = ((x * 0.1).sin() + (x * 0.07).cos()) * 0.5;
     }
-    let norm: f32 = direction.iter().map(|v| v * v).sum::<f32>().sqrt().max(1e-8);
+    let norm: f32 = direction
+        .iter()
+        .map(|v| v * v)
+        .sum::<f32>()
+        .sqrt()
+        .max(1e-8);
     for v in direction.iter_mut() {
         *v /= norm;
     }

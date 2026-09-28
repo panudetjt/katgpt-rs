@@ -85,24 +85,51 @@ pub enum KptError {
     UnsupportedVersion(u32),
     /// File smaller than header + directory + trailer, or a declared region
     /// walks past end-of-file. `need`/`have` are byte counts.
-    Truncated { need: u64, have: u64 },
+    Truncated {
+        need: u64,
+        have: u64,
+    },
     /// A directory offset/length pair overflows u64 arithmetic (wrap attack).
-    OffsetOverflow { layer: usize },
+    OffsetOverflow {
+        layer: usize,
+    },
     /// A payload region is not 16-byte aligned.
-    Misaligned { layer: usize, offset: u64 },
+    Misaligned {
+        layer: usize,
+        offset: u64,
+    },
     /// Layer i's `payload_offset` is not the exact sequential position —
     /// spliced, reordered, gapped or overlapping layout.
-    NotSequential { layer: usize, declared: u64, expected: u64 },
+    NotSequential {
+        layer: usize,
+        declared: u64,
+        expected: u64,
+    },
     /// Recomputed payload hash ≠ directory entry.
-    LayerHashMismatch { layer: usize, declared: [u8; 32], recomputed: [u8; 32] },
+    LayerHashMismatch {
+        layer: usize,
+        declared: [u8; 32],
+        recomputed: [u8; 32],
+    },
     /// Recomputed Merkle root ≠ trailer.
-    MerkleRootMismatch { declared: [u8; 32], recomputed: [u8; 32] },
+    MerkleRootMismatch {
+        declared: [u8; 32],
+        recomputed: [u8; 32],
+    },
     /// Recomputed archive id ≠ trailer (anything upstream moved).
-    ArchiveIdMismatch { declared: [u8; 32], recomputed: [u8; 32] },
+    ArchiveIdMismatch {
+        declared: [u8; 32],
+        recomputed: [u8; 32],
+    },
     /// Zero-copy view requested over a buffer that is not u64/f32-aligned.
     MisalignedBuffer,
     /// `build_archive` was handed an inconsistent layer (blocks64 ≠ ceil(cols/64)).
-    BadLayerSpec { layer: usize, rows: usize, cols: usize, blocks64: usize },
+    BadLayerSpec {
+        layer: usize,
+        rows: usize,
+        cols: usize,
+        blocks64: usize,
+    },
 }
 
 impl fmt::Display for KptError {
@@ -110,18 +137,43 @@ impl fmt::Display for KptError {
         match self {
             Self::Io(e) => write!(f, "io error: {e}"),
             Self::BadMagic(m) => write!(f, "bad magic {m:?} (expected {:?})", KPT_MAGIC),
-            Self::UnsupportedVersion(v) => write!(f, "unsupported version {v} (expected {KPT_VERSION})"),
-            Self::Truncated { need, have } => write!(f, "truncated: need {need} bytes, have {have}"),
-            Self::OffsetOverflow { layer } => write!(f, "offset arithmetic overflow at layer {layer}"),
-            Self::Misaligned { layer, offset } => write!(f, "layer {layer} offset {offset} not {KPT_ALIGN}-aligned"),
-            Self::NotSequential { layer, declared, expected } => {
-                write!(f, "layer {layer} offset {declared} != sequential position {expected}")
+            Self::UnsupportedVersion(v) => {
+                write!(f, "unsupported version {v} (expected {KPT_VERSION})")
             }
-            Self::LayerHashMismatch { layer, .. } => write!(f, "layer {layer} payload hash mismatch"),
+            Self::Truncated { need, have } => {
+                write!(f, "truncated: need {need} bytes, have {have}")
+            }
+            Self::OffsetOverflow { layer } => {
+                write!(f, "offset arithmetic overflow at layer {layer}")
+            }
+            Self::Misaligned { layer, offset } => {
+                write!(f, "layer {layer} offset {offset} not {KPT_ALIGN}-aligned")
+            }
+            Self::NotSequential {
+                layer,
+                declared,
+                expected,
+            } => {
+                write!(
+                    f,
+                    "layer {layer} offset {declared} != sequential position {expected}"
+                )
+            }
+            Self::LayerHashMismatch { layer, .. } => {
+                write!(f, "layer {layer} payload hash mismatch")
+            }
             Self::MerkleRootMismatch { .. } => write!(f, "merkle root mismatch"),
             Self::ArchiveIdMismatch { .. } => write!(f, "archive id mismatch"),
-            Self::MisalignedBuffer => write!(f, "buffer not aligned for zero-copy views; use to_ternary_weights"),
-            Self::BadLayerSpec { layer, rows, cols, blocks64 } => write!(
+            Self::MisalignedBuffer => write!(
+                f,
+                "buffer not aligned for zero-copy views; use to_ternary_weights"
+            ),
+            Self::BadLayerSpec {
+                layer,
+                rows,
+                cols,
+                blocks64,
+            } => write!(
                 f,
                 "layer {layer} spec rows={rows} cols={cols} blocks64={blocks64} inconsistent"
             ),
@@ -242,7 +294,10 @@ impl<'a> KptArchive<'a> {
         let have = bytes.len() as u64;
         // ── Structure ────────────────────────────────────────────────────
         if have < KPT_HEADER_SIZE + KPT_TRAILER_SIZE {
-            return Err(KptError::Truncated { need: KPT_HEADER_SIZE + KPT_TRAILER_SIZE, have });
+            return Err(KptError::Truncated {
+                need: KPT_HEADER_SIZE + KPT_TRAILER_SIZE,
+                have,
+            });
         }
         let magic: [u8; 4] = [bytes[0], bytes[1], bytes[2], bytes[3]];
         if magic != KPT_MAGIC {
@@ -254,15 +309,20 @@ impl<'a> KptArchive<'a> {
         }
         let layer_count = read_u32(bytes, 8) as usize;
         let dir_end = KPT_HEADER_SIZE
-            .checked_add((layer_count as u64).checked_mul(KPT_DIR_ENTRY_SIZE).ok_or(
-                KptError::OffsetOverflow { layer: 0 },
-            )?)
+            .checked_add(
+                (layer_count as u64)
+                    .checked_mul(KPT_DIR_ENTRY_SIZE)
+                    .ok_or(KptError::OffsetOverflow { layer: 0 })?,
+            )
             .ok_or(KptError::OffsetOverflow { layer: 0 })?;
         // Payloads sit between dir_end and the trailer; every declared region
         // must land inside that span.
         let payload_end = have - KPT_TRAILER_SIZE;
         if dir_end > payload_end {
-            return Err(KptError::Truncated { need: dir_end + KPT_TRAILER_SIZE, have });
+            return Err(KptError::Truncated {
+                need: dir_end + KPT_TRAILER_SIZE,
+                have,
+            });
         }
 
         let mut layers: Vec<KptLayerEntry> = Vec::with_capacity(layer_count);
@@ -278,7 +338,12 @@ impl<'a> KptArchive<'a> {
 
             // blocks64 must match the dims it claims (the packing invariant).
             if blocks64 != cols.div_ceil(64) {
-                return Err(KptError::BadLayerSpec { layer: i, rows, cols, blocks64 });
+                return Err(KptError::BadLayerSpec {
+                    layer: i,
+                    rows,
+                    cols,
+                    blocks64,
+                });
             }
             // Nameless-positional discipline: EXACT sequential layout.
             let expected_offset = match layers.last() {
@@ -290,22 +355,37 @@ impl<'a> KptArchive<'a> {
                 ),
             };
             if payload_offset != expected_offset {
-                return Err(KptError::NotSequential { layer: i, declared: payload_offset, expected: expected_offset });
+                return Err(KptError::NotSequential {
+                    layer: i,
+                    declared: payload_offset,
+                    expected: expected_offset,
+                });
             }
             if !payload_offset.is_multiple_of(KPT_ALIGN) {
-                return Err(KptError::Misaligned { layer: i, offset: payload_offset });
+                return Err(KptError::Misaligned {
+                    layer: i,
+                    offset: payload_offset,
+                });
             }
             let region_end = payload_offset
                 .checked_add(payload_len)
                 .ok_or(KptError::OffsetOverflow { layer: i })?;
             if region_end > payload_end {
-                return Err(KptError::Truncated { need: region_end + KPT_TRAILER_SIZE, have });
+                return Err(KptError::Truncated {
+                    need: region_end + KPT_TRAILER_SIZE,
+                    have,
+                });
             }
             // Declared length must match the dims (padded form).
-            let want_len = stored_payload_len(rows, blocks64)
-                .ok_or(KptError::OffsetOverflow { layer: i })?;
+            let want_len =
+                stored_payload_len(rows, blocks64).ok_or(KptError::OffsetOverflow { layer: i })?;
             if payload_len != want_len {
-                return Err(KptError::BadLayerSpec { layer: i, rows, cols, blocks64 });
+                return Err(KptError::BadLayerSpec {
+                    layer: i,
+                    rows,
+                    cols,
+                    blocks64,
+                });
             }
             layers.push(KptLayerEntry {
                 rows,
@@ -320,36 +400,58 @@ impl<'a> KptArchive<'a> {
         if let Some(last) = layers.last() {
             let end = round_up_16(last.payload_offset + last.payload_len);
             if end != payload_end {
-                return Err(KptError::NotSequential { layer: layers.len() - 1, declared: end, expected: payload_end });
+                return Err(KptError::NotSequential {
+                    layer: layers.len() - 1,
+                    declared: end,
+                    expected: payload_end,
+                });
             }
         }
 
         // ── Per-layer hashes ─────────────────────────────────────────────
         let mut recomputed = Vec::with_capacity(layers.len());
         for (i, l) in layers.iter().enumerate() {
-            let region = &bytes[l.payload_offset as usize..(l.payload_offset + l.payload_len) as usize];
+            let region =
+                &bytes[l.payload_offset as usize..(l.payload_offset + l.payload_len) as usize];
             let h = *blake3::hash(region).as_bytes();
             if h != l.layer_hash {
-                return Err(KptError::LayerHashMismatch { layer: i, declared: l.layer_hash, recomputed: h });
+                return Err(KptError::LayerHashMismatch {
+                    layer: i,
+                    declared: l.layer_hash,
+                    recomputed: h,
+                });
             }
             recomputed.push(h);
         }
 
         // ── Merkle root ──────────────────────────────────────────────────
-        let merkle_root: [u8; 32] = bytes[(bytes.len() - 64)..(bytes.len() - 32)].try_into().unwrap();
+        let merkle_root: [u8; 32] = bytes[(bytes.len() - 64)..(bytes.len() - 32)]
+            .try_into()
+            .unwrap();
         let computed_root = merkle_root_over(&recomputed);
         if computed_root != merkle_root {
-            return Err(KptError::MerkleRootMismatch { declared: merkle_root, recomputed: computed_root });
+            return Err(KptError::MerkleRootMismatch {
+                declared: merkle_root,
+                recomputed: computed_root,
+            });
         }
 
         // ── Archive id (covers everything before it, incl. the root) ─────
         let archive_id: [u8; 32] = bytes[(bytes.len() - 32)..].try_into().unwrap();
         let computed_id = *blake3::hash(&bytes[..bytes.len() - 32]).as_bytes();
         if computed_id != archive_id {
-            return Err(KptError::ArchiveIdMismatch { declared: archive_id, recomputed: computed_id });
+            return Err(KptError::ArchiveIdMismatch {
+                declared: archive_id,
+                recomputed: computed_id,
+            });
         }
 
-        Ok(Self { bytes, layers, merkle_root, archive_id })
+        Ok(Self {
+            bytes,
+            layers,
+            merkle_root,
+            archive_id,
+        })
     }
 
     /// Verified directory (positional order).
@@ -374,19 +476,27 @@ impl<'a> KptArchive<'a> {
     /// [`Self::to_ternary_weights`] for the always-working copying path.
     pub fn layer_view(&self, i: usize) -> Result<KptLayerView<'_>, KptError> {
         #[cfg(target_endian = "big")]
-        { return Err(KptError::MisalignedBuffer); }
+        {
+            return Err(KptError::MisalignedBuffer);
+        }
         #[cfg(target_endian = "little")]
         {
             let l = &self.layers[i];
-            let region = &self.bytes[l.payload_offset as usize..(l.payload_offset + l.payload_len) as usize];
+            let region =
+                &self.bytes[l.payload_offset as usize..(l.payload_offset + l.payload_len) as usize];
             let bits_len = l.rows * l.blocks64 * 8;
-            let pos: &[u64] = bytemuck::try_cast_slice(&region[..bits_len]).map_err(|_| KptError::MisalignedBuffer)?;
-            let neg: &[u64] =
-                bytemuck::try_cast_slice(&region[bits_len..bits_len * 2]).map_err(|_| KptError::MisalignedBuffer)?;
+            let pos: &[u64] = bytemuck::try_cast_slice(&region[..bits_len])
+                .map_err(|_| KptError::MisalignedBuffer)?;
+            let neg: &[u64] = bytemuck::try_cast_slice(&region[bits_len..bits_len * 2])
+                .map_err(|_| KptError::MisalignedBuffer)?;
             let scale: &[f32] =
                 bytemuck::try_cast_slice(&region[bits_len * 2..bits_len * 2 + l.rows * 4])
                     .map_err(|_| KptError::MisalignedBuffer)?;
-            Ok(KptLayerView { pos_bits: pos, neg_bits: neg, row_scale: scale })
+            Ok(KptLayerView {
+                pos_bits: pos,
+                neg_bits: neg,
+                row_scale: scale,
+            })
         }
     }
 
@@ -395,7 +505,8 @@ impl<'a> KptArchive<'a> {
     pub fn to_ternary_weights(&self, i: usize) -> TernaryWeights {
         let l = &self.layers[i];
         let mut tw = TernaryWeights::new(l.rows, l.cols);
-        let region = &self.bytes[l.payload_offset as usize..(l.payload_offset + l.payload_len) as usize];
+        let region =
+            &self.bytes[l.payload_offset as usize..(l.payload_offset + l.payload_len) as usize];
         let bits_len = l.rows * l.blocks64 * 8;
         let (pos_chunks, _) = region[..bits_len].as_chunks::<8>();
         for (dst, src) in tw.pos_bits.iter_mut().zip(pos_chunks) {
@@ -417,7 +528,12 @@ impl<'a> KptArchive<'a> {
 pub fn build_archive(layers: &[&TernaryWeights]) -> Result<Vec<u8>, KptError> {
     for (i, w) in layers.iter().enumerate() {
         if w.blocks64 != w.cols.div_ceil(64) {
-            return Err(KptError::BadLayerSpec { layer: i, rows: w.rows, cols: w.cols, blocks64: w.blocks64 });
+            return Err(KptError::BadLayerSpec {
+                layer: i,
+                rows: w.rows,
+                cols: w.cols,
+                blocks64: w.blocks64,
+            });
         }
     }
     let dir_end = KPT_HEADER_SIZE + (layers.len() as u64) * KPT_DIR_ENTRY_SIZE;
@@ -449,7 +565,10 @@ pub fn build_archive(layers: &[&TernaryWeights]) -> Result<Vec<u8>, KptError> {
         let logical_end = payload.len() as u64; // payload-relative
         let rel_start = offset - dir_end; // payload-relative
         let stored_len = round_up_16(logical_end - rel_start);
-        payload.extend(std::iter::repeat_n(0u8, (stored_len - (logical_end - rel_start)) as usize));
+        payload.extend(std::iter::repeat_n(
+            0u8,
+            (stored_len - (logical_end - rel_start)) as usize,
+        ));
         // Hash exactly this layer's stored region — payload currently ends
         // at this layer's padding, so `rel_start ..` is the region.
         let layer_hash = *blake3::hash(&payload[rel_start as usize..]).as_bytes();
@@ -480,7 +599,11 @@ pub fn build_archive(layers: &[&TernaryWeights]) -> Result<Vec<u8>, KptError> {
         out.extend_from_slice(&e.hash);
         // Entry = 4+4+4+4+8+8+32 = exactly KPT_DIR_ENTRY_SIZE (64) — no tail pad.
     }
-    debug_assert_eq!(out.len() as u64, dir_end, "directory region must end exactly at dir_end");
+    debug_assert_eq!(
+        out.len() as u64,
+        dir_end,
+        "directory region must end exactly at dir_end"
+    );
     let expected_total = entries.last().map(|e| e.offset + e.len).unwrap_or(dir_end);
     debug_assert_eq!(
         dir_end + payload.len() as u64,
@@ -499,7 +622,10 @@ pub fn build_archive(layers: &[&TernaryWeights]) -> Result<Vec<u8>, KptError> {
 pub fn write_atomic(path: &std::path::Path, bytes: &[u8]) -> Result<(), KptError> {
     use std::io::Write;
     let dir = path.parent().unwrap_or(std::path::Path::new("."));
-    let name = path.file_name().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "archive.kpt".into());
+    let name = path
+        .file_name()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "archive.kpt".into());
     let tmp = dir.join(format!(".{name}.kpt.tmp"));
     {
         let mut f = std::fs::File::create(&tmp)?;
@@ -519,7 +645,9 @@ pub struct OwnedKptArchive {
 
 impl OwnedKptArchive {
     pub fn load(path: &std::path::Path) -> Result<Self, KptError> {
-        Ok(Self { bytes: std::fs::read(path)? })
+        Ok(Self {
+            bytes: std::fs::read(path)?,
+        })
     }
 
     /// Parse + fully verify the owned bytes (the fail-closed ladder).
@@ -532,7 +660,10 @@ impl OwnedKptArchive {
 /// → re-read + re-verify from disk. Returns the new [`KptArchive::archive_id`]
 /// (the replay detector). A tampered payload is refused BEFORE the rename, so
 /// the file on disk is untouched on any error path.
-pub fn swap_in_place(path: &std::path::Path, layers: &[&TernaryWeights]) -> Result<[u8; 32], KptError> {
+pub fn swap_in_place(
+    path: &std::path::Path,
+    layers: &[&TernaryWeights],
+) -> Result<[u8; 32], KptError> {
     let bytes = build_archive(layers)?;
     // Verify-before-rename: never place an archive on disk that does not
     // round-trip through the reader's own fail-closed ladder.
@@ -555,7 +686,9 @@ mod tests {
 
     fn demo_layers() -> Vec<TernaryWeights> {
         let a = TernaryWeights::quantize_from_f32(
-            &(0..8 * 12).map(|i| (i as f32 * 0.37).sin()).collect::<Vec<_>>(),
+            &(0..8 * 12)
+                .map(|i| (i as f32 * 0.37).sin())
+                .collect::<Vec<_>>(),
             8,
             12,
         );
@@ -585,7 +718,10 @@ mod tests {
             assert_eq!(got.cols, want.cols);
             assert_eq!(got.pos_bits, want.pos_bits, "layer {i} pos_bits round-trip");
             assert_eq!(got.neg_bits, want.neg_bits, "layer {i} neg_bits round-trip");
-            assert_eq!(got.row_scale, want.row_scale, "layer {i} row_scale round-trip");
+            assert_eq!(
+                got.row_scale, want.row_scale,
+                "layer {i} row_scale round-trip"
+            );
         }
     }
 
@@ -621,9 +757,21 @@ mod tests {
         for i in 0..layers.len() {
             if let Ok(view) = archive.layer_view(i) {
                 let copied = archive.to_ternary_weights(i);
-                assert_eq!(view.pos_bits, copied.pos_bits.as_slice(), "layer {i} zero-copy pos == copied");
-                assert_eq!(view.neg_bits, copied.neg_bits.as_slice(), "layer {i} zero-copy neg == copied");
-                assert_eq!(view.row_scale, copied.row_scale.as_slice(), "layer {i} zero-copy scale == copied");
+                assert_eq!(
+                    view.pos_bits,
+                    copied.pos_bits.as_slice(),
+                    "layer {i} zero-copy pos == copied"
+                );
+                assert_eq!(
+                    view.neg_bits,
+                    copied.neg_bits.as_slice(),
+                    "layer {i} zero-copy neg == copied"
+                );
+                assert_eq!(
+                    view.row_scale,
+                    copied.row_scale.as_slice(),
+                    "layer {i} zero-copy scale == copied"
+                );
             }
             // Misaligned or aligned, the copying path is the contract.
         }

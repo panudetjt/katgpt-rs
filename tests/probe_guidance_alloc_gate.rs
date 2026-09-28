@@ -51,7 +51,9 @@ fn probe_hot_path_is_alloc_free() {
 
     // Deterministic tap rows (arbitrary content — the probe is a pure
     // function of its input and this gate measures allocation, not output).
-    let tap: Vec<f32> = (0..seq_len * n).map(|i| ((i % 17) as f32) * 0.125 - 1.0).collect();
+    let tap: Vec<f32> = (0..seq_len * n)
+        .map(|i| ((i % 17) as f32) * 0.125 - 1.0)
+        .collect();
     let mut out = vec![0.0f32; seq_len * vocab];
 
     // Warm call (any lazy init must land here, not in the measured window).
@@ -96,7 +98,8 @@ fn probe_hot_path_is_alloc_free() {
     let after = ALLOCS.load(Ordering::Relaxed);
 
     assert_eq!(
-        before, after,
+        before,
+        after,
         "probe hot path allocated {} times across 1_000 calls — the seam contract \
          is scratch-reuse, zero allocation per call",
         after - before

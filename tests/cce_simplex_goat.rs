@@ -48,11 +48,7 @@ impl HeterogeneousPayoff<9, 9> for RpsTwoPlayer {
     fn reward_follow(&self, player: usize, _state: usize, action: usize) -> f32 {
         let a1 = action / 3;
         let a2 = action % 3;
-        if player == 0 {
-            -R[a1][a2]
-        } else {
-            R[a1][a2]
-        }
+        if player == 0 { -R[a1][a2] } else { R[a1][a2] }
     }
 }
 
@@ -382,13 +378,12 @@ fn g3_gen_chicken_no_profitable_deviation() {
 fn g4_gen_chicken_deterministic() {
     let (p1, p2, d) = sym_game(CHICKEN_R);
     let game = PerPlayerGame::new(vec![(&p1, &d), (&p2, &d)]);
-    let rho1 = CceLp::new()
-        .solve_heterogeneous_cg(&game)
-        .expect("run 1");
-    let rho2 = CceLp::new()
-        .solve_heterogeneous_cg(&game)
-        .expect("run 2");
-    assert_eq!(rho1.entries, rho2.entries, "two Chicken CG runs must be bit-identical");
+    let rho1 = CceLp::new().solve_heterogeneous_cg(&game).expect("run 1");
+    let rho2 = CceLp::new().solve_heterogeneous_cg(&game).expect("run 2");
+    assert_eq!(
+        rho1.entries, rho2.entries,
+        "two Chicken CG runs must be bit-identical"
+    );
 }
 
 /// G1-pd — Prisoners' Dilemma (general-sum): CG solver converges and matches BFS.

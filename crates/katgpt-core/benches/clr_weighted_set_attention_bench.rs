@@ -95,7 +95,18 @@ fn main() {
         let t0 = Instant::now();
         for _ in 0..batch {
             set_sigmoid_attention_into(
-                &states, &w, &w, None, &mut output, &cfg, n, d, k, &mut sq, &mut sk, &mut sa,
+                &states,
+                &w,
+                &w,
+                None,
+                &mut output,
+                &cfg,
+                n,
+                d,
+                k,
+                &mut sq,
+                &mut sk,
+                &mut sa,
             )
             .unwrap();
         }
@@ -104,8 +115,19 @@ fn main() {
         let t1 = Instant::now();
         for _ in 0..batch {
             clr_weighted_set_attention_into(
-                &states, &w, &w, None, &reliability, &mut output, &cfg, n, d, k,
-                &mut sq, &mut sk, &mut sa,
+                &states,
+                &w,
+                &w,
+                None,
+                &reliability,
+                &mut output,
+                &cfg,
+                n,
+                d,
+                k,
+                &mut sq,
+                &mut sk,
+                &mut sa,
             )
             .unwrap();
         }
@@ -118,13 +140,19 @@ fn main() {
     let g2_pass = ratio <= 2.0;
 
     println!("G2 latency (N={n}, d={d}, k={k}, {iters} iters):");
-    println!("   plain SA:       {plain_ns:.0} ns ({:.3} µs)", plain_ns / 1000.0);
+    println!(
+        "   plain SA:       {plain_ns:.0} ns ({:.3} µs)",
+        plain_ns / 1000.0
+    );
     println!(
         "   CLR-weighted:   {weighted_ns:.0} ns ({:.3} µs)",
         weighted_ns / 1000.0
     );
     println!("   ratio:          {ratio:.2}× (target ≤ 2.0×)");
-    println!("   result:         {}", if g2_pass { "PASS ✓" } else { "FAIL ✗" });
+    println!(
+        "   result:         {}",
+        if g2_pass { "PASS ✓" } else { "FAIL ✗" }
+    );
     println!();
 
     // ─── G4: zero-alloc (dense path) ──────────────────────────────────
@@ -150,7 +178,10 @@ fn main() {
     let g4_pass = allocs == 0;
     println!("G4 zero-alloc (dense path):");
     println!("   allocs per call: {allocs}");
-    println!("   result:          {}", if g4_pass { "PASS ✓" } else { "FAIL ✗" });
+    println!(
+        "   result:          {}",
+        if g4_pass { "PASS ✓" } else { "FAIL ✗" }
+    );
     println!();
 
     // ── Overall verdict. ──
@@ -160,7 +191,11 @@ fn main() {
     println!(
         "═══ G4 (authoritative): {} | G2 (informational, see unit test for true ratio): {} ═══",
         if g4_pass { "PASS ✓" } else { "FAIL ✗" },
-        if g2_pass { "PASS ✓" } else { "artifact — see g2_clr_weighted_latency_ratio unit test" }
+        if g2_pass {
+            "PASS ✓"
+        } else {
+            "artifact — see g2_clr_weighted_latency_ratio unit test"
+        }
     );
 
     if !g4_pass {

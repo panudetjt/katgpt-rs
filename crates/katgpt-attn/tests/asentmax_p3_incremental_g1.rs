@@ -95,7 +95,10 @@ fn p3_g1_threshold_brushing_streams() {
         history.push(tau);
         // One ULP below: still fast path.
         let below = f32::from_bits(tau.to_bits() - 1);
-        assert!(!inc.push(below), "round {round}: 1-ULP-below must be a no-event");
+        assert!(
+            !inc.push(below),
+            "round {round}: 1-ULP-below must be a no-event"
+        );
         history.push(below);
         // One ULP above: support-entry event (strictly greater than τ).
         let above = f32::from_bits(tau.to_bits() + 1);
@@ -176,7 +179,10 @@ fn p3_g1_monotone_streams() {
         }
     }
     assert_parity(&history, &inc, "descending");
-    assert_eq!(events_late, 0, "descending stream must stabilize after ~14 entries");
+    assert_eq!(
+        events_late, 0,
+        "descending stream must stabilize after ~14 entries"
+    );
     assert!((2..64).contains(&inc.support_size()));
 
     // Ascending: every push is a support entry, support shrinks as τ rises.

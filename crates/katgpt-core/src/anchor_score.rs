@@ -75,11 +75,7 @@ pub fn first_unmask_frequencies(trajs: &[&[u32]], block_size: usize) -> Vec<f32>
         );
         for (b, block) in traj.chunks(block_size).enumerate() {
             let base = b * block_size;
-            let earliest = block
-                .iter()
-                .copied()
-                .filter(|&s| s != UNMASKED_NEVER)
-                .min();
+            let earliest = block.iter().copied().filter(|&s| s != UNMASKED_NEVER).min();
             if let Some(m) = earliest {
                 for (j, &s) in block.iter().enumerate() {
                     if s == m {

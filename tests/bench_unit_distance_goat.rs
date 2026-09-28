@@ -15,7 +15,7 @@
 #[cfg(feature = "unit_distance")]
 #[test]
 fn goat_proof_01_qi_erdos_grid_baseline() {
-    use katgpt_deprecated::unit_distance::{count_unit_distances, MinkowskiLattice};
+    use katgpt_deprecated::unit_distance::{MinkowskiLattice, count_unit_distances};
 
     println!("🐐 GOAT PROOF 1: Q(i) Erdős Grid Baseline");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -68,7 +68,7 @@ fn goat_proof_01_qi_erdos_grid_baseline() {
 #[cfg(feature = "unit_distance")]
 #[test]
 fn goat_proof_02_q_sqrt5_i_pigeonhole() {
-    use katgpt_deprecated::unit_distance::{sum_of_two_squares, verify_pigeonhole_bound, CmField};
+    use katgpt_deprecated::unit_distance::{CmField, sum_of_two_squares, verify_pigeonhole_bound};
 
     println!("🐐 GOAT PROOF 2: Q(√5, i) Pigeonhole Verification");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -146,7 +146,7 @@ fn goat_proof_02_q_sqrt5_i_pigeonhole() {
 #[cfg(feature = "unit_distance")]
 #[test]
 fn goat_proof_03_explicit_delta_bound() {
-    use katgpt_deprecated::unit_distance::{count_unit_distances, CmField};
+    use katgpt_deprecated::unit_distance::{CmField, count_unit_distances};
 
     println!("🐐 GOAT PROOF 3: Explicit ν(n) ≥ n^(1+δ) for δ > 0");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -238,7 +238,7 @@ fn goat_proof_03_explicit_delta_bound() {
 #[test]
 fn goat_proof_04_pro2_tower_structure() {
     use katgpt_deprecated::unit_distance::{
-        compare_delta, enumerate_split_primes, select_split_primes, CmField,
+        CmField, compare_delta, enumerate_split_primes, select_split_primes,
     };
 
     println!("🐐 GOAT PROOF 4: Pro-2 Tower Structure Verification");
@@ -456,7 +456,7 @@ fn goat_proof_07_c64_arithmetic_consistency() {
 #[cfg(feature = "unit_distance")]
 #[test]
 fn goat_proof_08_full_construction_pipeline() {
-    use katgpt_deprecated::unit_distance::{select_split_primes, CmField};
+    use katgpt_deprecated::unit_distance::{CmField, select_split_primes};
 
     println!("🐐 GOAT PROOF 8: Full Construction Pipeline");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");

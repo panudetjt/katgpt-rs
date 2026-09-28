@@ -50,13 +50,30 @@ fn g4_zero_alloc_exit_and_calibration_steady_state() {
                 (s, c)
             })
             .collect();
-        let samples: Vec<TrajectorySample<'_>> =
-            owned.iter().map(|(s, c)| TrajectorySample::new(s, c)).collect();
+        let samples: Vec<TrajectorySample<'_>> = owned
+            .iter()
+            .map(|(s, c)| TrajectorySample::new(s, c))
+            .collect();
         let upper = [0.70f32, 0.75, 0.80, 0.85, 0.90, 0.95];
         let lower = [
-            ScheduleParams { c: 8.0 / 24.0, s: 0.5, l: 0.0, u: 0.65 },
-            ScheduleParams { c: 16.0 / 24.0, s: 0.5, l: 0.0, u: 0.65 },
-            ScheduleParams { c: 32.0 / 24.0, s: 0.5, l: 0.0, u: 0.65 },
+            ScheduleParams {
+                c: 8.0 / 24.0,
+                s: 0.5,
+                l: 0.0,
+                u: 0.65,
+            },
+            ScheduleParams {
+                c: 16.0 / 24.0,
+                s: 0.5,
+                l: 0.0,
+                u: 0.65,
+            },
+            ScheduleParams {
+                c: 32.0 / 24.0,
+                s: 0.5,
+                l: 0.0,
+                u: 0.65,
+            },
         ];
         let cfg = CalibrateConfig::new(0.15, 0.15, 0.05);
         // Pre-sized scratch, warmed once (the growth alloc happens HERE,

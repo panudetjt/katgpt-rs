@@ -137,7 +137,10 @@ mod tests {
     #[test]
     fn empty_input_is_loud() {
         let result = std::panic::catch_unwind(|| nearest_rank::<f64>(&[], 0.99));
-        assert!(result.is_err(), "empty input must assert, not fabricate 0.0");
+        assert!(
+            result.is_err(),
+            "empty input must assert, not fabricate 0.0"
+        );
     }
 
     #[test]

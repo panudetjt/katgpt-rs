@@ -130,6 +130,12 @@ fn g4_zero_alloc_steady_state() {
         "G4 allocs — scalar+sampler: {scalar_delta} / {N_CALLS}, multi(out_dim=3): {multi_delta} / {N_CALLS}, ed_over_pairs: {pairs_delta} / 1000"
     );
     assert_eq!(scalar_delta, 0, "effective_degree_along_path allocated");
-    assert_eq!(multi_delta, 0, "effective_degree_along_path_multi allocated");
-    assert_eq!(pairs_delta, 0, "ed_over_pairs allocated with reused scratch");
+    assert_eq!(
+        multi_delta, 0,
+        "effective_degree_along_path_multi allocated"
+    );
+    assert_eq!(
+        pairs_delta, 0,
+        "ed_over_pairs allocated with reused scratch"
+    );
 }

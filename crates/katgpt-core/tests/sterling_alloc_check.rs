@@ -18,8 +18,8 @@
 #![cfg(feature = "sterling_primitives")]
 
 use katgpt_core::sterling::{
-    decomposed_readout_gemv_into, hsic_cross_covariance_gauge, lift_set_to_bias_table,
-    relu_gated_suppression_into, tau_over_peak_calibration, LiftTable,
+    LiftTable, decomposed_readout_gemv_into, hsic_cross_covariance_gauge, lift_set_to_bias_table,
+    relu_gated_suppression_into, tau_over_peak_calibration,
 };
 use std::hint::black_box;
 

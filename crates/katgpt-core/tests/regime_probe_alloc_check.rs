@@ -17,7 +17,7 @@
 //! ```
 
 use katgpt_core::regime_probe::{
-    BasinScratch, BasinReport, FrozenRenovator, basin_probe_into, conditional_entropies_into,
+    BasinReport, BasinScratch, FrozenRenovator, basin_probe_into, conditional_entropies_into,
     entropy_gap_into,
 };
 use std::alloc::{GlobalAlloc, Layout, System};
@@ -37,7 +37,8 @@ static ALLOCATOR: CountingAllocator = CountingAllocator {
 
 unsafe impl GlobalAlloc for CountingAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        self.allocated.fetch_add(layout.size() as u64, Ordering::Relaxed);
+        self.allocated
+            .fetch_add(layout.size() as u64, Ordering::Relaxed);
         unsafe { self.inner.alloc(layout) }
     }
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
@@ -92,7 +93,9 @@ fn g4_zero_alloc_steady_state() {
     let mut gen_ents: Vec<f32> = Vec::with_capacity(POSITIONS);
 
     let original: Vec<usize> = (0..SEQ).map(|i| (i * 5) % 6).collect();
-    let ren = Oracle { answer: original.clone() };
+    let ren = Oracle {
+        answer: original.clone(),
+    };
     let mut scratch = BasinScratch::new(SEQ, 6);
     let mut report = BasinReport::default();
     let mut gap_report = katgpt_core::regime_probe::EntropyGapReport::default();

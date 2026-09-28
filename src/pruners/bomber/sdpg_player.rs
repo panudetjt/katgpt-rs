@@ -287,7 +287,7 @@ impl SdpgPlayer {
     pub fn with_replay(id: u8, replay_path: &std::path::Path) -> std::io::Result<Self> {
         use crate::pruners::sdpg::{BetaSchedule, KlAnchor};
 
-let bandit_inner =
+        let bandit_inner =
             BanditPruner::new(NoScreeningPruner, BanditStrategy::Ucb1, NUM_TEMPLATES);
         let sdpg_bandit = SdpgBanditPruner::from_replay(
             bandit_inner,
@@ -649,7 +649,8 @@ impl BomberPlayer for SdpgPlayer {
             final_scores
                 .iter()
                 .enumerate()
-                .max_by(|a, b| katgpt_core::float_order::cmp_for_max(*a.1, *b.1)).map_or(BomberAction::Wait, |(i, _)| ALL_ACTIONS[i])
+                .max_by(|a, b| katgpt_core::float_order::cmp_for_max(*a.1, *b.1))
+                .map_or(BomberAction::Wait, |(i, _)| ALL_ACTIONS[i])
         };
 
         // Track bomb placement

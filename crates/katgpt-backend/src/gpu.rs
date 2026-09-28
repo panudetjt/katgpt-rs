@@ -389,10 +389,10 @@ pub struct GpuBackend {
     // all land before GPU execution, so every dispatch would otherwise see
     // the last value. Each slot is written exactly once before commit and
     // read only by that token's dispatches.
-    batch_wte_slices: Option<Vec<Buffer>>,      // MAX_FORWARD_BATCH x [n_embd]
-    batch_wpe_slices: Option<Vec<Buffer>>,      // MAX_FORWARD_BATCH x [n_embd]
-    batch_logits: Option<Vec<Buffer>>,          // MAX_FORWARD_BATCH x [vocab_size]
-    batch_pos_scalars: Option<Vec<Buffer>>,     // MAX_FORWARD_BATCH x u32
+    batch_wte_slices: Option<Vec<Buffer>>, // MAX_FORWARD_BATCH x [n_embd]
+    batch_wpe_slices: Option<Vec<Buffer>>, // MAX_FORWARD_BATCH x [n_embd]
+    batch_logits: Option<Vec<Buffer>>,     // MAX_FORWARD_BATCH x [vocab_size]
+    batch_pos_scalars: Option<Vec<Buffer>>, // MAX_FORWARD_BATCH x u32
     batch_seq_len_scalars: Option<Vec<Buffer>>, // MAX_FORWARD_BATCH x u32
 }
 
@@ -458,7 +458,10 @@ impl GpuBackend {
                 .weight_buffers
                 .as_ref()
                 .expect("weights missing after compile"),
-            kv_cache: self.kv_cache.as_ref().expect("kv_cache missing after compile"),
+            kv_cache: self
+                .kv_cache
+                .as_ref()
+                .expect("kv_cache missing after compile"),
             x_buf: self.x_buf.as_ref().expect("x_buf missing"),
             xr_buf: self.xr_buf.as_ref().expect("xr_buf missing"),
             xr2_buf: self.xr2_buf.as_ref().expect("xr2_buf missing"),
@@ -468,10 +471,7 @@ impl GpuBackend {
             attn_out_buf: self.attn_out_buf.as_ref().expect("attn_out_buf missing"),
             hidden_buf: self.hidden_buf.as_ref().expect("hidden_buf missing"),
             scores_buf: self.scores_buf.as_ref().expect("scores_buf missing"),
-            n_embd_buf: self
-                .n_embd_scalar
-                .as_ref()
-                .expect("n_embd_scalar missing"),
+            n_embd_buf: self.n_embd_scalar.as_ref().expect("n_embd_scalar missing"),
             kv_dim_buf: self.kv_dim_scalar.as_ref().expect("kv_dim_scalar missing"),
             head_dim_buf: self
                 .head_dim_scalar
@@ -1542,8 +1542,7 @@ mod tests {
 
         let mut ctx = ForwardContext::new(&config);
         let mut cache = MultiLayerKVCache::new(&config);
-        let batched =
-            backend.forward_batch(&mut ctx, &weights, &mut cache, &token_seq, 0, &config);
+        let batched = backend.forward_batch(&mut ctx, &weights, &mut cache, &token_seq, 0, &config);
 
         // CPU reference: same continuous sequence with shared cache
         let mut ctx2 = ForwardContext::new(&config);
@@ -1573,8 +1572,7 @@ mod tests {
 
         let mut ctx = ForwardContext::new(&config);
         let mut cache = MultiLayerKVCache::new(&config);
-        let batched =
-            backend.forward_batch(&mut ctx, &weights, &mut cache, &token_seq, 0, &config);
+        let batched = backend.forward_batch(&mut ctx, &weights, &mut cache, &token_seq, 0, &config);
 
         let mut ctx2 = ForwardContext::new(&config);
         let mut cache2 = MultiLayerKVCache::new(&config);
@@ -1622,14 +1620,7 @@ mod tests {
             let mut ctx = ForwardContext::new(&config);
             let mut cache = MultiLayerKVCache::new(&config);
             backend.forward(&mut ctx, &weights, &mut cache, 0, 0, &config);
-            backend.forward_batch(
-                &mut ctx,
-                &weights,
-                &mut cache,
-                &[1, 2, 3],
-                1,
-                &config,
-            );
+            backend.forward_batch(&mut ctx, &weights, &mut cache, &[1, 2, 3], 1, &config);
         }
 
         // Interleaved protocol (Bench 661/666 discipline): 2 warmup pairs
@@ -1814,8 +1805,6 @@ mod tests {
             start.elapsed().as_millis()
         };
 
-        eprintln!(
-            "Tier-up latency (compile + first forward): {tier_up_ms} ms"
-        );
+        eprintln!("Tier-up latency (compile + first forward): {tier_up_ms} ms");
     }
 }

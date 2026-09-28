@@ -89,8 +89,14 @@ fn proof_1_stability_compute_correctness() {
     // p99 of 100 samples is index 98, and `p99_tail_support` now states the 2
     // samples that back it (percentile_index_audit.py; katgpt-core
     // speculative::types::nearest_rank_p99 carries the derivation).
-    assert_eq!(kn.p99_ns, 198, "P99 of 100 elements is nearest-rank index 98");
-    assert_eq!(kn.p99_tail_support, 2, "and it must say how thin that tail is");
+    assert_eq!(
+        kn.p99_ns, 198,
+        "P99 of 100 elements is nearest-rank index 98"
+    );
+    assert_eq!(
+        kn.p99_tail_support, 2,
+        "and it must say how thin that tail is"
+    );
 
     // Monotonicity: wider spread → higher CV
     let mut tight: Vec<u64> = vec![1000; 50].into_iter().chain(vec![1010; 50]).collect();
@@ -713,7 +719,9 @@ fn bench_f_stability_scaling() {
     // count (0.28 -> 0.10 -> 0.09-0.15), the opposite of "more variance".
     // Report what the run shows; the trend claim needs a quiet box and more
     // than three points (that issue's T4).
-    println!("  → No monotone trend in layer count at n=500 (tail support 6); read the spread, not a row\n");
+    println!(
+        "  → No monotone trend in layer count at n=500 (tail support 6); read the spread, not a row\n"
+    );
 }
 
 // ════════════════════════════════════════════════════════════════

@@ -1007,8 +1007,6 @@ mod integration_tests {
             dist_asym.normalized_entropy,
             dist_asym.is_not_collapsed()
         );
-        println!(
-            "  beta-A all_same={all_same_a}, beta-D all_same={all_same}"
-        );
+        println!("  beta-A all_same={all_same_a}, beta-D all_same={all_same}");
     }
 }

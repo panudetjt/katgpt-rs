@@ -284,7 +284,12 @@ impl OverlapLatency {
     /// weights at `bits_per_weight` encoding with `flops_per_weight`
     /// arithmetic. Ternary matvec: 2 FLOP/w, 1.58 bits; Q4_K: ~2 FLOP/w,
     /// ~4.6 bits (block overhead included).
-    pub fn layer_span(&self, n_weights: u64, bits_per_weight: f64, flops_per_weight: f64) -> (f64, f64) {
+    pub fn layer_span(
+        &self,
+        n_weights: u64,
+        bits_per_weight: f64,
+        flops_per_weight: f64,
+    ) -> (f64, f64) {
         let c = (n_weights as f64 * flops_per_weight) / self.compute_rate;
         let io = (n_weights as f64 * bits_per_weight / 8.0) / self.bandwidth;
         (c, io)
@@ -477,9 +482,17 @@ mod tests {
 
         let rows = layer_ratio_stats(&streams, dim);
         assert_eq!(rows.len(), 2);
-        assert!(approx(rows[0].median, 0.075, 1e-3), "layer0 median {}", rows[0].median);
+        assert!(
+            approx(rows[0].median, 0.075, 1e-3),
+            "layer0 median {}",
+            rows[0].median
+        );
         assert!(rows[0].max - rows[0].min > 0.0);
-        assert!(rows[1].median < 0.05, "layer1 should pass bar, median {}", rows[1].median);
+        assert!(
+            rows[1].median < 0.05,
+            "layer1 should pass bar, median {}",
+            rows[1].median
+        );
         assert!(!rows[0].passes_paper_bar());
         assert!(rows[1].passes_paper_bar());
         assert_eq!(fraction_layers_under_paper_bar(&rows), 0.5);
@@ -509,7 +522,11 @@ mod tests {
         // Layer 0 pos 0: (1.2−1)/1 = 0.2; pos 1: (2.4−2)/2 = 0.2.
         assert!(approx(rows[0].mean, 0.2, 1e-3));
         // Layer 1 pos 0: (1.3−1.2)/1.2 ≈ 0.0833; pos 1: 0.1/2.4 ≈ 0.04167.
-        assert!(approx(rows[1].mean, (0.083333336 + 0.041666668) / 2.0, 1e-3));
+        assert!(approx(
+            rows[1].mean,
+            (0.083333336 + 0.041666668) / 2.0,
+            1e-3
+        ));
     }
 
     #[test]

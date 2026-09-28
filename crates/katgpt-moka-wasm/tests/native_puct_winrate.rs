@@ -29,7 +29,12 @@ fn xorshift64(state: &mut u64) -> u64 {
 /// Play `n` random legal opening moves (mirrors the wasmi arena's
 /// `random_opening`). Uses the same seed convention so opening sequences
 /// match the wasmi tests bit-for-bit.
-fn random_opening(board: &mut Board, history: &mut Vec<Option<(usize, usize)>>, n: usize, seed: u64) {
+fn random_opening(
+    board: &mut Board,
+    history: &mut Vec<Option<(usize, usize)>>,
+    n: usize,
+    seed: u64,
+) {
     let mut rng = seed.max(1);
     for _ in 0..n {
         if board.is_game_over() {
@@ -69,12 +74,12 @@ fn greedy_move(
         }
     }
     if let Some(idx) = best_move {
-            board.play(idx);
-            history.push(Some((idx / BOARD_SIZE, idx % BOARD_SIZE)));
-        } else {
-            board.pass();
-            history.push(None);
-        }
+        board.play(idx);
+        history.push(Some((idx / BOARD_SIZE, idx % BOARD_SIZE)));
+    } else {
+        board.pass();
+        history.push(None);
+    }
     board.is_game_over()
 }
 
@@ -106,12 +111,12 @@ where
             // player's `select_move` advances its OWN internal board copy; we
             // keep a separate board for the greedy forward pass.
             if let Some(idx) = mv {
-                    board.play(idx);
-                    history.push(Some((idx / BOARD_SIZE, idx % BOARD_SIZE)));
-                } else {
-                    board.pass();
-                    history.push(None);
-                }
+                board.play(idx);
+                history.push(Some((idx / BOARD_SIZE, idx % BOARD_SIZE)));
+            } else {
+                board.pass();
+                history.push(None);
+            }
         } else {
             let _ = greedy_move(
                 &mut board,
@@ -131,7 +136,11 @@ fn native_puct_winrate_f32_vs_greedy() {
     let start = std::time::Instant::now();
     let mut wins = 0usize;
     for game_i in 0..NUM_GAMES {
-        let puct_color = if game_i % 2 == 0 { Cell::Black } else { Cell::White };
+        let puct_color = if game_i % 2 == 0 {
+            Cell::Black
+        } else {
+            Cell::White
+        };
         let seed = 0x9E37_79B9_7F4A_7C15u64.wrapping_mul((game_i as u64).wrapping_add(1));
         if play_game_puct_vs_greedy(puct_color, seed, || PuctPlayer::with_f32(50, 1.5, 8)) {
             wins += 1;
@@ -152,7 +161,11 @@ fn native_puct_winrate_int8_vs_greedy() {
     let start = std::time::Instant::now();
     let mut wins = 0usize;
     for game_i in 0..NUM_GAMES {
-        let puct_color = if game_i % 2 == 0 { Cell::Black } else { Cell::White };
+        let puct_color = if game_i % 2 == 0 {
+            Cell::Black
+        } else {
+            Cell::White
+        };
         let seed = 0x9E37_79B9_7F4A_7C15u64.wrapping_mul((game_i as u64).wrapping_add(1));
         if play_game_puct_vs_greedy(puct_color, seed, || PuctPlayer::with_int8(50, 1.5, 8)) {
             wins += 1;

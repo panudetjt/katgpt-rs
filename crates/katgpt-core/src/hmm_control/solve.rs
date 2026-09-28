@@ -122,11 +122,7 @@ impl<const N: usize, const A: usize, const T: usize> HmmControlSolver<N, A, T> {
     /// Panics only on index-inversion bugs (const shapes guarantee the
     /// rest). Input validation is [`super::types::validate_tables`] —
     /// opt-in, off the hot path.
-    pub fn solve(
-        &self,
-        p: &[[[f32; N]; A]; N],
-        e: &[[[f32; A]; N]; T],
-    ) -> HmmSolution<N, A, T> {
+    pub fn solve(&self, p: &[[[f32; N]; A]; N], e: &[[[f32; A]; N]; T]) -> HmmSolution<N, A, T> {
         debug_assert!(T >= 1, "horizon must be at least one step");
         let mut solution = HmmSolution::<N, A, T> {
             beta: [[0.0f32; N]; T],
@@ -229,8 +225,11 @@ mod tests {
 
     /// Random (sub)stochastic kernel: `sparsity`-support rows normalized
     /// to `mass` (1.0 = stochastic, < 1.0 = sub-stochastic with a leak).
-    fn random_kernel<const N: usize, const A: usize>(seed: u64, sparsity: usize, mass: f32)
-     -> [[[f32; N]; A]; N] {
+    fn random_kernel<const N: usize, const A: usize>(
+        seed: u64,
+        sparsity: usize,
+        mass: f32,
+    ) -> [[[f32; N]; A]; N] {
         let mut rng = Rng::new(seed);
         let mut p = [[[0.0f32; N]; A]; N];
         for (i, p_i) in p.iter_mut().enumerate() {
@@ -266,11 +265,7 @@ mod tests {
         for (i, row) in e0.iter_mut().enumerate() {
             for (k, ek) in row.iter_mut().enumerate() {
                 // ~50% of entries positive, in [0, 1].
-                *ek = if (i + k) % 2 == 0 {
-                    rng.uniform()
-                } else {
-                    0.0
-                };
+                *ek = if (i + k) % 2 == 0 { rng.uniform() } else { 0.0 };
             }
         }
         invariant_emission::<N, A, T>(&e0)
@@ -411,7 +406,10 @@ mod tests {
             let sol2 = solver.solve(&p, &e);
             for t in 0..T {
                 assert_eq!(sol.beta[t], sol2.beta[t], "β not deterministic t={t}");
-                assert_eq!(sol.policy[t], sol2.policy[t], "policy not deterministic t={t}");
+                assert_eq!(
+                    sol.policy[t], sol2.policy[t],
+                    "policy not deterministic t={t}"
+                );
             }
         }
     }

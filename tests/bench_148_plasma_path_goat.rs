@@ -339,7 +339,11 @@ fn proof_g3b_swar_speedup() {
     // calibrated at 4.0×. Arch-conditional dual pin, the t698 T6 precedent.
     #[cfg(not(debug_assertions))]
     {
-        let gate = if cfg!(target_arch = "x86_64") { 4.0 } else { 5.0 };
+        let gate = if cfg!(target_arch = "x86_64") {
+            4.0
+        } else {
+            5.0
+        };
         assert!(
             speedup >= gate,
             "SWAR speedup regression: {speedup:.2}× (gate: ≥ {gate}× — see Issue 298 / Issue 806 T7)"

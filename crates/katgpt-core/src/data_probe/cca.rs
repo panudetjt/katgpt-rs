@@ -319,8 +319,14 @@ pub fn svcca_into(
 ) -> CcaReport {
     assert_eq!(x.len(), n * dx, "x.len() must be n*dx");
     assert_eq!(y.len(), n * dy, "y.len() must be n*dy");
-    assert!(dx * dx <= s.cxx.len() && dy * dy <= s.cyy.len(), "dims over scratch");
-    assert!(n * dx <= s.xt.len() && n * dy <= s.yt.len(), "n over scratch");
+    assert!(
+        dx * dx <= s.cxx.len() && dy * dy <= s.cyy.len(),
+        "dims over scratch"
+    );
+    assert!(
+        n * dx <= s.xt.len() && n * dy <= s.yt.len(),
+        "n over scratch"
+    );
     debug_assert!(
         (0.0..=1.0).contains(&var_keep),
         "var_keep must be in [0, 1], got {var_keep}"
@@ -635,7 +641,10 @@ mod tests {
         let rep = svcca_into(&x, &y, d, d, n, 0.99, 1e-4, &mut s);
 
         assert!(!rep.degenerate);
-        assert_eq!(rep.kx, k_true, "denoise must retain exactly the shared block");
+        assert_eq!(
+            rep.kx, k_true,
+            "denoise must retain exactly the shared block"
+        );
         assert_eq!(rep.ky, k_true);
         for j in 0..k_true {
             assert!(
@@ -690,7 +699,8 @@ mod tests {
         let c = 3.0f32;
         let y_scaled: Vec<f32> = y.iter().map(|&v| c * v).collect();
         // Y·P: feature (column) permutation — the paper's neuron permutation.
-        let fperm: Vec<usize> = [2usize, 0, 5, 1, 4, 8, 3, 7, 6, 11, 9, 13, 10, 15, 12, 14].to_vec();
+        let fperm: Vec<usize> =
+            [2usize, 0, 5, 1, 4, 8, 3, 7, 6, 11, 9, 13, 10, 15, 12, 14].to_vec();
         let mut y_fperm = vec![0.0f32; n * d];
         for i in 0..n {
             for (j, &src) in fperm.iter().enumerate() {
@@ -727,7 +737,10 @@ mod tests {
                 "joint-perm",
                 svcca_into(&x_perm, &y_perm, d, d, n, 0.99, 1e-4, &mut s),
             ),
-            ("scale", svcca_into(&x, &y_scaled, d, d, n, 0.99, 1e-4, &mut s)),
+            (
+                "scale",
+                svcca_into(&x, &y_scaled, d, d, n, 0.99, 1e-4, &mut s),
+            ),
             (
                 "feat-perm",
                 svcca_into(&x, &y_fperm, d, d, n, 0.99, 1e-4, &mut s),
@@ -735,7 +748,10 @@ mod tests {
             ("mix", svcca_into(&x, &y_mix, d, d, n, 0.99, 1e-4, &mut s)),
         ];
         let kk = base.kx.min(base.ky);
-        assert!(kk >= 8, "full-rank fixture should retain most dims (kk={kk})");
+        assert!(
+            kk >= 8,
+            "full-rank fixture should retain most dims (kk={kk})"
+        );
         for (name, rep) in arms {
             assert_eq!(rep.kx, base.kx, "{name}: kx must be affine-invariant");
             assert_eq!(rep.ky, base.ky, "{name}: ky must be affine-invariant");
@@ -1037,7 +1053,10 @@ mod tests {
 
         let mut s = CcaScratch::with_capacity(d, d, n);
         let rep = svcca_into(&x, &x, d, d, n, 0.99, 1e-4, &mut s);
-        assert_eq!(rep.kx, k_svd, "cov-eig and thin-SVD must select the same rank");
+        assert_eq!(
+            rep.kx, k_svd,
+            "cov-eig and thin-SVD must select the same rank"
+        );
         assert_eq!(rep.kx, k_true);
     }
 

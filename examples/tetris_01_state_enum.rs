@@ -39,9 +39,9 @@ use serde::Serialize;
 use katgpt_tetris::sim as tetris_sim;
 
 use tetris_sim::{
-    Board, DropRule, Piece, SPOT_QUESTION, GRAMMAR_ID_V4, dellacherie_score,
+    Board, DropRule, GRAMMAR_ID_V4, HEIGHT, Piece, SPOT_QUESTION, WIDTH, dellacherie_score,
     landing_options_with, outcome_features, render_spot_sentence, render_state_sentence,
-    render_state_sentence_with_preview, HEIGHT, WIDTH,
+    render_state_sentence_with_preview,
 };
 
 // ── Dump record shape ────────────────────────────────────────────────────
@@ -159,7 +159,10 @@ fn archetypes() -> Vec<(&'static str, Board)> {
         ),
         ("well_left", board_from_heights(&well_heights(8, 0))),
         ("well_right", board_from_heights(&well_heights(8, 2))),
-        ("well_center", board_from_heights(&well_heights(8, WIDTH / 2))),
+        (
+            "well_center",
+            board_from_heights(&well_heights(8, WIDTH / 2)),
+        ),
         ("holes", holes_archetype()),
     ]
 }
@@ -218,10 +221,17 @@ fn play_ladder(
             if options.is_empty() {
                 break; // top-out — next game
             }
-            let feats: Vec<_> = options.iter().map(|p| outcome_features(&board, p)).collect();
+            let feats: Vec<_> = options
+                .iter()
+                .map(|p| outcome_features(&board, p))
+                .collect();
             placement_n += 1;
             if out.len() < want && placement_n >= 5 {
-                out.push((format!("play{game:02}:{placement_n:03}"), board.clone(), piece));
+                out.push((
+                    format!("play{game:02}:{placement_n:03}"),
+                    board.clone(),
+                    piece,
+                ));
             }
             let pick = greedy_pick(&feats);
             let mut after = board.clone();
@@ -427,13 +437,24 @@ fn resolve_decisions(
         let prior = carry.and_then(|c| c.get(&r.state_id));
         if let Some(o) = oracle.get(&r.state_id) {
             let ps = f64_array(&o["p_clean"], &r.state_id);
-            assert_eq!(ps.len(), r.options.len(), "{}: oracle option count", r.state_id);
+            assert_eq!(
+                ps.len(),
+                r.options.len(),
+                "{}: oracle option count",
+                r.state_id
+            );
             let oarg = o["argmax"].as_u64().expect("oracle argmax") as usize;
-            assert_eq!(argmax_lowest(&ps), oarg, "{}: oracle argmax vs its own p_clean", r.state_id);
+            assert_eq!(
+                argmax_lowest(&ps),
+                oarg,
+                "{}: oracle argmax vs its own p_clean",
+                r.state_id
+            );
             if let Some(pr) = prior {
-                for (opt, (&p, po)) in r.options.iter().zip(ps.iter().zip(
-                    pr["options"].as_array().expect("prior options"),
-                )) {
+                for (opt, (&p, po)) in r.options.iter().zip(
+                    ps.iter()
+                        .zip(pr["options"].as_array().expect("prior options")),
+                ) {
                     if po["sentence"].as_str() == Some(opt.sentence.as_str()) {
                         parity_n += 1;
                         parity_same += usize::from(po["p_clean"].as_f64() == Some(p));
@@ -441,14 +462,25 @@ fn resolve_decisions(
                 }
             }
             fresh += 1;
-            out.push(Decisions { p_clean: ps, argmax: oarg });
+            out.push(Decisions {
+                p_clean: ps,
+                argmax: oarg,
+            });
             continue;
         }
         let pr = prior.unwrap_or_else(|| {
-            panic!("{}: not in the oracle and no --carry-from state", r.state_id)
+            panic!(
+                "{}: not in the oracle and no --carry-from state",
+                r.state_id
+            )
         });
         let popts = pr["options"].as_array().expect("prior options");
-        assert_eq!(popts.len(), r.options.len(), "{}: carry option count", r.state_id);
+        assert_eq!(
+            popts.len(),
+            r.options.len(),
+            "{}: carry option count",
+            r.state_id
+        );
         for (opt, po) in r.options.iter().zip(popts) {
             assert_eq!(
                 po["sentence"].as_str(),
@@ -457,11 +489,22 @@ fn resolve_decisions(
                 r.state_id
             );
         }
-        let ps: Vec<f64> = popts.iter().map(|o| o["p_clean"].as_f64().expect("p_clean")).collect();
+        let ps: Vec<f64> = popts
+            .iter()
+            .map(|o| o["p_clean"].as_f64().expect("p_clean"))
+            .collect();
         let arg = argmax_lowest(&ps);
-        assert_eq!(pr["argmax"].as_u64(), Some(arg as u64), "{}: carried argmax", r.state_id);
+        assert_eq!(
+            pr["argmax"].as_u64(),
+            Some(arg as u64),
+            "{}: carried argmax",
+            r.state_id
+        );
         carried += 1;
-        out.push(Decisions { p_clean: ps, argmax: arg });
+        out.push(Decisions {
+            p_clean: ps,
+            argmax: arg,
+        });
     }
     (out, fresh, carried, parity_same, parity_n)
 }
@@ -668,7 +711,9 @@ fn main() {
                 options: r
                     .options
                     .iter()
-                    .map(|o| ManifestOption { sentence: o.sentence.as_str() })
+                    .map(|o| ManifestOption {
+                        sentence: o.sentence.as_str(),
+                    })
                     .collect(),
             });
         }
@@ -681,7 +726,9 @@ fn main() {
                 options: r0
                     .options
                     .iter()
-                    .map(|o| ManifestOption { sentence: o.sentence.as_str() })
+                    .map(|o| ManifestOption {
+                        sentence: o.sentence.as_str(),
+                    })
                     .collect(),
             });
         }
@@ -695,7 +742,9 @@ fn main() {
                 options: r
                     .options
                     .iter()
-                    .map(|o| ManifestOption { sentence: o.sentence.as_str() })
+                    .map(|o| ManifestOption {
+                        sentence: o.sentence.as_str(),
+                    })
                     .collect(),
             })
             .collect();
@@ -734,12 +783,18 @@ fn main() {
         let carry = carry_from.as_ref().map(read_jsonl_by_id);
         let (decisions, fresh, carried, parity_same, parity_n) =
             resolve_decisions(&records, &oracle, carry.as_ref());
-        assert_eq!(fresh, oracle.len(), "oracle carries states the dump does not");
+        assert_eq!(
+            fresh,
+            oracle.len(),
+            "oracle carries states the dump does not"
+        );
         let version = grammar_id.rsplit('-').next().unwrap_or("");
         let carry_note = match &carry_from {
             Some(p) if carried > 0 => format!(
                 "; {fresh} states oracled fresh, {carried} carried verbatim from {} (every option sentence byte-identical; the oracle answer is a function of the sentence) — fresh-state parity: {parity_same}/{parity_n} sentence-identical options reproduce the carried p_clean bit-exactly",
-                p.file_name().map(|f| f.to_string_lossy().into_owned()).unwrap_or_default()
+                p.file_name()
+                    .map(|f| f.to_string_lossy().into_owned())
+                    .unwrap_or_default()
             ),
             _ => String::new(),
         };
@@ -782,7 +837,10 @@ fn main() {
                             .options
                             .iter()
                             .zip(&d.p_clean)
-                            .map(|(o, &p)| FixtureOptionOut { base: o, p_clean: p })
+                            .map(|(o, &p)| FixtureOptionOut {
+                                base: o,
+                                p_clean: p,
+                            })
                             .collect(),
                         argmax: d.argmax,
                     })
@@ -798,20 +856,24 @@ fn main() {
         carry_from.is_none(),
         "--carry-from does not apply to v4 (the envelope differs; use --baseline)"
     );
-    let baseline_path = baseline.unwrap_or_else(|| {
-        PathBuf::from("tests/fixtures/tetris_oracle_laya_en_v3.jsonl")
-    });
+    let baseline_path =
+        baseline.unwrap_or_else(|| PathBuf::from("tests/fixtures/tetris_oracle_laya_en_v3.jsonl"));
     let baseline = read_jsonl_by_id(&baseline_path);
     let baseline_bytes = std::fs::read(&baseline_path).expect("read baseline fixture");
 
     let mut decisions: Vec<Decisions> = Vec::with_capacity(records.len());
     let mut baseline_checked = 0usize;
     for r in &records {
-        let o = oracle.get(&r.state_id).unwrap_or_else(|| {
-            panic!("{}: missing from the arm-B oracle", r.state_id)
-        });
+        let o = oracle
+            .get(&r.state_id)
+            .unwrap_or_else(|| panic!("{}: missing from the arm-B oracle", r.state_id));
         let ps = f64_array(&o["p_clean"], &r.state_id);
-        assert_eq!(ps.len(), r.options.len(), "{}: oracle option count", r.state_id);
+        assert_eq!(
+            ps.len(),
+            r.options.len(),
+            "{}: oracle option count",
+            r.state_id
+        );
         let oarg = o["argmax"].as_u64().expect("oracle argmax") as usize;
         assert_eq!(
             argmax_lowest(&ps),
@@ -824,7 +886,10 @@ fn main() {
         // only).
         let parent_id = r.state_id.split("|next:").next().expect("parent prefix");
         let b = baseline.get(parent_id).unwrap_or_else(|| {
-            panic!("{}: parent {parent_id} missing from the v3 baseline", r.state_id)
+            panic!(
+                "{}: parent {parent_id} missing from the v3 baseline",
+                r.state_id
+            )
         });
         let bopts = b["options"].as_array().expect("baseline options");
         assert_eq!(
@@ -840,7 +905,10 @@ fn main() {
             );
         }
         baseline_checked += 1;
-        decisions.push(Decisions { p_clean: ps, argmax: oarg });
+        decisions.push(Decisions {
+            p_clean: ps,
+            argmax: oarg,
+        });
     }
     assert_eq!(
         decisions.len(),
@@ -860,14 +928,19 @@ fn main() {
         // original bit-exactly.
         let dup_id = "arch:empty:I|dup";
         let (dup, orig) = (
-            arm_a.get(dup_id).unwrap_or_else(|| panic!("{dup_id} missing")),
+            arm_a
+                .get(dup_id)
+                .unwrap_or_else(|| panic!("{dup_id} missing")),
             arm_a
                 .get("arch:empty:I")
                 .unwrap_or_else(|| panic!("arch:empty:I missing")),
         );
         let dp = f64_array(&dup["p_clean"], dup_id);
         let op = f64_array(&orig["p_clean"], "arch:empty:I");
-        assert_eq!(dp, op, "determinism: the duplicated state's forwards diverged");
+        assert_eq!(
+            dp, op,
+            "determinism: the duplicated state's forwards diverged"
+        );
         // Masked-envelope vs v3 option-only labels: identical sentences, so
         // any delta is the envelope's (the state line's) effect.
         let mut n_bit = 0usize;
@@ -905,7 +978,8 @@ fn main() {
     let n_boards = records.len() / 7;
     let meta = V4FixtureMeta {
         state_id: "_meta",
-        protocol: "katgpt-rs Plan 609 T1.4/T1.8 \u{2014} laya Tetris v4 preview fixture".to_string(),
+        protocol: "katgpt-rs Plan 609 T1.4/T1.8 \u{2014} laya Tetris v4 preview fixture"
+            .to_string(),
         grammar: grammar_id,
         question: SPOT_QUESTION,
         checkpoint: &checkpoint,
@@ -957,7 +1031,10 @@ fn main() {
                         .options
                         .iter()
                         .zip(&d.p_clean)
-                        .map(|(o, &p)| FixtureOptionOut { base: o, p_clean: p })
+                        .map(|(o, &p)| FixtureOptionOut {
+                            base: o,
+                            p_clean: p,
+                        })
                         .collect(),
                     argmax: d.argmax,
                 })

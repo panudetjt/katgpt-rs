@@ -72,7 +72,10 @@ const TREE_BUDGET: usize = 64;
 struct Lcg(u64);
 impl Lcg {
     fn next_f32(&mut self) -> f32 {
-        self.0 = self.0.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        self.0 = self
+            .0
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         ((self.0 >> 33) as f32 / (1u64 << 31) as f32) - 1.0
     }
 }
@@ -176,7 +179,9 @@ fn g1_bit_identical(failures: &mut Vec<String>) {
         verdict(mismatch == 0 && nonempty && checked == 12)
     );
     if mismatch > 0 || !nonempty {
-        failures.push(format!("G1: {mismatch} of {checked} cells diverged (nonempty {nonempty})"));
+        failures.push(format!(
+            "G1: {mismatch} of {checked} cells diverged (nonempty {nonempty})"
+        ));
     }
 
     // The projection half.
@@ -222,12 +227,7 @@ fn g2_tree_build(failures: &mut Vec<String>) {
             1,
             2,
             |_| {
-                black_box(build_dd_tree_lodestar(
-                    black_box(&m),
-                    &cfg,
-                    &pruner,
-                    &lode,
-                ));
+                black_box(build_dd_tree_lodestar(black_box(&m), &cfg, &pruner, &lode));
             },
             |_| {
                 black_box(build_dd_tree_lodestar(black_box(&m), &cfg, &scan, &lode));
@@ -373,7 +373,12 @@ fn g3_worst_case(failures: &mut Vec<String>) {
         VOCAB,
         &RestrictionPolicy::default(),
     );
-    let refuses = matches!(plan, ProjectionPlan::Full { unenumerable: false });
+    let refuses = matches!(
+        plan,
+        ProjectionPlan::Full {
+            unenumerable: false
+        }
+    );
     println!(
         "G3 plan refuses gather at degree {VOCAB}: {refuses}  → {}",
         verdict(refuses)
@@ -416,7 +421,9 @@ fn g5_memory(failures: &mut Vec<String>) {
         verdict(ok)
     );
     if !ok {
-        failures.push(format!("G5: index overhead {worst:.2}% exceeded the +50% bound"));
+        failures.push(format!(
+            "G5: index overhead {worst:.2}% exceeded the +50% bound"
+        ));
     }
 }
 

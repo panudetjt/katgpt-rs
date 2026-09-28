@@ -152,7 +152,10 @@ impl core::fmt::Display for EdError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::DegreeTooLarge { max_degree } => {
-                write!(f, "max_degree {max_degree} exceeds MAX_ED_DEGREE {MAX_ED_DEGREE}")
+                write!(
+                    f,
+                    "max_degree {max_degree} exceeds MAX_ED_DEGREE {MAX_ED_DEGREE}"
+                )
             }
             Self::ResolutionTooSmall {
                 resolution,
@@ -310,7 +313,11 @@ pub fn ed_from_coeff_norms(coeff_norms: &[f32]) -> (f32, f32) {
         total += c;
         weighted = c.mul_add(k as f32, weighted);
     }
-    if total > 0.0 { (weighted, weighted / total) } else { (0.0, 0.0) }
+    if total > 0.0 {
+        (weighted, weighted / total)
+    } else {
+        (0.0, 0.0)
+    }
 }
 
 // ── Node sampling ────────────────────────────────────────────────────────────
@@ -763,7 +770,10 @@ mod tests {
             // Stratum i is theta in [i*step, (i+1)*step].
             let lo = 0.5 * (1.0 - (i as f32 * step).cos());
             let hi = 0.5 * (1.0 - ((i + 1) as f32 * step).cos());
-            assert!(a >= lo - 1e-6 && a <= hi + 1e-6, "alpha {a} outside stratum {i}");
+            assert!(
+                a >= lo - 1e-6 && a <= hi + 1e-6,
+                "alpha {a} outside stratum {i}"
+            );
         }
     }
 
@@ -797,7 +807,11 @@ mod tests {
         let nodes = fixed_nodes(cfg.resolution);
         let outputs: Vec<f32> = nodes.iter().map(|&a| 4.0f32.mul_add(a, 1.0)).collect();
         let r = effective_degree_along_path(&outputs, &nodes, &cfg).unwrap();
-        assert!((r.coeff_norms[1] - 2.0).abs() < 1e-3, "c1 = {}", r.coeff_norms[1]);
+        assert!(
+            (r.coeff_norms[1] - 2.0).abs() < 1e-3,
+            "c1 = {}",
+            r.coeff_norms[1]
+        );
         assert!((r.ed - r.coeff_norms[1]).abs() < 1e-5, "ED != |c1|");
         assert!(r.coeff_norms[2] < 1e-3 && r.coeff_norms[3] < 1e-3);
     }
@@ -833,8 +847,14 @@ mod tests {
         let scaled: Vec<f32> = base.iter().map(|&y| 2.0 * y).collect();
         let r1 = effective_degree_along_path(&base, &nodes, &cfg).unwrap();
         let r2 = effective_degree_along_path(&scaled, &nodes, &cfg).unwrap();
-        assert!((r2.ed - 2.0 * r1.ed).abs() < 1e-3 * r1.ed.max(1.0), "ED must scale");
-        assert!((r2.ed_norm - r1.ed_norm).abs() < 1e-4, "ED_norm must not scale");
+        assert!(
+            (r2.ed - 2.0 * r1.ed).abs() < 1e-3 * r1.ed.max(1.0),
+            "ED must scale"
+        );
+        assert!(
+            (r2.ed_norm - r1.ed_norm).abs() < 1e-4,
+            "ED_norm must not scale"
+        );
     }
 
     #[test]
@@ -864,7 +884,11 @@ mod tests {
         }
         let mut scratch = EdScratch::new(&cfg, 0, 2);
         let r = effective_degree_along_path_multi(&outputs, 2, &nodes, &cfg, &mut scratch).unwrap();
-        assert!((r.coeff_norms[2] - 5.0).abs() < 1e-2, "||c2|| = {}", r.coeff_norms[2]);
+        assert!(
+            (r.coeff_norms[2] - 5.0).abs() < 1e-2,
+            "||c2|| = {}",
+            r.coeff_norms[2]
+        );
         assert!((r.ed_norm - 2.0).abs() < 1e-2, "ED_norm = {}", r.ed_norm);
     }
 
@@ -879,23 +903,28 @@ mod tests {
         let a = vec![1.0f32, 0.9, 1.1, 0.8];
         let b = vec![-1.0f32, -0.8, -1.2, -0.7];
         let mut scratch = EdScratch::new(&cfg, 1, 1);
-        let r = ed_over_pairs(
-            |x, y| y[0] = x[0] * x[0] * x[0],
-            &a,
-            &b,
-            &cfg,
-            &mut scratch,
-        )
-        .unwrap();
-        assert!(r.coeff_norms[4] < 1e-2 && r.coeff_norms[5] < 1e-2, "no spurious high modes");
-        assert!(r.ed_norm > 1.0 && r.ed_norm < 3.0, "cubic ED_norm = {}", r.ed_norm);
+        let r =
+            ed_over_pairs(|x, y| y[0] = x[0] * x[0] * x[0], &a, &b, &cfg, &mut scratch).unwrap();
+        assert!(
+            r.coeff_norms[4] < 1e-2 && r.coeff_norms[5] < 1e-2,
+            "no spurious high modes"
+        );
+        assert!(
+            r.ed_norm > 1.0 && r.ed_norm < 3.0,
+            "cubic ED_norm = {}",
+            r.ed_norm
+        );
     }
 
     #[test]
     fn ed_over_pairs_is_reproducible_from_the_config_seed() {
         let cfg = EdConfig::cheap();
-        let a: Vec<f32> = (0..cfg.n_pairs * 3).map(|i| (i as f32) * 0.11 - 1.0).collect();
-        let b: Vec<f32> = (0..cfg.n_pairs * 3).map(|i| 0.7 - (i as f32) * 0.09).collect();
+        let a: Vec<f32> = (0..cfg.n_pairs * 3)
+            .map(|i| (i as f32) * 0.11 - 1.0)
+            .collect();
+        let b: Vec<f32> = (0..cfg.n_pairs * 3)
+            .map(|i| 0.7 - (i as f32) * 0.09)
+            .collect();
         let f = |x: &[f32], y: &mut [f32]| y[0] = x[0] * x[1] + x[2].tanh();
         let mut s1 = EdScratch::new(&cfg, 3, 1);
         let mut s2 = EdScratch::new(&cfg, 3, 1);

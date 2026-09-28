@@ -41,13 +41,29 @@ fn bench_shape(name: &str, w: usize, h: usize, k: usize, n_orient: usize) -> f64
 
     // Warmup
     for _ in 0..WARMUP {
-        se2_lift_into(black_box(&field), w, h, black_box(&kernel), k, n_orient, black_box(&mut out));
+        se2_lift_into(
+            black_box(&field),
+            w,
+            h,
+            black_box(&kernel),
+            k,
+            n_orient,
+            black_box(&mut out),
+        );
     }
 
     let mut samples: Vec<u64> = Vec::with_capacity(ITERS);
     for _ in 0..ITERS {
         let t = Instant::now();
-        se2_lift_into(black_box(&field), w, h, black_box(&kernel), k, n_orient, black_box(&mut out));
+        se2_lift_into(
+            black_box(&field),
+            w,
+            h,
+            black_box(&kernel),
+            k,
+            n_orient,
+            black_box(&mut out),
+        );
         samples.push(t.elapsed().as_nanos() as u64);
     }
 
@@ -87,9 +103,7 @@ fn bench_projection(name: &str, w: usize, h: usize, n_orient: usize, integr: boo
     }
     let med_ns = median_ns(&mut samples);
     let med_us = med_ns / 1000.0;
-    println!(
-        "  {name:<24} ({w}×{h}×{n_orient}):        median {med_us:>8.2} µs"
-    );
+    println!("  {name:<24} ({w}×{h}×{n_orient}):        median {med_us:>8.2} µs");
     med_us
 }
 
@@ -115,26 +129,55 @@ fn main() {
     let pass_32 = lift_32 < gate;
     let pass_64 = lift_64 < gate;
 
-    println!("  G2 16×16: {:.2} µs vs {:.0} µs target → {} ({:.0}× under)", lift_16, gate,
-        if pass_16 { "PASS" } else { "FAIL" }, gate / lift_16);
-    println!("  G2 32×32: {:.2} µs vs {:.0} µs target → {} ({:.0}× under)", lift_32, gate,
-        if pass_32 { "PASS" } else { "FAIL" }, gate / lift_32);
-    println!("  G2 64×64: {:.2} µs vs {:.0} µs target → {} ({:.0}× under)", lift_64, gate,
-        if pass_64 { "PASS" } else { "FAIL" }, gate / lift_64);
+    println!(
+        "  G2 16×16: {:.2} µs vs {:.0} µs target → {} ({:.0}× under)",
+        lift_16,
+        gate,
+        if pass_16 { "PASS" } else { "FAIL" },
+        gate / lift_16
+    );
+    println!(
+        "  G2 32×32: {:.2} µs vs {:.0} µs target → {} ({:.0}× under)",
+        lift_32,
+        gate,
+        if pass_32 { "PASS" } else { "FAIL" },
+        gate / lift_32
+    );
+    println!(
+        "  G2 64×64: {:.2} µs vs {:.0} µs target → {} ({:.0}× under)",
+        lift_64,
+        gate,
+        if pass_64 { "PASS" } else { "FAIL" },
+        gate / lift_64
+    );
 
     println!();
     println!("  Per-NPC scale analysis (@ 32×32 lift): ");
-    println!("    Hero scale (1 NPC/tick):  {:.2} µs   ({:.1}% of 20Hz tick budget)",
-        lift_32, lift_32 * 100.0 / budget_20hz);
-    println!("    Squad scale (10 NPCs/tick): {:.2} µs   ({:.1}% of 20Hz tick budget)",
-        lift_32 * 10.0, lift_32 * 10.0 * 100.0 / budget_20hz);
-    println!("    Crowd scale (1000 NPCs/tick): {:.2} ms ({:.1}% of 20Hz tick budget — TOO EXPENSIVE for per-NPC per-tick at crowd scale; use per-zone or LoD)",
-        lift_32 * 1000.0 / 1000.0, lift_32 * 1000.0 * 100.0 / budget_20hz);
-    println!("    Zone scale (1 lift per zone, ~16 zones): {:.2} ms ({:.1}% of 20Hz tick budget)",
-        lift_32 * 16.0 / 1000.0, lift_32 * 16.0 * 100.0 / budget_20hz);
+    println!(
+        "    Hero scale (1 NPC/tick):  {:.2} µs   ({:.1}% of 20Hz tick budget)",
+        lift_32,
+        lift_32 * 100.0 / budget_20hz
+    );
+    println!(
+        "    Squad scale (10 NPCs/tick): {:.2} µs   ({:.1}% of 20Hz tick budget)",
+        lift_32 * 10.0,
+        lift_32 * 10.0 * 100.0 / budget_20hz
+    );
+    println!(
+        "    Crowd scale (1000 NPCs/tick): {:.2} ms ({:.1}% of 20Hz tick budget — TOO EXPENSIVE for per-NPC per-tick at crowd scale; use per-zone or LoD)",
+        lift_32 * 1000.0 / 1000.0,
+        lift_32 * 1000.0 * 100.0 / budget_20hz
+    );
+    println!(
+        "    Zone scale (1 lift per zone, ~16 zones): {:.2} ms ({:.1}% of 20Hz tick budget)",
+        lift_32 * 16.0 / 1000.0,
+        lift_32 * 16.0 * 100.0 / budget_20hz
+    );
 
     if pass_16 && pass_32 && pass_64 {
-        println!("\n  G2 PERF VERDICT: PASS — se2_lift_into is well within the 1ms target at all production sizes.");
+        println!(
+            "\n  G2 PERF VERDICT: PASS — se2_lift_into is well within the 1ms target at all production sizes."
+        );
     } else {
         println!("\n  G2 PERF VERDICT: FAIL — one or more sizes exceed the 1ms target.");
     }

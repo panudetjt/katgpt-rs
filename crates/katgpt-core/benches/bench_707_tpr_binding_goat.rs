@@ -443,7 +443,11 @@ fn killswitch_child() -> ! {
         && surgery_delta_into(&art, &mut out, 0, &f, &f, &mut scratch).is_err()
         && project_into(&art, &out.clone(), &mut scratch, &mut out).is_err()
         && encode_into(&art, &c.bindings[0], &mut scratch, &mut out).is_err();
-    if refused { println!("KILLSWITCH_OK — bind/unbind/surgery/project/encode all refused") } else { println!("KILLSWITCH_LEAK — an op ran with RIIR_TPR=0") }
+    if refused {
+        println!("KILLSWITCH_OK — bind/unbind/surgery/project/encode all refused")
+    } else {
+        println!("KILLSWITCH_LEAK — an op ran with RIIR_TPR=0")
+    }
     std::process::exit(if refused { 0 } else { 1 });
 }
 
@@ -510,10 +514,16 @@ fn run_g8() -> bool {
     let held: Vec<usize> = (0..c.bindings.len())
         .filter(|&s| c.bindings[s].fillers[0] == 0 && c.bindings[s].fillers[1] == 1)
         .collect();
-    let train: Vec<usize> = (0..c.bindings.len()).filter(|s| !held.contains(s)).collect();
+    let train: Vec<usize> = (0..c.bindings.len())
+        .filter(|s| !held.contains(s))
+        .collect();
     let (tr_s, tr_b) = subset(&c, &train);
     let (te_s, te_b) = subset(&c, &held);
-    println!("  corpus: {} train / {} withheld states", tr_b.len(), te_b.len());
+    println!(
+        "  corpus: {} train / {} withheld states",
+        tr_b.len(),
+        te_b.len()
+    );
 
     let cfg = AlsConfig::new(c.d, TprScheme::Orthogonal { arity: c.m });
     let tr_in = AlsInput {
@@ -560,12 +570,20 @@ fn run_g8() -> bool {
     let tpr_ood = ood.top1 * 100.0;
     let chance = 100.0 / pool.len() as f32;
 
-    println!("  null: ID coverage {:.1}% / ID top-1 {:.1}%", id_cov * 100.0, null_id * 100.0);
+    println!(
+        "  null: ID coverage {:.1}% / ID top-1 {:.1}%",
+        id_cov * 100.0,
+        null_id * 100.0
+    );
     let informative = id_cov > 0.99 && null_id > 0.5;
-    if informative { println!("  null is INFORMATIVE in-distribution — its OOD zero is a real failure") } else { println!(
+    if informative {
+        println!("  null is INFORMATIVE in-distribution — its OOD zero is a real failure")
+    } else {
+        println!(
             "  null is VACUOUS (it cannot fit its own training set) — the OOD comparison \
              certifies NOTHING; see riir-clippy .benchmarks/062"
-        ); }
+        );
+    }
     println!(
         "  OOD top-1: TPR {tpr_ood:.1}%  vs  null {null_ood:.1}%  (chance {chance:.1}%, pool {})",
         pool.len()
@@ -598,7 +616,10 @@ fn run_g8() -> bool {
     }
     let margin = tpr_ood - null_ood;
     let pass = informative && readable && margin >= G8_MARGIN_PP && tpr_ood > chance;
-    println!("  margin {margin:.1} pp (bar {G8_MARGIN_PP:.1} pp) → G8 {}", verdict(pass));
+    println!(
+        "  margin {margin:.1} pp (bar {G8_MARGIN_PP:.1} pp) → G8 {}",
+        verdict(pass)
+    );
     pass
 }
 
@@ -644,9 +665,18 @@ fn main() {
     let g4 = run_g4();
     let g8 = run_g8();
     println!("\n── verdict ──");
-    println!("  G1 {} | G2 {} | G3 {} | G4 {} | G8 {}", verdict(g1), verdict(g2), verdict(g3), verdict(g4), verdict(g8));
-    if g1 && g2 && g3 && g4 && g8 { println!("Issue 707 GOAT gate: ALL PASS") } else {
-            println!("Issue 707 GOAT gate: FAIL");
-            std::process::exit(1);
-        }
+    println!(
+        "  G1 {} | G2 {} | G3 {} | G4 {} | G8 {}",
+        verdict(g1),
+        verdict(g2),
+        verdict(g3),
+        verdict(g4),
+        verdict(g8)
+    );
+    if g1 && g2 && g3 && g4 && g8 {
+        println!("Issue 707 GOAT gate: ALL PASS")
+    } else {
+        println!("Issue 707 GOAT gate: FAIL");
+        std::process::exit(1);
+    }
 }

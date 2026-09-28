@@ -283,7 +283,10 @@ fn kl(p_logits: &[f32], q_logits: &[f32]) -> f32 {
 }
 
 fn bits_eq(a: &[f32], b: &[f32]) -> bool {
-    a.len() == b.len() && a.iter().zip(b.iter()).all(|(x, y)| x.to_bits() == y.to_bits())
+    a.len() == b.len()
+        && a.iter()
+            .zip(b.iter())
+            .all(|(x, y)| x.to_bits() == y.to_bits())
 }
 
 /// Mean loss(r) for one arm: mean over all prompts of KL(arm@r ‖ arm@R_REF).
@@ -423,11 +426,10 @@ fn t698_t3_free_theorem_scalar_convex_bound() {
         // h[1] = g[1]·p[1] + (1−g[1])·o[1] = 0·0 + 1·1 = 1
         h[1] = 0.0 * 0.0 + 1.0 * 1.0;
         let nh = norm2(&h);
-        assert!
-            (
-                nh > 1.0 + 1e-6,
-                "per-channel counterexample must EXCEED the bound (sanity): {nh}"
-            );
+        assert!(
+            nh > 1.0 + 1e-6,
+            "per-channel counterexample must EXCEED the bound (sanity): {nh}"
+        );
         // ...while the scalar blend on the same vectors never does (covered
         // by the grid above — asserted here explicitly for the record).
         let mut x = vec![0.0f32, 1.0];
@@ -479,25 +481,39 @@ fn t698_t3_schedule_construction_pins() {
     // ── Shape + endpoint pins ────────────────────────────────────
     let gate = ResidualGate::copy_late_schedule(8, 0.5, 0.95);
     let sched = gate.convex_schedule.as_ref().expect("schedule present");
-    assert!(gate.gates.is_empty(), "convex gate carries no per-channel data");
+    assert!(
+        gate.gates.is_empty(),
+        "convex gate carries no per-channel data"
+    );
     assert_eq!(sched.len(), 8, "schedule length == loop_count");
     assert_eq!(sched.capacity(), 8, "G4: allocated exactly once, no growth");
     assert_eq!(sched[0].to_bits(), 0.5f32.to_bits(), "entry 0 == g0");
     assert_eq!(sched[7].to_bits(), 0.95f32.to_bits(), "last entry == gR");
     // Monotone non-decreasing (the paper's openness law, modelless form).
     for w in sched.windows(2) {
-        assert!(w[1] >= w[0], "linear schedule must be monotone non-decreasing");
+        assert!(
+            w[1] >= w[0],
+            "linear schedule must be monotone non-decreasing"
+        );
     }
     // Interior values: linear interpolation pinned exactly.
-    assert_eq!(sched[2].to_bits(), (0.5f32 + (0.95 - 0.5) * (2.0 / 7.0)).to_bits());
+    assert_eq!(
+        sched[2].to_bits(),
+        (0.5f32 + (0.95 - 0.5) * (2.0 / 7.0)).to_bits()
+    );
 
     // ── EaseOutClose: monotone, closes faster early than linear ──
     let ease = ResidualGate::copy_late_schedule_shaped(8, 0.5, 0.95, CopyLateShape::EaseOutClose)
         .convex_schedule
         .unwrap();
-    let lin = ResidualGate::copy_late_schedule(8, 0.5, 0.95).convex_schedule.unwrap();
+    let lin = ResidualGate::copy_late_schedule(8, 0.5, 0.95)
+        .convex_schedule
+        .unwrap();
     for w in ease.windows(2) {
-        assert!(w[1] >= w[0], "ease schedule must be monotone non-decreasing");
+        assert!(
+            w[1] >= w[0],
+            "ease schedule must be monotone non-decreasing"
+        );
     }
     assert!(
         ease[4] > lin[4],
@@ -518,26 +534,41 @@ fn t698_t3_schedule_construction_pins() {
     }
 
     // ── Clamping: the bound requires g ∈ [0, 1] ──────────────────
-    let clamped = ResidualGate::copy_late_schedule(4, -0.5, 1.7).convex_schedule.unwrap();
+    let clamped = ResidualGate::copy_late_schedule(4, -0.5, 1.7)
+        .convex_schedule
+        .unwrap();
     assert_eq!(clamped[0].to_bits(), 0.0f32.to_bits());
     assert_eq!(clamped[3].to_bits(), 1.0f32.to_bits());
     assert!(clamped.iter().all(|g| (0.0..=1.0).contains(g)));
 
     // ── Degenerate lengths accepted ──────────────────────────────
     assert_eq!(
-        ResidualGate::copy_late_schedule(0, 0.2, 0.9).convex_schedule.unwrap().len(),
+        ResidualGate::copy_late_schedule(0, 0.2, 0.9)
+            .convex_schedule
+            .unwrap()
+            .len(),
         0
     );
     assert_eq!(
-        ResidualGate::copy_late_schedule(1, 0.2, 0.9).convex_schedule.unwrap()[0]
+        ResidualGate::copy_late_schedule(1, 0.2, 0.9)
+            .convex_schedule
+            .unwrap()[0]
             .to_bits(),
         0.2f32.to_bits()
     );
 
     // ── convex_gate_at: in-range + past-end clamp + absent ───────
     assert_eq!(gate.convex_gate_at(3), Some(sched[3]));
-    assert_eq!(gate.convex_gate_at(100), Some(sched[7]), "past-end clamps to gR");
-    assert_eq!(ResidualGate::new(4, 4).convex_gate_at(1), None, "additive gate → None");
+    assert_eq!(
+        gate.convex_gate_at(100),
+        Some(sched[7]),
+        "past-end clamps to gR"
+    );
+    assert_eq!(
+        ResidualGate::new(4, 4).convex_gate_at(1),
+        None,
+        "additive gate → None"
+    );
 
     println!("  ✓ schedule construction: shapes, monotonicity, clamp, G4, convex_gate_at");
 }
@@ -606,14 +637,20 @@ fn t698_t3_copy_late_fixture_ab_and_contraction() {
     {
         let x = run_once(&gates[0].1, &weights, &gates[0].2, &sdpa_gate, 0, 4);
         let y = run_once(&gates[1].1, &weights, &gates[1].2, &sdpa_gate, 0, 4);
-        assert!(!bits_eq(&x, &y), "armed: convex ≠ additive at r=4 (vacuity)");
+        assert!(
+            !bits_eq(&x, &y),
+            "armed: convex ≠ additive at r=4 (vacuity)"
+        );
     }
     {
         let (cfg_l, gate_l) = (&gates[1].1, &gates[1].2);
         let (cfg_d, gate_d) = (&gates[4].1, &gates[4].2);
         let x = run_once(cfg_l, &weights, gate_l, &sdpa_gate, 0, 4);
         let y = run_once(cfg_d, &weights, gate_d, &sdpa_gate, 0, 4);
-        assert!(!bits_eq(&x, &y), "armed: anchor ≠ drifting source under convex (vacuity)");
+        assert!(
+            !bits_eq(&x, &y),
+            "armed: anchor ≠ drifting source under convex (vacuity)"
+        );
     }
 
     // ── Per-arm references + settling metric ─────────────────────
@@ -624,7 +661,10 @@ fn t698_t3_copy_late_fixture_ab_and_contraction() {
     let mut ref_drifts = [0.0f32; N_ARMS];
     for (idx, (arm, cfg, gate)) in gates.iter().enumerate() {
         ref_drifts[idx] = ref_drift(cfg, &weights, gate, &sdpa_gate, &refs[idx]);
-        println!("  ref drift KL({R_REF},{R_REF_PROBE}) [{arm:?}] = {:.3e}", ref_drifts[idx]);
+        println!(
+            "  ref drift KL({R_REF},{R_REF_PROBE}) [{arm:?}] = {:.3e}",
+            ref_drifts[idx]
+        );
         assert!(
             ref_drifts[idx].is_finite() && ref_drifts[idx] >= 0.0,
             "reference drift must be finite: {arm:?}"
@@ -749,7 +789,10 @@ fn t698_t3_copy_late_fixture_ab_and_contraction() {
     }
     println!("  endpoint sweep (linear, ref-drift / loss(2)):");
     for (k, (g0, gr)) in SWEEP_ENDPOINTS.iter().enumerate() {
-        println!("    g {g0:.2} → {gr:.2}   {:.3e}   {:.3e}", sweep_drift[k], sweep_loss2[k]);
+        println!(
+            "    g {g0:.2} → {gr:.2}   {:.3e}   {:.3e}",
+            sweep_drift[k], sweep_loss2[k]
+        );
     }
     println!(
         "  table bits: {:?}",
@@ -808,19 +851,27 @@ fn t698_t3_copy_late_fixture_ab_and_contraction() {
     assert_close(dest_add_nat, PINNED_DEST_ADD_NAT, "dest add‖nat".into());
 
     println!();
-    println!("  VERDICT (measured 2026-08-30): CONTRACTION CONFIRMED — T2's open complement closes.");
+    println!(
+        "  VERDICT (measured 2026-08-30): CONTRACTION CONFIRMED — T2's open complement closes."
+    );
     println!("  · Every convex arm settles 4–12 orders better than the constant-ρ additive");
     println!("    baseline (ConvLin 5.8e-6 / Ease 5.5e-8 / Step 1.2e-12 / Drift 6.1e-8 vs 2.404);");
-    println!("    the no-norm ablation still settles (2.8e-4). Update ∝ (1 − g_τ) is the mechanism:");
+    println!(
+        "    the no-norm ablation still settles (2.8e-4). Update ∝ (1 − g_τ) is the mechanism:"
+    );
     println!("    harder closure → better settling (Step > Ease > Linear, monotone in the sweep).");
     println!("  · THE PRICE (destination bias): the convex fixed point sits 11.9 nats from the");
     println!("    natural trajectory (additive arm: 2.37). On untrained weights the schedule buys");
     println!("    contraction + the free norm bound AT THE COST of relocating the destination —");
     println!("    promotion to real models needs trained gates (riir-train Plan 364) or a quality");
     println!("    gate on real weights. The free theorem + mechanism are the modelless yield.");
-    println!("  · StepMid is the shape trade-off: its closure BEGINS at the midpoint, so the whole");
+    println!(
+        "  · StepMid is the shape trade-off: its closure BEGINS at the midpoint, so the whole"
+    );
     println!("    measured r-grid sits in the open phase (non-monotone loss by phase structure,");
     println!("    pinned) while its tail settles BEST of all arms.");
-    println!("  Caveats: random weights (form-mismatch — checkpoints trained additive; the fixture");
+    println!(
+        "  Caveats: random weights (form-mismatch — checkpoints trained additive; the fixture"
+    );
     println!("  arbitrates, see dest-bias), single-position prompts, micro config.");
 }

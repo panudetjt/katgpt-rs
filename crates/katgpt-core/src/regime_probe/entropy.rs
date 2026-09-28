@@ -38,14 +38,13 @@ pub fn conditional_entropy_nats(logits: &[f32]) -> f32 {
 /// Zero allocation — `out` is caller-owned scratch (the G4 protocol).
 /// Rows are processed in index order so the result is bit-identical to
 /// calling [`conditional_entropy_nats`] row by row.
-pub fn conditional_entropies_into(
-    logits: &[f32],
-    positions: usize,
-    vocab: usize,
-    out: &mut [f32],
-) {
+pub fn conditional_entropies_into(logits: &[f32], positions: usize, vocab: usize, out: &mut [f32]) {
     debug_assert_eq!(logits.len(), positions * vocab, "flat logits shape");
-    debug_assert_eq!(out.len(), positions, "out must hold one entropy per position");
+    debug_assert_eq!(
+        out.len(),
+        positions,
+        "out must hold one entropy per position"
+    );
     for (p, slot) in out.iter_mut().enumerate() {
         *slot = conditional_entropy_nats(&logits[p * vocab..(p + 1) * vocab]);
     }
@@ -72,17 +71,17 @@ mod tests {
     use super::*;
 
     fn ref_entropy_f64(logits: &[f32]) -> f64 {
-        let max = logits.iter().copied().map(f64::from).fold(f64::NEG_INFINITY, f64::max);
+        let max = logits
+            .iter()
+            .copied()
+            .map(f64::from)
+            .fold(f64::NEG_INFINITY, f64::max);
         let z: f64 = logits.iter().map(|&x| (x as f64 - max).exp()).sum();
         logits
             .iter()
             .map(|&x| {
                 let p = (x as f64 - max).exp() / z;
-                if p > 0.0 {
-                    -p * p.ln()
-                } else {
-                    0.0
-                }
+                if p > 0.0 { -p * p.ln() } else { 0.0 }
             })
             .sum()
     }
@@ -121,10 +120,7 @@ mod tests {
             .collect();
         let got = conditional_entropy_nats(&logits) as f64;
         let want = ref_entropy_f64(&logits);
-        assert!(
-            (got - want).abs() < 1e-3,
-            "kernel {got} vs direct {want}"
-        );
+        assert!((got - want).abs() < 1e-3, "kernel {got} vs direct {want}");
     }
 
     #[test]
@@ -152,6 +148,9 @@ mod tests {
         let h0 = conditional_entropy_nats(&base);
         let sharp: Vec<f32> = base.iter().map(|x| x * 4.0).collect();
         let h1 = conditional_entropy_nats(&sharp);
-        assert!(h1 < h0, "sharper categorical must have lower entropy: {h1} !< {h0}");
+        assert!(
+            h1 < h0,
+            "sharper categorical must have lower entropy: {h1} !< {h0}"
+        );
     }
 }

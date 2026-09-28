@@ -175,7 +175,11 @@ fn main() {
     println!("pub const MERKLE_VECTORS: &[MerkleVector] = &[");
     for n_leaves in [1usize, 2, 3, 5, 8] {
         let leaves: Vec<Hash> = (0..n_leaves)
-            .map(|i| seed_of(&format!("katgpt-device-verify/merkle/v1/{n_leaves}/leaf{i}")))
+            .map(|i| {
+                seed_of(&format!(
+                    "katgpt-device-verify/merkle/v1/{n_leaves}/leaf{i}"
+                ))
+            })
             .collect();
         for index in 0..n_leaves {
             let (siblings, root) = proof_for(&leaves, index);
@@ -226,11 +230,19 @@ fn proof_for(leaves: &[Hash], index: usize) -> (Vec<Hash>, Hash) {
 
     while level.len() > 1 {
         let sibling_idx = idx ^ 1;
-        siblings.push(if sibling_idx < level.len() { level[sibling_idx] } else { EMPTY_HASH });
+        siblings.push(if sibling_idx < level.len() {
+            level[sibling_idx]
+        } else {
+            EMPTY_HASH
+        });
         let mut next = Vec::with_capacity(level.len().div_ceil(2));
         let mut i = 0;
         while i < level.len() {
-            next.push(if i + 1 < level.len() { hash_pair(&level[i], &level[i + 1]) } else { hash_pair(&level[i], &EMPTY_HASH) });
+            next.push(if i + 1 < level.len() {
+                hash_pair(&level[i], &level[i + 1])
+            } else {
+                hash_pair(&level[i], &EMPTY_HASH)
+            });
             i += 2;
         }
         level = next;

@@ -113,7 +113,10 @@ impl Grammar {
                 v.len()
             );
         }
-        assert!(!templates.is_empty(), "grammar: needs at least one template");
+        assert!(
+            !templates.is_empty(),
+            "grammar: needs at least one template"
+        );
         for (ti, t) in templates.iter().enumerate() {
             let segs = t.0;
             assert!(
@@ -365,9 +368,7 @@ impl Walker<'_> {
                 let mut count = 0usize;
                 for (fi, fill) in vocab.iter().enumerate() {
                     let fb = fill.as_bytes();
-                    if self.text.len() >= pos + fb.len()
-                        && &self.text[pos..pos + fb.len()] == fb
-                    {
+                    if self.text.len() >= pos + fb.len() && &self.text[pos..pos + fb.len()] == fb {
                         fills[slot_i] = fi as u8;
                         count += self.walk(segs, seg_i + 1, slot_i + 1, pos + fb.len(), fills);
                         if count > 1 {
@@ -499,7 +500,13 @@ mod tests {
         static VOCAB: [&str; 1] = ["a"];
         static VOCABS: [&[&str]; 1] = [&VOCAB];
         let segs: Vec<Seg> = (0..2 * MAX_SLOTS + 3)
-            .map(|i| if i % 2 == 0 { Seg::Lit("") } else { Seg::Slot(0) })
+            .map(|i| {
+                if i % 2 == 0 {
+                    Seg::Lit("")
+                } else {
+                    Seg::Slot(0)
+                }
+            })
             .collect();
         let segs: &'static [Seg] = Box::leak(segs.into_boxed_slice());
         let templates: &'static [Template] = Box::leak(vec![Template(segs)].into_boxed_slice());

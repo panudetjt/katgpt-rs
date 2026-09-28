@@ -409,7 +409,7 @@ impl SaddleEscapeGate {
         };
         let rate_confirms = rate >= self.cfg.flip_tau; // rate is NaN-free
         let probe_confirms = match obs.probe_drift {
-            None => true,                    // correct without the probe
+            None => true,                       // correct without the probe
             Some(d) => d >= self.cfg.probe_tau, // NaN drift never confirms
         };
         if !(rate_confirms && probe_confirms) {
@@ -576,7 +576,10 @@ mod tests {
         // Cross-gap comparison: 1 → 2 IS a flip against the retained 1.
         f.observe(Some(2));
         let r = f.flip_rate().unwrap();
-        assert!((r - 1.0).abs() < 1e-6, "cross-gap flip must register, got {r}");
+        assert!(
+            (r - 1.0).abs() < 1e-6,
+            "cross-gap flip must register, got {r}"
+        );
     }
 
     #[test]
@@ -588,7 +591,11 @@ mod tests {
 
     // ── Gate: kick lifecycle ──────────────────────────────────────────
 
-    fn run_trap_sequence(gate: &mut SaddleEscapeGate, loops: usize, keys: [u64; 2]) -> Vec<GateDecision> {
+    fn run_trap_sequence(
+        gate: &mut SaddleEscapeGate,
+        loops: usize,
+        keys: [u64; 2],
+    ) -> Vec<GateDecision> {
         let state = [1u8, 2, 3, 4];
         let mut out = Vec::new();
         for i in 1..=loops {
@@ -601,10 +608,7 @@ mod tests {
 
     #[test]
     fn trap_fires_kick_then_trapped_after_budget() {
-        let mut g = SaddleEscapeGate::wrap(
-            GainCostLoopHalter::new(1.0, 2, 1),
-            trapped_cfg(),
-        );
+        let mut g = SaddleEscapeGate::wrap(GainCostLoopHalter::new(1.0, 2, 1), trapped_cfg());
         // Halter: patience 2, l_min 1. Flip: window 2. Keys alternate, cos = -1.
         // Loop 2: oscillation fires but pairs=1 < warmup → Converged(Osc).
         // Loop 3: rate 0.889 ≥ τ → KICK #1 (eps0); streak resets.
@@ -612,9 +616,10 @@ mod tests {
         // Loop 5: streak 2 → KICK #2 (eps0·decay).
         // Loop 6: Continue. Loop 7: budget exhausted → Trapped.
         let ds = run_trap_sequence(&mut g, 8, [10, 20]);
-        assert!(matches!(ds[1], GateDecision::Halt(HaltOutcome::Converged(
-            HaltReason::Oscillation
-        ))));
+        assert!(matches!(
+            ds[1],
+            GateDecision::Halt(HaltOutcome::Converged(HaltReason::Oscillation))
+        ));
         match ds[2] {
             GateDecision::Kick { eps, .. } => assert!((eps - 0.1).abs() < 1e-7),
             other => panic!("expected kick at loop 3, got {other:?}"),
@@ -628,7 +633,10 @@ mod tests {
         }
         assert_eq!(ds[5], GateDecision::Continue);
         match ds[6] {
-            GateDecision::Halt(HaltOutcome::Trapped { flip_rate, kicks_used }) => {
+            GateDecision::Halt(HaltOutcome::Trapped {
+                flip_rate,
+                kicks_used,
+            }) => {
                 assert_eq!(kicks_used, 2);
                 assert!(flip_rate >= 0.5);
             }
@@ -644,20 +652,21 @@ mod tests {
         let mut g = SaddleEscapeGate::wrap(GainCostLoopHalter::new(1.0, 2, 1), cfg);
         let ds = run_trap_sequence(&mut g, 4, [1, 2]);
         // Loop 3 (first rate-ready oscillation halt): budget 0 → Trapped.
-        assert!(matches!(ds[2], GateDecision::Halt(HaltOutcome::Trapped { .. })));
+        assert!(matches!(
+            ds[2],
+            GateDecision::Halt(HaltOutcome::Trapped { .. })
+        ));
     }
 
     #[test]
     fn oscillation_with_low_flip_passes_through_converged() {
-        let mut g = SaddleEscapeGate::wrap(
-            GainCostLoopHalter::new(1.0, 2, 1),
-            trapped_cfg(),
-        );
+        let mut g = SaddleEscapeGate::wrap(GainCostLoopHalter::new(1.0, 2, 1), trapped_cfg());
         // Constant key: flip rate present but ~0 → no trap evidence.
         let ds = run_trap_sequence(&mut g, 4, [7, 7]);
-        assert!(matches!(ds[3], GateDecision::Halt(HaltOutcome::Converged(
-            HaltReason::Oscillation
-        ))));
+        assert!(matches!(
+            ds[3],
+            GateDecision::Halt(HaltOutcome::Converged(HaltReason::Oscillation))
+        ));
     }
 
     #[test]
@@ -666,9 +675,10 @@ mod tests {
         let state = [0u8; 8];
         // Alternating keys (would-be trap) but the halt reason is scissors.
         let d = g.decide(obs(4, 0.01, 1.0, 0.9, Some(1), &state));
-        assert!(matches!(d, GateDecision::Halt(HaltOutcome::Converged(
-            HaltReason::GainBelowCost
-        ))));
+        assert!(matches!(
+            d,
+            GateDecision::Halt(HaltOutcome::Converged(HaltReason::GainBelowCost))
+        ));
     }
 
     #[test]
@@ -684,10 +694,7 @@ mod tests {
 
     #[test]
     fn nan_signals_never_fire_a_kick() {
-        let mut g = SaddleEscapeGate::wrap(
-            GainCostLoopHalter::new(1.0, 1, 1),
-            trapped_cfg(),
-        );
+        let mut g = SaddleEscapeGate::wrap(GainCostLoopHalter::new(1.0, 1, 1), trapped_cfg());
         let state = [0u8; 8];
         // NaN cos θ: non-oscillatory (inherited) → Continue.
         let d = g.decide(obs(1, 1.0, 0.01, f32::NAN, Some(1), &state));
@@ -713,10 +720,7 @@ mod tests {
         // Same trap shape; probe below τ → Converged; above → Kick, then
         // Trapped once the budget spends.
         let state = [9u8; 8];
-        let mut g = SaddleEscapeGate::wrap(
-            GainCostLoopHalter::new(1.0, 1, 1),
-            trapped_cfg(),
-        );
+        let mut g = SaddleEscapeGate::wrap(GainCostLoopHalter::new(1.0, 1, 1), trapped_cfg());
         // Patience 1: every loop halts on oscillation. Window 2: rate is
         // None through loop 2, ready (high) from loop 3.
         for i in 1..=3u64 {
@@ -724,9 +728,10 @@ mod tests {
             o.probe_drift = Some(0.01); // < probe_tau 0.1 → never confirms
             let d = g.decide(o);
             assert!(
-                matches!(d, GateDecision::Halt(HaltOutcome::Converged(
-                    HaltReason::Oscillation
-                ))),
+                matches!(
+                    d,
+                    GateDecision::Halt(HaltOutcome::Converged(HaltReason::Oscillation))
+                ),
                 "loop {i}: low probe must pass through, got {d:?}"
             );
         }
@@ -770,10 +775,7 @@ mod tests {
     #[test]
     fn full_episode_bit_reproducible() {
         let run = || {
-            let mut g = SaddleEscapeGate::wrap(
-                GainCostLoopHalter::new(1.0, 2, 1),
-                trapped_cfg(),
-            );
+            let mut g = SaddleEscapeGate::wrap(GainCostLoopHalter::new(1.0, 2, 1), trapped_cfg());
             let state = [5u8; 12];
             let mut out = Vec::new();
             for i in 1..=7u64 {
@@ -825,10 +827,7 @@ mod tests {
 
     #[test]
     fn apply_kick_streak_reset_lets_loop_continue() {
-        let mut g = SaddleEscapeGate::wrap(
-            GainCostLoopHalter::new(1.0, 2, 1),
-            trapped_cfg(),
-        );
+        let mut g = SaddleEscapeGate::wrap(GainCostLoopHalter::new(1.0, 2, 1), trapped_cfg());
         let state = [0u8; 4];
         // Build to the kick.
         let mut kicked = false;

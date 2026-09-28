@@ -209,7 +209,9 @@ impl FlatPrefixCache {
         while self.entries.len() > self.max_entries
             || (self.held > self.page_budget && self.entries.len() > 1)
         {
-            let Some(evicted) = self.entries.pop() else { break };
+            let Some(evicted) = self.entries.pop() else {
+                break;
+            };
             self.held -= evicted.1.len();
         }
     }
@@ -237,12 +239,8 @@ fn g1_bit_identity(config: &Config, label: &str) -> bool {
     }
 
     let mut ok = true;
-    let (mut k0, mut v0, mut k1, mut v1) = (
-        vec![0.0; kd],
-        vec![0.0; kd],
-        vec![0.0; kd],
-        vec![0.0; kd],
-    );
+    let (mut k0, mut v0, mut k1, mut v1) =
+        (vec![0.0; kd], vec![0.0; kd], vec![0.0; kd], vec![0.0; kd]);
     'outer: for pos in 0..last.len() {
         for l in 0..nl {
             ref_cache.read_kv(l, 0, pos, &mut k0, &mut v0);
@@ -250,10 +248,7 @@ fn g1_bit_identity(config: &Config, label: &str) -> bool {
             // Bit-identity, not float equality: the filler produces NaN
             // payloads where f != f even at identical bits.
             if !k0.iter().zip(&k1).all(|(a, b)| a.to_bits() == b.to_bits())
-                || !v0
-                    .iter()
-                    .zip(&v1)
-                    .all(|(a, b)| a.to_bits() == b.to_bits())
+                || !v0.iter().zip(&v1).all(|(a, b)| a.to_bits() == b.to_bits())
             {
                 ok = false;
                 eprintln!("G1[{label}] mismatch at layer {l} pos {pos}");
@@ -313,7 +308,9 @@ fn g1_branch_isolation(config: &Config, label: &str) -> bool {
     for pos in 4 * PAGE_SIZE..b.len() {
         for l in 0..nl {
             let base = tok(0xDEAD, pos * 31 + l);
-            let kv: Vec<f32> = (0..kd).map(|d| f32::from_bits(base.wrapping_add(d as u32))).collect();
+            let kv: Vec<f32> = (0..kd)
+                .map(|d| f32::from_bits(base.wrapping_add(d as u32)))
+                .collect();
             cache.write_kv(l, 1, pos, &kv, &kv);
         }
     }
@@ -482,7 +479,10 @@ fn g2_hit_rate_and_latency(label: &str) -> bool {
         }
     }
     let flat_match_ms = t3.elapsed().as_secs_f64() * 1e3;
-    debug_assert_eq!(radix_probe_hit, flat_probe_hit, "same hits without pressure");
+    debug_assert_eq!(
+        radix_probe_hit, flat_probe_hit,
+        "same hits without pressure"
+    );
 
     println!(
         "    (info) full serve loop: radix {radix_ms:.2} ms, flat {flat_ms:.2} ms — includes insert/evict, not gated"
@@ -651,7 +651,10 @@ fn verdict(ok: bool) -> &'static str {
 fn radix_prefix_cache_goat() {
     println!("╔══ bench_762 — radix prefix cache GOAT (Issue 771) ══╗");
     let mut all = true;
-    for (name, config) in [("micro", Config::micro()), ("small_target", Config::small_target())] {
+    for (name, config) in [
+        ("micro", Config::micro()),
+        ("small_target", Config::small_target()),
+    ] {
         println!("── {name} ──");
         all &= g1_bit_identity(&config, name);
         all &= g1_branch_isolation(&config, name);

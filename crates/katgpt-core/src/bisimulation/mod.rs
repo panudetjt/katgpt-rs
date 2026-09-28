@@ -98,13 +98,13 @@
 //! - Closest cousin: [`crate::induced_cwm`] (Plan 296, Research 275)
 //! - Gap closed: `katgpt-rs/.research/264_Compositional_Open_Ended_Intelligence_Framework.md` §2.2
 
+#[cfg(feature = "operator_consistency")]
+pub mod consistency;
 pub mod graph;
 pub mod operator;
 pub mod planner;
 pub mod refine;
 pub mod types;
-#[cfg(feature = "operator_consistency")]
-pub mod consistency;
 
 // ── Public API re-exports ─────────────────────────────────────────────────
 //
@@ -114,16 +114,16 @@ pub mod consistency;
 // `katgpt_core::bisimulation::BisimulationQuotient` instead of
 // `katgpt_core::bisimulation::refine::BisimulationQuotient`.
 
-pub use graph::{TransitionGraph, TransitionGraphBuilder};
-pub use operator::{OperatorDef, OperatorSchema, infer_operators};
-pub use planner::{Plan, plan};
-pub use refine::{BisimulationQuotient, partition_refine};
-pub use types::{OperatorLabel, QuotientEdge, StateClassId, StateId, Transition};
 #[cfg(feature = "operator_consistency")]
 pub use consistency::{
     ApplicationOutcome, ConsistencyGateConfig, ConsistencyRegime, ConsistencyReport,
     PromotionVerdict, promotion_verdict, rule_consistency,
 };
+pub use graph::{TransitionGraph, TransitionGraphBuilder};
+pub use operator::{OperatorDef, OperatorSchema, infer_operators};
+pub use planner::{Plan, plan};
+pub use refine::{BisimulationQuotient, partition_refine};
+pub use types::{OperatorLabel, QuotientEdge, StateClassId, StateId, Transition};
 
 // ── Quotient definition lives here (re-exported from refine) ───────────────
 //

@@ -51,9 +51,7 @@ use katgpt_rs::kimi_k3::decoder_layer::{
     KimiAttentionWeights, KimiDecoderLayerWeights, KimiFfnWeights,
 };
 use katgpt_rs::kimi_k3::loader::KimiK3ModelWeights;
-use katgpt_rs::kimi_k3::model::{
-    KimiK3ModelConfig, KimiK3Runtime, kimi_k3_forward_token_traced,
-};
+use katgpt_rs::kimi_k3::model::{KimiK3ModelConfig, KimiK3Runtime, kimi_k3_forward_token_traced};
 use katgpt_transformer::attn_res::AttnResWeights;
 use katgpt_transformer::moe::{MoeWeights, SwiGluExpertWeights};
 
@@ -227,9 +225,8 @@ impl ExtractScratch {
     ) {
         runtime.reset();
         self.traj_buf.clear();
-        let _ = kimi_k3_forward_token_traced(
-            config, weights, runtime, token_id, &mut self.traj_buf,
-        );
+        let _ =
+            kimi_k3_forward_token_traced(config, weights, runtime, token_id, &mut self.traj_buf);
     }
 }
 
@@ -341,8 +338,7 @@ fn encode_state_norms(states: &[&[f32]], out: &mut [f32; D]) {
     // Partial trailing block.
     let trailing_start = n_blocks * 9;
     let trailing_len = D - trailing_start;
-    out[trailing_start..trailing_start + trailing_len]
-        .copy_from_slice(&norms[..trailing_len]);
+    out[trailing_start..trailing_start + trailing_len].copy_from_slice(&norms[..trailing_len]);
 }
 
 /// Per-displacement L2 norm ratios: ||disp_l|| / sum(||disp_l||).
@@ -542,13 +538,25 @@ fn test_encoder_sigma(
         scratch.extract_traj(config, weights_a, runtime_a, tok);
         let states_a: Vec<Vec<f32>> = scratch.traj_buf.clone();
         let refs_a: Vec<&[f32]> = states_a.iter().map(|v| v.as_slice()).collect();
-        encode(encoder_kind, &refs_a, scratch, geom_encoder, &mut summaries[0][idx]);
+        encode(
+            encoder_kind,
+            &refs_a,
+            scratch,
+            geom_encoder,
+            &mut summaries[0][idx],
+        );
 
         // Model B
         scratch.extract_traj(config, weights_b, runtime_b, tok);
         let states_b: Vec<Vec<f32>> = scratch.traj_buf.clone();
         let refs_b: Vec<&[f32]> = states_b.iter().map(|v| v.as_slice()).collect();
-        encode(encoder_kind, &refs_b, scratch, geom_encoder, &mut summaries[1][idx]);
+        encode(
+            encoder_kind,
+            &refs_b,
+            scratch,
+            geom_encoder,
+            &mut summaries[1][idx],
+        );
     }
 
     // Stage 1: Fit directions from the training split.
@@ -667,8 +675,10 @@ fn main() {
     let d = config.hidden_size;
     println!("Config: D={d}, layers={}", config.num_layers);
     println!("Summary dim: {D}, archetypes: {N} (original vs perturbed)");
-    println!("Tokens: {N_TOKENS} ({N_TRAIN} train + {} test per model)",
-        N_TOKENS - N_TRAIN);
+    println!(
+        "Tokens: {N_TOKENS} ({N_TRAIN} train + {} test per model)",
+        N_TOKENS - N_TRAIN
+    );
     println!("Sigma levels: {SIGMA_LEVELS:?}");
     println!();
 
@@ -686,11 +696,10 @@ fn main() {
 
     print!("Loading real model.safetensors ... ");
     let t0 = std::time::Instant::now();
-    let weights_a = katgpt_rs::kimi_k3::loader::load_kimi_k3(&model_path)
-        .unwrap_or_else(|e| {
-            eprintln!("\n  load failed: {e}");
-            std::process::exit(1);
-        });
+    let weights_a = katgpt_rs::kimi_k3::loader::load_kimi_k3(&model_path).unwrap_or_else(|e| {
+        eprintln!("\n  load failed: {e}");
+        std::process::exit(1);
+    });
     println!("done ({:.1}s)", t0.elapsed().as_secs_f64());
     println!();
 
@@ -721,8 +730,10 @@ fn main() {
         perturb_model(&mut weights_b, sigma);
 
         println!("── σ = {sigma} ──────────────────────────────────────────");
-        println!("  {:>12}  {:>8}  {:>10}  {:>8}  {:>6}  {:>8}  {:>8}",
-            "encoder", "acc", "centroid_d", "within_σ", "SNR", "centroid", "verdict");
+        println!(
+            "  {:>12}  {:>8}  {:>10}  {:>8}  {:>6}  {:>8}  {:>8}",
+            "encoder", "acc", "centroid_d", "within_σ", "SNR", "centroid", "verdict"
+        );
         println!("  {}", "-".repeat(78));
 
         for &ek in &encoders {
@@ -740,7 +751,11 @@ fn main() {
             result.sigma = sigma;
 
             let verdict = if sigma == 0.0 {
-                if result.accuracy <= 0.60 { "OK" } else { "WARN" }
+                if result.accuracy <= 0.60 {
+                    "OK"
+                } else {
+                    "WARN"
+                }
             } else if result.accuracy >= 0.80 {
                 "PASS"
             } else if result.centroid_accuracy >= 1.0 {
@@ -770,7 +785,10 @@ fn main() {
     println!();
 
     for &ek in &encoders {
-        if let Some(r) = all_results.iter().find(|r| r.encoder == ek && r.sigma == 0.5) {
+        if let Some(r) = all_results
+            .iter()
+            .find(|r| r.encoder == ek && r.sigma == 0.5)
+        {
             let bar_len = (r.accuracy * 40.0) as usize;
             let bar: String = "█".repeat(bar_len);
             println!(
@@ -797,23 +815,29 @@ fn main() {
             .find(|r| r.sigma > 0.0 && r.accuracy >= 0.80)
             .map(|r| r.sigma);
 
-        if let Some(f) = floor { println!("  {:>12}: σ* = {:.4} ✅", ek.name(), f) } else {
-                let max_acc = all_results
-                    .iter()
-                    .filter(|r| r.encoder == ek)
-                    .map(|r| r.accuracy)
-                    .fold(0.0_f32, f32::max);
-                println!("  {:>12}: no floor (max acc = {:.1}%) ❌", ek.name(), max_acc * 100.0);
-            }
+        if let Some(f) = floor {
+            println!("  {:>12}: σ* = {:.4} ✅", ek.name(), f)
+        } else {
+            let max_acc = all_results
+                .iter()
+                .filter(|r| r.encoder == ek)
+                .map(|r| r.accuracy)
+                .fold(0.0_f32, f32::max);
+            println!(
+                "  {:>12}: no floor (max acc = {:.1}%) ❌",
+                ek.name(),
+                max_acc * 100.0
+            );
+        }
     }
     println!();
 
     // ── Verdict ───────────────────────────────────────────────────────────
     let any_value_encoder_works = encoders.iter().any(|&ek| {
         ek != EncoderKind::Geometry
-            && all_results.iter().any(|r| {
-                r.encoder == ek && r.sigma > 0.0 && r.accuracy >= 0.80
-            })
+            && all_results
+                .iter()
+                .any(|r| r.encoder == ek && r.sigma > 0.0 && r.accuracy >= 0.80)
     });
 
     let signal_exists_but_too_weak = encoders.iter().any(|&ek| {

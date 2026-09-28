@@ -40,7 +40,7 @@ use katgpt_core::swe_trajectory_freeze::GeometrySummaryEncoder;
 use katgpt_rs::kimi_k3::decoder_layer::{
     KimiAttentionWeights, KimiDecoderLayerWeights, KimiFfnWeights,
 };
-use katgpt_rs::kimi_k3::loader::{load_kimi_k3, KimiK3ModelWeights};
+use katgpt_rs::kimi_k3::loader::{KimiK3ModelWeights, load_kimi_k3};
 use katgpt_rs::kimi_k3::model::{KimiK3ModelConfig, KimiK3Runtime, kimi_k3_forward_token_traced};
 use katgpt_transformer::attn_res::AttnResWeights;
 use katgpt_transformer::moe::{MoeWeights, SwiGluExpertWeights};
@@ -216,9 +216,8 @@ impl ExtractScratch {
     ) {
         runtime.reset();
         self.traj_buf.clear();
-        let _ = kimi_k3_forward_token_traced(
-            config, weights, runtime, token_id, &mut self.traj_buf,
-        );
+        let _ =
+            kimi_k3_forward_token_traced(config, weights, runtime, token_id, &mut self.traj_buf);
     }
 }
 
@@ -813,8 +812,10 @@ fn main() {
     let config = KimiK3ModelConfig::kimi_k3_0_40b();
     let d_model = config.hidden_size;
     println!("Config: D_model={d_model}, layers={}", config.num_layers);
-    println!("Tokens: {N_TOKENS} ({N_TRAIN} train + {} test per model)",
-        N_TOKENS - N_TRAIN);
+    println!(
+        "Tokens: {N_TOKENS} ({N_TRAIN} train + {} test per model)",
+        N_TOKENS - N_TRAIN
+    );
     println!("Sigma levels: {SIGMA_LEVELS:?}");
     println!();
 
@@ -882,11 +883,22 @@ fn main() {
         }
 
         println!();
-        println!("── σ = {} (extract {:.1}s) ────────────────────────────────────",
-            sigma, t0.elapsed().as_secs_f64());
+        println!(
+            "── σ = {} (extract {:.1}s) ────────────────────────────────────",
+            sigma,
+            t0.elapsed().as_secs_f64()
+        );
         println!(
             "  {:>10}  {:>3}  {:>9}  {:>9}  {:>9}  {:>6}  {:>9}  {:>9}  {:>8}",
-            "encoder", "d", "Euclidean", "DiagMaha", "FullMaha", "λ_LW", "d_Euclid", "d_Maha", "BayesOpt"
+            "encoder",
+            "d",
+            "Euclidean",
+            "DiagMaha",
+            "FullMaha",
+            "λ_LW",
+            "d_Euclid",
+            "d_Maha",
+            "BayesOpt"
         );
         println!("  {}", "-".repeat(96));
 
@@ -935,7 +947,9 @@ fn main() {
         let best = all_results
             .iter()
             .filter(|r| r.encoder == ek && r.sigma > 0.0)
-            .max_by(|a, b| katgpt_core::float_order::cmp_for_max(a.mahalanobis_acc, b.mahalanobis_acc));
+            .max_by(|a, b| {
+                katgpt_core::float_order::cmp_for_max(a.mahalanobis_acc, b.mahalanobis_acc)
+            });
 
         if let Some(r) = best {
             let improvement = (r.mahalanobis_acc - r.euclidean_acc) * 100.0;
@@ -957,19 +971,19 @@ fn main() {
     println!("══════════════════════════════════════════════════════════════════");
 
     // Check if any Mahalanobis result beats Euclidean by ≥10pp.
-    let any_maha_beats_euclid = all_results.iter().any(|r| {
-        r.sigma > 0.0 && r.mahalanobis_acc > r.euclidean_acc + 0.10
-    });
+    let any_maha_beats_euclid = all_results
+        .iter()
+        .any(|r| r.sigma > 0.0 && r.mahalanobis_acc > r.euclidean_acc + 0.10);
 
     // Check if any Mahalanobis result reaches ≥80%.
-    let any_maha_80 = all_results.iter().any(|r| {
-        r.sigma > 0.0 && r.mahalanobis_acc >= 0.80
-    });
+    let any_maha_80 = all_results
+        .iter()
+        .any(|r| r.sigma > 0.0 && r.mahalanobis_acc >= 0.80);
 
     // Check if any Bayes-optimal ceiling is ≥80%.
-    let any_bayes_80 = all_results.iter().any(|r| {
-        r.sigma > 0.0 && r.bayes_optimal >= 0.80
-    });
+    let any_bayes_80 = all_results
+        .iter()
+        .any(|r| r.sigma > 0.0 && r.bayes_optimal >= 0.80);
 
     if any_maha_80 {
         println!("VERDICT: Full Mahalanobis achieves ≥80% per-token accuracy.");

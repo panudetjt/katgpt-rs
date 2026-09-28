@@ -66,12 +66,7 @@ pub const DENSITY_ALERT: f32 = 0.5;
 ///
 /// Panics if `mask.len() != n_agents * n_thoughts` or `out.len() <
 /// n_thoughts`.
-pub fn agreement_counts_into(
-    mask: &[bool],
-    n_agents: usize,
-    n_thoughts: usize,
-    out: &mut [u32],
-) {
+pub fn agreement_counts_into(mask: &[bool], n_agents: usize, n_thoughts: usize, out: &mut [u32]) {
     assert_eq!(
         mask.len(),
         n_agents * n_thoughts,
@@ -100,12 +95,7 @@ pub fn agreement_counts_into(
 ///
 /// Same layout contract as [`agreement_counts_into`] (with `out.len() >=
 /// n_agents`).
-pub fn support_sizes_into(
-    mask: &[bool],
-    n_agents: usize,
-    n_thoughts: usize,
-    out: &mut [u32],
-) {
+pub fn support_sizes_into(mask: &[bool], n_agents: usize, n_thoughts: usize, out: &mut [u32]) {
     assert_eq!(
         mask.len(),
         n_agents * n_thoughts,
@@ -290,8 +280,7 @@ pub fn hall_max_matching_into(
     s.dist.clear();
     s.dist.resize(n_agents, 0);
 
-    let neighbors =
-        |a: usize| &mask[a * n_thoughts..(a + 1) * n_thoughts];
+    let neighbors = |a: usize| &mask[a * n_thoughts..(a + 1) * n_thoughts];
 
     // DFS: augment along level graphs. Nested fn (hoisted by the compiler);
     // small depth — bounded by the agent count.
@@ -491,7 +480,9 @@ mod tests {
     #[test]
     fn planted_mask_counts_exact() {
         // a0: [T T F F]  a1: [T F T F]  a2: [F T T F]
-        let mask = [true, true, false, false, true, false, true, false, false, true, true, false];
+        let mask = [
+            true, true, false, false, true, false, true, false, false, true, true, false,
+        ];
         let mut alpha = [0u32; 4];
         agreement_counts_into(&mask, 3, 4, &mut alpha);
         assert_eq!(alpha, [2, 2, 2, 0]);
@@ -548,10 +539,19 @@ mod tests {
             for a in 1..=64u32 {
                 let r = routing_weight(a, kappa);
                 let c = contagion_strength(a, kappa);
-                assert!(r >= prev_r, "routing_weight not monotone at α={a} κ={kappa}");
-                assert!(c >= prev_c, "contagion_strength not monotone at α={a} κ={kappa}");
+                assert!(
+                    r >= prev_r,
+                    "routing_weight not monotone at α={a} κ={kappa}"
+                );
+                assert!(
+                    c >= prev_c,
+                    "contagion_strength not monotone at α={a} κ={kappa}"
+                );
                 assert!((0.0..=1.0).contains(&c), "contagion out of [0,1] at α={a}");
-                assert!((1.0..=1.5).contains(&r), "routing weight out of [1,1.5] at α={a}");
+                assert!(
+                    (1.0..=1.5).contains(&r),
+                    "routing weight out of [1,1.5] at α={a}"
+                );
                 prev_r = r;
                 prev_c = c;
             }
@@ -668,14 +668,20 @@ mod tests {
 
             let mut alpha1 = vec![0u32; n_thoughts];
             agreement_counts_into(&permuted, n_agents, n_thoughts, &mut alpha1);
-            assert_eq!(alpha0, alpha1, "case {case}: α per thought must be agent-permutation invariant");
+            assert_eq!(
+                alpha0, alpha1,
+                "case {case}: α per thought must be agent-permutation invariant"
+            );
 
             let mut sizes1 = vec![0u32; n_agents];
             support_sizes_into(&permuted, n_agents, n_thoughts, &mut sizes1);
             let mut fracs1 = vec![0.0f32; n_agents];
             private_fractions_into(&permuted, n_agents, n_thoughts, &mut scratch, &mut fracs1);
             for dst in 0..n_agents {
-                assert_eq!(sizes1[dst], sizes0[perm[dst]], "case {case}: support sizes must be equivariant");
+                assert_eq!(
+                    sizes1[dst], sizes0[perm[dst]],
+                    "case {case}: support sizes must be equivariant"
+                );
                 assert_eq!(
                     fracs1[dst].to_bits(),
                     fracs0[perm[dst]].to_bits(),
@@ -749,7 +755,13 @@ mod tests {
     }
 
     fn brute_force_max_matching(mask: &[bool], n_agents: usize, n_thoughts: usize) -> usize {
-        fn rec(mask: &[bool], n_thoughts: usize, agent: usize, n_agents: usize, used: &mut [bool]) -> usize {
+        fn rec(
+            mask: &[bool],
+            n_thoughts: usize,
+            agent: usize,
+            n_agents: usize,
+            used: &mut [bool],
+        ) -> usize {
             if agent == n_agents {
                 return 0;
             }

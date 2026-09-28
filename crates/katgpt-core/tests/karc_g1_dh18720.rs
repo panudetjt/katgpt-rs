@@ -68,8 +68,8 @@
 #![cfg(feature = "karc_forecaster")]
 
 use katgpt_core::{
-    ChebyshevBasis, chunked_gram_into, feature_expand_higher_order,
-    higher_order_feature_count, linalg::ridge_solve_direct_f64,
+    ChebyshevBasis, chunked_gram_into, feature_expand_higher_order, higher_order_feature_count,
+    linalg::ridge_solve_direct_f64,
 };
 
 // ── Double-scroll ODE parameters (paper §A.1, arXiv:2606.19984 Eqs. 15–17) ──
@@ -251,9 +251,7 @@ fn smoke_k4_m8_r2_dh4752_pipeline_healthy() {
     const D_H_S: usize = higher_order_feature_count(D_H_1_S, R); // 4752
     const N_S: usize = 2000;
 
-    println!(
-        "smoke: K={K_S}, M={M_S}, R={R}, d_h={D_H_S} (full-rank Cholesky)"
-    );
+    println!("smoke: K={K_S}, M={M_S}, R={R}, d_h={D_H_S} (full-rank Cholesky)");
 
     let traj_raw = generate_double_scroll(N_S + K_S + 50, DT, 1000, SUBSTEPS);
     let mut traj = traj_raw.clone();
@@ -416,9 +414,7 @@ fn g1_dh_18720_k8_m8_r2() {
     println!(
         "Issue 187 T7 / Plan 308 T4.5: KARC G1 at d_h = {D_H} (K={K}, M={M}, R={R}) [full-rank Cholesky]"
     );
-    println!(
-        "  Lyapunov time ≈ {LYAPUNOV_TIME_UNITS} units ≈ {SAMPLES_PER_LT} samples"
-    );
+    println!("  Lyapunov time ≈ {LYAPUNOV_TIME_UNITS} units ≈ {SAMPLES_PER_LT} samples");
 
     // ── 1. Generate trajectory + normalize to [-1, 1] per coordinate ──────
     let t_traj = Instant::now();
@@ -593,9 +589,7 @@ fn g1_dh_18720_k8_m8_r2() {
     println!("── G1 results (d_h = {D_H}, K={K}, M={M}, R={R}) ────────────────────");
     println!("  Cholesky fit wall: {fit_dt:.2?}");
     println!("  NRMSE over 1 LT:   {nrmse_one_lt:.6e}   (target ≤ 1.0e-3)");
-    println!(
-        "  threshold (ε=0.1): {thr_sample} samples = {thr_lt:.2} LT   (target ≥ 8 LT)"
-    );
+    println!("  threshold (ε=0.1): {thr_sample} samples = {thr_lt:.2} LT   (target ≥ 8 LT)");
     println!("  σ(u) mean per-coord: {sigma:.4}");
     println!();
     let nrmse_pass = nrmse_one_lt <= 1.0e-3;
@@ -610,13 +604,19 @@ fn g1_dh_18720_k8_m8_r2() {
     );
     println!();
     if nrmse_pass && thr_pass {
-        println!("  VERDICT: G1 PASS at this config — confirms the split-config contract (Phase 22 promotion).");
+        println!(
+            "  VERDICT: G1 PASS at this config — confirms the split-config contract (Phase 22 promotion)."
+        );
     } else {
-        println!("  VERDICT: G1 FAIL at this config — informational only; `karc_forecaster` was promoted DEFAULT-ON (Phase 22, 2026-07-21) under the Issue 186 Path D3 split-config contract via other passing configs.");
+        println!(
+            "  VERDICT: G1 FAIL at this config — informational only; `karc_forecaster` was promoted DEFAULT-ON (Phase 22, 2026-07-21) under the Issue 186 Path D3 split-config contract via other passing configs."
+        );
     }
     println!();
     println!("  paper reference: NRMSE 5.3e-4, threshold 16.7 LT (second-order Fourier, d_h=1891)");
-    println!("  Phase 2 reference: NRMSE 1.67e-4, threshold 2.85 LT (Chebyshev R=2, K=4/M=8, d_h=4752)");
+    println!(
+        "  Phase 2 reference: NRMSE 1.67e-4, threshold 2.85 LT (Chebyshev R=2, K=4/M=8, d_h=4752)"
+    );
 
     // Record the result to a known location for the post-run doc update.
     // (No assertion — this is a measurement test, not a pass/fail gate.)
@@ -658,9 +658,7 @@ fn smoke_k4_m8_r2_lambda_sweep() {
     const D_H_S: usize = higher_order_feature_count(D_H_1_S, R); // 4752
     const N_S: usize = 2000;
 
-    println!(
-        "smoke λ-sweep: K={K_S}, M={M_S}, R={R}, d_h={D_H_S}, N={N_S}"
-    );
+    println!("smoke λ-sweep: K={K_S}, M={M_S}, R={R}, d_h={D_H_S}, N={N_S}");
 
     // Build trajectory + normalize
     let traj_raw = generate_double_scroll(N_S + K_S + 50, DT, 1000, SUBSTEPS);
@@ -738,10 +736,7 @@ fn smoke_k4_m8_r2_lambda_sweep() {
     let mut prev_nrmse: Option<f32> = None;
     let mut results: Vec<(f64, f32, f64)> = Vec::with_capacity(lambdas.len());
 
-    println!(
-        "{:>10} {:>15} {:>15}",
-        "λ", "NRMSE(1 LT)", "threshold(LT)"
-    );
+    println!("{:>10} {:>15} {:>15}", "λ", "NRMSE(1 LT)", "threshold(LT)");
     for &lambda in &lambdas {
         // Copy unreg Gram + add λI
         gram_work.copy_from_slice(&gram_unreg);
@@ -811,9 +806,7 @@ fn smoke_k4_m8_r2_lambda_sweep() {
         let thr_sample = threshold_time(&pred, &truth, D, 0.1, sigma);
         let thr_lt = thr_sample as f64 / SAMPLES_PER_LT;
 
-        println!(
-            "{lambda:>10.0e} {nrmse_one_lt:>15.6e} {thr_lt:>15.2}   (fit {fit_dt:.2?})"
-        );
+        println!("{lambda:>10.0e} {nrmse_one_lt:>15.6e} {thr_lt:>15.2}   (fit {fit_dt:.2?})");
         results.push((lambda, nrmse_one_lt, thr_lt));
 
         // On a well-determined system (K=4, d_h=4752, N=2050), regularization
@@ -886,9 +879,7 @@ fn g1_dh_18720_lambda_sweep() {
         "Issue 187 T7 follow-up: KARC G1 λ-sweep at d_h = {D_H} (K={K}, M={M}, R={R}) \
          [full-rank Cholesky, parallel]"
     );
-    println!(
-        "  Lyapunov time ≈ {LYAPUNOV_TIME_UNITS} units ≈ {SAMPLES_PER_LT} samples"
-    );
+    println!("  Lyapunov time ≈ {LYAPUNOV_TIME_UNITS} units ≈ {SAMPLES_PER_LT} samples");
 
     // ── 1. Trajectory + per-coordinate normalization to [-1, 1] ───────────
     let t_traj = Instant::now();
@@ -1105,9 +1096,7 @@ fn g1_dh_18720_lambda_sweep() {
 
     // ── 5. Summary ───────────────────────────────────────────────────────
     println!();
-    println!(
-        "── λ-sweep summary (d_h = {D_H}, K={K}, M={M}, R={R}) ────────────────────"
-    );
+    println!("── λ-sweep summary (d_h = {D_H}, K={K}, M={M}, R={R}) ────────────────────");
     println!(
         "  sweep wall: {:.2?} ({} Cholesky factorizations in parallel)",
         sweep_wall,
@@ -1125,14 +1114,20 @@ fn g1_dh_18720_lambda_sweep() {
             "  {:>10.0e}  {:>14.6e}  {:>10}  {:>14.2}  {:>10}  {:>10.2?}",
             lambda,
             nrmse_one_lt,
-            if nrmse_pass { "✅ ≤1e-3" } else { "❌ >1e-3" },
+            if nrmse_pass {
+                "✅ ≤1e-3"
+            } else {
+                "❌ >1e-3"
+            },
             thr_lt,
             if thr_pass { "✅ ≥8" } else { "❌ <8" },
             fit_dt
         );
     }
     println!();
-    println!("  reference: K=4/M=8/R=2 (d_h=4752) at λ=5e-3 → NRMSE 1.67e-4 ✅, threshold 2.85 LT ❌");
+    println!(
+        "  reference: K=4/M=8/R=2 (d_h=4752) at λ=5e-3 → NRMSE 1.67e-4 ✅, threshold 2.85 LT ❌"
+    );
     println!();
 
     let any_pass = sorted
@@ -1149,16 +1144,13 @@ fn g1_dh_18720_lambda_sweep() {
             winners.len()
         );
         for (lambda, nrmse_one_lt, thr_lt, _) in &winners {
-            println!(
-                "    λ={lambda:.0e}: NRMSE={nrmse_one_lt:.6e}, threshold={thr_lt:.2} LT"
-            );
+            println!("    λ={lambda:.0e}: NRMSE={nrmse_one_lt:.6e}, threshold={thr_lt:.2} LT");
         }
     } else {
-        println!("  VERDICT: no λ passes both G1 legs at this config — informational only; `karc_forecaster` was promoted DEFAULT-ON (Phase 22) under the split-config contract via other configs.");
-        if let Some(best_nrmse) = sorted
-            .iter()
-            .min_by(|a, b| a.1.total_cmp(&b.1))
-        {
+        println!(
+            "  VERDICT: no λ passes both G1 legs at this config — informational only; `karc_forecaster` was promoted DEFAULT-ON (Phase 22) under the split-config contract via other configs."
+        );
+        if let Some(best_nrmse) = sorted.iter().min_by(|a, b| a.1.total_cmp(&b.1)) {
             println!(
                 "  best NRMSE:      λ={:.0e} → NRMSE={:.6e}, threshold={:.2} LT",
                 best_nrmse.0, best_nrmse.1, best_nrmse.2
@@ -1228,9 +1220,7 @@ fn g1_dh_29160_k10_lambda_sweep() {
         "Issue 187 T7 follow-up #2: KARC G1 λ-sweep at d_h = {D_H} (K={K}, M={M}, R={R}) \
          [full-rank Cholesky, parallel]"
     );
-    println!(
-        "  Lyapunov time ≈ {LYAPUNOV_TIME_UNITS} units ≈ {SAMPLES_PER_LT} samples"
-    );
+    println!("  Lyapunov time ≈ {LYAPUNOV_TIME_UNITS} units ≈ {SAMPLES_PER_LT} samples");
 
     // ── 1. Trajectory + per-coordinate normalization to [-1, 1] ───────────
     let t_traj = Instant::now();
@@ -1450,9 +1440,7 @@ fn g1_dh_29160_k10_lambda_sweep() {
 
     // ── 5. Summary ───────────────────────────────────────────────────────
     println!();
-    println!(
-        "── λ-sweep summary (d_h = {D_H}, K={K}, M={M}, R={R}) ────────────────────"
-    );
+    println!("── λ-sweep summary (d_h = {D_H}, K={K}, M={M}, R={R}) ────────────────────");
     println!(
         "  sweep wall: {:.2?} ({} Cholesky factorizations in parallel)",
         sweep_wall,
@@ -1470,14 +1458,20 @@ fn g1_dh_29160_k10_lambda_sweep() {
             "  {:>10.0e}  {:>14.6e}  {:>10}  {:>14.2}  {:>10}  {:>10.2?}",
             lambda,
             nrmse_one_lt,
-            if nrmse_pass { "✅ ≤1e-3" } else { "❌ >1e-3" },
+            if nrmse_pass {
+                "✅ ≤1e-3"
+            } else {
+                "❌ >1e-3"
+            },
             thr_lt,
             if thr_pass { "✅ ≥8" } else { "❌ <8" },
             fit_dt
         );
     }
     println!();
-    println!("  Phase 5.1 reference: K=8/M=8/R=2 (d_h=18_720) at λ=5e-2 → NRMSE 9.43e-4 ✅, threshold 7.23 LT ❌");
+    println!(
+        "  Phase 5.1 reference: K=8/M=8/R=2 (d_h=18_720) at λ=5e-2 → NRMSE 9.43e-4 ✅, threshold 7.23 LT ❌"
+    );
     println!();
 
     let any_pass = sorted
@@ -1494,16 +1488,13 @@ fn g1_dh_29160_k10_lambda_sweep() {
             winners.len()
         );
         for (lambda, nrmse_one_lt, thr_lt, _) in &winners {
-            println!(
-                "    λ={lambda:.0e}: NRMSE={nrmse_one_lt:.6e}, threshold={thr_lt:.2} LT"
-            );
+            println!("    λ={lambda:.0e}: NRMSE={nrmse_one_lt:.6e}, threshold={thr_lt:.2} LT");
         }
     } else {
-        println!("  VERDICT: no λ passes both G1 legs at this config — informational only; `karc_forecaster` was promoted DEFAULT-ON (Phase 22) under the split-config contract via other configs.");
-        if let Some(best_nrmse) = sorted
-            .iter()
-            .min_by(|a, b| a.1.total_cmp(&b.1))
-        {
+        println!(
+            "  VERDICT: no λ passes both G1 legs at this config — informational only; `karc_forecaster` was promoted DEFAULT-ON (Phase 22) under the split-config contract via other configs."
+        );
+        if let Some(best_nrmse) = sorted.iter().min_by(|a, b| a.1.total_cmp(&b.1)) {
             println!(
                 "  best NRMSE:      λ={:.0e} → NRMSE={:.6e}, threshold={:.2} LT",
                 best_nrmse.0, best_nrmse.1, best_nrmse.2
@@ -1555,9 +1546,7 @@ fn g1_r1_k8_m24_dh576_lambda_sweep() {
     const D_H_R1: usize = K_R1 * D * M_R1; // 576 — R=1 means no outer products
     const N_R1: usize = 4000;
 
-    println!(
-        "Phase 5.3 R=1 K=8/M=24 λ-sweep: d_h={D_H_R1}, N={N_R1}"
-    );
+    println!("Phase 5.3 R=1 K=8/M=24 λ-sweep: d_h={D_H_R1}, N={N_R1}");
     println!("  Reference (Phase 1, λ=5e-3): NRMSE 4.79e-3, threshold 8.16 LT");
 
     // Build trajectory + normalize
@@ -1601,7 +1590,9 @@ fn g1_r1_k8_m24_dh576_lambda_sweep() {
             }
         }
         feature_expand_higher_order::<ChebyshevBasis<M_R1>, M_R1, R_R1>(
-            &delay, &basis_r1, &mut row_buf,
+            &delay,
+            &basis_r1,
+            &mut row_buf,
         );
         features[pair_idx * D_H_R1..(pair_idx + 1) * D_H_R1].copy_from_slice(&row_buf);
         for d in 0..D {
@@ -1709,9 +1700,7 @@ fn g1_r1_k8_m24_dh576_lambda_sweep() {
         let thr_sample = threshold_time(&pred, &truth, D, 0.1, sigma);
         let thr_lt = thr_sample as f64 / SAMPLES_PER_LT;
 
-        println!(
-            "{lambda:>10.0e} {nrmse_one_lt:>15.6e} {thr_lt:>15.2}   (fit {fit_dt:?})"
-        );
+        println!("{lambda:>10.0e} {nrmse_one_lt:>15.6e} {thr_lt:>15.2}   (fit {fit_dt:?})");
         results.push((lambda, nrmse_one_lt, thr_lt));
     }
 

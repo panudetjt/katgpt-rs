@@ -478,8 +478,7 @@ pub fn preload_kv_cache(
                 .min(target_layer.key.len());
             if copy_len > 0 {
                 draft_layer.key[..copy_len].copy_from_slice(&target_layer.key[..copy_len]);
-                draft_layer.value[..copy_len]
-                    .copy_from_slice(&target_layer.value[..copy_len]);
+                draft_layer.value[..copy_len].copy_from_slice(&target_layer.value[..copy_len]);
             }
         }
     }
@@ -551,15 +550,15 @@ impl PagedKVCache {
     /// Allocate a new page. Reuse from free list or grow the pool.
     fn alloc_page(&mut self) -> usize {
         let idx = if let Some(idx) = self.free_pages.pop() {
-                self.pages[idx].fill(0.0);
-                idx
-            } else {
-                self.pages.push(vec![0.0; PAGE_SIZE * self.kv_dim * 2]);
-                let idx = self.total_pages;
-                self.total_pages += 1;
-                self.page_ref_counts.push(0);
-                idx
-            };
+            self.pages[idx].fill(0.0);
+            idx
+        } else {
+            self.pages.push(vec![0.0; PAGE_SIZE * self.kv_dim * 2]);
+            let idx = self.total_pages;
+            self.total_pages += 1;
+            self.page_ref_counts.push(0);
+            idx
+        };
         self.page_ref_counts[idx] += 1;
         idx
     }
@@ -1008,11 +1007,8 @@ mod sliding_bounded_tests {
         // max_positions = 0 should be clamped to 1 (avoid zero-sized alloc).
         let config = tiny_config();
         let per_layer_kvd = vec![4; 3];
-        let cache = MultiLayerKVCache::new_with_per_layer_kv_dim_bounded(
-            &config,
-            &per_layer_kvd,
-            0,
-        );
+        let cache =
+            MultiLayerKVCache::new_with_per_layer_kv_dim_bounded(&config, &per_layer_kvd, 0);
         for layer in &cache.layers {
             assert_eq!(layer.key.len(), 4, "clamped to 1*kvd");
             assert_eq!(layer.value.len(), 4, "clamped to 1*kvd");
@@ -1090,7 +1086,12 @@ mod sliding_bounded_tests {
         for i in 0..sw {
             let got = layer.key[i * kvd];
             let expected = (t_start + i) as f32;
-            assert_eq!(got, expected, "ring slot {i} should hold position {}", t_start + i);
+            assert_eq!(
+                got,
+                expected,
+                "ring slot {i} should hold position {}",
+                t_start + i
+            );
         }
     }
 
@@ -1198,7 +1199,10 @@ mod sliding_bounded_tests {
             .iter()
             .map(|l| (l.key.len(), l.value.len()))
             .collect();
-        assert_eq!(lens_before, lens_after, "buffers must not grow across the run");
+        assert_eq!(
+            lens_before, lens_after,
+            "buffers must not grow across the run"
+        );
         for l in 0..config.n_layer {
             assert_eq!(cache.layers[l].key.len(), window * kvd);
             assert_eq!(cache.sliding_capacity(l), window);
@@ -1212,7 +1216,10 @@ mod sliding_bounded_tests {
         let result = std::panic::catch_unwind(|| {
             MultiLayerKVCache::new_all_sliding_bounded(&config, 0);
         });
-        assert!(result.is_err(), "window == 0 must panic (use `new` for unbounded)");
+        assert!(
+            result.is_err(),
+            "window == 0 must panic (use `new` for unbounded)"
+        );
     }
 
     #[test]

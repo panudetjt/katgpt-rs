@@ -150,11 +150,8 @@ pub struct ConvergenceCadence<const K: usize = 16> {
 
 impl<const K: usize> ConvergenceCadence<K> {
     const _SHAPE_GUARD: () = assert!(
-
         K >= 4 && K.is_multiple_of(2),
-
         "ConvergenceCadence window K must be even and >= 4 (two half-windows)"
-
     );
 
     /// New probe with the default [`CadenceConfig`].
@@ -166,9 +163,14 @@ impl<const K: usize> ConvergenceCadence<K> {
     /// New probe with caller-calibrated thresholds.
     #[inline]
     pub fn with_config(config: CadenceConfig) -> Self {
-        debug_assert!(config.settle_floor <= config.plateau_floor,
-            "settle_floor must be <= plateau_floor (a window cannot be both settled-low and stuck-high)");
-        debug_assert!(config.decay_ratio_max > 0.0, "decay_ratio_max must be positive");
+        debug_assert!(
+            config.settle_floor <= config.plateau_floor,
+            "settle_floor must be <= plateau_floor (a window cannot be both settled-low and stuck-high)"
+        );
+        debug_assert!(
+            config.decay_ratio_max > 0.0,
+            "decay_ratio_max must be positive"
+        );
         Self {
             ring: [0.0; K],
             head: 0,
@@ -452,7 +454,10 @@ impl LoopResidualExit {
         // Arm 2 — shape: the cadence verdict is Settled (decayed or
         // absolutely-low; classify needs the full K = 4 window).
         self.cadence.push(step_norm);
-        let settled = matches!(self.cadence.classify(), Some(CadenceVerdict::Settled { .. }));
+        let settled = matches!(
+            self.cadence.classify(),
+            Some(CadenceVerdict::Settled { .. })
+        );
         // Persistence (Issue 731 T6): a `None` (window not yet full) or a
         // `Churning` breaks the run — only CONSECUTIVE Settled windows count,
         // so a transient dip inside a plateau cannot read as decay.
@@ -649,7 +654,10 @@ mod tests {
             let _ = c.classify();
         }
         let (count, _bytes) = get_alloc_stats();
-        assert_eq!(count, 0, "push+classify must be zero-alloc, saw {count} allocs");
+        assert_eq!(
+            count, 0,
+            "push+classify must be zero-alloc, saw {count} allocs"
+        );
     }
 
     #[test]
@@ -688,10 +696,7 @@ mod tests {
             c.push(2.0);
         }
         let v = c.classify().expect("K=8 window full");
-        assert!(matches!(
-            v,
-            CadenceVerdict::Churning { plateau_len: 8, .. }
-        ));
+        assert!(matches!(v, CadenceVerdict::Churning { plateau_len: 8, .. }));
     }
 
     /// Custom config: the same window reclassifies when the caller's
@@ -703,7 +708,6 @@ mod tests {
     #[test]
 
     fn custom_config_changes_verdict() {
-
         let flat_tail = [0.30_f32; 16];
 
         let mut default_cfg = ConvergenceCadence::<16>::new();
@@ -716,13 +720,11 @@ mod tests {
         ));
 
         let tight = CadenceConfig {
-
             plateau_floor: 0.25,
 
             settle_floor: 0.1,
 
             decay_ratio_max: 0.5,
-
         };
 
         let mut tight_cfg = ConvergenceCadence::<16>::with_config(tight);
@@ -749,7 +751,10 @@ mod tests {
         assert_eq!(p.d_min(), 4);
         assert!(!p.observe(1e-6), "completed 2 < d_min");
         assert!(!p.observe(1e-6), "completed 3 < d_min");
-        assert!(p.observe(1e-6), "completed 4 = d_min, window full of tiny norms → magnitude arm fires");
+        assert!(
+            p.observe(1e-6),
+            "completed 4 = d_min, window full of tiny norms → magnitude arm fires"
+        );
         assert_eq!(p.fired_at_iteration(), Some(4));
     }
 
@@ -770,13 +775,22 @@ mod tests {
             !fired[0] && !fired[1] && !fired[2],
             "cadence window not yet full (K = 4 needs 4 pushes)"
         );
-        assert!(!fired[3], "obs 4 is the FIRST Settled window — persistence 2 refuses it alone");
-        assert!(fired[4], "obs 5 is the second CONSECUTIVE Settled window → shape arm fires");
+        assert!(
+            !fired[3],
+            "obs 4 is the FIRST Settled window — persistence 2 refuses it alone"
+        );
+        assert!(
+            fired[4],
+            "obs 5 is the second CONSECUTIVE Settled window → shape arm fires"
+        );
         assert_eq!(p.fired_at_iteration(), Some(6));
         // The pre-T6 single-window behavior, retained as the control arm.
         let mut p1 = LoopResidualExit::new(0.0, 2).with_shape_persistence(1);
         let fired1: Vec<bool> = seq.iter().map(|n| p1.observe(*n)).collect();
-        assert!(fired1[3], "persistence 1 recovers the pre-T6 first-full-window fire");
+        assert!(
+            fired1[3],
+            "persistence 1 recovers the pre-T6 first-full-window fire"
+        );
     }
 
     #[cfg(feature = "cadence_gate")]
@@ -796,7 +810,10 @@ mod tests {
     fn residual_exit_nonfinite_never_forces_an_exit() {
         let mut p = LoopResidualExit::new(1e-3, 2);
         for _ in 0..32 {
-            assert!(!p.observe(f32::NAN), "NaN window mean → arm 1 false; cadence reads HIGH → Churning");
+            assert!(
+                !p.observe(f32::NAN),
+                "NaN window mean → arm 1 false; cadence reads HIGH → Churning"
+            );
         }
         assert!(p.fired_at_iteration().is_none());
     }
@@ -836,7 +853,10 @@ mod tests {
         // (obs 7 = completed 8) is rule-1 Settled (newer ≈ 1.95e-2 ≤ 0.5)
         // → false-positive exit at d_min. (fired_at keeps overwriting on
         // every later Settled window, so assert the FIRST fire.)
-        assert!(fired[..6].iter().all(|&f| !f), "floor gate: no exit before completed 8");
+        assert!(
+            fired[..6].iter().all(|&f| !f),
+            "floor gate: no exit before completed 8"
+        );
         assert!(
             fired[6],
             "default floors false-positive at the low-scale plateau (the 881 mechanism)"
@@ -849,11 +869,18 @@ mod tests {
         };
         let mut p = LoopResidualExit::with_cadence_config(1e-4, 8, calibrated);
         for (i, &n) in seq.iter().enumerate() {
-            assert!(!p.observe(n), "calibrated probe must not exit at obs {}", i + 1);
+            assert!(
+                !p.observe(n),
+                "calibrated probe must not exit at obs {}",
+                i + 1
+            );
         }
         // Keep iterating well past the fixture length — still Churning.
         for i in 0..64 {
-            assert!(!p.observe(2e-2), "calibrated probe must not exit (churn {i}) ");
+            assert!(
+                !p.observe(2e-2),
+                "calibrated probe must not exit (churn {i}) "
+            );
         }
         assert!(p.fired_at_iteration().is_none());
     }
@@ -909,8 +936,8 @@ mod tests {
                 plateau_floor: settle * 2.0,
                 decay_ratio_max: 0.5,
             };
-            let mut p = LoopResidualExit::with_cadence_config(0.0, 2, cfg)
-                .with_shape_persistence(1);
+            let mut p =
+                LoopResidualExit::with_cadence_config(0.0, 2, cfg).with_shape_persistence(1);
             let fired: Vec<bool> = dip.iter().map(|&n| p.observe(n)).collect();
             assert!(
                 fired[5],
@@ -940,12 +967,16 @@ mod tests {
             DEFAULT_SHAPE_PERSISTENCE
         );
         assert_eq!(
-            LoopResidualExit::new(1.0, 4).with_shape_persistence(0).shape_persistence(),
+            LoopResidualExit::new(1.0, 4)
+                .with_shape_persistence(0)
+                .shape_persistence(),
             1,
             "0 clamps to 1 — a shape arm that can never fire is not a config, it is a bug"
         );
         assert_eq!(
-            LoopResidualExit::new(1.0, 4).with_shape_persistence(5).shape_persistence(),
+            LoopResidualExit::new(1.0, 4)
+                .with_shape_persistence(5)
+                .shape_persistence(),
             5
         );
     }
@@ -958,7 +989,10 @@ mod tests {
         let mut p = LoopResidualExit::new(1e-3, 4);
         assert!(!p.observe(1e-6));
         assert!(!p.observe(1e-6));
-        assert!(p.observe(1e-6), "magnitude arm is not subject to shape persistence");
+        assert!(
+            p.observe(1e-6),
+            "magnitude arm is not subject to shape persistence"
+        );
         assert_eq!(p.fired_at_iteration(), Some(4));
     }
 
@@ -994,8 +1028,14 @@ mod tests {
         let seq = [40.0, 20.0, 8.0, 8.0, 8.0];
         let mut p = LoopResidualExit::with_cadence_config(0.0, 4, calibrated);
         let fired: Vec<bool> = seq.iter().map(|&n| p.observe(n)).collect();
-        assert!(!fired[3], "the FIRST Settled window alone does not satisfy persistence 2");
-        assert!(fired[4], "calibrated shape arm fires on the second consecutive Settled window");
+        assert!(
+            !fired[3],
+            "the FIRST Settled window alone does not satisfy persistence 2"
+        );
+        assert!(
+            fired[4],
+            "calibrated shape arm fires on the second consecutive Settled window"
+        );
         // fired_at records COMPLETED iterations (seen + 1): the 5th
         // observation arrives after 6 completed iterations.
         assert_eq!(p.fired_at_iteration(), Some(6));

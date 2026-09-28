@@ -81,12 +81,36 @@ const BASE_SEED: u64 = 42;
 
 /// The six arms, in print order.
 const ARMS: [(&str, RestartMode, WidthSelectionMode); 6] = [
-    ("Perturb+MostFreq", RestartMode::Perturb, WidthSelectionMode::MostFrequent),
-    ("Perturb+BestQ", RestartMode::Perturb, WidthSelectionMode::BestQ),
-    ("Perturb+Top1Conv", RestartMode::Perturb, WidthSelectionMode::Top1Converged),
-    ("FreshZ0+MostFreq", RestartMode::FreshZ0, WidthSelectionMode::MostFrequent),
-    ("FreshZ0+BestQ", RestartMode::FreshZ0, WidthSelectionMode::BestQ),
-    ("FreshZ0+Top1Conv", RestartMode::FreshZ0, WidthSelectionMode::Top1Converged),
+    (
+        "Perturb+MostFreq",
+        RestartMode::Perturb,
+        WidthSelectionMode::MostFrequent,
+    ),
+    (
+        "Perturb+BestQ",
+        RestartMode::Perturb,
+        WidthSelectionMode::BestQ,
+    ),
+    (
+        "Perturb+Top1Conv",
+        RestartMode::Perturb,
+        WidthSelectionMode::Top1Converged,
+    ),
+    (
+        "FreshZ0+MostFreq",
+        RestartMode::FreshZ0,
+        WidthSelectionMode::MostFrequent,
+    ),
+    (
+        "FreshZ0+BestQ",
+        RestartMode::FreshZ0,
+        WidthSelectionMode::BestQ,
+    ),
+    (
+        "FreshZ0+Top1Conv",
+        RestartMode::FreshZ0,
+        WidthSelectionMode::Top1Converged,
+    ),
 ];
 
 /// Quality = mean base (unnoised) top-1 probability along the path
@@ -133,7 +157,10 @@ fn bench_732_fresh_z0_restart() {
         extract_best_path(&tree)
     };
     let d_eff = greedy.len();
-    println!("\nfixture: Config::draft(), D (greedy path length) = {d_eff}, vocab = {}", config.vocab_size);
+    println!(
+        "\nfixture: Config::draft(), D (greedy path length) = {d_eff}, vocab = {}",
+        config.vocab_size
+    );
 
     let k_values = [1usize, 4, 8, 16, 32];
 
@@ -171,7 +198,9 @@ fn bench_732_fresh_z0_restart() {
             );
         }
     }
-    println!("[Invariant 1] K = 1 anchor: all six arms ≡ the shared single-rollout path on {N_TRIALS} trials ✓");
+    println!(
+        "[Invariant 1] K = 1 anchor: all six arms ≡ the shared single-rollout path on {N_TRIALS} trials ✓"
+    );
 
     // ── Invariant 2 — replay determinism at K = 16 ─────────────────────
     for (name, restart, selection) in ARMS {
@@ -181,10 +210,20 @@ fn bench_732_fresh_z0_restart() {
             restart_mode: restart,
         };
         let a = best_of_k_rollouts(
-            &marginals_refs, &config, &NoScreeningPruner, &sde_config(), &wc(), 777,
+            &marginals_refs,
+            &config,
+            &NoScreeningPruner,
+            &sde_config(),
+            &wc(),
+            777,
         );
         let b = best_of_k_rollouts(
-            &marginals_refs, &config, &NoScreeningPruner, &sde_config(), &wc(), 777,
+            &marginals_refs,
+            &config,
+            &NoScreeningPruner,
+            &sde_config(),
+            &wc(),
+            777,
         );
         assert_eq!(a, b, "replay determinism violated: arm {name}");
     }
@@ -248,8 +287,13 @@ fn bench_732_fresh_z0_restart() {
             .collect::<std::collections::HashSet<_>>()
             .len()
     };
-    let (u_perturb, u_fresh) = (unique_for(RestartMode::Perturb), unique_for(RestartMode::FreshZ0));
-    println!("[Invariant 3] cross-trial uniques at K = 16 (BestQ): Perturb {u_perturb}/{N_TRIALS}, FreshZ0 {u_fresh}/{N_TRIALS}");
+    let (u_perturb, u_fresh) = (
+        unique_for(RestartMode::Perturb),
+        unique_for(RestartMode::FreshZ0),
+    );
+    println!(
+        "[Invariant 3] cross-trial uniques at K = 16 (BestQ): Perturb {u_perturb}/{N_TRIALS}, FreshZ0 {u_fresh}/{N_TRIALS}"
+    );
     assert!(
         u_fresh >= u_perturb,
         "FreshZ0 (σ = 4.0) diversified LESS than Perturb (γ = 1.0): {u_fresh} < {u_perturb} — the axis is not exercising; re-read the draw before trusting any τ-scale comparison"
@@ -258,7 +302,9 @@ fn bench_732_fresh_z0_restart() {
 
     // ── Negative control (T3): unshaped fixture — Top1Converged must NOT ──
     // beat MostFrequent under Perturb (both axes, matched K).
-    println!("\n[T3 negative control] Perturb arms, quality/agreement by K (Top1Conv must NOT lead MostFreq):");
+    println!(
+        "\n[T3 negative control] Perturb arms, quality/agreement by K (Top1Conv must NOT lead MostFreq):"
+    );
     let cell = |name: &str, k: usize| -> (f32, f32) {
         grid.iter()
             .find(|(n, kk, _, _)| *n == name && *kk == k)
@@ -271,20 +317,35 @@ fn bench_732_fresh_z0_restart() {
         let (q_tc, a_tc) = cell("Perturb+Top1Conv", k);
         let leads = q_tc > q_mf || a_tc > a_mf;
         control_violated |= leads;
-        println!("| K={k} | MostFreq {q_mf:.4}/{a_mf:.4} | Top1Conv {q_tc:.4}/{a_tc:.4} | Top1Conv leads: {leads} |");
+        println!(
+            "| K={k} | MostFreq {q_mf:.4}/{a_mf:.4} | Top1Conv {q_tc:.4}/{a_tc:.4} | Top1Conv leads: {leads} |"
+        );
     }
-    println!("[T3 verdict] control {}", if control_violated { "VIOLATED — a Top1Converged win on an unshaped fixture indicts the FIXTURE (residual proxy is not basin-noise here); the main comparison's interpretation is void" } else { "holds — Top1Converged never leads MostFrequent under Perturb ✓ (unshaped-fixture expectation)" });
+    println!(
+        "[T3 verdict] control {}",
+        if control_violated {
+            "VIOLATED — a Top1Converged win on an unshaped fixture indicts the FIXTURE (residual proxy is not basin-noise here); the main comparison's interpretation is void"
+        } else {
+            "holds — Top1Converged never leads MostFrequent under Perturb ✓ (unshaped-fixture expectation)"
+        }
+    );
 
     // ── Main comparison readout (T2): FreshZ0+Top1Conv vs Perturb+MostFreq ──
     println!("\n[T2 main comparison] FreshZ0+Top1Conv − Perturb+MostFreq (matched NFE = D·K):");
     for &k in &k_values[1..] {
         let (q_mf, a_mf) = cell("Perturb+MostFreq", k);
         let (q_fz, a_fz) = cell("FreshZ0+Top1Conv", k);
-        println!("| K={k} | Δquality {:+.4} | Δagreement {:+.4} |", q_fz - q_mf, a_fz - a_mf);
+        println!(
+            "| K={k} | Δquality {:+.4} | Δagreement {:+.4} |",
+            q_fz - q_mf,
+            a_fz - a_mf
+        );
     }
 
     // ── T4 — the D-first sweep: D ∈ {2, 4, 8} × K, breadth-pays threshold ──
-    println!("\n[T4 D-first sweep] mean top-1 agreement (Perturb+MostFreq | FreshZ0+Top1Conv); breadth-pays K = smallest K beating K = 1 by > 1e-4");
+    println!(
+        "\n[T4 D-first sweep] mean top-1 agreement (Perturb+MostFreq | FreshZ0+Top1Conv); breadth-pays K = smallest K beating K = 1 by > 1e-4"
+    );
     for &d in &[2usize, 4, 8] {
         let mut cfg = config.clone();
         cfg.draft_lookahead = d;
@@ -294,25 +355,26 @@ fn bench_732_fresh_z0_restart() {
             let tree = build_dd_tree_screened(&refs_d, &cfg, &NoScreeningPruner, false);
             extract_best_path(&tree)
         };
-        let agreement_for = |restart: RestartMode, selection: WidthSelectionMode, k: usize| -> f32 {
-            let mut total = 0.0f32;
-            for trial in 0..N_TRIALS {
-                let path = best_of_k_rollouts(
-                    &refs_d,
-                    &cfg,
-                    &NoScreeningPruner,
-                    &sde_config(),
-                    &WidthScaleConfig {
-                        k_rollouts: k,
-                        selection,
-                        restart_mode: restart,
-                    },
-                    BASE_SEED + trial as u64,
-                );
-                total += top1_agreement(&greedy_d, &path);
-            }
-            total / N_TRIALS as f32
-        };
+        let agreement_for =
+            |restart: RestartMode, selection: WidthSelectionMode, k: usize| -> f32 {
+                let mut total = 0.0f32;
+                for trial in 0..N_TRIALS {
+                    let path = best_of_k_rollouts(
+                        &refs_d,
+                        &cfg,
+                        &NoScreeningPruner,
+                        &sde_config(),
+                        &WidthScaleConfig {
+                            k_rollouts: k,
+                            selection,
+                            restart_mode: restart,
+                        },
+                        BASE_SEED + trial as u64,
+                    );
+                    total += top1_agreement(&greedy_d, &path);
+                }
+                total / N_TRIALS as f32
+            };
         print!("| D={d} |");
         let mut pays: [Option<usize>; 2] = [None; 2];
         for (col, (restart, selection)) in [
@@ -335,5 +397,7 @@ fn bench_732_fresh_z0_restart() {
         }
         println!();
     }
-    println!("\n[Recorded] D-first law sentence is read off the T4 table after the run (pre-registered form: breadth pays only above a depth knee; the measured knee per arm is the breadth-pays K column).");
+    println!(
+        "\n[Recorded] D-first law sentence is read off the T4 table after the run (pre-registered form: breadth pays only above a depth knee; the measured knee per arm is the breadth-pays K column)."
+    );
 }

@@ -119,7 +119,9 @@ fn t08_memory_beats_the_dense_table_it_replaces() {
     // type docs claim it.
     let n_states = 64;
     let vocab = 32_768;
-    let edges: Vec<(usize, usize)> = (0..n_states).flat_map(|s| (0..8).map(move |k| (s, s * 11 + k))).collect();
+    let edges: Vec<(usize, usize)> = (0..n_states)
+        .flat_map(|s| (0..8).map(move |k| (s, s * 11 + k)))
+        .collect();
     let csr = CsrLegalSet::from_edges(n_states, vocab, edges);
     let dense_bytes = 8 * n_states * vocab;
     assert!(
@@ -248,7 +250,9 @@ fn t14_a_small_set_does_not_automatically_gather() {
     );
     assert_eq!(
         plan_projection(Some(4000), 32_768, &pol),
-        ProjectionPlan::Full { unenumerable: false }
+        ProjectionPlan::Full {
+            unenumerable: false
+        }
     );
 }
 
@@ -285,7 +289,9 @@ fn t16_skip_forced_false_keeps_the_logits_of_a_forced_step() {
 fn t17_dense_policy_never_gathers_and_always_is_the_control() {
     assert_eq!(
         plan_projection(Some(1), 1000, &RestrictionPolicy::DENSE),
-        ProjectionPlan::Full { unenumerable: false }
+        ProjectionPlan::Full {
+            unenumerable: false
+        }
     );
     assert_eq!(
         plan_projection(Some(999), 1000, &RestrictionPolicy::ALWAYS),
@@ -295,7 +301,9 @@ fn t17_dense_policy_never_gathers_and_always_is_the_control() {
     // of every row is the dense pass with an index in front of it.
     assert_eq!(
         plan_projection(Some(1000), 1000, &RestrictionPolicy::ALWAYS),
-        ProjectionPlan::Full { unenumerable: false }
+        ProjectionPlan::Full {
+            unenumerable: false
+        }
     );
 }
 
@@ -305,7 +313,9 @@ fn t18_zero_vocab_falls_through_to_full_not_to_a_gather() {
     // budget; the multiply form yields a 0 budget instead.
     assert_eq!(
         plan_projection(Some(5), 0, &RestrictionPolicy::ALWAYS),
-        ProjectionPlan::Full { unenumerable: false }
+        ProjectionPlan::Full {
+            unenumerable: false
+        }
     );
 }
 

@@ -24,7 +24,7 @@
 #![cfg(feature = "transformer_attn_res")]
 
 use katgpt_transformer::attn_res::{
-    apply_attn_res, AttnResBlockState, AttnResConfig, AttnResScratch, AttnResWeights,
+    AttnResBlockState, AttnResConfig, AttnResScratch, AttnResWeights, apply_attn_res,
 };
 
 // ─── f64 weight mirror ─────────────────────────────────────────────────────
@@ -146,7 +146,13 @@ fn g1_attn_res_matches_reference_empty_block() {
     let prefix_f64: Vec<f64> = prefix_sum.iter().map(|&x| x as f64).collect();
 
     let out_f32 = apply_attn_res(&config, &weights, &block_state, &mut scratch, &prefix_sum);
-    let out_f64 = apply_attn_res_f64(config.d(), config.rms_eps as f64, &weights_f64, &[], &prefix_f64);
+    let out_f64 = apply_attn_res_f64(
+        config.d(),
+        config.rms_eps as f64,
+        &weights_f64,
+        &[],
+        &prefix_f64,
+    );
 
     let diff = max_diff_f32_f64(out_f32, &out_f64);
     assert!(
@@ -235,8 +241,12 @@ fn g1_attn_res_matches_reference_kimi_k3_0_40b_dims() {
     let weights_f64 = weights_to_f64(&weights);
 
     let mut block_state = AttnResBlockState::new(config.d());
-    let r1: Vec<f32> = (0..config.d()).map(|i| ((i + 1) as f32).sin() * 0.01).collect();
-    let r2: Vec<f32> = (0..config.d()).map(|i| ((i + 2) as f32).cos() * 0.01).collect();
+    let r1: Vec<f32> = (0..config.d())
+        .map(|i| ((i + 1) as f32).sin() * 0.01)
+        .collect();
+    let r2: Vec<f32> = (0..config.d())
+        .map(|i| ((i + 2) as f32).cos() * 0.01)
+        .collect();
     block_state.push(&r1);
     block_state.push(&r2);
 

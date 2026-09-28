@@ -198,7 +198,7 @@ fn g1_exact_recovery_random_init() {
     // Headline G1: random init → random prompts → exact recovery.
     const N_PROMPTS: usize = 8;
 
-let mut rng = fastrand::Rng::with_seed(0xC0DE);
+    let mut rng = fastrand::Rng::with_seed(0xC0DE);
     let transformer = ToyTransformer::new(&mut rng);
 
     let mut success_count = 0;
@@ -265,9 +265,7 @@ fn g1_recovers_when_two_prompts_differ_only_at_position_t() {
             ),
             InversionResult::Failed {
                 failed_position, ..
-            } => panic!(
-                "failed at position {failed_position} when only position {t} was mutated"
-            ),
+            } => panic!("failed at position {failed_position} when only position {t} was mutated"),
         }
     }
 }
@@ -371,12 +369,7 @@ mod grad {
         /// Central finite-difference gradient of `L(e) = ½·‖h̆ − F(e)‖²` w.r.t.
         /// `e`. O(D) forward evals per call — fine for the test; production
         /// callers supply an analytical gradient.
-        fn numerical_grad_into(
-            &self,
-            observed_state: &[f32],
-            proxy: &[f32],
-            out: &mut [f32],
-        ) {
+        fn numerical_grad_into(&self, observed_state: &[f32], proxy: &[f32], out: &mut [f32]) {
             debug_assert_eq!(proxy.len(), D);
             debug_assert_eq!(out.len(), D);
             let eps = 1.0e-3_f32;
@@ -521,7 +514,7 @@ mod grad {
         // making the Jacobian tiny and convergence glacial.
         const N_PROMPTS: usize = 8;
 
-let mut rng = fastrand::Rng::with_seed(0xC0DE);
+        let mut rng = fastrand::Rng::with_seed(0xC0DE);
         let transformer = ToyTransformer::new_scaled(&mut rng, 1.0);
         let mut recovered_count = 0;
         for prompt_seed in 0..N_PROMPTS {
@@ -534,12 +527,21 @@ let mut rng = fastrand::Rng::with_seed(0xC0DE);
                 policy: InversionPolicy::gradient_guided_default(),
                 ..InversionConfig::default()
             };
-            let result =
-                invert_sequence_grad(&observed, V, &transformer, &transformer, &cfg, prompt_seed as u64)
-                    .unwrap();
+            let result = invert_sequence_grad(
+                &observed,
+                V,
+                &transformer,
+                &transformer,
+                &cfg,
+                prompt_seed as u64,
+            )
+            .unwrap();
             match result {
                 InversionResult::Recovered(recovered) => {
-                    assert_eq!(recovered, prompt, "prompt {prompt:?} not recovered via gradient-guided");
+                    assert_eq!(
+                        recovered, prompt,
+                        "prompt {prompt:?} not recovered via gradient-guided"
+                    );
                     recovered_count += 1;
                 }
                 InversionResult::Failed {
@@ -563,7 +565,7 @@ let mut rng = fastrand::Rng::with_seed(0xC0DE);
         // why the standard 1/sqrt(D) scale is too flat for gradient-guided).
         const N_PROMPTS: usize = 8;
 
-let mut rng = fastrand::Rng::with_seed(0xC0DE);
+        let mut rng = fastrand::Rng::with_seed(0xC0DE);
         let transformer = ToyTransformer::new_scaled(&mut rng, 1.0);
         let mut random_total = 0_usize;
         let mut grad_total = 0_usize;
@@ -580,9 +582,18 @@ let mut rng = fastrand::Rng::with_seed(0xC0DE);
                 inner: &transformer,
                 count: std::cell::Cell::new(0),
             };
-            let r = invert_sequence(&observed, V, &random_counter, &random_cfg, prompt_seed as u64)
-                .unwrap();
-            assert!(matches!(r, InversionResult::Recovered(_)), "random baseline failed");
+            let r = invert_sequence(
+                &observed,
+                V,
+                &random_counter,
+                &random_cfg,
+                prompt_seed as u64,
+            )
+            .unwrap();
+            assert!(
+                matches!(r, InversionResult::Recovered(_)),
+                "random baseline failed"
+            );
             random_total += random_counter.count.get();
 
             // Gradient-guided.
@@ -594,10 +605,19 @@ let mut rng = fastrand::Rng::with_seed(0xC0DE);
                 inner: &transformer,
                 count: std::cell::Cell::new(0),
             };
-            let r =
-                invert_sequence_grad(&observed, V, &grad_counter, &grad_counter, &grad_cfg, prompt_seed as u64)
-                    .unwrap();
-            assert!(matches!(r, InversionResult::Recovered(_)), "gradient-guided failed");
+            let r = invert_sequence_grad(
+                &observed,
+                V,
+                &grad_counter,
+                &grad_counter,
+                &grad_cfg,
+                prompt_seed as u64,
+            )
+            .unwrap();
+            assert!(
+                matches!(r, InversionResult::Recovered(_)),
+                "gradient-guided failed"
+            );
             grad_total += grad_counter.count.get();
         }
 
@@ -688,9 +708,12 @@ let mut rng = fastrand::Rng::with_seed(0xC0DE);
 
         let cfg_random = InversionConfig::default();
         let r1 = invert_sequence(&observed, V, &transformer, &cfg_random, 99).unwrap();
-        let r2 =
-            invert_sequence_grad(&observed, V, &transformer, &transformer, &cfg_random, 99).unwrap();
-        assert_eq!(r1, r2, "random via grad driver should be bit-identical to random via base driver");
+        let r2 = invert_sequence_grad(&observed, V, &transformer, &transformer, &cfg_random, 99)
+            .unwrap();
+        assert_eq!(
+            r1, r2,
+            "random via grad driver should be bit-identical to random via base driver"
+        );
     }
 }
 
@@ -718,7 +741,9 @@ mod robustness {
         let prefix = &prompt[..t];
         let true_token = prompt[t];
         let mut true_state = [0.0_f32; D];
-        transformer.hidden_at_into(prefix, true_token, t, &mut true_state).unwrap();
+        transformer
+            .hidden_at_into(prefix, true_token, t, &mut true_state)
+            .unwrap();
 
         let mut min_dist = f32::INFINITY;
         for v in 0..V {
@@ -726,7 +751,9 @@ mod robustness {
                 continue;
             }
             let mut state = [0.0_f32; D];
-            transformer.hidden_at_into(prefix, v, t, &mut state).unwrap();
+            transformer
+                .hidden_at_into(prefix, v, t, &mut state)
+                .unwrap();
             let linf: f32 = true_state
                 .iter()
                 .zip(state.iter())
@@ -791,7 +818,9 @@ mod robustness {
                     recovered, prompt,
                     "recovery should hold at noise fraction {noise_fraction} of Δ/2"
                 ),
-                InversionResult::Failed { failed_position, .. } => panic!(
+                InversionResult::Failed {
+                    failed_position, ..
+                } => panic!(
                     "recovery failed at position {failed_position} with noise {noise_fraction}×Δ/2 \
                      (margin={min_margin:.4}, half={half_margin:.4}, noise={noise_level:.4})"
                 ),
@@ -808,7 +837,7 @@ mod robustness {
         // NOT guaranteed (either Failed, or Recovered != original).
         const N_TRIALS: usize = 20;
 
-let mut rng = fastrand::Rng::with_seed(0xB0_70 + 1);
+        let mut rng = fastrand::Rng::with_seed(0xB0_70 + 1);
         let transformer = ToyTransformer::new_scaled(&mut rng, 1.0);
 
         let prompt: Vec<u32> = vec![3, 7, 11, 15, 19, 23, 27, 31];

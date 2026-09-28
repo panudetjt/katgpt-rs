@@ -4,7 +4,7 @@
 //! algorithms live in `svd.rs` / `als.rs` / `rank.rs`.
 
 use crate::simd::{simd_dot_f32, simd_fused_scale_acc};
-use crate::subspace_phase_gate::{SvdScratch, SvdResultScratch};
+use crate::subspace_phase_gate::{SvdResultScratch, SvdScratch};
 
 // ─── Constants (bounded sizes — no runtime-adaptive ε anywhere) ─────────────
 
@@ -642,11 +642,18 @@ pub enum SliceTcaError {
     /// Flat buffer length disagrees with the shape.
     InputSizeMismatch { got: usize, expected: usize },
     /// Reconstruction target shape disagrees with the decomposition.
-    ShapeMismatch { got: [usize; 3], expected: [usize; 3] },
+    ShapeMismatch {
+        got: [usize; 3],
+        expected: [usize; 3],
+    },
     /// Slice buffer length disagrees with `rows·cols`.
     SliceSizeMismatch { got: usize, expected: usize },
     /// Requested rank exceeds the unfolding bound `min(d_σ, rest_σ)`.
-    RankTooLarge { axis: usize, rank: usize, bound: usize },
+    RankTooLarge {
+        axis: usize,
+        rank: usize,
+        bound: usize,
+    },
     /// More than `MAX_COMPONENTS` live components.
     TooManyComponents { max: usize },
     /// `entity` out of range for axis 0.
@@ -685,7 +692,10 @@ impl core::fmt::Display for SliceTcaError {
                 write!(f, "component {comp} out of range ({n} live)")
             }
             SliceTcaError::HosvdShapeUnsupported => {
-                write!(f, "HOSVD init unsupported for this shape (TuckerConfig bound)")
+                write!(
+                    f,
+                    "HOSVD init unsupported for this shape (TuckerConfig bound)"
+                )
             }
             SliceTcaError::NotEnoughEpisodes { episodes, folds } => {
                 write!(f, "{episodes} episodes cannot form {folds} CV folds")

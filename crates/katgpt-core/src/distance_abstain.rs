@@ -260,7 +260,10 @@ mod tests {
                 assert_eq!(got.to_bits(), want.to_bits(), "x={x} must be bit-identical");
             } else {
                 let ulps = (got.to_bits() as i64 - want.to_bits() as i64).abs();
-                assert!(ulps <= 3, "x={x} drifted {ulps} ULPs (got {got}, want {want})");
+                assert!(
+                    ulps <= 3,
+                    "x={x} drifted {ulps} ULPs (got {got}, want {want})"
+                );
             }
         }
     }

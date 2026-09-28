@@ -227,7 +227,10 @@ mod tests {
         let cfg = CondAuditConfig::default();
         let r = audit_conditioning(&[], 64, ident, ident, &cfg);
         assert_eq!(r.junctions, 0);
-        assert!(r.verdict_pass, "vacuous audit passes trivially (documented)");
+        assert!(
+            r.verdict_pass,
+            "vacuous audit passes trivially (documented)"
+        );
         assert!(r.per_junction_kl.is_empty());
     }
 }
