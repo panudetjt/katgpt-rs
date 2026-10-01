@@ -40,7 +40,7 @@
 katgpt-rs	1	1	# observed 2026-09-01: 92 labels, 396 comments
 riir-ai	1	1	# observed 2026-09-01: 78 labels, 10 comments
 riir-chain	1	1	# observed 2026-09-01: 2 labels, 4 comments
-riir-clippy	1	0	# observed 2026-09-01: 9 labels, 0 comments
+riir-refine	1	0	# observed 2026-09-01: 9 labels, 0 comments
 riir-dapps	1	0	# observed 2026-09-01: 1 labels, 0 comments
 riir-mmorpg-examples	1	0	# observed 2026-09-01: 2 labels, 0 comments
 riir-neuron-db	1	0	# observed 2026-09-01: 11 labels, 0 comments

@@ -31,6 +31,7 @@ Memory Attention (MA) replaces the attention value projection with `V = K + Norm
 - **Quality** (§4, matched token budgets, FineWeb-10BT, FLA framework, 373M–2.8B params, 10–20B tokens): PPL and downstream avg improve across MHA/GQA/MQA (+0.6–1.2 pts); the gated variant ("Gate") best (42.88 avg). NIAH retrieval 97.4 vs 82.6 at 1K (within window), 41.9 vs 25.9 at 4K (2× extrapolation). Token efficiency 1.42× (small) / 1.16× (large) at matched loss.
 - **The paper's own caveats**: results "do not isolate the contribution of its structure from the increase in parameter capacity"; "reduced value-construction arithmetic does not uniformly translate into lower latency". Follow-ups (SWA, linear attention, MoE, larger) listed as ongoing.
 - **Lineage**: Value Embedding (KoszarskyB 2024, modded-nanogpt) → DeepEmbed (BoPeng 2025) → PLE (Gemma 3n) → STEM (2601.10639) → Engram (2601.07372) → MA. All TRAINED supplements (Value Embed/PLE/STEM/Engram) or trained replacements (MA). None fits tables on frozen checkpoints.
+  > **2026-09-29:** modded-nanogpt record #92 (PR #360, 39.9 s) widened the training-side bigram hash table to 84.6 M rows + trigram channel (sharded row-ownership, 8-byte/row Adam state with timestamp catch-up decay) — training-time only, the inference-side lineage above is unchanged. Distilled at riir-train [Research 461](../../../riir-train/.research/461_Modded_Nanogpt_ANVIL2_Sampled_Softmax_Record.md).
 
 ## 2. Distillation
 

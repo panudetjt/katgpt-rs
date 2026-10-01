@@ -2306,6 +2306,7 @@ These are additional standalone features with their own plans that were not cove
 | `adaptive_cot_compaction` | 271 | Entropy-thresholded bandit-tuned online compaction |
 | `data_gate` | 111 | Task-level data gating for self-play training stability (Research 075) |
 | `vortex_flow` | — | VortexFlow attention substrate (parent of MSA family) |
+| `pyramid_topk` | 612 | PISA pyramid Top-K + LSE block selection — coarse-to-fine key pyramid, root-seeded bounded expansion, exact-LSE leaf scoring (arXiv:2609.31093); implies `dash_attn`. Opt-in — **G2 iso-quality NEGATIVE** (Bench 612: −0.133 Recall@8 vs the single-level exact-LSE scan at 32K+; latency slope CONFIRMED 1.07 vs 1.99) |
 
 ### Remaining smaller primitives (cross-reference)
 
@@ -4027,6 +4028,16 @@ Platt-smoothed targets, bit-identical under replay.
 - **G4**: observe+apply zero-alloc (1000-call loop, 0 allocations; runs in
   dev AND `--release --features alloc_tracking` per the Issue-741
   predicate).
+- **Solver repairs (Issues 909/910/911, 2026-09-30 — the reflex
+  Issue-056 root cause)**: real narrow windows hit Platt's undamped
+  identity-init Newton stall (10.8×/23× above the achievable loss) and
+  f32 tie-collapse on saturated fits (1–3 distinct values of 200–500) —
+  the solve is now the Lin–Lin–Weng 2007 form (base-rate start + Armijo
+  backtracking) with a three-candidate loss-argmin fallback, a
+  resolution-aware `w` floor, and a zero-tolerance AUC guard (ties
+  stopped at their source; distinct scores stay distinct in f32). Real
+  cal windows are committed replay fixtures — replay reproduces the
+  measured reflex fits exactly.
 
 Consumers (riir-ai Issue 964, in order): **CLR verifier — LANDED as
 `clr_calibration` (§114, Bench 807)**; **ActionBridge — LANDED as
@@ -5145,3 +5156,114 @@ Max, AC, heavily loaded box, 5 runs, deterministic G1). The fixture is graph
 `dec_operators`), both katgpt-core. Both are **OPT-IN**, and the T9 verdict
 is no promotion. The belief-host adapter compiles with `sense_composition`.
 The consumer is riir-ai Issue 1008.
+
+## N. Perturbation Ensemble — Input-Perturbation UQ + DRM Decision Rules (reflex Plan 008 / Issue 055)
+
+The third provenance member of the UQ family, beside VFD (inter-member,
+`velocity_field_disagreement`) and the DRM paper's own head (intra-model
+sampling, external): **input perturbation**. A seeded Bernoulli bucket-dropout
+over a feature bag (BLAKE3 uniform stream — the module's own
+`blake3_uniform_fill`, the `[0,1)` 24-bit sibling of the guided-width ε
+source's hash-stream shape, kept in-module so the feature is `[]`-clean;
+survivors re-L2-normalized so cosine consumers see unchanged scale
+semantics; `p_drop == 0` a bit-identical copy, never a re-normalization)
+plus the per-question sample accumulator (`EnsembleHistogram`: pick counts +
+per-option `WelfordVariance` moments) and the three DRM decision-layer rules
+as pure modelless math — `u_pair = 1 − |2·p_maj − 1|` (uncertainty-aware
+rejection key), `u_bon` = runner-up share (Best-of-N flip probability), and
+LCB-λ `μ − λσ` risk-sensitive ranking (`lcb_into` / `top_by_lcb`), with
+`instability_gate` the sigmoid projection for a fused gate's third signal
+(never softmax). Distilled from arXiv:2609.33803 ("Diffusion Reward Models",
+thunlp) — the decision-layer findings only.
+
+The `WelfordVariance` accumulator moved to the ungated `welford` module in
+the same change (one definition; `karc::regime_gate` re-exports it, so
+`katgpt_core::WelfordVariance` now resolves in every configuration instead
+of only under `karc_regime_gate`).
+
+🔧 Feature flag: `perturbation_ensemble` (katgpt-core), **OPT-IN** — the
+consumer PoC (riir-reflex `mc_ensemble`, the MC wrapper over its decision
+engine) is pre-registered with a null path: marginal lift ≈ 0 over the
+two-signal fused gate at matched coverage ⇒ record the negative and stay
+opt-in (the `set_rerank` / `differential_anchor` precedent).
+
+## 138. Dirichlet-Distribution Primitives — Exact Explore Dial + Thinning + Belief Memory (Issue 912 T2+T3 / Research 596)
+
+Three exact-law operators over the simplex, distilled from arXiv:2609.35553
+("Simplex Diffusion Models" — the propositions are classical; the paper
+disclaims originality on the thinning math). **Log-space throughout**: every
+Gamma variate is sampled by its logarithm (the small-α boost is `ln(U)/α`,
+exact where the linear-space `U^{1/α}` in `data_probe/markov.rs` underflows
+for α ≲ 0.02) and normalization is log-sum-exp — grid case C pins the
+α_min = 0.01 regime the linear sampler cannot reach.
+
+- **`sample_conc_into(p, c, seed, out)`** — the exact explore dial
+  `Y ~ Dir(c·p)`: `E[Y] = p` **exactly by construction**,
+  `Var[Y_i] = p_i(1−p_i)/(c+1)`, `Cov = −p_i·p_j/(c+1)`. G1 mean/var/cov
+  closed-form pins at three grid cases (α_min = 4 / 0.1 / **0.01**);
+  G2 **183 ns/call** at N=8 (bar 1 µs, release best-of-5); G4 alloc-free.
+- **`thinning_into(x, alpha, rho, seed, out)`** — the Prop A.2 transition:
+  `B_i ~ Beta(ρα_i, (1−ρ)α_i)` multiplicative reweighting ⇒ `Y ~ Dir(ρα)`
+  under Dirichlet input (variance ratio `(c+1)/(ρc+1)` pinned; ρ=1 bitwise
+  identity, no rng consumed). NOT mean-preserving on fixed vectors — the
+  Jensen bias is PINNED (`p=(0.9,0.07,0.03)`, `c=2`, `ρ=0.5` ⇒
+  `E[Y_0] ≈ 0.847 ≠ 0.9`, the paper's simulated value). The `alpha`
+  parameter is load-bearing (the B shapes depend on it) — the issue's
+  one-line signature omitted it.
+- **`DirichletEma<const M, const K>`** — belief memory over the last M
+  one-hots: recursive mean path `h ← β·h + (1−β)·onehot` at a FROZEN op
+  order (bit-identical to a plain EMA — the ε=∞ routing), and a drawn path
+  `L ~ Dir(ε·shares)` (M Gammas on decision events, aggregated class-wise —
+  exact `Dir(ε·s)` by the Dirichlet aggregation identity). `E[L] = shares`
+  ε-independent; `Var[L_j] = share_j(1−share_j)/(C+1)` with
+  `C = ε(1−β^M)` the truncated raw mass. The ring truncation is NAMED:
+  the drawn expectation is the ring closed form, deliberately NOT `h`
+  (which retains the infinite tail) — pinned as a divergence.
+
+En-route finding: the first thinning draft computed the two-term LSE with
+the MAX's own shift inside `ln_1p` — `lse = lg_a + ln 2` whenever
+`lg_a > lg_b`, forcing `B = 1/2` for half the draws (bimodal, Beta-
+incorrect). The closed-form pins caught it in the first red run (variance
+ratio 1.445 vs 1.8; Jensen bias 0.889 vs 0.847). Fix: `ln_1p` takes the
+MIN's shift; the OTHER term after a max shift is exactly 1.
+
+🔧 Feature flag: `dirichlet_dist` (katgpt-core), **OPT-IN** — no default-on
+claim; consumers unscheduled (T4 notes in the module docs:
+`perturbation_ensemble` interface-swap arm, `katgpt-sense`
+`evolve_belief_additive` sibling, riir-neuron-db consolidation merge,
+`bom_arena` hypothesis sampler). No coverage/prediction-interval claim →
+the conformal-naive floor does not bind these primitives.
+
+## 139. Grouped-Evidence Noise-Weighting — Variance Floor + Filter-Bias Bound + Weighted Beta LCB + Noise-Scaled K (Issue 913 / riir-train Research 463)
+
+The modelless half of EasyPPO (arXiv:2609.36802): weight each group of noisy
+evidence by `1/max(σ̂, ε)`. For EXOGENOUS weights (a function of the group,
+not of the outcome) the reweighting preserves the estimation optimum — that
+invariance law is the whole license, and its scope is enforced by the
+`ExogenousSigma` type (`prior_epoch` / `leave_one_out` / `design`
+constructors, no plug-in constructor; provenance rides every readout).
+
+- **`variance_floor(delta, n)`** — `Δ/(2√n)`, Popoviciu over an n-draw mean;
+  the ε floor and the design-level σ of a bounded-outcome group.
+- **`filter_bias_bound(gamma, p_not_c)`** — `2Γ·P(¬C)`, the bias budget a
+  filtered readout prints beside its number.
+- **`best_belief_score_weighted(groups, sigma, floor, eps)`** — fractional-
+  count Beta LCB through the shared `best_belief` solver; mean-one weights
+  per observation; Kish `n_eff`, `Estimand` and `SigmaProvenance` on every
+  `WeightedBelief`. Bit-identical to `best_belief_score` under uniform
+  weights. Best-arm identification **0.685 vs 0.617** unweighted (paired
+  LB95 +0.057); plug-in σ̂ negative control biases the pooled rate by
+  −0.042 toward the extreme (prior-epoch σ̂ +0.001). ~375 ns/call at G=16.
+  **A ranking score, not a calibrated interval** — measured parameter
+  coverage 0.883 at nominal 0.95 under overdispersion, so no UQ claim.
+- **`noise_scaled_k` + `update_scored_noise_scaled` / `update_f32_noise_scaled`**
+  — `K_eff = K·ε/max(σ̂, ε)`, bit-identical to fixed K at the floor. MSE
+  161 vs 2998 (K=32) and vs 1668 (fixed K at adaptive's own mean step);
+  plug-in σ̂ inflates the asymptote 200 → 332.
+
+Record: [Bench 905](../../.benchmarks/905_grouped_evidence_weighting_goat.md).
+
+🔧 Feature flag: `grouped_evidence_weighting` (katgpt-core, implies
+`best_belief` + `rating`), **OPT-IN** — consumers unscheduled (riir-clippy
+Issue 139, riir-dao, riir-reflex, riir-instinct, riir-ai rows in the issue).
+Kill clock: no consumer within 30 days of merge ⇒ goat-audit stall class.

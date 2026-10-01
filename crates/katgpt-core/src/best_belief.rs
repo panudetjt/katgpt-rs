@@ -205,6 +205,20 @@ pub fn best_belief_score(successes: u32, failures: u32, epsilon: f32) -> f32 {
     best_belief_score_cf(successes, failures, epsilon)
 }
 
+/// ε-quantile of `Beta(a, b)` for FRACTIONAL shapes `a, b ≥ 1` with the same
+/// ε-extreme handling as [`best_belief_score`] (ε ≤ 0 → `X_MIN`, ε ≥ 1 →
+/// `X_MAX`). No LUT — fractional counts never hit the integer grid. The
+/// weighted-evidence readout (`grouped_evidence`, Issue 913 T3) routes here.
+#[cfg(feature = "grouped_evidence_weighting")]
+#[inline]
+pub(crate) fn beta_quantile(a: f32, b: f32, epsilon: f32) -> f32 {
+    match epsilon {
+        e if e <= 0.0 => X_MIN,
+        e if e >= 1.0 => X_MAX,
+        e => beta_quantile_cf(a.max(1.0), b.max(1.0), e),
+    }
+}
+
 /// Closed-form inverse regularized incomplete Beta — the cold path. Called
 /// directly only when `(S, F, ε)` is outside the LUT domain (large `S+F` or
 /// non-standard ε), and used by `build_lut` to populate the table.
@@ -227,9 +241,20 @@ pub(crate) fn best_belief_score_cf(successes: u32, failures: u32, epsilon: f32) 
         "epsilon range handled by caller"
     );
 
+    beta_quantile_cf(1.0 + successes as f32, 1.0 + failures as f32, epsilon)
+}
+
+/// ε-quantile of `Beta(a, b)` for real-valued shapes `a, b ≥ 1` — the
+/// Newton/Lentz solver [`best_belief_score_cf`] runs on integer pseudocounts,
+/// exposed for FRACTIONAL counts (Issue 913 T3's weighted Beta). The integer
+/// wrapper passes `a = 1 + S`, `b = 1 + F` through the identical float ops,
+/// so the LUT and every integer readout are bit-unchanged by the extraction.
+///
+/// Domain: `a, b ≥ 1` (the `+1` pseudocount region — no AS 109 reflection),
+/// `epsilon ∈ (0, 1)`; the caller handles the uniform corner and ε extremes.
+#[inline]
+pub(crate) fn beta_quantile_cf(a: f32, b: f32, epsilon: f32) -> f32 {
     let eps = epsilon;
-    let a: f32 = 1.0 + successes as f32;
-    let b: f32 = 1.0 + failures as f32;
 
     // ── Initial guess: normal approximation to the Beta quantile ──────────
     let sum = a + b;

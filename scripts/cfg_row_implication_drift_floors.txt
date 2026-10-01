@@ -190,7 +190,7 @@ katgpt-web                       0             0          0               0
 riir-ai                        540           360          0               3
 riir-auth                        0             0          0               0
 riir-chain                     125            100          0               1
-riir-clippy                     39            20          0               0
+riir-refine                     39            20          0               0
 riir-dao                         0             0          0               0
 riir-dapps                      22            22          0               0
 riir-deployer                    0             0          0               0

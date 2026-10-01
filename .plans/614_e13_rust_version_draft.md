@@ -1,4 +1,4 @@
-# Plan 611 / E13 — `[workspace.package] rust-version` draft (PREP ONLY — nothing landed)
+# Plan 614 (task E13 of plan 611) — `[workspace.package] rust-version` draft (PREP ONLY — nothing landed)
 
 **Status:** DRAFT — prep only, owner-gated (E13, refs `.plans/611_owner_gate_pickup.md` task E13 + riir-ai `.issues/1016` row E13). No workspace file was modified and nothing was committed; this document is the only artifact of this session.
 

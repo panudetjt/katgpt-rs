@@ -34,6 +34,10 @@ serde = { version = "1", features = ["derive"], optional = true }
 [dev-dependencies]
 fastrand = "2"
 serde_json = "1"
+# Plan 612 T2.2+ — the real-tensor GOAT gate BLAKE3-verifies every fixture bin
+# it loads (committed subset + the env-gated full capture set) against the
+# capture manifest. Test-only; the lib's dependency surface is unchanged.
+blake3 = "1.8"
 # Issue 779 T2: the FUNCATTN spectral-arm eval consumes the promoted
 # subspace-intervention protocol (test-only feature forward — the lib's
 # dependency surface is unchanged).
@@ -72,6 +76,14 @@ msa_sparse = ["vortex_flow"]
 msa_per_group = ["msa_sparse"]
 msa_kv_outer = ["msa_sparse"]
 msa_adaptive_k = ["msa_sparse"]
+# PISA pyramid Top-K + LSE block selection (Plan 612, Research 595 —
+# arXiv:2609.31093): mean-pooled coarse-to-fine key pyramid + root-seeded
+# bounded expansion + LSE block scoring (mean / +½Var / exact rungs).
+# Opt-in pending the Plan 612 G2 REAL-tensor head-to-head (the MSA/HGA slot
+# discipline; the random-key NIAH harness is banned for that gate). Implies
+# dash_attn (consumes argtopk_with_scratch from block_topk) — the
+# vortex_flow sub-feature pattern.
+pyramid_topk = ["dash_attn"]
 # Chiaroscuro attention — per-token DCT spectral entropy operator routing.
 chiaroscuro = ["dep:rustfft"]
 # RAT+ Recurrence Bridge — modelless dilated inference via GDN2 state.
@@ -296,3 +308,17 @@ required-features = ["asentmax_schedule"]
 [[test]]
 name = "asentmax_long_context_regate"
 required-features = ["asentmax_schedule"]
+
+# Plan 612 T2.2–T2.5 — the PISA pyramid selection GOAT gate over REAL
+# captured qwen38-27B FA-layer Q/K tensors (committed subset always runs;
+# the full 1.2 GB capture set via PYRAMID_612_FULL_DIR, BLAKE3-verified
+# against the manifest, skip-loud when absent — never a green zero).
+[[test]]
+name = "bench_612_pyramid_goat"
+required-features = ["pyramid_topk"]
+
+# Plan 612 T2.4 — G4 zero-alloc gate (own binary: a global counting
+# allocator cannot share a binary with tests that allocate in parallel).
+[[test]]
+name = "bench_612_alloc_check"
+required-features = ["pyramid_topk"]

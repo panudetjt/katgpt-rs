@@ -69,7 +69,7 @@ katgpt-web                   1        23         0           0  # observed 2026-
 riir-ai                   1500     18000         0           0
 riir-auth                   10       100         0           0
 riir-chain                 280      4300         0           0
-riir-clippy                210      3000         0           0
+riir-refine                210      3000         0           0
 riir-dao                    14       174         0           0  # observed 2026-09-18: 24 .rs, 290 candidate decls
 riir-dapps                  60      1150         0           0
 riir-deployer               34       370         0           0  # observed 2026-09-18: 58 .rs, 618 candidate decls

@@ -48,3 +48,6 @@ nohup.out
 # Machine-local on-disk → contract repo-name map for the derived workspace
 # walk (scripts/repo_alias.py). Content is private by design — never committed.
 scripts/repo_alias.local.txt
+
+# cargo-refine machine-local state (trajectories, fixseq, outbox, active-set)
+.refine/

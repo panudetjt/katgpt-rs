@@ -119,7 +119,7 @@ katgpt-web                      0               0               0  # observed 20
 riir-ai                          4               3               0
 riir-auth                        0               0               0
 riir-chain                       1               0               0
-riir-clippy                      3               3               0
+riir-refine                      3               3               0
 riir-dao                         0               0               0  # observed 2026-09-18: no scripts/*.py
 riir-dapps                       0               0               0
 riir-deployer                    0               0               0  # observed 2026-09-18: no scripts/*.py

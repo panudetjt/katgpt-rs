@@ -65,7 +65,7 @@ a green result says nothing about what it compiled to nothing:
 
 | Axis | Blind spot |
 |---|---|
-| `check` vs `clippy` | two `cargo heal` escape classes are rejected by clippy's typeck and accepted by `check` (E0689 ambiguous-integer, E0631 deref-coercion in `redundant_closure`) |
+| `check` vs `clippy` | two `cargo refine` escape classes are rejected by clippy's typeck and accepted by `check` (E0689 ambiguous-integer, E0631 deref-coercion in `redundant_closure`) |
 | default vs `--all-features` | non-default gated code compiles to **nothing** |
 | `-p <crate>` vs `--workspace` | a crate's own non-default feature can be switched on by the ROOT crate's defaults once the root is in the selected set — and per-crate runs silently *shrink* coverage |
 | no `--all-targets` | skips every test / bench / example — which is where gated code lives |
@@ -3123,21 +3123,21 @@ invalidate should **refuse**, not warn — detect concurrent cargo by working
 directory, not command line; a lock-based check cannot work (cargo releases
 `target/<profile>/.cargo-lock` *before* running the test binaries).
 
-## Lint healing — `cargo heal` before manual fixes (adopted 2026-08-24)
+## Lint healing — `cargo refine` before manual fixes (adopted 2026-08-24)
 
 Mechanical clippy findings (`needless_return`, `unnecessary_map_or`,
 capacity, `collapsible_if`, …) are fixed by the riir-clippy healer FIRST,
 manual second:
 
 ```bash
-cargo heal <paths>                                        # DRY RUN (the bare default — zero edits)
-cargo heal --fix <paths>                                  # REAL fix: writes + compile-gates (fix_verify builds)
-cargo heal --fix --write --verify <paths>                 # compile-gated apply
-cargo heal --fix --write --verify --verify-args "--features <set>" <paths>  # gated code
+cargo refine <paths>                                        # DRY RUN (the bare default — zero edits)
+cargo refine --fix <paths>                                  # REAL fix: writes + compile-gates (fix_verify builds)
+cargo refine --fix --write --verify <paths>                 # compile-gated apply
+cargo refine --fix --write --verify --verify-args "--features <set>" <paths>  # gated code
 ```
 
-- Global binary `cargo heal` = `~/.cargo/bin/cargo-heal` → the sibling
-  `riir-clippy/target/release/cargo-heal` (built `--features
+- Global binary `cargo refine` = `~/.cargo/bin/cargo-refine` → the sibling
+  `riir-clippy/target/release/cargo-refine` (built `--features
   fix_verify,clippy_verify`; rebuild after healer source changes). Missing
   sibling → fall back to manual fixes + `cargo clippy --fix`.
 - `--verify` compiles baseline → applies → re-checks → auto-REVERTS breaking
@@ -3156,8 +3156,8 @@ cargo heal --fix --write --verify --verify-args "--features <set>" <paths>  # ga
   deliberate style pass; it is not part of the routine heal.
 - The healer is deliberately SILENT on documented divergence classes
   (comment-guarded matches, array-literal defaults, named-arg renames,
-  nested macro args) — those stay manual; see the `cargo-heal` skill
-  (`~/.agents/skills/cargo-heal/`) for the full table + discipline.
+  nested macro args) — those stay manual; see the `cargo-refine` skill
+  (`~/.agents/skills/cargo-refine/`) for the full table + discipline.
 - `cargo clippy --fix` remains fine for one-off trivial fixes; the healer
   wins on batches (span-preserving, comment guards, compile gate,
   self-evolve memory) and was validated across the full katgpt-rs sweep
@@ -3312,7 +3312,7 @@ distillation, novelty + GOAT gates, modelless-unblock protocol §3.5):
 > `riir-ai`, `riir-chain`, `riir-neuron-db`, `riir-train`, `riir-game-sdk`,
 > `riir-dapps` (private). That is NOT the repo total: the
 > workspace is **26 repos**, all of which carry a root `BOUNDARY.md`
-> (add `riir-mmorpg-examples`, `riir-clippy`, `riir-viewbridge`,
+> (add `riir-mmorpg-examples`, `riir-refine`, `riir-viewbridge`,
 > `riir-auth`, `katgpt-web`, `riir-dao`, `riir-deployer`,
 > `riir-esp32`, `riir-llm`, `mmorpg-editor`, `mmorpg-remake`,
 > `mmorpg-remaster`, `riir-kat`, `riir-shader`, `riir-reflex`,

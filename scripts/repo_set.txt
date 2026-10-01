@@ -9,7 +9,7 @@ reflex-site
 riir-ai
 riir-auth
 riir-chain
-riir-clippy
+riir-refine
 riir-dao
 riir-dapps
 riir-deployer

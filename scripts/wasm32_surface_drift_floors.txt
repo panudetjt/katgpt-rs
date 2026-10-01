@@ -42,7 +42,7 @@ katgpt-web                     0            0               0  # observed 2026-0
 riir-ai                       45            5               0
 riir-auth                      0            0               0
 riir-chain                     6            2               0
-riir-clippy                    0            0               0
+riir-refine                    0            0               0
 riir-dao                       0            0               0  # observed 2026-09-18: no wasm32 surface
 riir-dapps                     3            1               0
 riir-deployer                  2            1               0  # observed 2026-09-18: measured 3 files / 1 package

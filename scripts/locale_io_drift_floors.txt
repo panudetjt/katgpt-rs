@@ -28,7 +28,7 @@ katgpt-rs               60    450    0
 riir-ai                  8      0   0    # repaired 4df109c65
 riir-auth                0      0    0
 riir-chain               3      0    0    # repaired bebf78a
-riir-clippy              5      0   0    # repaired 638fa224, 54b999de
+riir-refine              5      0   0    # repaired 638fa224, 54b999de
 riir-dapps               1      0    0
 riir-game-sdk            0      0    0
 riir-kat                 0      0    0

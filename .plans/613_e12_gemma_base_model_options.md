@@ -1,4 +1,4 @@
-# E12 one-pager — the base-model recirculation check: accept the Gemma license, or retire the check
+# Plan 613 (task E12 of plan 611) — the base-model recirculation check: accept the Gemma license, or retire the check
 
 **Status:** DRAFT for owner decision (master `riir-ai/.issues/1016` row E12; this repo's `.issues/906_owner_gate_pickup.md`; evidence `.benchmarks/668_recirculation_goat_and_poc.md:118-131`). No option executed; the pick is the owner's.
 

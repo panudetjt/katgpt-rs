@@ -70,13 +70,13 @@ GEMMA2_2B_GGUF=... TOKENIZER_MODEL=... cargo test -p riir-poc --test recirculati
 **Status: the paper-scale re-run is RUNNING detached on the 4090 box; the
 base-model check is BLOCKED on owner action.**
 
-> **⚠ Freshness addendum 2026-09-28 (E12 prep, `.plans/611_e12_gemma_base_model_options.md`):**
+> **⚠ Freshness addendum 2026-09-28 (E12 prep, `.plans/613_e12_gemma_base_model_options.md`):**
 > the paper-scale run NEVER COLLECTED — the `recirc_paperscale` scheduled task sits in state
 > `Ready` and `paperscale_out.txt` does not exist; only the two arm-lines quoted in the progress
 > note below were ever captured. "RUNNING" in this section is the 08-20 launch-time state, not
 > the current one. The base-model check remains blocked as described (re-verified 2026-09-28:
 > both boxes carry only IT-tuned Gemma GGUFs). The owner one-pager for the (a)-accept/(b)-retire
-> pick lives at `.plans/611_e12_gemma_base_model_options.md`.
+> pick lives at `.plans/613_e12_gemma_base_model_options.md`.
 
 ### Paper-scale re-run (in flight)
 

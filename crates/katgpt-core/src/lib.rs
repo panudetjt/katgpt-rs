@@ -2444,7 +2444,9 @@ pub use karc::{
 // is re-exported here for caller ergonomics so consumers don't need to
 // reach into the `karc::regime_gate` path.
 #[cfg(feature = "karc_regime_gate")]
-pub use karc::regime_gate::{KarcRegime, KarcRegimeGate, RegimeVerdict, WelfordVariance};
+pub use karc::regime_gate::{KarcRegime, KarcRegimeGate, RegimeVerdict};
+// (`WelfordVariance` left this list for the ungated `welford` module above —
+// `katgpt_core::WelfordVariance` now resolves in EVERY configuration.)
 
 // Plan 556 Phase 2 — KARC Batched MatVec. SIMD-batched forecast across N
 // forecasters of identical (D, M, K) shape. Crowd-scale perf primitive
@@ -2916,6 +2918,19 @@ pub use velocity_field_ensemble::{
 pub mod velocity_field_disagreement;
 #[cfg(feature = "velocity_field_disagreement")]
 pub use velocity_field_disagreement::{VfdScore, VfdScratch, VfdVarianceSignal, vfd_score_into};
+
+// Welford online variance accumulator — the crate's ONE definition
+// (moved out of karc::regime_gate's feature-gated `imp`, Plan: reflex 008 /
+// Issue 055 substrate pass, 2026-09-30, so `perturbation_ensemble` and any
+// other moments consumer reaches it without the karc feature chain).
+pub mod welford;
+pub use welford::WelfordVariance;
+
+// Input-perturbation ensemble UQ — the third provenance member beside VFD
+// (inter-member) and the DRM head (intra-model, external). Opt-in (Plan:
+// reflex 008 / Issue 055).
+#[cfg(feature = "perturbation_ensemble")]
+pub mod perturbation_ensemble;
 
 // ── Phase 10 absorption (Proposal 003, 2026-07-04): modules moved from katgpt-rs/src/.
 // Always-on (no feature gate):
@@ -3479,6 +3494,23 @@ pub mod sigmoid_calibration;
 /// ABSTAIN is blind to). Opt-in (`distance_abstain`).
 #[cfg(feature = "distance_abstain")]
 pub mod distance_abstain;
+
+/// Dirichlet-distribution primitives (Issue 912 T2+T3 / Research 596) — the
+/// exact explore dial `Dir(c·p)` (mean exact by construction, log-space
+/// sampling so α ≲ 0.02 stays exact), the thinning transition (exact ONLY
+/// under Dirichlet input — NOT mean-preserving on fixed vectors), and the
+/// Dirichlet-EMA belief memory (recursive mean path + randomized drawn path
+/// with the ring-truncation named). Opt-in (`dirichlet_dist`).
+#[cfg(feature = "dirichlet_dist")]
+pub mod dirichlet_dist;
+
+/// Grouped-evidence noise-weighting primitives (Issue 913, riir-train
+/// Research 463 ← arXiv:2609.36802 EasyPPO, the modelless half): Popoviciu
+/// variance floor, filter-bias bound, exogenous-σ̂ weighted Beta LCB with Kish
+/// `n_eff` disclosed, and noise-scaled rating K. Opt-in
+/// (`grouped_evidence_weighting`).
+#[cfg(feature = "grouped_evidence_weighting")]
+pub mod grouped_evidence;
 
 /// Fitted anchor tables — the SHARED streaming table-builder substrate
 /// (Issues 882+883 P0 / Research 586+587, the F1 fusion: one calibration

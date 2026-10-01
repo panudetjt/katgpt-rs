@@ -1,0 +1,8 @@
+# Research 597: TabFM Technical Report + TabFM-Auto — REDIRECT
+
+> **Status:** REDIRECT — content merged into [Research 364 §6](364_tabfm_zero_shot_tabular_foundation.md) by owner call (2026-09-30): one home for the TabFM bloodline, this number kept live as the TabFM-Auto discoverability alias (grep `2609.37989` / `TabFM-Auto` lands here → 364 §6).
+> **Sources:** [arXiv:2609.37959](https://arxiv.org/abs/2609.37959) — "TabFM: A Zero-Shot Foundation Model for Tabular Data" (the technical report) · [arXiv:2609.37989](https://arxiv.org/abs/2609.37989) — "TabFM-Auto: Self-Evolving Pipelines for Tabular Foundation Models" · [Google blog](https://research.google/blog/introducing-tabfm-a-zero-shot-foundation-model-for-tabular-data/) (2026-06-30)
+> **Date:** 2026-09-30 (merged same day it was filed — the brief standalone life of this note is in git history at `cafc5dbe7`)
+> **Classification:** Public
+
+All content lives in **[Research 364 §6](364_tabfm_zero_shot_tabular_foundation.md)**: the report's formalized TabArena numbers (TabFM 1785.3 Elo zero-shot, first among default tabular FMs; TabFM+ 1856.0), the TabFM-Auto mechanism (the four-stage pipeline Φclean/Φfeat/Sctx/Ψpost evolved by an LLM agent around the frozen 400M model; 1785→2013 Elo; #1 MLE-Bench-Tabular; pipelines transfer to other frozen tabular FMs +69..+143 Elo with zero further search), the shipped-kin mapping (Sctx ≈ reflex corpus-cap levers, Ψpost ≈ gate-fit calibration, keep-only-improvements-over-P₀ ≈ healer `--verify` auto-revert), the two uncovered modelless micro-primitives (log-odds prior shift; multi-view context ensembling under a cap), and fusion leads F1–F5 (novelty TBD, owner-deferred).

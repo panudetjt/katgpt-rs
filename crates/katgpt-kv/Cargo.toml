@@ -68,6 +68,12 @@ still_kv = []
 # Requires spectral substrate transitively via targeted_precision.
 kvarn = []
 
+# Measurement-only quantize/dequant mode override (`KVarNKVCache::set_quant_mode`)
+# for benches that attribute quantizer behavior to the machinery vs the width
+# (katgpt-rs Issue 907's crossed-config arms). Never a production knob —
+# production postures always derive from `with_config`.
+quant_mode_override = ["kvarn"]
+
 # Issue 883 P1 (Research 587): forwards katgpt-core's fitted_value_tables so
 # the token-mean-removed V-quant decorator can be gated against the REAL
 # KVarN backend (Bench 895 G1/G2/G3/G4 — tests/bench_895_mean_removed_v_quant_goat.rs).
@@ -159,6 +165,17 @@ required-features = ["kvarn", "fitted_value_tables"]
 name = "bench_894_kvarn_dequant_zip_goat"
 harness = false
 required-features = ["kvarn"]
+
+# katgpt-rs Issue 907 — the KVarN V-row bit-ladder attribution bench on REAL
+# captured rows (Bench 903): the plain b2/b3/b4 ladder + the CROSSED
+# machinery arms via `set_quant_mode` (feature `quant_mode_override`) —
+# attributes the measured bit-ladder inversion to machinery vs width. The
+# fixture (.raw/vrow/gemma2_vrows.bin) is gitignored; the bench SKIPS LOUD
+# without it (never a green zero) and pins its BLAKE3.
+[[test]]
+name = "bench_903_kvarn_vrow_real_ladder"
+harness = false
+required-features = ["kvarn", "quant_mode_override"]
 
 # Issue 800 Arm B1 — lock-free slot-flip PoC bench. harness = false: the PoC
 # prints its own results table + the B2 decision-gate verdict (it is not a

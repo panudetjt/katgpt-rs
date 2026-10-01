@@ -3670,6 +3670,14 @@ required-features = ["state_option_scoring"]
 name = "tetris_03_head_fit"
 required-features = ["state_option_scoring"]
 
+# T4's preview-fit probe (Plan 607 T4, the preview-argument ceiling): pulls
+# BOTH gated commons (grammar_tables → template_decode, micro_fit →
+# state_option_scoring) — decode_01's both-features shape. Found by the
+# 09-30 idle sweep: no row meant a plain --all-targets build failed E0432.
+[[example]]
+name = "tetris_04_preview_fit"
+required-features = ["state_option_scoring", "template_decode"]
+
 # Issue 892 T3 G3: the chance-node PUCT (opt-in chance_puct) vs the Bench
 # 891 depth-2 champion on identical seeds — required-features so a plain
 # `cargo check --all-targets` never builds it feature-off (E0432).

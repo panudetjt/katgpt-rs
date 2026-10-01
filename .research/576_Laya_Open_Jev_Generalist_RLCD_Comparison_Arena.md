@@ -98,3 +98,15 @@ Zero-shot fuzzy-judgment breadth on open-domain text tasks (Arena row #15 LOSS, 
 ---
 
 > **Addendum 2026-09-21 (owner directives post-filing, same day):** (1) **PYTHON IS BANNED FROM THE LANE ENTIRELY** (owner directive, unambiguous) — the laya comparison lane is a NATIVE-RUST port (candle/in-crate forward over their safetensors: ModernBERT-large + mmBERT-base + the mask-scoring head + their tokenizers + a Rust script-detector Router), with a **parity gate** (top-1 agreement ≥ 99.9% + probability drift ≤ 1e-3 vs the reference checkpoint, per checkpoint) replacing "runs unmodified" — Proposal 014 T1.4 + new GOAT gate G5 amended accordingly; the multi-week port cost is owner-accepted, and the zero-Python property is a product selling point vs laya's `pip install` posture. (2) The serving repo is named **`riir-reflex`** (NOT riir-jev — "Jev" is TypeSafe's product name; the one-word System-1 read also matches our fast-heads-vs-deliberation architecture) and the arena site is **`reflex.gist.rs`**; Proposal 014 renamed throughout. Earlier references to `riir-jev` in this note's related artifacts and in the riir-clippy queue line read as `riir-reflex`.
+
+> **PASS-Redirects (synthesis):** Sebastian Raschka ["Language Models for Text Classification: From Bag-of-Words to Jev" (magazine.sebastianraschka.com/p/classifier-history-and-jev, 2026-09-29)] — his RLCR summary (Brier-penalized RL reward; ECE 0.37→0.03 HotpotQA) and his CE+Brier-on-ModernBERT experiment (modest gain over temperature scaling, author warns it may not generalize) both land under this note's published RLCD recipe (log+spherical+RPS — strictly richer than his Brier-only form); his "modest" datapoint is consistent with laya's temperature-refit ECE 0.466→0.081 — post-hoc refit stays competitive, reinforcing the Issue-810 track-b posture. **Tripwire carried:** the calibration-aware-loss issue files only when a gradient-trained specialist's G1 cell reads "raw FAILS the floor" (not "refit doesn't beat raw").
+
+> **PASS-Redirects (synthesis):** Alex Zhang ["Language Model \"Shape\""
+> (alexzhang13.github.io/blog/2026/shape/, 2026-09-26)] — independent
+> external articulation of this proposal's stance: design the model's I/O
+> shape to fit the harness rather than the harness around the decoder-only
+> shape (he names Jev/RLCD the anchor of that tradeoff space; reflex is the
+> modelless member of the same family). His "distill the capabilities of a
+> model + harness down to just the model" observation lands under the
+> SFTL;DR internalization lane (riir-train Plan 432 / riir-clippy Issue 140).
+> PASS — doctrine validated externally; no new mechanism, no actionable gap.

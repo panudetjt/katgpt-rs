@@ -5,7 +5,7 @@
 # least one of three INDEPENDENT axes, and a green result says nothing about
 # what the invocation compiled to nothing:
 #
-#   1. `check` vs `clippy`      — two `cargo heal` escape classes are rejected
+#   1. `check` vs `clippy`      — two `cargo refine` escape classes are rejected
 #                                 by clippy's typeck and accepted by `check`
 #                                 (E0689 ambiguous-integer, E0631 deref
 #                                 coercion in `redundant_closure`).
@@ -26,7 +26,7 @@
 #
 # Consequence, measured: this gate was RED on `develop` from at least 2cb97410
 # until 3e58e821 — five broken targets — while every documented gate was green.
-# Two of the five were `cargo heal` escapes that survived the healer's own
+# Two of the five were `cargo refine` escapes that survived the healer's own
 # compile gate, because that gate ran where the code was absent.
 #
 # Layers, all hard-fail:

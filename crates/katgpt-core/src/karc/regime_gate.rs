@@ -95,106 +95,12 @@
 
 #[cfg(any(test, feature = "karc_regime_gate"))]
 mod imp {
-    /// Welford online variance accumulator — closed-form, single-pass, zero-alloc.
-    ///
-    /// Tracks `(count, mean, M2)` per Welford 1962. Variance = `M2 / (n − 1)`
-    /// (sample variance); returns `None` until two observations are accumulated.
-    ///
-    /// NaN inputs are silently rejected (no state change) so the gate stays
-    /// well-defined when one forecaster has no forecast yet (cold-start).
-    #[derive(Clone, Copy, Debug, Default)]
-    pub struct WelfordVariance {
-        count: usize,
-        mean: f64,
-        m2: f64,
-    }
-
-    impl WelfordVariance {
-        /// New empty accumulator.
-        #[inline]
-        pub const fn new() -> Self {
-            Self {
-                count: 0,
-                mean: 0.0,
-                m2: 0.0,
-            }
-        }
-
-        /// Reset to empty.
-        #[inline]
-        pub fn reset(&mut self) {
-            self.count = 0;
-            self.mean = 0.0;
-            self.m2 = 0.0;
-        }
-
-        /// Number of observations accumulated.
-        #[inline]
-        pub const fn n(&self) -> usize {
-            self.count
-        }
-
-        /// Push a new observation. NaN is silently rejected (state unchanged).
-        /// f32 input widened to f64 for numerical robustness at small sample
-        /// counts (the same widening rationale as KARC's Gram accumulation —
-        /// see `linalg::ridge_solve` module doc).
-        #[inline]
-        pub fn observe(&mut self, x: f32) {
-            if x.is_nan() {
-                return;
-            }
-            let x = x as f64;
-            self.count += 1;
-            let delta = x - self.mean;
-            self.mean += delta / (self.count as f64);
-            let delta2 = x - self.mean;
-            self.m2 += delta * delta2;
-        }
-
-        /// Sample variance `M2 / (n − 1)`, or `None` until `n >= 2`.
-        ///
-        /// Captures dispersion only — NOT bias. Two forecasters with the same
-        /// variance can have very different accuracies if their biases differ.
-        /// For the regime mux's "which forecaster has smaller error" question,
-        /// use [`mse`](Self::mse) instead.
-        #[inline]
-        pub fn variance(&self) -> Option<f32> {
-            if self.count < 2 {
-                None
-            } else {
-                Some((self.m2 / ((self.count - 1) as f64)) as f32)
-            }
-        }
-
-        /// Mean squared error vs zero target: `MSE = Var_pop + mean²`.
-        ///
-        /// This is the right metric for the regime mux — it captures BOTH
-        /// dispersion (variance) and bias (mean²). A consistently-biased
-        /// forecaster (variance 0, large mean) gets a large MSE, so the gate
-        /// correctly routes away from it. Returns `None` until at least one
-        /// observation has been pushed (single observation gives MSE = x²).
-        ///
-        /// Computed as `M2/n + mean²` (the population-variance form, which
-        /// matches the residual stream's true second moment `E[r²]`). The
-        /// sample-variance `M2/(n-1)` form is exposed separately as
-        /// [`variance`](Self::variance) for diagnostics.
-        #[inline]
-        pub fn mse(&self) -> Option<f32> {
-            if self.count < 1 {
-                None
-            } else {
-                let var_pop = self.m2 / (self.count as f64);
-                let mean_sq = self.mean * self.mean;
-                Some((var_pop + mean_sq) as f32)
-            }
-        }
-
-        /// Sample mean, or `0.0` when empty (well-defined cold-start value).
-        #[inline]
-        pub const fn mean(&self) -> f64 {
-            self.mean
-        }
-    }
+    // The Welford accumulator moved to the crate-root `welford` module
+    // (Plan: reflex 008 / Issue 055 substrate pass, 2026-09-30) so a second
+    // substrate consumer reaches it without the `karc_regime_gate` feature
+    // chain. Re-exported here — the historical path resolves unchanged and
+    // there is exactly one definition.
+    pub use crate::welford::WelfordVariance;
 
     /// Which forecaster the gate currently prefers. `#[repr(u8)]` so the
     /// verdict stays sync-friendly if a downstream consumer wants to commit

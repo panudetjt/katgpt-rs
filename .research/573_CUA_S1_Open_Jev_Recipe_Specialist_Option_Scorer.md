@@ -126,3 +126,5 @@ Also recorded for any rerun: v1's curriculum (25% gold-dropped-same-context "dec
 ---
 
 *Provenance: sparse clone of `libs/cua-s1` only (29 files, ~4.5k LOC Python) pinned at the sha above; `.raw/cua` deleted after this note was written; all quotes re-verifiable at that sha. The HF model card's reference to `docs/RESULTS.md` is broken in-tree (no `docs/` dir at this sha) — the results table above is from the model card.*
+
+> **PASS-Redirects (synthesis):** Sebastian Raschka ["Language Models for Text Classification: From Bag-of-Words to Jev" (magazine.sebastianraschka.com/p/classifier-history-and-jev, 2026-09-29)] — his DIY Jev-clone head (shared scalar si = w·hi + b per option, softmax across candidates, supervised CE) is the third independent derivation of the open-recipe class this note extracted from jevlike/CUA-S1 (options-as-queries attention head); class confirmed, no change to the REFUTED PoC verdict or its measured corpus-order-of-magnitude reopen trigger.

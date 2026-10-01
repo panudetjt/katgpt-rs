@@ -586,6 +586,40 @@ impl KVarNKVCache {
         self.group_size = group_size;
     }
 
+    /// Measurement-only: the same override as [`Self::set_quant_mode_for_test`]
+    /// behind a feature, for benches that must attribute quantizer behavior to
+    /// the MACHINERY (skip-varn + grouped-4 RTN) vs the WIDTH (bits) — the
+    /// Issue 907 crossed-config arms (b3 forced down the b2 machinery and
+    /// vice versa) cannot be expressed through [`KVarNConfig`] because
+    /// `with_config` hard-derives the mode from `bits`. Call before any store.
+    /// Not a tuning knob: production postures always come from `with_config`.
+    ///
+    /// Resizes the RTN scratch to the crossed mode's worst case: `with_config`
+    /// sized `scratch_rtn_scales/zp` for the DERIVED group count (1 at b ≥ 3),
+    /// so enabling grouped mode here needs `max_rows × ceil(max_cols/group)`
+    /// entries or the quantize path indexes past the slice (measured: the
+    /// 32768-vs-1024 panic on the b3-on-b2-machinery arm).
+    #[cfg(feature = "quant_mode_override")]
+    pub fn set_quant_mode(&mut self, skip_varn: bool, group_size: usize) {
+        self.skip_varn = skip_varn;
+        self.group_size = group_size;
+        let max_dim = self.kv_dim.max(self.tile_size);
+        let max_groups = if group_size > 0 {
+            max_dim.div_ceil(group_size)
+        } else {
+            1
+        };
+        let want = max_dim * max_groups;
+        if self.scratch_rtn_scales.len() < want {
+            self.scratch_rtn_scales.resize(want, 0.0);
+            self.scratch_rtn_zp.resize(want, 0.0);
+        }
+        let packed_want = self.key_tile_packed_len.max(self.val_tile_packed_len);
+        if self.scratch_rtn_packed.len() < packed_want {
+            self.scratch_rtn_packed.resize(packed_want, 0);
+        }
+    }
+
     /// Reset cache for a new sequence.
     pub fn reset(&mut self) {
         self.pos = 0;

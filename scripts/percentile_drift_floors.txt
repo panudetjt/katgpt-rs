@@ -89,7 +89,7 @@ katgpt-web                     1      0    0      0       0     0
 riir-ai                     1800     15    0      0       0     0
 riir-auth                     10      0    0      0       0     0
 riir-chain                   310     10    0      0       0     0  # Issue 777 re-pin: 482 tracked .rs (460 on 2026-09-06 — the 500 pin was never met)
-riir-clippy                  190      0    0      0       0     0
+riir-refine                  190      0    0      0       0     0
 riir-dao                      14      0    0      0       0     0
 riir-dapps                    50      0    0      0       0     0
 riir-deployer                 35      0    0      0       0     0

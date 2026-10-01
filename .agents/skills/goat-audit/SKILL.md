@@ -56,7 +56,7 @@ feature-flag-gated katgpt-rs primitive that needs cherry-pick tracking.
 types — until it was retired 2026-09-02, owner act.)
 
 **Newer workspace repos outside the product set consume katgpt-core directly** —
-`riir-clippy` (ConstraintPruner + ternary matvec + `pick_domain`), `riir-dao`
+`riir-refine` (ConstraintPruner + ternary matvec + `pick_domain`), `riir-dao`
 (`rating` Elo + `beta_lcb_order_into` — its ONE path dep), `riir-auth` (sigmoid +
 dot-product primitives), `riir-esp32` (`katgpt-device-verify`), `riir-kat`
 (katgpt-* via the `[patch]` unified pin only, no direct imports). They host no

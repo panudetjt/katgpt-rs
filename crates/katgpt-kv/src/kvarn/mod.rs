@@ -25,6 +25,18 @@
 //!   cargo build --release 2>/dev/null && ls -la target/release/katgpt-rs
 //!   cargo build --release --features kvarn 2>/dev/null && ls -la target/release/katgpt-rs
 //!   The two binary sizes should be identical when kvarn is off by default.
+//!
+//! ⚠ Bit-arm NON-INTERPOLATION (Issue 907, Bench 903): the bit arms are
+//! DIFFERENT quantizers, not one quantizer at three widths — `with_config`
+//! derives the machinery from `bits` (skip-varn + grouped-4 RTN at b ≤ 2 vs
+//! per-tile var-norm at b ≥ 3), and on REAL gemma-2 V rows the arms measured
+//! non-monotone: b2 rel-MSE 24.1 < b4 28.8 < b3 132.5 (b3 cosine 0.9416 vs
+//! b2's 0.9886 — 2-bit BEATS 4-bit on cosine). The crossed arms are worse
+//! than every plain arm (b3-on-b2-machinery ≈ 1351, b2-on-varn ≈ 828) — the
+//! machinery classes don't compose; each is tuned to its width class. Within
+//! the var-norm machinery, 3 bits cost 4.6× the error of 4 bits — the 3-bit
+//! var-norm scale-field handling is the recorded defect site. Consumers:
+//! NEVER interpolate V-row quality across bit arms; pick arms by measurement.
 
 mod dequant;
 #[cfg(test)]

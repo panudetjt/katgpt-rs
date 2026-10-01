@@ -3,6 +3,7 @@
 > **Source:** Kong & Das (Google Research) — "Introducing TabFM: A zero-shot foundation model for tabular data" (Google Research Blog, 2026-06-30). [blog](https://research.google/blog/introducing-tabfm-a-zero-shot-foundation-model-for-tabular-data/) · [code](https://github.com/google-research/tabfm) · [HF](https://huggingface.co/google/tabfm-v1.0.0)
 > **Date:** 2026-07-02
 > **Status:** Done — **Pass**. Pre-trained foundation model (training-only contribution); the underlying set-attention architecture is a refinement of NPT (R354, **already distilled as Super-GOAT** with shipped open primitive + private crowd-attention runtime).
+> **Delta (2026-09-30):** arXiv technical report released ([2609.37959](https://arxiv.org/abs/2609.37959)) — formalizes the TabArena numbers recorded below; verdict unchanged. The follow-up **TabFM-Auto** ([2609.37989](https://arxiv.org/abs/2609.37989), LLM agent evolving the data pipeline around frozen TabFM) is distilled in **§6 below** (RECORD, owner-deferred; [Research 597](597_TabFM_Auto_Pipeline_Evolution.md) is the redirect alias keeping the number live).
 > **Related Research:** 354 (**the direct parent** — NPT cross-datapoint set attention, Super-GOAT), 234 (DenseMesh — demoted), 126 (MoA — within-token, not set), 278 (Engram — hash lookup, not set attention), 290 (Latent Field Steering — broadcast, not peer-to-peer), 303 (Transolver FUNCATTN — physics-set predecessor), 309 (ARG latent substrate synthesis)
 > **Related Plans:** 354 (`set_sigmoid_attention_into` open primitive — shipped), 355 (riir-ai crowd joint inference runtime — Phase 1 shipped, Phase 2 in progress)
 > **Cross-ref (riir-ai private guide):** [Research 167 — Crowd Joint Inference via Cross-NPC Set Attention](../../riir-ai/.research/167_crowd_joint_inference_cross_npc_set_attention_guide.md) — the selling-point half of the Super-GOAT TabFM descends from.
@@ -236,3 +237,67 @@ One-line reasoning: **TabFM is a pre-trained foundation model — the value is t
 ## TL;DR
 
 **Verdict: Pass.** TabFM is Google's zero-shot tabular foundation model: pre-trained on hundreds of millions of synthetic structural-causal-model datasets, hybrid TabPFN+TabICL architecture (alternating cross-row/cross-column attention → row compression → ICL transformer on compressed rows), single-forward-pass prediction on unseen tables. The pre-trained weights and synthetic-SCM training pipeline are → riir-train (one-line note). The underlying set-attention architecture is a refinement of NPT, which the codebase already distilled as Super-GOAT in R354 — the open primitive `set_sigmoid_attention_into` ships in katgpt-rs/P354, and the private runtime `CrowdAttentionStep::tick_into` ships in riir-ai/crates/riir-engine/src/crowd_attention.rs. The latent reframing on HLA state is strictly stronger for the NPC-cognition domain (no per-row embedding, deterministic Q/K/V from CS-rankings + functor directions, sigmoid gate, fog-of-war compatible, sync-boundary clean). The one architectural element TabFM adds beyond R354 — row compression before the ICL transformer — suggests a single Gain-tier fusion (cross-zone set attention over HLA centroids) tracked as an `.issues/` follow-up to R167/P355, not a new plan. No files created in katgpt-rs / riir-ai / riir-chain / riir-neuron-db beyond this note.
+
+---
+
+## 6. Addendum (2026-09-30) — arXiv technical report (2609.37959) + TabFM-Auto (2609.37989)
+
+> **Sources:** TabFM technical report — [arXiv:2609.37959](https://arxiv.org/abs/2609.37959) (Kong, Louidor Ilan, Nie, Narayan, Sen, Zhou, Fu, Oymak, Das — Google Research, submitted 2026-09-29) · TabFM-Auto: Self-Evolving Pipelines for Tabular Foundation Models — [arXiv:2609.37989](https://arxiv.org/abs/2609.37989) (Fu, Su, Sen, Narayan, Sanghavi, Das, Kong — Google Research/DeepMind, same day) · feature explorer: deqingfu.github.io/tabfm-auto
+> **Status:** RECORD — reference kept for later; activation deferred by owner call this session ("we may need this later but not now"). No plans/issues filed; fusion leads parked in §6.4, novelty TBD. (This addendum was briefly a sibling note — Research 597, now a redirect alias — merged here by owner call; §6 is the single content home.)
+
+### 6.1 The TabFM report — deltas since the blog-era note above
+
+The arXiv report formalizes what §1 recorded from the blog; **no new architectural element**. The benchmark surface, now formal:
+
+| Method | Overall Elo (51) | Classification (38) | Regression (13) |
+|---|---|---|---|
+| TabFM (zero-shot, single forward pass) | 1785.3 | 1768.7 | 2045.9 |
+| TabFM+ (cross+SVD features, 32-way NNLS ensemble, Platt) | 1856.0 | 1836.7 | 2169.2 |
+| EXAONE-Tabular | 1764.6 | 1759.5 | 1967.8 |
+| AutoGluon 1.5 (extreme) | 1668.4 | 1664.6 | 1851.2 |
+| TabPFN-3 | 1660.1 | 1637.7 | 1863.1 |
+
+The §3 Pass verdict stands unchanged.
+
+### 6.2 TabFM-Auto — the mechanism
+
+An LLM coding agent (Claude Code / Codex / Antigravity × Opus 5 / Gemini 3.8 Flash) evolves a **data pipeline around the frozen TabFM** — the agent edits `pipeline.py` (four functions + a kwargs dict), the weights never change:
+
+- **`preprocess()` (Φclean)** — sentinel values → NaN + missingness indicators (a `0` the FM cannot read as "unmeasured"), reversible target transforms g(y) (log(1+y), Box–Cox).
+- **`engineer()` (Φfeat)** — semantic features from column names: domain formulas (Strouhal/Helmholtz on airfoil −14.6/−17.3% RMSE; MAP/Shock Index on clinical tables; SDSS color indices; ICD-9 → organ-system chapters), bipartite graph degrees + frequency encodings over combined train+test, collinearity pruning + truncated SVD, and auxiliary-file summarization (seismic waveforms → FFT bands + STA/LTA, 9.4× better than the best external MLE agent; 3D crystal lattices → unit-cell volume; molecular coords → r⁻³ + Karplus dihedrals).
+- **`sample()` (Sctx)** — multi-view context selection (natural + minority-oversampled + cluster-stratified views, averaged) under the 16,384-row pretraining cap.
+- **`postprocess()` (Ψpost)** — g⁻¹ inversion, **log-odds prior shift toward the empirical training prior**, temperature/Platt scaling.
+
+Protocol worth reading whole: identity pipeline P₀ first, keep-only-improvements-over-P₀; bubblewrap-namespace sandbox (no network, test splits unmounted); row-order permutation vs index leakage; ≤96 evals or 6h/dataset on one H100. **Zero retraining noise is the thesis** — the frozen core makes small gains measurable where joint features+architecture+hyperparameter search (what MLE agents do) is noisy.
+
+Numbers: 1785 → **2013 Elo (+228)**, five configs sweep TabArena's top-5; regression +467 Elo (linearized physical ratios + target transforms let the FM interpolate what tree splits approximate coarsely); **#1 on MLE-Bench-Tabular** (1827 Elo, 86.7% win rate, 4 Kaggle medals). Taxonomy: feature table modified in 95.1% of runs; domain-readable schemas (Cat I, 17/51 datasets) gain ~3× anonymized ones (Cat II, 34/51). **The transfer finding:** pipelines found for TabFM transfer unchanged to TabICLv2 (+143.3), TabPFN-3 (+130.8), EXAONE-Tabular (+88.7) with zero further search — pipeline gains are largely engine-agnostic. **The ablation that carries the thesis:** an unconstrained coding agent (same harness/model/6h budget, may train anything) lands 1468.8 — 510.8 Elo BELOW; decomposition: frozen FM prior +316.5, pipeline search +194.3. Cost: five 51-dataset sweeps ≈ $17.6K API fees, 1.28B–12.13B prompt tokens each. Their stated future work — *"operations collected across datasets could form a reusable library that warm-starts search on new tables with fewer evaluations"* — is the healer corpus thesis.
+
+### 6.3 Distillation — shipped kin + two uncovered micro-primitives
+
+The four stages map onto shipped surfaces:
+
+| Paper stage | Shipped kin |
+|---|---|
+| Φclean | tokenizer/normalization seams; healer fixture normalization |
+| Φfeat | corpus entries; harness feature columns |
+| Sctx | reflex `--corpus-cap` / `--cal-select-cap` (riir-reflex/src/bin/harness.rs) |
+| Ψpost | reflex `--gate-fit-selection` / `--gate-fit-calibrated` (riir-reflex/src/bin/harness.rs flags; `SigmoidGateCalibrator` — katgpt-core `crates/katgpt-core/src/sigmoid_calibration.rs`, consumed at riir-reflex/src/engine.rs) |
+
+Both protocol laws already ship: keep-only-improvements-over-identity = the healer's `--verify` baseline→apply→re-check→auto-REVERT; frozen-core-means-low-noise-search = the modelless posture's own argument. Two small **uncovered** modelless candidates, shelved (no consumer yet):
+
+1. **Log-odds prior shift** — closed-form, composable with (not a replacement for) threshold fitting; corrects class-prior mismatch between pretraining/synthetic corpora and real data — exactly the bias a corpus-is-the-model engine can carry. Any future adoption runs the Report-the-Floor conformal gate (the R322 / Plan 340 law).
+2. **Multi-view context ensembling under a cap** — evaluate over several stratified context subsets, average; the class-imbalance answer when context is capped. reflex caps corpus per-label (`--corpus-cap`) but does not view-ensemble.
+
+### 6.4 Fusion leads (novelty TBD — owner-deferred, parked)
+
+| # | Fusion | Surface | Status |
+|---|---|---|---|
+| F1 | TabFM as a reflex comparison lane (subprocess oracle, the GLiNER/AgentJev pattern: their stack serves, our Rust measures) | riir-reflex `src/lanes/` | Parked — cheapest if ever activated |
+| F2 | "Reflex-Auto" — agent loop over the harness levers (already a modelless pipeline-around-frozen-engine) | riir-reflex `src/harness/` | Parked; AutoML prior-art risk, novelty TBD |
+| F3 | Cross-healer-domain config transfer (the +69..+143 engine-agnostic finding applied to clippy/rust_perf/kernel_opt) | riir-clippy | Parked — the most clippy-native lead |
+| F4 | Cross-dataset pipeline-op mining (their warm-start library = our corpus + trajectory store) | riir-clippy | Parked; the shape already converges on ours |
+| F5 | Frozen cognition core + evolved per-NPC perception wrappers | riir-ai (weak) | Parked, lowest priority |
+
+### 6.5 Addendum verdict
+
+**RECORD — activation deferred by owner call this session.** No missing architecture (the four stages have shipped kin, §6.3; both protocol laws already ship); exactly the two §6.3 micro-primitives uncovered, parked with no consumer; TabFM-Auto's genuinely novel claim (full-pipeline agent search around a frozen FM) is the paper's own contribution — CAAFE/FeatLLM/OCTree/AIDE/R&D-Agent/MLEvolve define the surrounding prior art (the paper's own related-work section; no novelty claimed here, so no §4 sweep was run). This section exists so a future session greps `2609.37989` or `TabFM-Auto` and finds the mapping pre-done.

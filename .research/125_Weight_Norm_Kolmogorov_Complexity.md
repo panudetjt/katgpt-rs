@@ -44,7 +44,7 @@ This means L1, squared L2, and any Lp regularizer all control the **same** quant
 | **OCTOPUS/SpectralQuant KV** | Quantization strengthens the MDL bias | Confirms quantized KV is implicitly doing MDL |
 | **LT2 Looped Inference (Plan 108)** | Looped depth helps low-K targets | Validates looped inference for structured outputs |
 | **TF Loop (Plan 136)** | Same — looped depth = more description length efficiency | Confirms training-free loop design |
-| **PlasmaPath ternary SIMD** | Ternary = cleanest fixed-precision regime (‖θ‖₁ = ‖θ‖₀ exactly) | Validates ternary as theoretically optimal |
+| **PlasmaPath ternary SIMD** | Ternary = cleanest fixed-precision regime (‖θ‖₁ = ‖θ‖₀ exactly) | Validates ternary as the cleanest MDL correspondence — not an optimality proof |
 | **Sparse MLP** | Sparsity ≈ description length minimization | Confirms sparse forward is conceptually right |
 | **Bandit + HL pruning** | Pruning = removing non-essential parameters = reducing K | Validates pruning philosophy |
 | **LEO/Dual LEO** | Sparsity-inducing priors converge to same Solomonoff prior | All-goals Q-values are low-K structure |
@@ -65,9 +65,10 @@ This means L1, squared L2, and any Lp regularizer all control the **same** quant
 The paper has a game-specific implication: game LoRA adapters (`lora.bin`, Secret A) in fixed precision encode domain knowledge proportional to their non-zero parameter count. This means:
 - Smaller, sparser game LoRA = lower Kolmogorov complexity = more "compressible" game knowledge
 - Our weight decay during LoRA training is implicitly selecting the simplest hypothesis that fits game data
-- Selling point: "Our game adapters are provably optimal compressed game knowledge under Solomonoff's universal prior"
+- Selling point (softened 2026-09-30, per the arXiv:2609.07755 synthesis below): "Our game adapters carry compressed game knowledge whose fixed-precision norm tracks its Kolmogorov complexity up to a log factor — weight decay biases training toward the simplest sufficient hypothesis."
+  - The 2026-05-27 form ("provably optimal … under Solomonoff's universal prior") over-claimed on three counts: the sandwich bound is a two-sided approximation whose constants the authors call "conceptual rather than predictive at small scales"; an induced prior biases the search, it does not guarantee the optimum is reached; and for LoRA-over-frozen-base lanes WD regularizes the adapter delta toward the frozen base, not the composed function's complexity.
 
-This stays in riir-ai domain (Research 016) as it's about game LoRA training configuration.
+This stays in riir-train domain (Research 016; moved from riir-ai in the training split) as it's about game LoRA training configuration.
 
 ---
 
@@ -83,3 +84,5 @@ This stays in riir-ai domain (Research 016) as it's about game LoRA training con
 
 **Date:** 2026-05-27
 **Status:** Research only — no plan, no feature gate, no code change
+
+> **PASS-Redirects (synthesis):** Wang, Kevrekidis & Belkin [arXiv:2609.07755 "A Theoretical Analysis of Generalization Dynamics in Neural Networks under Gradient Descent with Weight Decay"] — the dynamical-mechanism companion to this note's static WD=Solomonoff claim, scoped to FULL-WEIGHT GD+WD training: weight decay does not merely select low-K solutions as a prior, it actively contracts the learned function's within-cell prediction variation at per-step rate 2(Σ_{r≤ℓ} s_r + ℓ+2)·ηλ toward an approximate-homogeneity floor 2C(ℓ+2)ε_ah (the Euler residual of the network blocks; inner weights carry the error, outer linear weights are exact) — generalization IS that smoothing, and it is slow (grokking = its delay behind interpolation, t ~ log(V₀/ε)/(2ℓηλ)). Scope note: the contraction law does NOT transfer to LoRA-over-frozen-base lanes (WD there pulls the adapter delta toward the base function, not the network's PV) — lane arithmetic in the riir-train 016 redirect.

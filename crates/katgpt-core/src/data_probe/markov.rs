@@ -17,21 +17,78 @@ pub struct MarkovChain {
     pub entropy_rate: f32,
 }
 
+/// Sample one Gamma(α, 1) variate — Marsaglia–Tsang squeeze-rejection with the
+/// small-α boost (`α < 1`: sample Gamma(α+1), multiply by `U^{1/α}`).
+///
+/// Deterministic given the rng stream (Box–Muller normals from paired f32 draws).
+/// Diagnostics-path code — clarity over speed; the hot-path-grade sampler is
+/// Issue 912 T2's `dirichlet_dist` module (unscheduled).
+fn sample_gamma(alpha: f32, rng: &mut fastrand::Rng) -> f32 {
+    debug_assert!(alpha > 0.0);
+    // Small-α boost: Gamma(α) = Gamma(α+1) · U^{1/α} (Stuart's theorem).
+    if alpha < 1.0 {
+        let boost = rng.f32().max(1e-10).powf(1.0 / alpha);
+        return sample_gamma(alpha + 1.0, rng) * boost;
+    }
+    let d = alpha - 1.0 / 3.0;
+    let c = 1.0 / (9.0 * d).sqrt();
+    loop {
+        // Box–Muller standard normal (diagnostics-grade; one pair per draw).
+        let u1 = rng.f32().max(1e-10);
+        let u2 = rng.f32();
+        let z = (-2.0 * u1.ln()).sqrt() * (std::f32::consts::TAU * u2).cos();
+        let v = 1.0 + c * z;
+        if v <= 0.0 {
+            continue;
+        }
+        let v = v * v * v;
+        let u = rng.f32();
+        // Squeeze test (fast acceptance).
+        if u < 1.0 - 0.0331 * z * z * z * z {
+            return d * v;
+        }
+        // Log-likelihood test (exact acceptance).
+        if u.ln() < 0.5 * z * z + d * (1.0 - v + v.ln()) {
+            return d * v;
+        }
+    }
+}
+
 /// Sample a single Dirichlet(α, …, α) variate of dimension `k` into a pre-allocated buffer.
 ///
-/// Uses the Gamma→exponential trick: sample K exponential variates via
-/// `-ln(U)` where `U ~ Uniform(0,1)`, then normalize.
+/// `α == 1.0` (the flat Dirichlet) takes the exponential path — `K` iid
+/// `-ln(U)` variates, normalized — **bit-identical to the historical behavior**
+/// so every existing α=1 caller's streams are unchanged (the Issue 912 T1
+/// repair is strictly additive). `α ≠ 1` draws `K` Gamma(α, 1) variates and
+/// normalizes — the general construction the docstring always promised.
 ///
 /// `buf.len()` must equal `k`. Reuses the buffer to avoid per-call allocation.
-fn sample_dirichlet_into(k: usize, _alpha: f32, rng: &mut fastrand::Rng, buf: &mut [f32]) {
+///
+/// **Small-α limit (f32)**: `sample_gamma` computes `U^{1/α}` in linear f32
+/// space — for α ≲ 0.02 that exponent underflows to subnormal/zero on a large
+/// fraction of draws, and a row whose every coordinate underflows falls back
+/// to the uniform branch (the OPPOSITE of peaked). In-repo callers (α = 1.0,
+/// 0.1, 0.05) are unaffected (all-underflow ≈ 1e-8 at α=0.05, K=4). The
+/// general sampler (Issue 912 T2 `dirichlet_dist`) must draw in LOG space
+/// (log-Gamma + log-sum-exp normalization) — its G1 grid starts at α=0.01,
+/// exactly where this limit bites.
+fn sample_dirichlet_into(k: usize, alpha: f32, rng: &mut fastrand::Rng, buf: &mut [f32]) {
     debug_assert_eq!(buf.len(), k);
     let mut sum = 0.0f32;
-    for x in buf.iter_mut() {
-        let u = rng.f32();
-        let u_safe = u.max(1e-10);
-        let v = -u_safe.ln();
-        *x = v;
-        sum += v;
+    if alpha == 1.0 {
+        for x in buf.iter_mut() {
+            let u = rng.f32();
+            let u_safe = u.max(1e-10);
+            let v = -u_safe.ln();
+            *x = v;
+            sum += v;
+        }
+    } else {
+        for x in buf.iter_mut() {
+            let v = sample_gamma(alpha, rng);
+            *x = v;
+            sum += v;
+        }
     }
     if sum > 0.0 {
         let inv_sum = 1.0 / sum;
@@ -228,6 +285,29 @@ mod tests {
         let chain = generate_markov_chain(4, 1.0, 1.0, 10, &mut rng);
         let seq = sample_sequence(&chain, 0, &mut rng);
         assert!(seq.is_empty());
+    }
+
+    // Issue 912 T1 repair pin: α ≠ 1 now actually concentrates. Dir(0.05,…)
+    // rows are peaked (expected row max ≈ 0.9+), while the flat Dir(1) rows
+    // the broken sampler silently produced for this α average max ≈ 0.52 —
+    // the G3 premise "very peaked transitions" is now in force.
+    #[test]
+    fn test_dirichlet_alpha_concentrates() {
+        let mut rng = fastrand::Rng::with_seed(7);
+        let k = 4usize;
+        let mut buf = vec![0.0f32; k];
+        let mut mean_max = 0.0f32;
+        let draws = 400;
+        for _ in 0..draws {
+            sample_dirichlet_into(k, 0.05, &mut rng, &mut buf);
+            let mx = buf.iter().copied().fold(0.0f32, f32::max);
+            mean_max += mx;
+        }
+        mean_max /= draws as f32;
+        assert!(
+            mean_max > 0.7,
+            "Dir(0.05) rows should be peaked, mean max = {mean_max} (flat ≈ 0.52)"
+        );
     }
 
     // GOAT proof G1: Markov entropy accuracy — empirical entropy ≈ computed entropy_rate within 5%.

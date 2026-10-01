@@ -100,7 +100,7 @@ riir-chain               40    1
 #   the next partial-clone box hits it again, and a disclosed limit that
 #   silently vanishes teaches nobody why the row once said less.
 #   ⛔ 1 more site is in a CRLF file the tool REFUSED rather than reformat.
-riir-clippy              85   17
+riir-refine              85   17
 riir-dao                  2    0  # observed 2026-09-18: 4 temp_dir sites, 0 fixed
 riir-dapps               10    0
 riir-deployer             6    5  # observed 2026-09-18: 11 temp_dir sites, 5 fixed

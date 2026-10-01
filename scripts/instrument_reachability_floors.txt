@@ -69,7 +69,7 @@ katgpt-web                       0          2                0  # observed 2026-
 riir-ai                          4          2                7
 riir-auth                        0          1                0
 riir-chain                       1          3                3
-riir-clippy                      3          2               11  # 4 -> 11 2026-09-18 (Issue 837): 7 plan/bench-scoped one-offs landed undocumented — plan146..151_frontier_probe, plan150_splice_freeze_tables, bench010_llama_arm, bench036_interleaved_ab, bench_bonsai_vs_clippy_tokps, split_rust_perf_corpus. The documented OVER-CAPTURE class (a plan artifact is not an instrument), so ratcheted at measured rather than documented into that repo's AGENTS.md — which is riir-clippy's own call. Surfaced only because the riir-llm UNPINNED red used to stop the sweep first.
+riir-refine                      3          2               11  # 4 -> 11 2026-09-18 (Issue 837): 7 plan/bench-scoped one-offs landed undocumented — plan146..151_frontier_probe, plan150_splice_freeze_tables, bench010_llama_arm, bench036_interleaved_ab, bench_bonsai_vs_clippy_tokps, split_rust_perf_corpus. The documented OVER-CAPTURE class (a plan artifact is not an instrument), so ratcheted at measured rather than documented into that repo's AGENTS.md — which is riir-clippy's own call. Surfaced only because the riir-llm UNPINNED red used to stop the sweep first.
 riir-dao                         0          2                0  # observed 2026-09-18: no scripts/*.py
 riir-dapps                       0          1                1
 riir-deployer                    0          3                0  # observed 2026-09-18: no scripts/*.py
