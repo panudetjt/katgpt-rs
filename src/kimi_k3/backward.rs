@@ -337,7 +337,7 @@ pub fn kimi_k3_forward_token_saved(
 
     // Output attn-res
     saved.prefix_sum_final = runtime.hidden.clone();
-    saved.block_state_final = runtime.block_state.residuals.clone();
+    saved.block_state_final = runtime.block_state.residuals().to_vec();
     saved.has_output_attn_res = !runtime.block_state.is_empty();
 
     if !runtime.block_state.is_empty() {
@@ -477,7 +477,7 @@ pub fn kimi_k3_forward_token_hidden_saved(
 
     // Output attn-res (same as forward_token_saved).
     saved.prefix_sum_final = runtime.hidden.clone();
-    saved.block_state_final = runtime.block_state.residuals.clone();
+    saved.block_state_final = runtime.block_state.residuals().to_vec();
     saved.has_output_attn_res = !runtime.block_state.is_empty();
 
     if !runtime.block_state.is_empty() {
@@ -541,7 +541,7 @@ fn forward_layer_saved(
     // Step 1: self-attn-res mixing
     if !block_state.is_empty() {
         saved.has_self_attn_res = true;
-        saved.block_state_self = block_state.residuals.clone();
+        saved.block_state_self = block_state.residuals().to_vec();
         let mixed = apply_attn_res(
             &config.attn_res,
             &weights.self_attn_res,
@@ -609,7 +609,7 @@ fn forward_layer_saved(
     saved.prefix_sum_after_attn = prefix_sum.to_vec();
 
     // Step 5: MLP attn-res
-    saved.block_state_mlp = block_state.residuals.clone();
+    saved.block_state_mlp = block_state.residuals().to_vec();
     let mixed = apply_attn_res(
         &config.attn_res,
         &weights.mlp_attn_res,
@@ -1343,7 +1343,10 @@ pub fn attn_res_backward(
 /// Backward through dense SiTU FFN: `down_proj(SiTU(gate_proj(h), up_proj(h)))`.
 ///
 /// Returns dL/d(h) and accumulates weight gradients.
-fn dense_situ_ffn_backward(
+///
+/// `pub(crate)`: consumed by the delay-arch backward (Issue 482 / Plan 452,
+/// `kimi_k3::delay`) — same crate, no public-API widening.
+pub(crate) fn dense_situ_ffn_backward(
     expert: &SwiGluExpertWeights,
     saved: &DenseFfnSavedActivations,
     d_output: &[f32],

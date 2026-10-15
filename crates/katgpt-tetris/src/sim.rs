@@ -148,6 +148,7 @@ impl Board {
             out.push(f.trailing_zeros() as usize);
             f &= f - 1;
         }
+        out.shrink_to_fit();
         out
     }
 
@@ -571,6 +572,7 @@ pub fn landing_options_with(board: &Board, piece: Piece, rule: DropRule) -> Vec<
             }
         }
     }
+    out.shrink_to_fit();
     out
 }
 

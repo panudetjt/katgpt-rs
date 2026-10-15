@@ -105,6 +105,16 @@ pub use dd_tree::{
 #[cfg(feature = "lodestar")]
 pub use dd_tree::build_dd_tree_lodestar;
 
+// ── Issue 917 T3: EB-Sampler-class entropy-bounded lane wiring ──────
+// build_dd_tree_eb makes the DDTree per-expansion child count the EB prefix
+// (γ budget over candidate children's marginal surprisal entropies, replacing
+// the fixed width); dflash_block_commit_eb_with picks a drafted block's
+// committed prefix by the same Σ H − max H ≤ γ bound. Consumes the T1
+// primitive (katgpt-core::entropy_bounded_commit). Opt-in — the legacy
+// builders and dflash cores are untouched.
+#[cfg(feature = "entropy_bounded_commit")]
+pub use katgpt_speculative::entropy_bounded;
+
 #[cfg(feature = "manifold_pruner")]
 pub use dd_tree::build_dd_tree_manifold;
 

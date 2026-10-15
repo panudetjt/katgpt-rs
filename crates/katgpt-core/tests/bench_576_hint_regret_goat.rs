@@ -407,16 +407,16 @@ fn g_floor_paired_arm_beats_single_arm_banding() {
     const TAU_R: f32 = 0.15;
     const TAU_RET: f32 = 0.5;
     let items: Vec<FloorItem> = [
-        (0.15f32, 0.60f32), // frontier, sub-band p  → floor says intractable
-        (0.30, 0.45),       // frontier
-        (0.50, 0.40),       // frontier
-        (0.70, 0.30),       // frontier
-        (0.90, 0.04),       // mastered
-        (0.70, 0.05),       // mastered, in-band p   → floor says frontier
-        (0.95, 0.03),       // mastered
-        (0.10, 0.03),       // intractable
-        (0.30, 0.02),       // intractable, in-band p → floor says frontier
-        (0.15, 0.04),       // intractable
+        (0.15f32, 0.6f32), // frontier, sub-band p  → floor says intractable
+        (0.30, 0.45),      // frontier
+        (0.50, 0.40),      // frontier
+        (0.70, 0.30),      // frontier
+        (0.90, 0.04),      // mastered
+        (0.70, 0.05),      // mastered, in-band p   → floor says frontier
+        (0.95, 0.03),      // mastered
+        (0.10, 0.03),      // intractable
+        (0.30, 0.02),      // intractable, in-band p → floor says frontier
+        (0.15, 0.04),      // intractable
     ]
     .into_iter()
     .map(|(p, gain)| FloorItem { p, gain })

@@ -1138,6 +1138,10 @@ The substrate primitives it composes each have their own GOAT gates (GDN2/KDA Pl
 
 > **Backward (BPTT) path:** see [§76](#76-kimi-k3-analytic-backward--training-reference-gradient-pass) for the analytic gradient pass (`kimi_k3_backward` + per-primitive `kda_backward` / `mla_backward` / `moe_backward`). Training-time reference consumed by riir-train; NOT a production inference path.
 
+## MLA Absorbed Decode (Issue 926, arXiv:2610.07940)
+
+**Status: DEFAULT-ON since 2026-10-12** — `mla_absorbed` (katgpt-attn `mla_absorbed = ["mla_attention"]` + root forward; in the root `default` array). Weight-absorbed MLA decode (DeepSeek-V2 §2.1 absorption): per step per head `q_abs = W_UKᵀ·q_c` ONCE, scores read the latent directly, values accumulate in latent space as ONE transpose matvec over the cached `[seq × d_c]` matrix with a single `W_UV` up-projection — replacing the per-token `W_UK`/`W_UV` reconstruction. Bench 926 (GOAT): G1 absorbed/recon ≤ 8.9e-8 (tol 1e-4/1e-3), G2 **quiet-box re-pin 18.54×/27.88×/28.91× dense @ seq {1K,4K,16K} + 11.41×/14.07×/15.42× flashmemory** (x86_64 i7-13700K, High-performance scheme, load ~1; the earlier 23.9–54× provisional figures were load-inflated on the bandwidth-heavy recon arm exactly as the provenance note predicted), G3 212 root lib tests at the promoted default + all reference gates green, G4 0 allocs. The reconstruct path stays compiled as the spec-match reference; the kimi decode lane routes through `mla_forward_token_dispatched` (kill-switch `KATGPT_MLA_RECONSTRUCT=1`). League models do not run the MLA path — kimi lane only. 📖 [Bench 926](../../.benchmarks/926_mla_absorbed_decode_goat.md).
+
 ## 34. QGF — Q-Guided Flow Test-Time Gradient Guidance (Plan 268)
 
 Distilled from [arXiv:2606.11087](https://arxiv.org/abs/2606.11087) — Zhou et al., *Q-Guided Flow*. Test-time Q-gradient guidance for any `SpeculativeGenerator`: steers discrete generation toward higher expected Q by tilting logits `p' = p_t + (1/β)·∇Q`. No continuous diffusion, no flow-matching training, no BPTT — pure inference-time steering.
@@ -1961,6 +1965,7 @@ A consolidated section for standalone opt-in features with their own plans but n
 |---|---|---|
 | `dirichlet_energy` | 149 | Dirichlet Energy structural alignment diagnostic |
 | `gain_cost_halt` | 304 | Gain/Cost Loop Halting Primitive — per-loop halting kernel. GOAT G1-G5 ALL PASS. Stays opt-in at katgpt-core leaf; production wiring is riir-ai civ-side. |
+| `loop_guidance` | 617 | LoopCD recurrent-depth contrast guidance — the probe_guidance combine with its weak side re-sourced to a completed loop iteration k (arXiv:2610.02185); adaptive margin gate Eq 4; hidden mode one-head-pass. Shares the `contrast_combine` kernel with 865 (T1.2 one-home extraction). **ADJUDICATION PENDING** — the GOAT bench (non-saturated looped fixture, non-degeneracy asserts committed first) decides; the class is 0-for-2 (Benches 847+850). Promotion blocked pending a production looped consumer. |
 | `smear_classifier` | 298 | SmearClassifier — ternary latent-mass distribution classifier. GOAT G1/G2/G3 ALL PASS. Stays opt-in (G2 evidence synthetic). |
 | `self_advantage_gate` | 283 | Self-advantage recursion gate for HLA reconstruction |
 | `recursion_logits` | 283 | RecursionLogits opt-in trait — pre/post recursion logits exposure |
@@ -2312,7 +2317,7 @@ These are additional standalone features with their own plans that were not cove
 
 These are opt-in substrate/utility features without dedicated plans or with minimal documentation. Listed for completeness:
 
-`adaptive_gamma_forecast`, `async_qdq_overlap`, `attn_match`, `auto_constraint_synthesis`, `bandit_top_p`, `best_buddies`, `bfcf_lsh_cms`, `chiaroscuro`, `cna_steering`, `corr_budget`, `cs_kv_probe`, `cumprodsum`, `curvature_alloc`, `data_probe`, `dense_mesh`, `directional_credit`, `dmax_spd`, `domino_correction`, `eqr_convergence`, `fastrand`, `feature_class`, `four_regime_router_dep`, `freq_bandit`, `frozen_base_guard`, `functional_substitution_gate`, `future_probe`, `game_domain`, `game_state`, `gated_mlp`, `gauge_invariant`, `gepa_reflective`, `hla_attention`, `hybrid_oct_pq`, `ilc_distill`, `iso_quant`, `kv_share`, `kvarn`, `manifold_power_iter_router`, `mech_attribution`, `memo_reflections`, `micro_belief`, `mls_aggregate`, `module_energy_route`, `nds_proxy`, `nexus_elo_proxy`, `opus_selection`, `osc_kv`, `outlier_guard`, `pathway_tracker`, `percept_route`, `phrase_boost`, `planar_quant`, `precision_aware_draft`, `quantile_balance_router`, `randopt_weight`, `recfm`, `regime_transition`, `replaid_schedules`, `reward_calibrator`, `rosetta_pruner`, `segment_checkpoint`, `self_distilling_bandit`, `sigmoid_graded_reject`, `sleep_consolidation`, `sp_kv`, `spec_reconciliation`, `spectral_pruner`, `spectral_quant`, `spectral_rank`, `ss_pruner`, `state_source`, `static_cal_tables`, `step_attribution_qualifier`, `stiff_anomaly`, `swir_switch_thinking`, `targeted_precision`, `thicket_variance_probe`, `three_mode_router`, `trd_refined_draft`, `trust_region_spec`, `unit_distance`, `vocab_channel_pruner`, `vocab_coreset`, `wealth_pruner`.
+`adaptive_gamma_forecast`, `async_qdq_overlap`, `attn_match`, `auto_constraint_synthesis`, `bandit_top_p`, `bias_delta`, `best_buddies`, `bfcf_lsh_cms`, `chiaroscuro`, `cna_steering`, `corr_budget`, `cs_kv_probe`, `cumprodsum`, `curvature_alloc`, `data_probe`, `dense_mesh`, `directional_credit`, `dmax_spd`, `domino_correction`, `eqr_convergence`, `fastrand`, `feature_class`, `four_regime_router_dep`, `freq_bandit`, `frozen_base_guard`, `functional_substitution_gate`, `future_probe`, `game_domain`, `game_state`, `gated_mlp`, `gauge_invariant`, `gepa_reflective`, `hla_attention`, `hybrid_oct_pq`, `ilc_distill`, `iso_quant`, `kv_share`, `kvarn`, `manifold_power_iter_router`, `mech_attribution`, `memo_reflections`, `micro_belief`, `mls_aggregate`, `module_energy_route`, `nds_proxy`, `nexus_elo_proxy`, `opus_selection`, `osc_kv`, `outlier_guard`, `pathway_tracker`, `percept_route`, `phrase_boost`, `planar_quant`, `precision_aware_draft`, `quantile_balance_router`, `randopt_weight`, `recfm`, `regime_transition`, `replaid_schedules`, `reward_calibrator`, `rosetta_pruner`, `segment_checkpoint`, `self_distilling_bandit`, `sigmoid_graded_reject`, `sleep_consolidation`, `sp_kv`, `spec_reconciliation`, `spectral_pruner`, `spectral_quant`, `spectral_rank`, `ss_pruner`, `state_source`, `static_cal_tables`, `step_attribution_qualifier`, `stiff_anomaly`, `swir_switch_thinking`, `targeted_precision`, `thicket_variance_probe`, `three_mode_router`, `trd_refined_draft`, `trust_region_spec`, `unit_distance`, `vocab_channel_pruner`, `vocab_coreset`, `wealth_pruner`.
 
 ## 69. DEFAULT-ON Undocumented Features (Cross-Reference)
 
@@ -2499,6 +2504,7 @@ This is a **training-time reference**, NOT a production inference path — consu
 | `mla_backward` (katgpt-attn) | `mla/backward.rs` | MLA analytic backward (C4). Cross-token composition gradient check relaxed for finite-diff tolerance. |
 | `moe_backward` (katgpt-transformer) | transformer MoE | MoE FFN analytic backward (C4). |
 | `kimi_k3_backward` (root) | `src/kimi_k3/backward.rs` | Full-model composition: `kimi_k3_forward_token_saved` (forward with activation capture) + `kimi_k3_backward_sequence` + `attn_res_backward` + `dense_situ_ffn_backward` + `situ_backward` + `KimiK3ModelGradients`. Implies `kimi_k3_loader` + the three per-primitive backward features. |
+| `delay_arch` (root) | `src/kimi_k3/delay.rs` | Delay-architecture forward/backward pair (riir-train Issue 482 / Plan 452): `DelayArchConfig { dense_delay δd∈{0,1}, expert_delay δe }` — the pre-dense routing anchor (routed experts route off `Norm(x_in^ℓ)` and inject δe layers later; tail flush into the final residual) over the split-stream MoE substrate (`moe_forward_token_split` / the `moe_backward_{shared,routed}_stream` seams). G0 gate: δ0/δe0 BIT-IDENTICAL to the standard forward; backward within the 1-ULP split-reassociation band; per-arm finite-difference checks (δd=1/δe=0, δd=0/δe=2, δd=1/δe=2 all PASS, max 4.26%). Training-time screening reference, never a production inference path. |
 
 ### Gradient check results
 
@@ -4833,8 +4839,12 @@ consumer GOAT: `evolve_belief` front-end, ≤ 2 ns/NPC/tick against the
 11–12 ns envelope, `ab_timing.rs` paired protocol, λ=0 bit-identical
 default path) rides riir-ai Issue 1006.
 
-🔧 Feature flag: `habituation_filter` (katgpt-core). **OPT-IN**, with no
-consumer yet — promotion rides T2's GOAT + owner call.
+🔧 Feature flag: `habituation_filter` (katgpt-core). **OPT-IN — terminal posture**
+(2026-10-05: the perception consumer's promotion was DECLINED at the
+riir-ai delegated-owner verdict — the ≤ 2 ns bar unmet at every reading,
+best 5.45 ns; record: riir-ai HISTORY.md Issue 1006 row. The opt-in
+feature ships landed; reopen only on a hot-path consumer or a recorded
+bar revision).
 
 ## 130. attention_snr — streaming attention-SNR accumulators (Issue 882 P1 / Research 586)
 
@@ -5267,3 +5277,379 @@ Record: [Bench 905](../../.benchmarks/905_grouped_evidence_weighting_goat.md).
 `best_belief` + `rating`), **OPT-IN** — consumers unscheduled (riir-clippy
 Issue 139, riir-dao, riir-reflex, riir-instinct, riir-ai rows in the issue).
 Kill clock: no consumer within 30 days of merge ⇒ goat-audit stall class.
+
+## 140. two_fidelity_bai — Certified Two-Fidelity Best-Action Identification (2FFS) (Plan 615 / Research 601)
+
+Certified best-action identification for stochastic minimax trees where
+every node answers to a **fast oracle** (deterministic, biased within a
+known envelope `B(h)`, B(0) = 0 leaf-exact) or a **slow oracle** (stochastic,
+unbiased, σ-sub-Gaussian). Interval minimax backup (`local = fast ∩
+time-uniform slow CI`; `effective = local ∩ child` via the Eq. 6 fold —
+width never increases, Lemma 2.3 debug-asserted at every backup),
+leader/challenger ε-stop at the root, a budgeted local-vs-recursive race
+(Eq. 7 `γ = c·m_v(ρ_k)` scaled `α_h = (h+1)²`), dyadic scale latches
+(`Done_s(v,k)` — zero rework), and the empty-intersection guard
+detectable-E_δ exit (paper B.3). The certificate is first-class output:
+`TwoFidelityResult { best_action, cost, certified, root_intervals }`.
+Time-uniform slow CIs by geometric-stage stitching (Howard et al. class);
+δ_v = δ/node_cap uniform allocation (T1.4's documented tradeoff).
+
+```rust
+use katgpt_core::two_fidelity_bai::{two_fidelity_search, MinimaxSpace, SearchConfig};
+let r = two_fidelity_search(&space, root, &config, &mut rng);
+if r.certified {
+    // r.best_action is ε-optimal with confidence 1−δ; r.root_intervals
+    // is the certificate body (every interval provably contains V* on E_δ).
+}
+```
+
+GOAT (Bench 615, rewritten 2026-10-03 after the fixture root cause): the
+definitive full-protocol run (n = 300, 100 trees × 3 settings, ε = 0.02,
+δ = 0.05) reads **ALL GATES PASS** — G1: 0/300 pick errors (CP95 =
+0.00994 ≤ δ), 300/300 certified, 0 invalid certificate intervals, 0
+guard-fires; G2 strict wins vs the δ-correct LUCB-MCTS baseline (LB95 ≈
++15M/setting, the baseline capping at the 4M-sample cap — conservative-
+instance caveat in the record) and vs negamax-UCT at matched accuracy (B*
+= 33.5M vs 2FFS ≤ 1.08M); G4 alloc-linearity ✓. Cost caveat: the 916(b)
+trace attributes a ~10–50× cost debt vs the paper's own 2FFS instance
+(ladder overshoot, stage-δ halving, a-priori dilution — lever recorded,
+opt-in knob discipline). Deterministic per seed (byte-identical rows
+across independent builds).
+
+Record: [`.benchmarks/615_two_fidelity_bai_goat.md`](../../.benchmarks/615_two_fidelity_bai_goat.md)
+(the arc: the 906 negative → the fixture root cause → the 916a baseline
+rebuild → the wall-viable instrument).
+
+🔧 Feature flag: `two_fidelity_bai` (katgpt-core), **OPT-IN** — the
+certified-search slot (the default search slot keeps `mcts_search`;
+promotion to default was never the claim — strategic-tier primitive, the
+op-count evidence forbids per-tick wiring). Consumer map (Phase 3):
+riir-ai `MultiHypothesisBoMMinimaxPlanner` certified stopping (the seam
+issue cites Research 601 + this bench); watch: riir-instinct
+critic-guided search, riir-infer kernel-trial early-stop (Research 601
+§2.2).
+
+## 141. entropy_bounded_commit — EB-Sampler-Class Entropy-Bounded Commitment (Issue 917 T1)
+
+Feature-gated behind `entropy_bounded_commit` (opt-in). Zero novelty claimed:
+the rule is the EB-Sampler's (Ben-Hamu et al.,
+[arXiv:2505.24857](https://arxiv.org/abs/2505.24857), NeurIPS 2025,
+Algorithm 1 / Eq. 8; same family as PC-Sampler, APD and the DiffusionGemma
+report's `entropy budget b`). Sort the still-masked candidates by an error
+proxy (`ErrorProxy::{Entropy, Confidence, Margin}`) and commit the largest
+prefix with `Σ H − max H ≤ γ`, a bound on the joint-dependence error of a
+parallel commit under a factorized proposal.
+
+- `entropy_bounded_commit(candidates, entropy, key, gamma, max_commit)`:
+  sorts the caller's candidate buffer in place under a strict total order
+  `(NaN-last, key, index)`, then one linear scan. The residual is monotone
+  (appending `h` adds `min(h, running max)`) and carried in that exact
+  incremental form, not as `sum − max`. A cap below the candidate count
+  uses `select_nth_unstable` + a head sort.
+- No-stall by construction: for any `γ ≥ 0` a singleton's residual is 0, so
+  every pass with a finite-entropy candidate commits ≥ 1. The incumbent
+  per-position τ threshold (`confidence_threshold_eligible`) can commit
+  nothing on a flat canvas. Non-finite entropy and NaN/negative `γ` never
+  commit.
+- `position_stats` / `position_stats_into`: entropy, top-1 and margin per
+  logits row via the shared `simd::logsumexp_parts` kernel plus a top-2 scan.
+- Measured (M3 Max on AC, single run, box shared with sibling agent sessions, `--release`, `entropy_bounded_commit_alloc_check`):
+  0 bytes allocated in steady state; 64-candidate commit 0.76–0.96 µs full
+  sort, ~250 ns capped at 8; stats 1.05–1.25 ms per 64 × 4096 block (two
+  runs, a mean-of-1000 and a best-of-2000 — read as a range; exp-bound, so
+  the D2F integration should reuse its existing softmax buffer instead).
+- Oracle A/B (Bench 917, exact oracle denoiser, deterministic): no-stall on
+  every family; at equal validity 5–19% fewer NFE than the τ = 0.9 incumbent
+  given a singleton floor (shipped D2F τ has none and stalls on a flat
+  canvas); the bound costs 16× NFE on genuinely independent positions.
+- **T3 lane wiring LANDED 2026-10-07** (opt-in, same feature forwards to
+  `katgpt-speculative`): `build_dd_tree_eb{,_into}` (per-expansion child
+  count = the EB prefix over candidate children's surprisal −ln p; best-first
+  order preserved) + `dflash_block_commit_eb{,_with}` / `dflash_predict_eb_with`
+  (EB prefix over per-depth `position_stats`, argmax tokens only, ascending
+  depth order); `EbBuildScratch`/`EbCommitScratch` zero-alloc with commit-count
+  counters + histogram; legacy paths untouched and bit-identical with the flag
+  off. Counts bench `bench_917_eb_lane_wiring`: EB(γ=5, cap=8) commits mean
+  2.00/expansion on FLAT rows vs 4.00 on PEAKED (any fixed-k is constant);
+  γ ≤ 0.3 rides the safe fixed-k=1 end. 12 lane tests + G4 alloc check +
+  brute-force Σ−max agreement (500 seeded cases × 3 proxies). Re-exported at
+  `katgpt_rs::speculative::entropy_bounded`.
+- **T2 decode wiring LANDED 2026-10-08** (opt-in, same feature): the two-level
+  gate lives in `katgpt-forward` — `d2f_commit_set_eb_where(..., eligible,
+  ...)` is the eligibility-filtered join (the unfiltered
+  `d2f_commit_set_eb` delegates with `|_| true`; the γ budget is spent only
+  over the pass-commitable set), and both decode cousins arm the same gate
+  (`eb_gamma ≥ 0` armed, negative = disarmed, flag-off byte-identical):
+  `flashar_anchor::fill_with_anchors` + `set_diffusion::set_diffusion_decode`
+  (`SetDiffusionConfig` carries the cfg-gated `eb_gamma`/`eb_max_commit`
+  pair). Wiring tests 9 → 14 (eligibility-filter budget pin, armed /
+  unreachable-τ / disarmed-legacy-shape, flashar armed anchor-fill +
+  determinism); cousin sections gated on `all(commit, module-feature)` inside
+  the file so the target's `required-features` row is unchanged. Gates: clippy
+  green at default / feature / feature+cousins postures; 205/155/131 lib tests
+  at those postures.
+- Promotion pending the lane G2/G3 A/B only: the D2F τ_conf A/B stays blocked
+  on the trained checkpoint (riir-train Plan 437 Phase 4, owner-gated 4090
+  windows); the γ dial is uncalibrated until that lane A/B runs. T2 wiring is
+  complete; the riir-side `gemma2_d2f` GPU model-forward commit policy is the
+  one unwired lane, a future slice only if the A/B wants it.
+
+## 142. gmm_support — Density-Ratio Support Gate (Plan 618 / Research 604, arXiv:2610.02126)
+
+The continuous-latent two-density member of the gate family, distilled from
+"Local Support Learning": a diagonal-GMM pair (positive fit on the
+suite/adapter's own training distribution, negative on a generic reference
+corpus capturing distribution WIDTH, not identity) whose log-ratio
+`ℓ(x) = log Φ_pos(x) − log Φ_neg(x)` gates admission to the training
+support. Modelless throughout — EM statistics, a seeded JL projection,
+closed-form O(K·E) eval, an EMA scalar, an offline-certifiable excess bound.
+
+- **`DiagGmm`** — the mixture-density extension of the `RegionSubspaceField`
+  class: per-component diagonal variances (not shared), a true logsumexp
+  mixture density (not per-region sigmoids), BLAKE3 commitment reusing the
+  `compute_field_commitment` convention (verdict round 1: no parallel GMM
+  type with an invented format)
+- **`fit_diag_gmm`** — EM refinement seeded from the shipped deterministic
+  `fit_codebook_kmeans_into` (implies `factorized_action`); Jeffreys-smoothed
+  weights; same-inputs → identical artifact (BLAKE3 determinism pin)
+- **`JlProjector`** — the JL projection revived at E ≥ 32 with packed
+  sign-bit storage (one bit per entry, add/sub-only apply, `1/√E` once per
+  row); the Issue-139 m=8 history carried in the module docs and a
+  compile-time shape guard so the mistake cannot recur
+- **`SupportGate` + `GateSmoother`** — `sigmoid(ℓ/τ)` confidence bridge
+  (never softmax), unfitted = closed-always (the `CorpusDistanceGate`
+  empty-corpus precedent), per-stream EMA state
+- **Certification instruments (T6/T7)** — Φ_neg-weighted excess mass +
+  deficit rates; the App-E bound in its implementable form
+  (`excess ≤ bound_multiplier·L1 + slack`, the multiplier measured at
+  0.67–1.4 across the fixture family, defaulted to 2.0 with headroom); the
+  leak-by-construction linear-discriminator canary that REDS the instrument
+  itself when the control fails to fire (§3.6 discipline)
+- **Fit-space law (measured at the first consumer, riir-reflex Issue 066
+  PRE-CHECK)**: fit/eval in the JL-PROJECTED space (E ≈ 32–64), never raw
+  hashed-bag D-space — raw space rejects Gaussianity universally (0/154
+  label pools); whole-corpus multimodality is what the per-label components
+  exist to model
+
+**GOAT G1/G2a/G2b/G4/G5 ALL PASS**
+([Bench 908](../../.benchmarks/908_gmm_support_goat.md)) — G2a request posture
+8529 ns = 0.67× the decision-pass proxy; G2b layer posture ≤ 12% bar with
+the FLOP arithmetic ≈ 6.0% of a Qwen2.5-1.5B-shaped layer; G4 zero allocs;
+G5 the two-sided leak canary + the fixture-scoped bound. Stays opt-in per
+the no-default-consumer rule — first consumer: riir-reflex Issue 066 (the
+fused-abstain density half); UQ Report-the-Floor rides that consumer's A/B
+(the primitive itself has no outcome space).
+
+## 143. lattice_memory — E2LSH-addressed delta-rule cell lattice (Plan 619 / Research 233)
+
+The candidate FIFTH retrieval complexity class beside Raven O(1) / Engram
+O(1) / δ-Mem O(r) / PKM O(√N): growing state + constant-neighborhood access
++ graded near-miss recall. The deterministic, modelless extraction of the
+Spotlight-class addressing math (Percepta blog 2026-10-02; published
+lineage SDM arXiv:2607.07386, MARCH arXiv:2608.12435, Memory Layers
+arXiv:2412.09764 — our form is closed-form delta rule, no gradient descent).
+
+- **`LshAxes`** — continuous E2LSH per-axis addressing: `(a·x + b)/w` with a
+  seeded p-stable (Gaussian) direction and uniform offset per axis; the
+  integer part is the cell coordinate, the FRACTIONAL part is the bump
+  input (the property the rejected integer-split SimHash form could not
+  give). Seeds ride the shared `katgpt_core::lsh_seed::config_seed`
+  discipline (moved DOWN from `katgpt-pruners/lsh_cache.rs`, which now
+  re-exports it — the Issue 809 same-config-same-projection law, one copy).
+- **`bump`** — 3-tap per-axis LUT (2⁸) over the fractional coordinate:
+  radius-1.5 tent centered at the query over `{round(c)−1, round(c),
+  round(c)+1}`, normalized to a per-axis partition of unity;
+  direction-sensitive; the far tap decays to zero exactly at the ±0.5
+  boundary (support exactly ±1 cell). LUT-vs-direct parity ≤ 1e-6 gated.
+- **`LatticeMemory`** — the 2D lattice over a preallocated flat slab with
+  runtime `d_k`/`d_v` (the const-generic shape needs `generic_const_exprs`,
+  unstable on the pinned toolchain): cells claim slab regions on first
+  write (`LatticeCell { offset, len, writes }`), never per-cell heap;
+  reads are φ-blended read-then-blend into a caller buffer, φ normalized
+  over the IN-GRID geometric support (sparsity attenuates — graded recall,
+  never a written-mass renorm, which would read a flat 1.0 and be a wider
+  cliff than Engram's).
+- **Measured at birth (Plan 619 T1.2's gates)**: locality ≥ 95% same/
+  adjacent-cell under small perturbation across seeds (the plan's STOP
+  gate — cleared); fractional-part distribution non-degenerate (16-bin
+  spread); near-miss recovery through neighbor weight, strictly graded
+  (positive past the boundary, decaying with distance — no cliff).
+- **Status: Phase 1 in progress** — T1.4 (the delta-rule write
+  `S ← S(I−βkkᵀ)+βkvᵀ` + forgetting/interference/alloc gates), T1.5 (the
+  CDF-corrected grid sizer), T1.6 (sigmoid-only scoring), T1.7 (the GOAT
+  bench vs PKM/Engram at our key distributions) and T1.8 (cos²-vs-tent
+  kernel A/B) remain; consumer = riir-refine Plan 199. No GOAT claim until
+  T1.7 runs.
+
+### 143.1 lattice_memory_3d — the 3-axis remedy (Issue 938, Bench 938)
+
+The axis count is a **const generic** (`LshAxes<A>`, `LatticeMemoryG<A>`;
+`LatticeMemory`/`LatticeConfig` stay the A=2 aliases, bit-identical by
+construction — same draw order, accumulation order, commitment byte
+stream), and `lattice_memory_3d = ["lattice_memory"]` opens `A = 3`:
+`N_max ≈ 0.35·d_k·(3.76/R)^AXES` lifts the R=0.05σ ceiling from ~63k to
+~4.76M at d_k=32 (slab 1.798 GB at d_v=32 — priced under the 2 GiB bar
+before the build). The sizer also gains the measured-erosion capacity
+(`capacity_per_cell_eroded`, `sized_eroded` — the same-cell E[cos²]
+estimated from the fit corpus; defaults bit-for-bit `0.35·d_k`) and the
+overwrite lane gains `read_direct` (the exact positional-copy read; the
+blended read dilutes by 0.6^A at an exact hit).
+
+**Verdict (Bench 938, RECORDED NEGATIVE at G2):** at the 10⁶/0.05σ cell 2D
+cannot even size, 3D holds G1 recall 0.9345 + G5 graded recovery 0.184 vs
+Engram 0.004 + G6 857 MB — but the 27-tap read costs 2.90× the 9-tap
+kernel and loses to PKM (7379 vs 5171 ns). Opt-in forever unless a
+posture-changing A/B (the 2-tap kernel, 8 taps vs 27) re-opens it. The
+T1 gates: random keys bracket the aggregate survival law (promise 0.723 ≥
+0.5 at λ=11), clustered keys saturate above it (the exact key-recursion
+algebra pinned ±0.08 — the eroded surface is conservative for parallel
+keys, the safe direction).
+
+Substrate: `crates/katgpt-core/src/lattice_memory/` (`types.rs` vocabulary,
+`address.rs` E2LSH, `bump.rs` the 3-tap LUT) + `crates/katgpt-core/src/
+lsh_seed.rs` (the shared seed discipline). Pure stdlib + fastrand,
+wasm32-clean; zero new deps.
+
+## 144. state_probe — FlyBy decision-layer probe kernel (Plan 621 Phase 1 / Research 609)
+
+Feature `state_probe` (opt-in; implies `hint_regret` — the Wilson CI
+substrate lives there, no third CI copy). arXiv:2609.34327 (FlyBy, KAIST
+2026), decision layer only, zero training. Source file:
+`crates/katgpt-core/src/state_probe.rs`.
+
+- **`ProbeInput`** — plain ensemble outcome over one decision state:
+  `pass_count`, `n`, and the answer `histogram` (`&[u16]`; empty slice =
+  answers-not-tracked). The kernel never samples — reflex-free by
+  construction.
+- **`probe(input, z) -> ProbeEstimate`** — `V̂ = pass_count / n`; the
+  Miller–Madow answer entropy `Ĥ = H_emp + (K′−1)/(2N)` in nats (K′ =
+  NONZERO bins, the observed-support reading of Miller 1955 — empty bins
+  overstate the correction, Grassberger 2003 §3.2; coincides with the
+  alphabet form on a fully populated histogram, which Research 609's
+  fixture is); the Wilson interval CONSUMED from
+  `hint_regret::gate::wilson_score_ci`.
+- **NOT calibrated UQ** — a binomial CI on the ensemble pass-rate, nothing
+  more; Report-the-Floor binds at any consumer that treats it as
+  calibrated uncertainty.
+- **Phase 1 gates (measured 2026-10-08)**: T1.2 unbiasedness — E[h_mm] over
+  20k seed-pinned uniform multinomial draws within 5e-3 of ln 4; blake3
+  output-bytes pin; G4 0 allocs over 10k calls (counting allocator,
+  canary-armed); G2 167 ns/call median-of-10k < 1 µs bar at release
+  (bench_621, M3 Max, shared box disclosed). Phase 2 (bottleneck
+  classifier) + Phase 3 (escalation gate) pending — no consumer wiring
+  until their gates pass.
+
+## 145. runetrace — the scene-as-text format, decision_wire's sibling (Plan 624 / seal-remake Proposal 005)
+
+Feature `runetrace` (opt-in; zero new deps — serde + blake3 + postcard
+already non-optional). Source: `crates/katgpt-core/src/runetrace.rs`.
+
+- **`RunetraceDoc { version, tick, scene, entities }`** with per-entity
+  glyph-led condition rows + parent-indexed DAG rows — the live scene IN as
+  deterministic text (the SIBLING of `decision_wire`, which carries typed
+  questions OUT to a decision lane). Consumers: the seal-remake panels
+  (Proposal 005 Phases 3+ — scene tree, entity inspector, Copy-as-MD) and
+  the instinct/rethink lanes (Phase 4).
+- **BYTE-DETERMINISTIC canonical text render** — shortest-round-trip float
+  spelling pinned at one site; a BLAKE3 digest over that text (the
+  lab_trace discipline, one layer up); fail-closed structural validation;
+  serde (json + postcard) round-trips + golden text byte-pins in the module
+  (20 tests; the G1 fixtures caught 2 real bugs pre-merge).
+- **Raw stays raw** — never a sync surface, never parsed back into game
+  truth (the ConvexTok law). COLD PATH by construction (the renderer
+  allocates; producers stay alloc-free). Landed `f5bb0c535` (2026-10-09,
+  Plan 624 complete); the consumer-side GOAT verdicts live in the consumer
+  repos (seal-remake Plan 020's gate record: G1–G4 PASS).
+
+## 146. event_state_windows — Event-Anchored Sigmoid Segmentation + Identity-Free Population Summary (Plan 623 / Research 611) — DEFAULT-ON
+
+Feature `event_state_windows` (**DEFAULT-ON since 2026-10-10**, `f27a031c2`
+— the 86th katgpt-core default entry; landed opt-in the same day and
+promoted when Plan 623's GOAT gate MET: G1–G4 (bench 931) + the riir-ai
+T2.1 consumer PoC GO (bench 978: Type-A cross-half index **1.000**, Type-B
+control 0.2917 ≈ chance, β̂ 0.9% off λ_true, Δ̂ validated 34.08/35.00) +
+modelless gain by construction — zero trained parameters,
+zero-cost-unless-invoked). Source paper: arXiv:2610.03001 (Bae & Cha,
+"Neural Data Needs Semantic Tokenization" — TWS); research:
+Research 611 + riir-ai Research 396. Source:
+`crates/katgpt-core/src/event_state_window.rs`.
+
+- **`event_state_window(t, b_prev, b_next, delta, gamma)`** — the
+  two-sided sigmoid product window with the settle transition
+  `[b, b+Δ)` excluded from both states (TWS Eq. 1); γ limits read exact
+  0/1 via `fast_sigmoid` ±40 saturation (σ(0)=0.5 pinned as the
+  ambiguous class); malformed boundary sequences return the zero window,
+  never panic (20k-iteration fuzz; `b_next=+inf` is the VALID terminal
+  shape, not malformed). Δ stays a parameter — call `settling_ticks(β, ε)`
+  directly (R586; no wrapper).
+- **`population_state_summary(values, scratch) -> StateSummary`** —
+  identity-free order statistics (mean, spread, nearest-rank
+  10/25/50/75/90% quantiles with tail supports carried in
+  `StateSummary.supports`) over an unordered member set; zero-alloc,
+  permutation BIT-identical (sorted-order fold). Transfers to never-seen
+  populations where per-member models score 0.000 (the paper's transfer
+  result, the reason the primitive exists).
+- **Paper evidence**: event-anchored boundaries vs fixed/random =
+  +166–233% decode; wrong boundaries cost −62–70% and training cannot
+  repair them.
+- **Gates (bench 931)**: window 6 ns p99 (bar 20); summary N=10k
+  98.3 µs p50 (bar 100) WITH the fixed-window baseline arm; anchoring
+  delta +500 ns; 10/10 G1 closed-form tests. G2b default-posture re-read
+  103.8 µs @10k vs the 100 µs bar = the recorded trainer-load caveat
+  (quiet re-run owed when the 4090 trainer exits; bench 931's PASS
+  stands, the promotion adds only the default-list line — code
+  byte-identical).
+
+## 147. sync_bank — CMM Sync-EWMA Relation-Surprise Memory (Issue 930 / Research 615)
+
+Feature `sync_bank` (**DEFAULT-ON since 2026-10-12** — Issue 930 T5
+promotion, owner GO; the ESTIMATOR is unconditional in
+katgpt-types — the TemporalDerivativeKernel precedent: leaf kernels always
+compile, the feature gates the `ReconstructionState` WIRING; the unarmed
+default path is byte-identical, γ=0). Source: arXiv:2610.07907 (Continuous
+Memory Machines), Research 615. Source:
+`crates/katgpt-types/src/sync_bank.rs`.
+
+- **`SyncBank<const D, const K>`** — K=3 FULL second-moment banks (one
+  complete accumulator per timescale; the ladder IS the discovery
+  mechanism — a relation's timescale is not known a priori), step sizes
+  d ∈ {0.25, 0.0625, 0.015625} (tick/second/minute-class; retention
+  λ = 1−d, retention-form updates `S ← λS + zz`, `m ← λm + z`,
+  `mass ← λmass + 1` — recursive, no pow, no tick count; mass → 1/d =
+  4/16/64-tick effective horizons matching the labels). Per bank: packed
+  upper-triangle S + weighted mean m + recursive mass.
+- **Readout = the exact mass-normalized covariance**
+  `C = S/mass − (m/mass)⊗(m/mass)` — everything reads C, never raw
+  products (raw products track first-order movement); the
+  mass-normalized centering is what makes the C_ij ∈ [−¼, ¼] bound and
+  the A.3 divide-by-linear-weight-sum law load-bearing (the lagged
+  `(z−m)⊗(z−m)` form breaks the bound). Two streaming scalars:
+  **δ_level** = Σ|C_ij| (+ argmax) — the coupling STATE, feeds
+  hysteresis/salience, NOT surprise; **δ_surprise** = Σ|C^fast − C^slow|
+  — the relation CHANGE across adjacent banks, spikes on correlation
+  flips AND decouplings, blind to marginal movement once means settle.
+  Zero-alloc, zero-scratch, deterministic; sigmoid gating happens at the
+  CONSUMER (the accessor returns raw bounded scalars).
+- **Wiring**: `ReconstructionState::arm_sync_bank() /
+  disarm_sync_bank() / sync_bank()` + the observe hook on BOTH
+  `evolve_belief` paths (single observation point, the temporal_deriv
+  discipline); exposes both scalars so consumers (riir-ai Issue 1049)
+  never touch core internals. Latent-only: per-entity local state; only
+  the scalars may cross any sync boundary (the 5-scalar law).
+- **Gates**: T3 property tests (horizon invariance ≤1e-6 at T=8 vs T=64
+  — the A.3 discriminator; exactness vs f64 batch λ-weighted covariance
+  ≤1e-5 over a 256-tick correlated stream); G1a PASS — the PARTIAL-sign
+  coupling flip spikes δ_surprise ≥3× the baseline MEAN, persists
+  (integrated elevation ≥4× the Plan-277 value-surprise), settles; the
+  whole-vector sign negation pinned as a covariance NO-OP (the sign-flip
+  ground truth); the independent-marginal-step negative control stays
+  quiet. G4: 0 allocs over 10k iterations (D=8) + 1k (D=64). G2 quiet-box
+  numbers COLLECTED 2026-10-11 (M3 idle loop, load 2.15/16, AC): D=8
+  observe 54.8 ns, D=8 readouts 59.8 ns/pair, D=64 observe 2354.1 ns —
+  all bars green with headroom. **T5 (G1b real-fixture replay) PASSED
+  2026-10-11 — δ_surprise 23/23 warm events at EVERY matched FP budget
+  vs value-surprise 0/23; Wilson 95% intervals disjoint; McNemar 23-0-0;
+  AUC 0.72 vs 0.55** (fixture:
+  `crates/katgpt-types/tests/sync_bank_g1b_real_fixture.rs`, re-measured
+  every run). **PROMOTED TO DEFAULT 2026-10-12** (owner GO); the pinning
+  test re-reds past the recorded margins.

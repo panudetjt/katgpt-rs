@@ -22,10 +22,13 @@ riir-llm
 riir-mmorpg-examples
 riir-neuron-db
 riir-reflex
+riir-refab
 riir-reflexer
+riir-rethink
 riir-shader
 riir-train
 riir-viewbridge
 mmorpg-editor
 mmorpg-remaster
 mmorpg-remake
+seal-std

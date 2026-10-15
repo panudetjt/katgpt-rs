@@ -519,6 +519,7 @@ mod tests {
                 }
             }
         }
+        e.shrink_to_fit();
         e
     }
 

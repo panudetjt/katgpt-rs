@@ -146,7 +146,7 @@ fn row(n: usize, label: &str, disp_ns: f64, scalar_ns: f64, ratio: f64, survived
 #[test]
 fn avx2_arms_reachability_and_price() {
     banner();
-    let mut live = Vec::new();
+    let mut live = Vec::with_capacity(NS.len());
 
     for &(n, iters) in &NS {
         let mut rng = Lcg::new(0x0846_0000 + n as u64);

@@ -685,6 +685,12 @@ pub fn equal_sqrt_mass_grid(profile: &UgcProfile, n: usize) -> Vec<f32> {
 /// Eq 39): minimize `Σ_k √(S_k·H_k)` with edge cost
 /// `e(i,j) = √((λ_j−λ_i)·mass(i..j))`. Returns `k+1` grid indices
 /// (`0` and `G` included; ascending).
+///
+/// DRY cross-link: `crate::partition::minmax_partition` (feature
+/// `minmax_partition`) is this DP's NEIGHBOR, not its generalization —
+/// min-MAX worst-case under an ε constraint, k free, over a generic
+/// distance matrix (Plan 616; the T0.1 decision and the
+/// never-drift-silently rule live in the module doc).
 pub fn dp_partition(profile: &UgcProfile, k: usize) -> Vec<usize> {
     const INF: f64 = f64::INFINITY;
 

@@ -2,6 +2,7 @@
 name = "katgpt-tokenizer"
 version = "0.1.0"
 edition = "2024"
+rust-version.workspace = true
 license = "MIT"
 description = "BPE, ToaST split-tree, and ConvexTok LP vocabulary optimization — standalone modelless tokenizer crate extracted from katgpt-rs."
 repository = "https://github.com/katopz/katgpt-rs"

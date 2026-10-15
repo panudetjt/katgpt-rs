@@ -36,9 +36,6 @@ scripts/kimi_ref/ref_output/
 
 # Symlink to AGENTS.md so Claude Code reads the same instructions as Zed's agent
 CLAUDE.md
-# cargo heal runtime state — self-evolve trajectory store + miss queue
-# (machine-local WAL + key seed, never committed; riir-clippy Issue 037)
-.heal/
 
 # Stray process output. `git add -A` from the repo root is indistinguishable
 # from intent (AGENTS.md §shared worktree), and several sessions write here at
@@ -51,3 +48,6 @@ scripts/repo_alias.local.txt
 
 # cargo-refine machine-local state (trajectories, fixseq, outbox, active-set)
 .refine/
+
+# session run scratch (gate out/err logs)
+.runs/

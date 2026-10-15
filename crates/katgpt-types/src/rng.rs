@@ -1,8 +1,73 @@
-//! XorShift64 PRNG.
+//! Deterministic PRNG primitives: the SplitMix64 stream + finalizer, and
+//! XorShift64.
 
 // ---------------------------------------------------------------------------
 // RNG
 // ---------------------------------------------------------------------------
+
+/// The SplitMix64 additive constant — the golden-ratio γ
+/// (0x9E37_79B9_7F4A_7C15; Steele/Lea/Leiserson, see Java SplittableRandom).
+/// Streams advance `state += SPLITMIX64_GAMMA` before each finalizer pass;
+/// one-shot seed/hash mixing feeds `seed.wrapping_add(SPLITMIX64_GAMMA)`
+/// (the spelling `Rng::new` uses).
+pub const SPLITMIX64_GAMMA: u64 = 0x9E37_79B9_7F4A_7C15;
+
+/// The SplitMix64 finalizer — the 3-step avalanche mix (xor-shift, multiply,
+/// xor-shift, multiply, xor-shift; Steele/Lea/Leiserson — see Java
+/// SplittableRandom).
+///
+/// This is the MIX ONLY: it does not advance a generator state. The
+/// golden-ratio add belongs to the caller — [`SplitMix64::next_u64`] does
+/// `state += SPLITMIX64_GAMMA` then calls this, and one-shot seed/hash
+/// mixing does `splitmix64_finalize(seed.wrapping_add(SPLITMIX64_GAMMA))`.
+///
+/// Note the mix maps input `0` to output `0` (the multiplies are by odd
+/// constants, so 0 is a fixed point of the xor-shift ladder); callers never
+/// observe it because the γ add precedes every call.
+pub fn splitmix64_finalize(x: u64) -> u64 {
+    let mut z = x;
+    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    z ^ (z >> 31)
+}
+
+/// Deterministic SplitMix64 stream — NO `rand` crate. Each draw advances the
+/// state by γ and returns the finalizer over it. Integer ops only: the same
+/// seed reproduces a byte-identical stream on every machine — the property
+/// the reflex harness's frozen-read law consumes (reflex Issue 071 delegated
+/// its harness stream here).
+pub struct SplitMix64 {
+    state: u64,
+}
+
+impl SplitMix64 {
+    /// Construct from a 64-bit seed (the raw seed is the initial state; the
+    /// γ add happens on the first draw).
+    pub fn new(seed: u64) -> Self {
+        Self { state: seed }
+    }
+
+    /// Next 64-bit draw: advance the state by γ, then finalize.
+    pub fn next_u64(&mut self) -> u64 {
+        self.state = self.state.wrapping_add(SPLITMIX64_GAMMA);
+        splitmix64_finalize(self.state)
+    }
+
+    /// Uniform-ish index in `[0, n)` via Lemire's multiply-shift on a 53-bit
+    /// draw (bias ≤ n / 2⁵³ — unbiased for the option counts and shuffle
+    /// indices this serves). `n` must be nonzero.
+    pub fn below(&mut self, n: usize) -> usize {
+        debug_assert!(n > 0, "below(n) requires n > 0");
+        ((((self.next_u64() >> 11) as u128) * (n as u128)) >> 53) as usize
+    }
+
+    /// Uniform f64 in `[0, 1)` — 53 random mantissa bits read as a VALUE
+    /// (never `from_bits`, which would read the integer as a raw IEEE
+    /// pattern).
+    pub fn next_f64(&mut self) -> f64 {
+        (self.next_u64() >> 11) as f64 / 9_007_199_254_740_992.0
+    }
+}
 
 /// XorShift64 PRNG — deterministic per seed.
 pub struct Rng {
@@ -24,11 +89,9 @@ impl Rng {
     /// Cost: ~3 mul/shift per `Rng::new`. Negligible — `new()` is called once
     /// per inference/training session, not in hot loops.
     pub fn new(seed: u64) -> Self {
-        // SplitMix64 finalizer (Steele/Lea/Leiserson — see Java SplittableRandom).
-        let mut z = seed.wrapping_add(0x9E37_79B9_7F4A_7C15);
-        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
-        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
-        let state = z ^ (z >> 31);
+        // SplitMix64 seed decorrelation (Steele/Lea/Leiserson — see Java
+        // SplittableRandom): one γ-add + finalizer pass, the exported mix.
+        let state = splitmix64_finalize(seed.wrapping_add(SPLITMIX64_GAMMA));
         // XorShift64 with state == 0 is an absorbing state (stuck at 0 forever).
         // SplitMix64 never outputs 0 for any u64 input in practice, but guard
         // defensively: the cost is one branch on construction, not on hot paths.
@@ -124,6 +187,85 @@ mod tests_rng {
         assert_ne!(r1, r2, "seeds 1 and 2 must differ on first draw");
         assert_ne!(r1, r3, "seeds 1 and 3 must differ on first draw");
         assert_ne!(r2, r3, "seeds 2 and 3 must differ on first draw");
+    }
+
+    /// The exported stream's frozen known-answer draws (seed 42): the SAME
+    /// six values reflex's harness pins in
+    /// `echo_gates::tests::splitmix_stream_matches_the_frozen_golden_draws` —
+    /// the two repos' pins cross-check the Issue-071 delegation.
+    #[test]
+    fn splitmix_stream_known_answer_seed_42() {
+        let mut rng = SplitMix64::new(42);
+        for expected in [
+            0xbdd7_3226_2feb_6e95u64,
+            0x28ef_e333_b266_f103,
+            0x4752_6757_130f_9f52,
+            0x581c_e1ff_0e4a_e394,
+            0x09bc_585a_2448_23f2,
+            0xde44_31fa_3c80_db06,
+        ] {
+            assert_eq!(rng.next_u64(), expected);
+        }
+    }
+
+    /// `below` consumes the same stream (Lemire on the 53 high bits), stays
+    /// in `[0, n)`, and is degenerate-correct at `n == 1`.
+    #[test]
+    fn splitmix_below_known_answer_and_bounds() {
+        let mut rng = SplitMix64::new(42);
+        assert_eq!(rng.below(7), 5);
+        assert_eq!(rng.below(7), 1);
+        assert_eq!(rng.below(7), 1);
+        for _ in 0..1_000 {
+            let v = rng.below(13);
+            assert!(v < 13, "below(13) returned {v}");
+        }
+        assert_eq!(SplitMix64::new(7).below(1), 0);
+    }
+
+    /// `next_f64` is a VALUE read of the 53 mantissa bits in `[0, 1)`.
+    #[test]
+    fn splitmix_next_f64_known_answer_and_range() {
+        let mut rng = SplitMix64::new(42);
+        for expected in [
+            0.741_564_878_771_823_3,
+            0.159_910_392_876_920_1,
+            0.278_601_130_255_138_66,
+        ] {
+            assert_eq!(rng.next_f64(), expected);
+        }
+        let mut rng = SplitMix64::new(0xDEAD_BEEF);
+        for _ in 0..1_000 {
+            let v = rng.next_f64();
+            assert!((0.0..1.0).contains(&v), "next_f64 out of [0,1): {v}");
+        }
+    }
+
+    /// Finalizer known answers: the γ-composed form reproduces the stream's
+    /// first draw; the seed-0 stream's first draw is the classic
+    /// `0xe220_a839_7b1d_cdaf`; and the mix maps 0→0 (fixed point of the
+    /// xor-shift ladder — why every caller pre-adds γ).
+    #[test]
+    fn splitmix_finalize_known_answers() {
+        assert_eq!(
+            splitmix64_finalize(42u64.wrapping_add(SPLITMIX64_GAMMA)),
+            0xbdd7_3226_2feb_6e95
+        );
+        assert_eq!(splitmix64_finalize(SPLITMIX64_GAMMA), 0xe220_a839_7b1d_cdaf);
+        assert_eq!(SplitMix64::new(0).next_u64(), 0xe220_a839_7b1d_cdaf);
+        assert_eq!(splitmix64_finalize(0), 0);
+    }
+
+    /// `Rng::new`'s seed decorrelation IS the exported finalizer + γ — the
+    /// mixing math has one home. (Child-module test: reads the private
+    /// state directly; the absorbing-state guard maps 0→1.)
+    #[test]
+    fn rng_new_state_is_the_exported_finalizer_over_gamma() {
+        for seed in [0u64, 1, 42, 1337, 0xFFFF_FFFF] {
+            let expect = splitmix64_finalize(seed.wrapping_add(SPLITMIX64_GAMMA));
+            let expect = if expect == 0 { 1 } else { expect };
+            assert_eq!(Rng::new(seed).state, expect, "seed {seed}");
+        }
     }
 
     /// Lightweight χ² goodness-of-fit on the first 65_536 uniforms: bin into

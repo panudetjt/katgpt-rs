@@ -121,7 +121,7 @@ The filed PoC ran end-to-end (deterministic harness, 719k-param recipe-faithful 
 
 Also recorded for any rerun: v1's curriculum (25% gold-dropped-same-context "decline" rows) was contradictory label noise and collapsed the model to always-skip (0/83, skip p≈1.00 — WORSE than the frozen control); v2 sources decline honestly (clean spans + gold-absent pools) and weights production-pool episodes ×8.
 
-**Standing after the verdict:** modelless default unchanged, nothing wired into heal paths; the deterministic harness + model land as the re-run lane (feature `choice_scorer_poc`). **Reopen trigger unchanged and now measured**: a corpus-order-of-magnitude change (~10⁴–10⁵ labeled contexts — fleet-scale fixseq rings or frontier-miner oracle-verified spans). Full numbers: [riir-clippy Bench 098](../../riir-clippy/.benchmarks/098_choice_scorer_poc.md). The metric-taxonomy half of the issue (ChoiceTaxonomy rows) had already landed and is unaffected.
+**Standing after the verdict:** modelless default unchanged, nothing wired into heal paths; the deterministic harness + model land as the re-run lane (feature `choice_scorer_poc`). **Reopen trigger unchanged and now measured**: a corpus-order-of-magnitude change (~10⁴–10⁵ labeled contexts — fleet-scale fixseq rings or frontier-miner oracle-verified spans). Full numbers: [riir-clippy Bench 098](../../riir-refine/.benchmarks/098_choice_scorer_poc.md). The metric-taxonomy half of the issue (ChoiceTaxonomy rows) had already landed and is unaffected.
 
 ---
 

@@ -110,30 +110,24 @@ pub struct LshApproximateCache {
 
 /// Deterministic seed for the LSH projection matrix (Issue 809 T3).
 ///
-/// FNV-1a over the constructor's four configuration scalars — the same
-/// pattern as `vocab_channel_pruner::seed_from_input`. The only property it
-/// needs is that the same configuration yields the same projection stream;
-/// it is NOT a hash anybody should rely on for anything else.
+/// FNV-1a over the constructor's four configuration scalars — the shared
+/// discipline moved DOWN into `katgpt_core::lsh_seed` (Plan 619 substrate
+/// duty: ships once in katgpt-core, re-exported here; the dep direction
+/// pruners → core already exists). The only property it needs is that the
+/// same configuration yields the same projection stream; it is NOT a hash
+/// anybody should rely on for anything else.
 fn seed_from_config(
     logit_dim: usize,
     num_buckets: usize,
     bucket_capacity: usize,
     hamming_radius: u32,
 ) -> u64 {
-    const OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
-    const PRIME: u64 = 0x0000_0100_0000_01b3;
-    let mut h = OFFSET;
-    let mut feed = |bytes: &[u8]| {
-        for b in bytes {
-            h ^= u64::from(*b);
-            h = h.wrapping_mul(PRIME);
-        }
-    };
-    feed(&(logit_dim as u64).to_le_bytes());
-    feed(&(num_buckets as u64).to_le_bytes());
-    feed(&(bucket_capacity as u64).to_le_bytes());
-    feed(&(u64::from(hamming_radius)).to_le_bytes());
-    h
+    katgpt_core::lsh_seed::config_seed(&[
+        logit_dim as u64,
+        num_buckets as u64,
+        bucket_capacity as u64,
+        u64::from(hamming_radius),
+    ])
 }
 
 impl LshApproximateCache {

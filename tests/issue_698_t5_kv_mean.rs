@@ -178,8 +178,17 @@ fn decode_into(
 ) -> Vec<Vec<f32>> {
     let mut out = Vec::with_capacity(n_pos);
     for pos in 0..n_pos {
-        let logits =
-            forward_training_free_loop(ctx, weights, cache, token_at(pos), pos, config, tf);
+        let logits = forward_training_free_loop(
+            ctx,
+            weights,
+            cache,
+            token_at(pos),
+            pos,
+            config,
+            tf,
+            #[cfg(feature = "loop_guidance")]
+            None, // Plan 617: LoopCD guidance - None = bit-identical baseline
+        );
         out.push(logits.to_vec());
     }
     out

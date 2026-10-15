@@ -3,7 +3,7 @@
 //! Houses the modelless decode-order instruments distilled from dQwen3.5:
 //! Hybrid-Attention Diffusion Language Models (arXiv:2609.20751, Research
 //! 575) — statistics over a decode trajectory π that measure how
-//! autoregressive-like a diffusion decode was, without touching weights.
+//!      autoregressive-like a diffusion decode was, without touching weights.
 //!
 //! π is the per-position unmask step: `π[i]` = the decode iteration at which
 //! position `i` committed (see [`UNMASKED_NEVER`] for the never-committed

@@ -550,9 +550,9 @@ unsafe fn f32_to_bf16_rne_avx2(src: &[f32], dst: &mut [u16]) {
         let dp = dst.as_mut_ptr();
         let round_add = _mm256_set1_epi32(0x7FFF);
         let one = _mm256_set1_epi32(1);
-        let abs_mask = _mm256_set1_epi32(0x7FFF_FFFFu32 as i32);
-        let exp_all = _mm256_set1_epi32(0x7F80_0000u32 as i32);
-        let qnan_shifted = _mm256_set1_epi32(0x0040_0000u32 as i32);
+        let abs_mask = _mm256_set1_epi32(0x7FFF_FFFF_i32);
+        let exp_all = _mm256_set1_epi32(0x7F80_0000_i32);
+        let qnan_shifted = _mm256_set1_epi32(0x0040_0000_i32);
         let mut i = 0;
         while i + 8 <= n {
             let x = _mm256_castps_si256(_mm256_loadu_ps(sp.add(i)));

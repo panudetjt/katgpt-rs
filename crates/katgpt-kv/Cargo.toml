@@ -2,6 +2,7 @@
 name = "katgpt-kv"
 version = "0.1.0"
 edition = "2024"
+rust-version.workspace = true
 license = "MIT"
 description = "KV-cache namespace — KV-cache compression, compaction, projection-sharing, and quantization backends. Spun out of katgpt-rs/src/{kv_share,osc_kv,cs_kv_probe,shard_kv,sp_kv,still_kv,kvarn,targeted_precision} (Issue 015 Phase 3)."
 repository = "https://github.com/katopz/katgpt-rs"

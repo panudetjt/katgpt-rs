@@ -84,11 +84,11 @@
 //!
 //! Gated behind `swe_trajectory_freeze`. Implies `latent_trajectory_geometry`
 //! + `committed_field_blend` (both already default-on). Opt-in — this is a
-//! research-validation primitive (Proposal 011 Phase 5); promotion to
-//! default requires the T5.6 G5 gate (cross-snapshot discrimination) to
-//! pass on real model trajectories, which is currently PARTIAL (T5.4 G3
-//! FAIL at 29% on Kimi-K3 depth trajectories — see
-//! `.benchmarks/012_kimi_k3_trajectory_geometry.md`).
+//!   research-validation primitive (Proposal 011 Phase 5); promotion to
+//!   default requires the T5.6 G5 gate (cross-snapshot discrimination) to
+//!   pass on real model trajectories, which is currently PARTIAL (T5.4 G3
+//!   FAIL at 29% on Kimi-K3 depth trajectories — see
+//!   `.benchmarks/012_kimi_k3_trajectory_geometry.md`).
 //!
 //! # Allocation
 //!

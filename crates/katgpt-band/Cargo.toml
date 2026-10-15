@@ -2,6 +2,7 @@
 name = "katgpt-band"
 version = "0.1.0"
 edition = "2024"
+rust-version.workspace = true
 license = "MIT"
 description = "Band-Conditioned KV Segment Selector cluster — band conditioning, BCKVSS, ColliderConsistency ConstraintPruner, Adaptive CoT stopper (Plan 265, arXiv:2605.12733). Extracted from katgpt-rs root per Proposal 003 Phase 11 (2026-07-04)."
 repository = "https://github.com/katopz/katgpt-rs"

@@ -969,3 +969,123 @@ has a measurement behind it.
   decision-bearing.
 - **Reopen trigger:** a NEW fixture whose pre-registration names coverage as
   the decision metric. This run must not be re-read with a different metric.
+
+## 44. LoT-Fitted Extent Pooling (routing summary operator) — kill criterion fired (Issue 925)
+
+The LoT paper's (arXiv:2610.05816) fitted extent-pooling stack — orthogonal
+Procrustes W (Eq. 14) + RMS rescale (Eq. 15) — as a BLOCK-ROUTING summary
+operator, fitted per layer on Issue 908 real tensors to align block means
+with query-marginalized attention centroids. Measured in
+[Bench 925](../../.benchmarks/925_lot_fitted_pooling_probe.md) on the
+Bench 612 protocol (mean/lse arms reproduce 612 EXACTLY) with
+leave-one-(layer, head)-out folds:
+
+| posture | fit − mean (kill row) | fit − mixed_rope | verdict |
+|---|---|---|---|
+| committed (64 fam) | −0.0625 (sd 0.0991) | +0.1191 | NO-GAIN vs mean |
+| full (128 fam) | −0.0098 (sd 0.1533) | +0.2021 | NO-GAIN vs mean |
+
+**Disposition:** no feature, no promotion — the fourth negative in this
+slot's summary-operator family (MSA, HGA, PISA, fitted). The fit WORKS
+(in-sample centroid alignment improves ~10–15%) and does not transfer to
+routing; the paper's Eq. 15 rescale is a no-op here (≤0.006). The literal
+key→mean fit is identity BY THEOREM (PSD scatter ⇒ W = I on the data's
+range), recorded so nobody measures it. `mixed_rope` sits 18–21 pp below
+plain Mean on real post-RoPE tensors — a Plan 397-lineage side finding,
+not decision-bearing here.
+
+- The probe harness ships as `issue_925_procrustes_probe` (features
+  `pyramid_topk,hga`); `pyramid_topk` itself stays opt-in (Bench 612).
+- **Reopen trigger:** the Bonsai PQ2_0 ternary whole-model capture lane
+  existing (issue 925's follow-up) — and a fit target beyond linear
+  operators (this run bounds the linear family, not fitted pooling in
+  general).
+
+## 45. Loop-Alignment Probe on kimi-k3-0.40B — UNDECIDABLE: the label axis is empty (Issue 929 T1.2/T1.3)
+
+**Hypothesis.** DiscoLoop (Research 614, arXiv:2607.00341) reads loop-alignment
+directly: per-loop `cos(H, W[v̂])` plus the top1−top2 decode margin should
+separate correct from incorrect looped predictions (AUROC > 0.5 on the paper's
+§2 two-hop composition fixture), licensing a decode-reinject / halt-on-readiness
+arm. The probe instrument itself (`loop_alignment_probe`, T1.1 `5a8c190b4`) is
+landed and green; this entry records the CHECKPOINT-era verdict of the real-model
+run, not a feature kill.
+
+**Measured** ([Bench 927](../../.benchmarks/927_issue929_loop_probe_checkpoint_run.md)
++ [Bench 930](../../.benchmarks/930_issue929_kimi_loop_alignment_probe.md) — two
+INDEPENDENT runners on the same checkpoint, same day, one verdict): 180/180
+fixture queries wrong in BOTH loop arms (α=0 reentry, α=0.5 reinject);
+`bridge_top1 = 0` everywhere; **every AUROC is NaN** because the correctness
+class is empty — the T1.4 kill bar presupposes both classes and never computes
+(the honest reading: UNDECIDABLE, not answered-no). The provenance suite pins
+the root cause BEFORE the negative is recorded: forward port byte-faithful vs
+the committed python reference; checkpoint sha256 = the Bench-889 pin; tokenizer
+round-trips; **teacher-forced NLL 12.16–12.39/token vs uniform log(163840) =
+12.007 — the text head carries ≈ zero likelihood structure** (fluent style,
+chance-level semantics); untied head verified (the probe's head-row reads are
+the true readout operator); in-repo corroboration from Issue 584/Bench 025
+("attention too uniform for meaningful quality results").
+
+**Disposition:** fixture problem, not mechanism problem — Phase 2/3 (injection,
+halt-on-readiness) closed UNBUILT (no injection on a substrate with no
+correctness axis; the 0-for-3 loop-intervention lesson, honored). The probe
+instrument + fixture generator stay shipped and tested (README catalog,
+`loop_alignment_probe`).
+- **Reopen trigger:** riir-train Plan 451's loop-trained artifact — any
+  checkpoint with a trained text head re-arms the probe immediately (one
+  command per runner).
+- Also the measured confirmation of the kill criterion Issue 929's T1.4
+  pre-registered ("all-NaN AUROC across both arms ⇒ undecidable"); issue
+  stays OPEN-ARMED on that reopen trigger.
+
+## 46. HyperThink Modelless Bias-Delta Overlay — T1 premise FAIL: the constant component is front-loaded, not last-half (Issue 920)
+
+**Hypothesis.** HyperThink (Research
+[606](../../.research/606_HyperThink_Text_to_Parameter_VQ_Bias_Amortization.md),
+arXiv:2610.03039) amortizes a thinking trace into a query-conditioned
+**bias-only** delta over the paper's last-8/last-half blocks; its ablation
+ladder reads static delta 60.88 > per-instance-continuous 59.74 < VQ-routed
+61.06 (GSM8K). The modelless PoC (Issue 920, defend-wrong against §31's
+content-quantization failure) pre-registered a T1 premise gate BEFORE any
+codebook spend: **C1** — the last half of layers holds ≥ 0.60 of total delta
+energy; **C2** — mean ρ (the bias-capturable constant fraction
+(E[Δb])²/E[Δb²]) over the last ⌈n/3⌉ layers (17..25 at n=26) EXCEEDS the rest.
+Both pass ⇒ T2 (k-means conditioning-signal codebook) + T3 (routed-vs-static
+OOD arms) open; either fails ⇒ the track stops — no gate-shopping, no re-aiming
+the window after full numbers.
+
+**Measured** (full 2,000-probe capture on gemma-2-2b-it-f16, 33.7 h nice-19 on
+the M3 Max; sidecar + pin landed in riir-infer `5457d9c` —
+`tests/fixtures/hyperthink/gemma-2-2b-it-f16.t1_bias_delta.json`, fixture gate
+`tests/hyperthink_t1_fixture.rs` live 2/2 green; dump blake3 `5b5c4d71…e4ee2`
+verified against the run log; probe fixture never re-drawn, `08672efd…fc8b9`):
+**C1 PASS 0.6223 ≥ 0.60 — C2 MISS 0.5719 < 0.7624 → overall FAIL.** ρ runs
+~0.75–0.92 through the early/mid blocks and FALLS to ~0.56–0.58 in the last
+third: the with-conditioning shift is substantially a constant (bias-like)
+component EARLY and increasingly query-coupled LATE — the exact opposite of the
+last-half persistent-overlay window the paper's regime needs. The n=8 machinery
+pilot disclosed precisely this shape (0.634 vs 0.79) and the full run confirmed
+it; the pre-registration held. Site rollup: q carries the largest energy share
+(0.456, ρ 0.684), gate 0.220, up 0.190, v 0.108, o 0.025, down 0.001.
+Raw dump archive (the pin stays verifiable): hf://datasets/katopz/riir-train-data
+at `artifacts/riir-infer/hyperthink_t1/deltas_f32.bin` (5,431,296,000 B, upload
+`ca507289`, round-trip blake3-verified before the local copy was removed
+2026-10-10).
+
+**Disposition:** modelless track **CLOSED-NEGATIVE at T1**, per the issue's own
+stop clause — T2/T3 never opened, zero codebook spend (Research 606 §5's
+three-arm protocol never ran; the premise gate preceded it by design). This
+sharpens §31's taxonomy one step earlier in the pipeline: §31 quantized CONTENT
+and died on the gate/transfer arms; here the modelless CONDITIONING-SIGNAL
+regime fails at the premise — the delta content itself is not a persistent
+last-half bias overlay on gemma-2-2b, so there is nothing for a modelless
+codebook to route over that could beat the static-delta floor. The landed
+substrate stays, measurement-only: `bias_delta` (katgpt-pruners, opt-in, pure
+math + 8 unit tests) and the riir-infer capture lane (`hyperthink_t1` feature,
+the six-hook f16 fork + census bin, fixtures + pins). Issue 920 removed per the
+noise-reduction rule — this section + the research note carry it.
+- **Reopen trigger:** the trained arm — riir-train Plan 445 (VQ
+  adapter-codebook distillation, unaffected by per-track separation) — is now
+  the sole open lane; a TRAINED delta table re-arms a modelless routing
+  comparison only as measurement (the trained-vs-static ablation IS the
+  paper's own ladder).

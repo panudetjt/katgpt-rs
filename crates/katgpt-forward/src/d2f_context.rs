@@ -782,20 +782,14 @@ pub(crate) fn apply_probe_guidance(
     }
     dctx.weak_probe = Some(probe);
 
+    // Plan 617 T1.2: the arithmetic lives in katgpt-core's contrast_combine
+    // (ONE home for the strong−weak affine family — the LoopCD lane consumes
+    // the same kernel at λ = 1+ω). Bit-identical to the pre-extraction
+    // in-place loop: same op order, (1−λ) hoisted once, 8-wide chunk + tail.
     let lambda = dctx.guidance_lambda;
-    let w_probe = 1.0 - lambda;
-    let logits = &mut dctx.logits_flat[range.clone()];
-    let probe_logits = &dctx.probe_logits_flat[range];
-    let n = logits.len();
-    let mut i = 0;
-    while i + 8 <= n {
-        for j in 0..8 {
-            logits[i + j] = lambda * logits[i + j] + w_probe * probe_logits[i + j];
-        }
-        i += 8;
-    }
-    while i < n {
-        logits[i] = lambda * logits[i] + w_probe * probe_logits[i];
-        i += 1;
-    }
+    katgpt_core::contrast_combine::affine_combine(
+        &mut dctx.logits_flat[range.clone()],
+        &dctx.probe_logits_flat[range],
+        lambda,
+    );
 }

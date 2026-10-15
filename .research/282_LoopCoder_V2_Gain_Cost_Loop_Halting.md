@@ -12,6 +12,7 @@
 ---
 
 > **PASS-Redirects (synthesis):** Zhang et al. [arXiv:2510.07880 "Do LLMs Really Need 10+ Thoughts for 'Find the Time 1000 Days Later'? Towards Structural Understanding of LLM Overthinking"] — TRACE's utility curves empirically validate the gain/cost convergence point at the explicit-CoT granularity; its two structural halting heuristics (self-loop-K, backtrack-revisit) distilled in Research 525 → Issue 699.
+> **PASS-Redirects (synthesis):** Looped-DiT [arXiv:2609.40305 "Looped Diffusion Transformer"] — halter signal-diff: its adaptive-exit head is TRAINED on realized max-future-gain per loop (y_r = max(0, max_{k>r}(ℓ_r−ℓ_k)/(k−r)), zero if no later exit improves; λ threshold = the compute dial without retraining) — the supervised-target sibling of this note's runtime gain/cost scissors + erank halt signal (Plan 304 ships the runtime half; complementary classes, not a replacement; its few-loop penalty halving at matched mean loop count is the gate the two would share). Table 3 decomposes the loop×CoT complementarity (this note §1.5's super-additivity) per subtask: looping owns constraint resolution (spatial/procedural/multi-relation +6.0..9.4), CoT owns implied-content inference (+3.5..22.2), both compound — the T2I confirmation of §1.5's division of labor.
 
 ## TL;DR
 

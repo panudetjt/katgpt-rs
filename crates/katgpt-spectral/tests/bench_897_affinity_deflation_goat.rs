@@ -13,26 +13,26 @@
 //! G1b-1 collapsed: no-deflation top-1 is broken by the hub mode; gated
 //!       deflation (λ = 1, θ*) fires and recovers it (≥ 0.95 and ≥ baseline
 //!       + 0.25). Pre-registered at α = 3, where the LIFT half FAILED (the
-//!       baseline only lost ~7%) — kept as a reported line; re-specified at
-//!       α = 8 with θ* unchanged, severity sweep printed beside it.
-//! G1b-2 healthy (α = 0) NEGATIVE ARM, pinned: the gate REFUSES (A untouched,
-//!       bit-identical) AND deflating anyway HURTS (ungated top-1 < healthy
-//!       top-1 − 0.10) — if ungated deflation ever stops hurting, the trap's
-//!       characterisation changed and this reds.
-//! G1b-3 θ chosen by DIRECT EVALUATION: a grid θ ∈ {1.05 … 4.0} scored by
-//!       mean gated top-1 over a calibration set (α ∈ {0, 0.5, 1, 2, 3} ×
-//!       8 seeds); θ* = the best (ties → smallest θ, the conservative end);
-//!       then gated top-1 at θ* on 8 HELD-OUT seeds must be ≥ max(none,
-//!       ungated) − 0.01 on EVERY α (the gate never loses to either fixed
-//!       policy by more than noise). No gradient descent anywhere.
-//! G1b-4 the stable rank (the gate's quantity) orders the classes the same
-//!       way as the Roy–Vetterli entropy erank (`river_valley`).
-//! G2    paired interleave (`ab_median_ratio`) at M = 128, d = 128: (affinity
-//!       build) vs (affinity build + gated deflation). Pre-registered bars:
-//!       collapsed ≤ 1.25, healthy (refusal, iteration-cap-bound) ≤ 1.60.
-//!       Best-of µs at M ∈ {64, 128, 256} reported.
-//! G3    λ = 0 and gate refusal are `to_bits`-identical to the input.
-//! G4    0 allocations over the steady-state gated call.
+//!         baseline only lost ~7%) — kept as a reported line; re-specified at
+//!         α = 8 with θ* unchanged, severity sweep printed beside it.
+//!         G1b-2 healthy (α = 0) NEGATIVE ARM, pinned: the gate REFUSES (A untouched,
+//!         bit-identical) AND deflating anyway HURTS (ungated top-1 < healthy
+//!         top-1 − 0.10) — if ungated deflation ever stops hurting, the trap's
+//!         characterisation changed and this reds.
+//!         G1b-3 θ chosen by DIRECT EVALUATION: a grid θ ∈ {1.05 … 4.0} scored by
+//!         mean gated top-1 over a calibration set (α ∈ {0, 0.5, 1, 2, 3} ×
+//!         8 seeds); θ* = the best (ties → smallest θ, the conservative end);
+//!         then gated top-1 at θ* on 8 HELD-OUT seeds must be ≥ max(none,
+//!         ungated) − 0.01 on EVERY α (the gate never loses to either fixed
+//!         policy by more than noise). No gradient descent anywhere.
+//!         G1b-4 the stable rank (the gate's quantity) orders the classes the same
+//!         way as the Roy–Vetterli entropy erank (`river_valley`).
+//!         G2    paired interleave (`ab_median_ratio`) at M = 128, d = 128: (affinity
+//!         build) vs (affinity build + gated deflation). Pre-registered bars:
+//!         collapsed ≤ 1.25, healthy (refusal, iteration-cap-bound) ≤ 1.60.
+//!         Best-of µs at M ∈ {64, 128, 256} reported.
+//!         G3    λ = 0 and gate refusal are `to_bits`-identical to the input.
+//!         G4    0 allocations over the steady-state gated call.
 //!
 //! Run:
 //!   cargo test -p katgpt-spectral --release \

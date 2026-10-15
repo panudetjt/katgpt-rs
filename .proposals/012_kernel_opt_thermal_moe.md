@@ -47,7 +47,7 @@ The validator is the ONE genuinely new substrate. Everything else is the clippy 
 
 ### Problem 4: Bench 009's silent-miss danger is WORSE in the kernel domain
 
-[riir-clippy Bench 009](../../riir-clippy/.benchmarks/) measured the modelless cache at 1.8M tok/s vs the 27B model at 16 tok/s — a 110,000× speedup — BUT held-out quality was **0/10 vs 10/10** for the model, and the miss was *silent* (L2 reported `parses=true` on all 10 wrong answers). The lesson: a perf gain on an incorrect answer is a speedup of a wrong result.
+[riir-clippy Bench 009](../../riir-refine/.benchmarks/) measured the modelless cache at 1.8M tok/s vs the 27B model at 16 tok/s — a 110,000× speedup — BUT held-out quality was **0/10 vs 10/10** for the model, and the miss was *silent* (L2 reported `parses=true` on all 10 wrong answers). The lesson: a perf gain on an incorrect answer is a speedup of a wrong result.
 
 **In the kernel domain this is structurally worse.** A syntactically-valid-but-numerically-wrong GPU kernel breaks deterministic replay + the sync boundary. Wrong GPU output = wrong game state = desync + anti-cheat false positives + replay divergence across nodes. The clippy silent-miss gives a developer a wrong lint fix; the kernel silent-miss gives a player a corrupt world. The numeric-compare validator is non-negotiable for this domain — it's the difference between "developer tool" and "production hot-path bug injector".
 

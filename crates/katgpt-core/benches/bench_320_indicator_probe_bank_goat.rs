@@ -354,7 +354,7 @@ fn gate_g2_or_fusion_tpr_fpr() -> GateResult {
     let mut best_fpr = 1.0f64;
     let fpr_budget = 0.05;
     let mut steps = 0u32;
-    let mut tau = 0.50f32;
+    let mut tau = 0.5f32;
     while tau < 1.0 {
         let mut tp = 0u64;
         let mut fp = 0u64;
@@ -452,7 +452,7 @@ fn gate_g3_cascade_fpr_reduction() -> GateResult {
 
     let bank_arc: Arc<IndicatorProbeBank<SyntheticIndicator, D>> = Arc::new(bank);
 
-    let mut tau = 0.50f32;
+    let mut tau = 0.5f32;
     while tau < 0.99 {
         let verifier: Arc<dyn IndicatorVerifier<SyntheticIndicator>> =
             Arc::new(LabelCoherenceVerifier { tau_fire: tau });

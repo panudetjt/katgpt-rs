@@ -2,6 +2,7 @@
 name = "katgpt-percepta"
 version = "0.1.0"
 edition = "2024"
+rust-version.workspace = true
 license = "MIT"
 description = "Percepta-style O(log N) 2D Attention via Convex Hull KV Cache + transformer-vm RIIR (Plan 064)"
 repository = "https://github.com/katopz/katgpt-rs"

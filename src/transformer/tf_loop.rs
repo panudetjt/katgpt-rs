@@ -40,6 +40,11 @@ pub fn forward_training_free_loop<'a>(
     pos: usize,
     config: &Config,
     tf_config: &TrainingFreeLoopConfig,
+    // Plan 617 T1.3 — LoopCD guidance on the TrainingFree lane. The window
+    // loop's iteration-`ref_loop` refined state (post sub-step) is the h_k
+    // analog. `None` = bit-identical to pre-Plan-617 behavior.
+    #[cfg(feature = "loop_guidance")]
+    guidance: Option<&mut super::loop_guidance::LoopGuidance>,
 ) -> &'a mut [f32] {
     use crate::tf_loop::{anchor_blend, sub_step_damped_euler};
     use katgpt_core::types::{CacheStrategy, IterationMode, SubStepStrategy};
@@ -125,6 +130,32 @@ pub fn forward_training_free_loop<'a>(
     // running mean (fixed order ⇒ deterministic f32 sum). The guard is
     // read-once — `First`/`Last` paths are structurally unchanged.
     let mean_kv = tf_config.cache_strategy == CacheStrategy::Mean;
+    // Plan 617 T1.1 — guidance capture plumbing (see forward_looped for the
+    // full contract): hoisted actives + per-call reset. The tf-loop capture
+    // point is the iteration-`ref_loop` refined state (post sub-step), in
+    // BOTH IterationMode arms — `Layer` mode's per-layer sub-step means the
+    // capture lands at the LAST layer of the `ref_loop`-th outer iteration.
+    #[cfg(feature = "loop_guidance")]
+    let mut guidance = guidance;
+    #[cfg(feature = "loop_guidance")]
+    let guidance_armed = guidance.as_ref().is_some_and(|g| g.config.is_armed());
+    #[cfg(feature = "loop_guidance")]
+    let guidance_ref_loop = guidance.as_ref().map_or(0, |g| g.config.ref_loop);
+    #[cfg(feature = "loop_guidance")]
+    if let Some(g) = guidance.as_deref_mut() {
+        g.begin_step();
+    }
+    #[cfg(feature = "loop_guidance")]
+    macro_rules! lg_capture {
+        () => {
+            if guidance_armed
+                && let Some(g) = guidance.as_deref_mut()
+                && !g.guidance_captured()
+            {
+                g.capture_reference(&ctx.x[..n], &weights.lm_head, config.vocab_size, n);
+            }
+        };
+    }
     match tf_config.iteration_mode {
         IterationMode::Block => {
             for it in 0..k {
@@ -159,6 +190,12 @@ pub fn forward_training_free_loop<'a>(
                 ctx.x[..n].copy_from_slice(&ctx.tf_x_pre_window[..n]);
                 // Apply sub-step: x += (1/K)·(y − x)
                 sub_step_damped_euler(&mut ctx.x[..n], &ctx.tf_y_buf[..n], k);
+                // Plan 617 T1.1 — capture the iteration-`ref_loop` refined
+                // state (post sub-step) as h_k.
+                #[cfg(feature = "loop_guidance")]
+                if it + 1 == guidance_ref_loop {
+                    lg_capture!();
+                }
             }
         }
         IterationMode::Layer => {
@@ -191,6 +228,13 @@ pub fn forward_training_free_loop<'a>(
                     ctx.tf_y_buf[..n].copy_from_slice(&ctx.x[..n]);
                     ctx.x[..n].copy_from_slice(&ctx.tf_x_pre_window[..n]);
                     sub_step_damped_euler(&mut ctx.x[..n], &ctx.tf_y_buf[..n], k);
+                    // Plan 617 T1.1 — `Layer` mode captures at the LAST
+                    // layer of the `ref_loop`-th outer iteration (the guard
+                    // inside the macro also blocks double capture).
+                    #[cfg(feature = "loop_guidance")]
+                    if layer_idx == window_end && it + 1 == guidance_ref_loop {
+                        lg_capture!();
+                    }
                 }
             }
         }
@@ -283,6 +327,20 @@ pub fn forward_training_free_loop<'a>(
     }
 
     // Snapshot hidden state
+    // Plan 617 T1.2 — same split as forward_looped: hidden mode blends into
+    // ctx.x BEFORE the snapshot + head (one head pass); logit mode applies
+    // on ctx.logits after the head.
+    #[cfg(feature = "loop_guidance")]
+    {
+        if let Some(g) = guidance.as_deref_mut() {
+            let hidden = if g.config.mode == super::loop_guidance::GuidanceMode::Hidden {
+                Some(&mut ctx.x[..n])
+            } else {
+                None
+            };
+            g.apply_at_readout(hidden, &mut []);
+        }
+    }
     ctx.hidden_state[..n].copy_from_slice(&ctx.x[..n]);
 
     // 8. LM Head
@@ -293,6 +351,20 @@ pub fn forward_training_free_loop<'a>(
         config.vocab_size,
         n,
     );
+
+    // Plan 617 T1.2 — logit-mode contrast on the final readout / hidden-
+    // mode output-margin record (see forward_looped).
+    #[cfg(feature = "loop_guidance")]
+    {
+        // Tail use: moving the Option is fine here (no later access).
+        if let Some(g) = guidance {
+            if g.config.mode == super::loop_guidance::GuidanceMode::Logits {
+                g.apply_at_readout(None, &mut ctx.logits);
+            } else {
+                g.record_output_margin(&ctx.logits);
+            }
+        }
+    }
 
     &mut ctx.logits
 }

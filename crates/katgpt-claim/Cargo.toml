@@ -2,6 +2,7 @@
 name = "katgpt-claim"
 version = "0.1.0"
 edition = "2024"
+rust-version.workspace = true
 license = "MIT"
 description = "Claim-Level Reliability pair — claim_rubric (L1/L2/L3 evidence ladder validator, Plan 307) + clr (sigmoid-projection vote over claim embeddings, Plan 284). Extracted from katgpt-rs root per Proposal 003 Phase 11 (2026-07-04)."
 repository = "https://github.com/katopz/katgpt-rs"

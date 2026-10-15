@@ -173,6 +173,19 @@ dual_wave = []
 # consumers use per-zone LoD (see riir-ai/.research/325).
 se2_equivariant_lift = []
 
+# Loop-straightness trajectory diagnostics (Issue 922 — LiFT appendix C,
+# arXiv:2610.05538, modelless extraction). Pure functions over an iterative
+# refinement trajectory x_0 → … → x_K on grid weights δ: the weighted path
+# action Σ‖Δ_k‖²/δ_k, the Cauchy–Schwarz floor ½‖x_K − x_0‖²/Σδ, and the
+# efficiency η = chord²·Σδ/Σ ∈ (0,1] — 1 iff straight at constant grid-speed,
+# 1−η the exact wasted-motion fraction (backtracking / orbiting / A/B/A
+# oscillation). Grid-invariant (any positive nonuniform weights), zero-alloc,
+# summation axis K (no curse of dimensionality). The PRIMITIVE half; game-side
+# consumers ride riir-ai Issue 1037 (deliberation cadence, cgsp collapse
+# bridge, refine self-evolve, reflex cascade). Opt-in — promotion waits on a
+# production consumer (the motor_gated_field posture).
+loop_straightness = []
+
 [[bench]]
 name = "bench_407_sheaf_admm_goat"
 harness = false
@@ -211,6 +224,11 @@ required-features = ["pca_global"]
 name = "bench_775_dual_wave_goat"
 harness = false
 required-features = ["dual_wave"]
+
+[[bench]]
+name = "bench_922_loop_straightness_goat"
+harness = false
+required-features = ["loop_straightness"]
 
 # Issue 825 — Coulomb crowd-redistribution PoC (BTM Prop 2 discrete analog):
 # T1 conservation + endpoint-MAE + G4 zero-alloc solve path, T2 the 20×-bias

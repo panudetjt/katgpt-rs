@@ -69,6 +69,11 @@ pub mod hodge;
 pub mod htno;
 #[cfg(feature = "heat_kernel_trajectory")]
 pub mod krylov;
+// Loop-straightness trajectory diagnostics (Issue 922 — LiFT appendix C
+// modelless extraction): weighted path action + Cauchy–Schwarz efficiency η
+// + the floor readout, pure functions over a knot log. Opt-in.
+#[cfg(feature = "loop_straightness")]
+pub mod loop_straightness;
 #[cfg(feature = "motor_gated_field")]
 pub mod motor_gated;
 #[cfg(feature = "heat_kernel_trajectory")]
@@ -120,6 +125,8 @@ pub use stokes_calculus::{
 
 #[cfg(feature = "motor_gated_field")]
 pub use motor_gated::{evolve_motor_gated_field, relu_gate_into};
+#[cfg(feature = "loop_straightness")]
+pub use loop_straightness::{action_efficiency, path_action};
 
 // Plan 454 T4 — stochastic birth/death NCA growth step (modelless, opt-in).
 // The 3D sibling of `evolve_motor_gated_field`: composes the shipped DEC

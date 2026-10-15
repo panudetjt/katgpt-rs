@@ -199,6 +199,11 @@ def build_fixture(base: Path) -> Path:
     run(root, "init", "-q", "-b", "main", "--bare", str(shared))
     sp.run(["git", "clone", "-q", str(shared), str(a)], check=True,
            capture_output=True)
+    # Identity BEFORE the first commit — a fresh clone carries no user.* config,
+    # so on a box/CI runner with no global identity the base commit dies with
+    # "Author identity unknown" (the 10-04 docs_gate main-run failure class).
+    run(a, "config", "user.email", "f@f")
+    run(a, "config", "user.name", "fixture")
     (a / ".issues").mkdir()
     (a / ".issues" / "README.md").write_text("x\n", encoding="utf-8")
     run(a, "add", ".issues")

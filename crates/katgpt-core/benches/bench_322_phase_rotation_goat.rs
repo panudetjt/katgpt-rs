@@ -8,8 +8,8 @@
 //!   `sin²α + cos²α = 1` identity must hold to `< 1e-4` across a 1000-point
 //!   α sweep in `[0, π/2]`. Measured both for `phase_safe_cos_sin` (libm sin
 //!   + Pythagorean sqrt recovery — should be essentially f32 rounding noise)
-//!   and for the full `compute_phase_from_projection` end-to-end path.
-//!   Also re-verifies the `‖out‖² ≤ ‖a‖² + ‖b‖²` Cauchy-Schwarz bound.
+//!     and for the full `compute_phase_from_projection` end-to-end path.
+//!     Also re-verifies the `‖out‖² ≤ ‖a‖² + ‖b‖²` Cauchy-Schwarz bound.
 //!
 //! - **G2 (smooth interpolation)**: Sweeping α ∈ [0, π/2] must move the
 //!   output monotonically from `a` to `b` in cosine-similarity space (sim_a

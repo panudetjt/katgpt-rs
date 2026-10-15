@@ -603,6 +603,7 @@ mod tests {
             let key = if i % 2 == 1 { keys[0] } else { keys[1] };
             out.push(gate.decide(obs(i, 1.0, 0.01, -1.0, Some(key), &state)));
         }
+        out.shrink_to_fit();
         out
     }
 

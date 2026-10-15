@@ -1,0 +1,149 @@
+{
+ "gfflow_walk": 1,
+ "generated_by": "reflex-site scripts/render_flows.py",
+ "file": "tetris_flow_modes.svg",
+ "title": "The rulebook's modes: build for tetrises, dig or survive in trouble",
+ "accent": "#ff8a3d",
+ "intro": "Press play to walk the full build → trouble → recover cycle over the recorded seed-607 run. The board beside each step is the real recorded position.",
+ "steps": {
+  "bu": {
+   "n": "1",
+   "title": "BUILD",
+   "lane": "build",
+   "color": "#ff8a3d"
+  },
+  "ds": {
+   "n": "2a",
+   "title": "DOWNSTACK",
+   "lane": "trouble",
+   "color": "#ff8a3d"
+  },
+  "sv": {
+   "n": "2b",
+   "title": "SURVIVE",
+   "lane": "trouble",
+   "color": "#ff8a3d"
+  }
+ },
+ "edges": [
+  {
+   "id": "bu->ds",
+   "back": false
+  },
+  {
+   "id": "bu->sv",
+   "back": false
+  },
+  {
+   "id": "ds->bu",
+   "back": true
+  },
+  {
+   "id": "sv->bu",
+   "back": true
+  }
+ ],
+ "walk": [
+  {
+   "title": "BUILD — the default mode",
+   "text": "On a clean, low stack it builds a 9-1 stack: nine columns packed flat plus one open well on the right edge, saving I-pieces to clear four lines at once. The 9-1 shape was self-evolved — nobody hand-coded it; it fell out of the training climb.",
+   "steps": [
+    "bu"
+   ],
+   "edges": [],
+   "illustrative": false,
+   "in": {
+    "lang": "json",
+    "src": "data/flows/tetris_modes/01_in.json",
+    "label": "a real recorded build position",
+    "from": "recorded from the Reflexer (rulebook search) lane, seed 607, 2026-09-25, arena/demo_oracle.json _meta.sources.tetris_rulebook · katgpt-rs examples/tetris_09_site_walk.rs · turn 271 (the strongest 9-1 build position)",
+    "body": "{\n  \"mode\": \"BUILD\",\n  \"board\": [\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..#..#....\",\n    \"#########.\",\n    \"#########.\",\n    \"#########.\",\n    \"#########.\",\n    \"#########.\",\n    \"#########.\",\n    \"#########.\",\n    \"#########.\"\n  ],\n  \"covered_holes\": 0,\n  \"stack_height\": 9\n}"
+   }
+  },
+  {
+   "title": "Trouble #1 — covered holes → DOWNSTACK",
+   "text": "Three or more holes buried under the stack and building stops paying: every new piece makes it worse. The mode flips to DOWNSTACK, which deliberately clears the lines sitting above the holes to dig them back out.",
+   "steps": [
+    "ds"
+   ],
+   "edges": [
+    "bu->ds"
+   ],
+   "illustrative": false,
+   "in": {
+    "lang": "json",
+    "src": "data/flows/tetris_modes/02_in.json",
+    "label": "the most-buried recorded position",
+    "from": "recorded from the Reflexer (rulebook search) lane, seed 607, 2026-09-25, arena/demo_oracle.json _meta.sources.tetris_rulebook · katgpt-rs examples/tetris_09_site_walk.rs · turn 62 (the most-buried recorded position)",
+    "body": "{\n  \"board\": [\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \".........#\",\n    \"......####\",\n    \"...#######\",\n    \"#.########\",\n    \"#.########\",\n    \"##.###.###\",\n    \"######.##.\",\n    \"######.##.\",\n    \"#########.\",\n    \"#########.\",\n    \"#########.\",\n    \"#########.\",\n    \"#########.\",\n    \"#########.\"\n  ],\n  \"covered_holes\": 12\n}"
+   },
+   "out": {
+    "lang": "json",
+    "src": "data/flows/tetris_modes/02_out.json",
+    "label": "the measured trigger vs the genome's threshold",
+    "from": "recorded from the Reflexer (rulebook search) lane, seed 607, 2026-09-25, arena/demo_oracle.json _meta.sources.tetris_rulebook · katgpt-rs examples/tetris_09_site_walk.rs · counted off turn 62's board; threshold from the recorded genome",
+    "body": "{\n  \"mode\": \"DOWNSTACK\",\n  \"covered_holes\": 12,\n  \"trigger_at_holes\": 3\n}"
+   }
+  },
+  {
+   "title": "Trouble #2 — tall stack → SURVIVE",
+   "text": "A stack twelve rows high is one bad piece from topping out. SURVIVE takes any line it can and keeps the board low — scoring gives way to staying alive. (Survive wins when both exits fire at once.)",
+   "steps": [
+    "sv"
+   ],
+   "edges": [
+    "bu->sv"
+   ],
+   "illustrative": false,
+   "in": {
+    "lang": "json",
+    "src": "data/flows/tetris_modes/03_in.json",
+    "label": "the tallest recorded position",
+    "from": "recorded from the Reflexer (rulebook search) lane, seed 607, 2026-09-25, arena/demo_oracle.json _meta.sources.tetris_rulebook · katgpt-rs examples/tetris_09_site_walk.rs · turn 56 (the tallest recorded position)",
+    "body": "{\n  \"board\": [\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \".........#\",\n    \"........##\",\n    \"....##..##\",\n    \"....######\",\n    \"....######\",\n    \"....######\",\n    \"....##.###\",\n    \"...###.##.\",\n    \"...###.##.\",\n    \"#########.\",\n    \"#########.\",\n    \"#########.\",\n    \"#########.\",\n    \"#########.\",\n    \"#########.\"\n  ],\n  \"stack_height\": 15\n}"
+   },
+   "out": {
+    "lang": "json",
+    "src": "data/flows/tetris_modes/03_out.json",
+    "label": "the measured height vs the genome's threshold",
+    "from": "recorded from the Reflexer (rulebook search) lane, seed 607, 2026-09-25, arena/demo_oracle.json _meta.sources.tetris_rulebook · katgpt-rs examples/tetris_09_site_walk.rs · measured off turn 56's board; threshold from the recorded genome",
+    "body": "{\n  \"mode\": \"SURVIVE\",\n  \"stack_height\": 15,\n  \"trigger_at_rows\": 12\n}"
+   }
+  },
+  {
+   "title": "Recovery — both modes hand back to BUILD",
+   "text": "Holes dug out, or the stack back under twelve — either way the mode returns to BUILD and the cycle starts over. The board is re-read before every single piece, so the switch is never late.",
+   "steps": [
+    "bu"
+   ],
+   "edges": [
+    "ds->bu",
+    "sv->bu"
+   ],
+   "illustrative": false,
+   "in": {
+    "lang": "json",
+    "src": "data/flows/tetris_modes/04_in.json",
+    "label": "a real recovered position",
+    "from": "recorded from the Reflexer (rulebook search) lane, seed 607, 2026-09-25, arena/demo_oracle.json _meta.sources.tetris_rulebook · katgpt-rs examples/tetris_09_site_walk.rs · turn 80 (holes dug out, stack back under 12)",
+    "body": "{\n  \"mode\": \"BUILD (recovered)\",\n  \"board\": [\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"...#......\",\n    \"#.#####...\",\n    \"#######...\",\n    \"########..\",\n    \"#########.\",\n    \"#########.\"\n  ],\n  \"covered_holes\": 0,\n  \"stack_height\": 6\n}"
+   }
+  },
+  {
+   "title": "One search, three weights",
+   "text": "The modes are not three different AIs — it is the same placement search wearing different score weights: self-evolved builder weights while safe, proven survival weights in trouble. That is the whole trick behind the rulebook lane.",
+   "steps": [
+    "bu",
+    "ds",
+    "sv"
+   ],
+   "edges": [
+    "bu->ds",
+    "bu->sv",
+    "ds->bu",
+    "sv->bu"
+   ],
+   "illustrative": false
+  }
+ ]
+}

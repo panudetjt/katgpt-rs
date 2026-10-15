@@ -2,6 +2,7 @@
 name = "katgpt-validator"
 version = "0.1.0"
 edition = "2024"
+rust-version.workspace = true
 license = "MIT"
 description = "Two-tier syntax pruner for inference-time code validation — PartialParser (bracket balancer DFA) + SynPruner (syn parse). Extracted from katgpt-rs root per Proposal 003 Phase 11 (2026-07-04)."
 repository = "https://github.com/katopz/katgpt-rs"

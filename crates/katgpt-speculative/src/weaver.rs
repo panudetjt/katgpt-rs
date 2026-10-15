@@ -36,8 +36,6 @@
 //! - katgpt-rs Issue 131 — this integration
 //! - arXiv:2607.06763 §3.2 — "Trees from Marginals" (Oda et al.)
 
-use core::f32;
-
 // ── Config ───────────────────────────────────────────────────────────────
 
 /// Weaver model hyperparameters. Recovered from safetensors metadata on load.

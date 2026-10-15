@@ -16,7 +16,10 @@
 # rustfmt are still explicit below because the repo's gates need them.
 #
 # Raising this is a deliberate act: bump `channel` in its own reviewed commit
-# and fix the new lints there. (The weekly rot gate deliberately overrides
+# and fix the new lints there. Bump `[workspace.package] rust-version` in the
+# SAME commit — with resolver 3, a stale floor silently holds dependency
+# updates back to the old channel at the next `cargo update`.
+# (The weekly rot gate deliberately overrides
 # this pin with `RUSTUP_TOOLCHAIN=stable` — see .github/workflows/full_gate.yml.)
 [toolchain]
 channel = "1.98.1"

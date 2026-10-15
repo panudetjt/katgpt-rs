@@ -1834,6 +1834,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "katgpt-assign"
+version = "0.1.0"
+
+[[package]]
 name = "katgpt-attn"
 version = "0.1.0"
 dependencies = [
@@ -1918,6 +1922,7 @@ dependencies = [
  "criterion",
  "fastrand",
  "half",
+ "katgpt-assign",
  "katgpt-dec",
  "katgpt-hla",
  "katgpt-micro-belief",

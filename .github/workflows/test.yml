@@ -59,6 +59,13 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Install system deps
+        # fontconfig for plotters → font-kit → yeslogic-fontconfig-sys (the
+        # root crate's plot dep links the system font stack on linux; macOS
+        # runners carry it preinstalled). Red weekly since 2026-09-29: the
+        # ubuntu image no longer ships the fontconfig dev .pc files.
+        run: sudo apt-get update && sudo apt-get install -y libfontconfig1-dev
+
       - name: Install toolchain
         # rust-toolchain.toml (issue 739) is authoritative: `rustup show`
         # resolves the pinned channel from the file and installs it (minimal

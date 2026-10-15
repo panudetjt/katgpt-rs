@@ -75,9 +75,10 @@ riir-dao                       5      0           1             0
 riir-dapps                    22     18           0             0
 riir-deployer                  6      0           0             0
 riir-esp32                     0      0           0             0
-riir-game-sdk                 57     36          31             0
+riir-game-sdk                 57     36           0             0  # silent 31 -> 0 2026-10-09 (katgpt-rs Issue 928): the last five SILENT-NOW targets armed with required-features rows at riir-game-sdk 1892808 — cas_g2 (LOAD-BEARING, RUN at --features vessel_cas: 3 passed), cas_cli, pack_smoke (riir-vessel), aoi_reveal_adjudication + prod_t47_relay_cap (riir-e2e); the repo's whole silent surface is armed. test_gate.sh counts PASSED tests not binaries, so the rows cannot move its pins (the Issue-728 caution checked).
 riir-kat                       0      0           0             0  # observed 2026-09-12: no cargo targets
 riir-llm                       0      0           0             0  # observed 2026-09-18: joined the workspace 2026-09-18; no cargo targets
+seal-std                       0      0           0             0  # observed 2026-10-09: joined the workspace 2026-10-07; no cargo test targets
 riir-mmorpg-examples          30     24           0             0  # 4 -> 0 2026-09-10: the last SILENT-NOW target (needs_scenarios_headless, issue 105's withheld sixth row) armed — required-features landed once the sibling's Fixture change landed and the exact-set build was observed green (7/7 release); the repo's whole silent surface is now armed
 riir-neuron-db                65     40           8             0
 riir-shader                    3      0           0             0  # observed 2026-09-12: 3 targets, 0 gated (min at measured — tiny)
@@ -91,3 +92,5 @@ riir-reflexer 0 0 0 0  # observed 2026-09-25: born public today (Research 457 P1
 reflex-site 1 0 0 0  # observed 2026-09-26: joined the contract set today (BOUNDARY.md at reflex-site 89fa39c; findings repaired at 5eb0ae9/466e331/afdacd6 before pinning); 1 cargo target (wasm-head tests/recipe.rs), 0 gated
 riir-instinct 0 0 0 0  # observed 2026-09-26: born private today (riir-ai Proposal 047 P1 registration); md-only, no code yet; no cargo targets
 riir-infer                  2      2           0             0 # observed 2026-09-22: joined the workspace 2026-09-22 (riir-ai Issue 998 / reflex Issue 008 carve — Proposal 041 T-B fired)
+riir-rethink 4 1 0 0  # observed 2026-10-03: born private today (the moat split, riir-ai Proposal 052 / riir-instinct Plan 008 B3); measured targets=5 gated=2 silent_now=0 load_bearing=0; min_targets 4 = ~80% per the header rule, min_gated 1 = half of measured at n=2 (issues close-and-remove, the reflex row's small-n reasoning)
+riir-refab 4 0 0 0  # observed 2026-10-11: joined the workspace 2026-10-11 (gist-rs/riir-refab birth, the katgpt-rs registration act, owner-delegated); pinned at MEASURED at birth (the riir-reflex 2026-09-21 precedent), re-pin at the first re-measure

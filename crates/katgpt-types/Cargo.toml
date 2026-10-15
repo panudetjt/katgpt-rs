@@ -95,6 +95,21 @@ binary_plasma = []
 # the row-scale kernel — its win is memory traffic on Q2_0_g128 weights only.
 ternary_group_scale = ["binary_plasma"]
 
+# Issue 935: int8-activation SDOT kernel for the Q2_0_g128 tier — activations
+# quantized once per call to int8 per 128-group (llama.cpp's CPU Q2_0 regime).
+# LOSSY (activation rounding) — opt-in until the real-model quality gate holds.
+ternary_group_q8_act = ["ternary_group_scale"]
+
+# Issue 935 T5: the same int8-activation regime over RAW Q2_0 blocks (ggml
+# block_q2_0, 2-bit codes) — shr+and per byte instead of the two-plane walk.
+# Bit-identical to ternary_group_q8_act on the same weights; only speed moves.
+ternary_q2_q8 = ["ternary_group_q8_act"]
+# Issue 936: decode-scoped spin-barrier pool. Workers spin between forks
+# instead of parking, so a decode forward's forks skip the ~100 us OS wake.
+# Opt in per thread with `with_spin_pool`. Bit-identical (fixed row
+# partition). Opt-in until the real-model GOAT passes.
+decode_spin_pool = []
+
 # Issue 582: base-3 trit packing — 5 trits/byte + per-128 f16 scale = 1.75
 # bits/weight vs the bit-plane tier's 2.125 (-17.6%, Bonsai-27B 7.17 -> 5.90 GB).
 # Same alphabet, same group granularity; only the storage differs. Implies
@@ -229,3 +244,25 @@ required-features = ["sigmoid_margin"]
 [[test]]
 name = "sigmoid_argmaxability"
 required-features = ["sigmoid_margin"]
+
+# Issue 935 — rows-per-task A/B (+ the q8 SDOT arm under ternary_group_q8_act)
+# on the Bonsai-2-27B decode shapes.
+[[example]]
+name = "ternary_group_par_chunk_ab"
+required-features = ["ternary_group_scale"]
+
+# Pair-vs-two-calls A/B for the Q2_0 int8-activation FFN gate+up matvec.
+[[example]]
+name = "ternary_q2_pair_ab"
+required-features = ["ternary_q2_q8"]
+
+# Issue 936: fork latency after a serial gap, rayon vs the decode spin pool.
+[[example]]
+name = "spin_pool_gap_ab"
+required-features = ["ternary_q2_q8", "decode_spin_pool"]
+
+# Issue 937: streamed weight bandwidth of the Q2_0 matvec past the SLC
+# (thread count via RAYON_NUM_THREADS).
+[[example]]
+name = "q2_bandwidth_sweep"
+required-features = ["ternary_q2_q8"]

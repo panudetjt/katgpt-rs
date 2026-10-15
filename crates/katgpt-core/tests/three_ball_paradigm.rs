@@ -459,8 +459,9 @@ fn argmax_of(v: &[f64]) -> usize {
 
 #[test]
 fn three_ball_ablation_gates() {
-    let mut lines = Vec::new();
-    for arm in [Arm::Full, Arm::StatesParams, Arm::Random] {
+    let cap_iter = [Arm::Full, Arm::StatesParams, Arm::Random];
+    let mut lines = Vec::with_capacity(cap_iter.len());
+    for arm in cap_iter {
         let mut discovered = 0;
         let mut premature = 0;
         let mut plausible_ge2 = 0;

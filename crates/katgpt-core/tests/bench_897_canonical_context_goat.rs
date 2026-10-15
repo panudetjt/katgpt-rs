@@ -21,13 +21,13 @@
 //!     - the exact invariance condition: BLAKE3 keys report 0 ties; CALLER
 //!       keys that collide on DISTINCT content report ties > 0 and the spread
 //!       is allowed to be > 0 there — the tie count is the caller's alarm.
-//! G2  sort cost: best-of µs for `canonical_order_into` at N ∈ {32, 256,
-//!     1024} (pre-registered bar: N = 256 ≤ 20 µs); paired interleave of
-//!     (plain assembly) vs (canonical order + assembly) at N = 256 reported;
-//!     BLAKE3 ingest cost per item reported.
-//! G3  the assembly path adds nothing: the identity order assembles
-//!     byte-identical to plain concatenation.
-//! G4  0 allocations over order + score-order + assemble (pre-sized buffer).
+//!       G2  sort cost: best-of µs for `canonical_order_into` at N ∈ {32, 256,
+//!       1024} (pre-registered bar: N = 256 ≤ 20 µs); paired interleave of
+//!       (plain assembly) vs (canonical order + assembly) at N = 256 reported;
+//!       BLAKE3 ingest cost per item reported.
+//!       G3  the assembly path adds nothing: the identity order assembles
+//!       byte-identical to plain concatenation.
+//!       G4  0 allocations over order + score-order + assemble (pre-sized buffer).
 //!
 //! Run:
 //!   cargo test -p katgpt-core --release --features canonical_context \

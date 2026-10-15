@@ -2,6 +2,7 @@
 name = "katgpt-nn"
 version = "0.1.0"
 edition = "2024"
+rust-version.workspace = true
 license = "MIT"
 description = "Shared neural network primitives (conv2d, linear, pool, relu) — the common substrate used by both the CNN engine (katgpt-moka-wasm) and the transformer engine (katgpt-forward). Path A of the CNN→Transformer code-path unification (Issue 567)."
 publish = false

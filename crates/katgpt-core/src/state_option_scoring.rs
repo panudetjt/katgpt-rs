@@ -475,8 +475,8 @@ pub mod head {
             // well-conditioned data recovers the direction.
             const D: usize = 4;
             let planted = [0.5, -1.0, 2.0, 0.25];
-            let mut rows = Vec::new();
-            let mut y = Vec::new();
+            let mut rows = Vec::with_capacity(64);
+            let mut y = Vec::with_capacity(64);
             for i in 0..64 {
                 let x = lcg_row(0x0670_0001 + i);
                 let t: f64 = planted.iter().zip(x.iter()).map(|(w, v)| w * v).sum();
@@ -540,8 +540,8 @@ pub mod head {
             // survive — the decision, not the magnitude, is the contract.
             const D: usize = 3;
             let planted = [1.0, -2.0, 0.5];
-            let mut rows = Vec::new();
-            let mut y = Vec::new();
+            let mut rows = Vec::with_capacity(64);
+            let mut y = Vec::with_capacity(64);
             for i in 0..64 {
                 let x = lcg_row(0x0670_c000 + i);
                 rows.push(x);
@@ -602,10 +602,10 @@ pub mod head {
 
         fn grouped_corpus(groups: usize, per: usize) -> GroupedCorpus {
             const PLANTED: [f64; 2] = [1.0, -2.0];
-            let mut rows = Vec::new();
-            let mut targets = Vec::new();
+            let mut rows = Vec::with_capacity(groups);
+            let mut targets = Vec::with_capacity(groups);
             let mut state_offsets = vec![0usize];
-            let mut argmaxes = Vec::new();
+            let mut argmaxes = Vec::with_capacity(groups);
             for g in 0..groups {
                 for s in 0..per {
                     for j in 0..4 {

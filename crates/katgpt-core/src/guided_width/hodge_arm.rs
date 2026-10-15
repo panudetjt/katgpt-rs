@@ -68,7 +68,7 @@ impl HarmonicCycles {
         let mut coef = vec![0i32; n_e];
         let mut per_edge = vec![0usize; n_e];
         let mut div = vec![0i64; n_v];
-        let mut entries = Vec::new();
+        let mut entries = Vec::with_capacity(cycles.iter().map(|c| c.len()).sum());
         let mut offsets = vec![0u32];
         for cyc in cycles {
             coef.fill(0);

@@ -1,15 +1,15 @@
 # Plan 614 (task E13 of plan 611) — `[workspace.package] rust-version` draft (PREP ONLY — nothing landed)
 
-**Status:** DRAFT — prep only, owner-gated (E13, refs `.plans/611_owner_gate_pickup.md` task E13 + riir-ai `.issues/1016` row E13). No workspace file was modified and nothing was committed; this document is the only artifact of this session.
+**Status:** LANDED 2026-10-03 — owner go granted via Claude verdict (session `13cf6ceb`, round 1 AGREE; both reviewer conditions applied: the `rust-toolchain.toml` bump-procedure comment note + the FULL docs-gate run). Verification record + the not-run gate-liveness probe: `.plans/611_owner_gate_pickup.md` E13 row.
 
 - [x] Read the toolchain pin (`rust-toolchain.toml` → `channel = "1.98.1"`)
 - [x] Enumerate + classify every Cargo.toml (33 manifests)
 - [x] Draft the patch ([workspace.package] block + per-manifest diff shapes)
 - [x] Drift findings (NONE — zero manifests carry any rust-version today)
 - [x] Sanity check: `cargo metadata --no-deps` parses clean (unchanged tree)
-- [ ] Owner go (the gate — this file is the evidence to decide on)
-- [-] Apply the patch on katgpt-rs develop + run §7 verification (DEFERRED until owner go — do NOT land without it)
-- [-] Tick E13 in `.plans/611_owner_gate_pickup.md` + ref the landing commit here, same commit (DEFERRED with the landing)
+- [x] Owner go (the gate) — **GRANTED 2026-10-03 via Claude verdict AGREE**
+- [x] Apply the patch on katgpt-rs develop + run §7 verification — **LANDED 2026-10-03: §7(1) PARSE-OK, §7(2) Counter({'1.98.1': 33}), §7(3) both checks green, §7(4) gate-liveness NOT RUN (no older toolchain on this box — recorded, not passed), §7(5) full docs_gate.sh 35/35 PASSED (DOCS_GATE_PARTIAL_CLONE=1)**
+- [x] Tick E13 in `.plans/611_owner_gate_pickup.md` + ref the landing commit here, same commit
 
 ## 1. Premise
 

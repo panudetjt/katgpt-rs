@@ -1,0 +1,155 @@
+{
+ "gfflow_walk": 1,
+ "generated_by": "reflex-site scripts/render_flows.py",
+ "file": "tetris_flow_laya.svg",
+ "title": "laya (Rust + Python): the model reads every landing spot",
+ "accent": "#ff8a3d",
+ "intro": "Press play to walk one recorded turn: the opening position of the seed-607 game, the same one every lane plays.",
+ "steps": {
+  "turn": {
+   "n": "1",
+   "title": "The turn arrives",
+   "lane": "game",
+   "color": "#ff8a3d"
+  },
+  "list": {
+   "n": "2",
+   "title": "List every spot",
+   "lane": "code",
+   "color": "#ff8a3d"
+  },
+  "write": {
+   "n": "3",
+   "title": "Say it in words",
+   "lane": "code",
+   "color": "#ff8a3d"
+  },
+  "read": {
+   "n": "4",
+   "title": "The model reads",
+   "lane": "model",
+   "color": "#ff8a3d"
+  },
+  "pclean": {
+   "n": "5",
+   "title": "P(clean) per spot",
+   "lane": "model",
+   "color": "#ff8a3d"
+  },
+  "play": {
+   "n": "6",
+   "title": "Play the highest",
+   "lane": "game",
+   "color": "#ff8a3d"
+  }
+ },
+ "edges": [
+  {
+   "id": "turn->list",
+   "back": false
+  },
+  {
+   "id": "list->write",
+   "back": false
+  },
+  {
+   "id": "write->read",
+   "back": false
+  },
+  {
+   "id": "read->pclean",
+   "back": false
+  },
+  {
+   "id": "pclean->play",
+   "back": false
+  }
+ ],
+ "walk": [
+  {
+   "title": "The turn arrives",
+   "text": "One turn of the recorded seed-607 game: the board, the falling piece, and the nine landing spots the harness will judge. Every lane in the arena plays this same stream — what differs is only how the pick is made.",
+   "steps": [
+    "turn"
+   ],
+   "edges": [],
+   "illustrative": false,
+   "in": {
+    "lang": "json",
+    "src": "data/flows/tetris_laya/01_in.json",
+    "label": "the recorded opening turn",
+    "from": "recorded from the laya (Rust) lane, seed 607, 2026-09-25, arena/demo_oracle.json _meta.sources.tetris_laya · scripts/record_demo_walks.mjs · the opening turn (turn 0)",
+    "body": "{\n  \"grammar\": \"laya-tetris-v3\",\n  \"question\": \"Does the stack look clean?\",\n  \"state\": \"The stack stands low and the surface is mostly flat. There are no holes under the blocks. The square piece is falling.\",\n  \"piece\": \"O\",\n  \"board\": [\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\"\n  ],\n  \"landing_spots\": 9\n}"
+   }
+  },
+  {
+   "title": "List every spot",
+   "text": "The harness enumerates every legal landing: each rotation of the piece in each column, hard-dropped. For the opening O piece that is nine distinct futures — the count rides the recorded turn above.",
+   "steps": [
+    "list"
+   ],
+   "edges": [
+    "turn->list"
+   ],
+   "illustrative": false
+  },
+  {
+   "title": "Say it in words",
+   "text": "Each spot becomes one English sentence — the holes it leaves, how it meets the surface, where it lands, how tall the stack stands. The words are pinned by the grammar; every lane reads the same ones.",
+   "steps": [
+    "write"
+   ],
+   "edges": [
+    "list->write"
+   ],
+   "illustrative": false
+  },
+  {
+   "title": "The model reads",
+   "text": "The laya model runs one forward pass per sentence. Rust is the served port; Python is the torch reference it is measured against — the same open weights either way.",
+   "steps": [
+    "read"
+   ],
+   "edges": [
+    "write->read"
+   ],
+   "illustrative": false
+  },
+  {
+   "title": "P(clean) per spot",
+   "text": "Every landing spot comes back with a cleanliness probability. The recorded opening turn's nine answers are below — watch how flat they are on an empty board: the model is nearly indifferent, and small differences decide the pick.",
+   "steps": [
+    "pclean"
+   ],
+   "edges": [
+    "read->pclean"
+   ],
+   "illustrative": false,
+   "out": {
+    "lang": "json",
+    "src": "data/flows/tetris_laya/01_out.json",
+    "label": "P(clean) per spot · the pick",
+    "from": "recorded from the laya (Rust) lane, seed 607, 2026-09-25, arena/demo_oracle.json _meta.sources.tetris_laya · scripts/record_demo_walks.mjs · the opening turn's answer",
+    "body": "{\n  \"p_clean_per_spot\": [0.6832, 0.6832, 0.6888, 0.6888, 0.691, 0.691, 0.6379, 0.6379, 0.6581],\n  \"pick\": 4\n}"
+   }
+  },
+  {
+   "title": "Play the highest",
+   "text": "The highest-probability spot is played and the piece drops; the next turn starts the loop again. One model forward per spot is the whole cost of this lane.",
+   "steps": [
+    "play"
+   ],
+   "edges": [
+    "pclean->play"
+   ],
+   "illustrative": false,
+   "out": {
+    "lang": "json",
+    "src": "data/flows/tetris_laya/01_out.json",
+    "label": "the played spot",
+    "from": "recorded from the laya (Rust) lane, seed 607, 2026-09-25, arena/demo_oracle.json _meta.sources.tetris_laya · scripts/record_demo_walks.mjs · the opening turn's answer",
+    "body": "{\n  \"p_clean_per_spot\": [0.6832, 0.6832, 0.6888, 0.6888, 0.691, 0.691, 0.6379, 0.6379, 0.6581],\n  \"pick\": 4\n}"
+   }
+  }
+ ]
+}

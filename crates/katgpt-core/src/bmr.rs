@@ -802,6 +802,7 @@ pub fn enumerate_isomorphic_rules(layout: &FactorLayout) -> Vec<Counts> {
             rules.push(rule);
         }
     }
+    rules.shrink_to_fit();
     rules
 }
 

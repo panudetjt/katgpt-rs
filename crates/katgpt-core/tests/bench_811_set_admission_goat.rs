@@ -152,6 +152,7 @@ fn subsets_of(n: usize, k: usize) -> Vec<Vec<usize>> {
             (((r ^ mask) >> 2) / c) | r
         };
     }
+    out.shrink_to_fit();
     out
 }
 

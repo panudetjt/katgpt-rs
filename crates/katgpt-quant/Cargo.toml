@@ -2,6 +2,7 @@
 name = "katgpt-quant"
 version = "0.1.0"
 edition = "2024"
+rust-version.workspace = true
 license = "MIT"
 description = "Quantization codecs — TurboQuant, PlanarQuant, IsoQuant, OCTOPUS, Hybrid OCT-PQ. KV cache compression primitives shared across the workspace. Extracted from katgpt-rs/src/ (Proposal 003 Phase 1)."
 repository = "https://github.com/katopz/katgpt-rs"

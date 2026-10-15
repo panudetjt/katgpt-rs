@@ -182,6 +182,7 @@ fn prefix_offsets(widths: &[usize]) -> Vec<usize> {
         acc += w;
         offsets.push(acc);
     }
+    offsets.shrink_to_fit();
     offsets
 }
 

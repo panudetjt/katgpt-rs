@@ -188,6 +188,7 @@ fn load_k_bins(m: &serde_json::Value, full_dir: Option<&Path>, use_full: bool) -
             });
         }
     }
+    out.shrink_to_fit();
     out
 }
 
@@ -244,6 +245,7 @@ fn forced_set(query_idx: usize, n_leaves: usize) -> Vec<usize> {
             v.push(cand);
         }
     }
+    v.shrink_to_fit();
     v
 }
 
@@ -536,7 +538,7 @@ fn run_quality(use_full: bool) -> Vec<FamilyOutcome> {
     let max_rows = kbins.iter().map(|k| k.rows).max().unwrap();
     let mut storage = vec![0.0f32; PyramidKeyHierarchy::required_len(max_rows, head_dim) + 8];
 
-    let mut out = Vec::new();
+    let mut out = Vec::with_capacity(kbins.len());
     for kbin in &kbins {
         for &p in &q_positions_for(&m, kbin.src_l) {
             let prefix = row_of(kbin, p) + 1;
@@ -548,6 +550,7 @@ fn run_quality(use_full: bool) -> Vec<FamilyOutcome> {
             out.push(eval_family(&mut ctx, kbin, prefix, qmat, prefix - 1));
         }
     }
+    out.shrink_to_fit();
     out
 }
 

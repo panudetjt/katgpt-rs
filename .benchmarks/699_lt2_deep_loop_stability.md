@@ -1,7 +1,7 @@
 # Bench 699 — LT2 deep-loop stability: T≫4 baseline + runtime damping GOAT (Issue 717)
 
-**Status:** ALL PASS (T1/T2 harness, G1–G4, T4 probe, T5 contract, T6 doc) —
-measured 2026-09-03 on M3 Max (macOS, debug profile — deterministic
+**Status:** ALL PASS (T1/T2 harness, G1–G4, T4 probe, T5 contract, T6 doc);
+T7/T8 deferred `[-]` — measured 2026-09-03 on M3 Max (macOS, debug profile — deterministic
 assertions only; NO wall-clock gates, box under sibling load ~60).
 `lt2_deep_stability` stays **DEFAULT-OFF** (runtime rescue knob for frozen
 checkpoints, not a default behavior change; the no-default-consumer rule).
@@ -158,6 +158,19 @@ future "normalized gain" proposals. katgpt-core clippy clean under
 
 Cross-check with riir-train Plan 373's trained artifact — contingent on
 that checkpoint existing.
+
+## T8 — deferred `[-]`
+
+Erosion diagnostics from Looped-DiT [arXiv:2609.40305]: per-loop ridge
+position-probe R² + relative attention-update norm ‖Δattn‖/‖residual‖
+as loop-health telemetry. Modelless — runs on the shipped `forward_looped`
+today, no trained artifact needed. Target the DESTABILIZED arm (T4's
+undamped T=64 arm), not the stable fixture: T1/T2's fixture is already
+flat to T=1024, so the probe reads null there by construction (the
+paper's signal came from naive looping on an unregulated model — R²
+0.865→0.562 over 8 loops). A decayed-R² curve alongside a flat readout
+(cos/argmax — modelless, no loss on a frozen fixture) is the
+loop-erosion tripwire this bench's damping gate would otherwise miss.
 
 ## Regression surface
 

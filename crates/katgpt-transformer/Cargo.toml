@@ -2,6 +2,7 @@
 name = "katgpt-transformer"
 version = "0.1.0"
 edition = "2024"
+rust-version.workspace = true
 license = "MIT"
 description = "Transformer substrate types (weights, KV caches, contexts) shared between katgpt-rs and riir-engine"
 repository = "https://github.com/katopz/katgpt-rs"
@@ -157,6 +158,10 @@ transformer_attn_res = []
 
 [[test]]
 name = "attn_res_g1_spec_match"
+required-features = ["transformer_attn_res"]
+
+[[test]]
+name = "bench_933_attn_res_decode_ab"
 required-features = ["transformer_attn_res"]
 
 [[test]]

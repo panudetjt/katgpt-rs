@@ -298,6 +298,16 @@ pub use cna::{
     ContrastivePairProvider, cna_discover, cna_modulate, detect_universal_neurons,
 };
 
+// Bias-space persistent deltas (issue 920 T1, HyperThink modelless lane) —
+// the projection-window sibling of cna: dense signed per-window mean shifts
+// (`Δb = E_probe[out_with_c − out_plain]`) as a frozen constant overlay, not
+// sparse per-neuron runtime modulation. K-site excluded by construction.
+#[cfg(feature = "bias_delta")]
+pub mod bias_delta;
+
+#[cfg(feature = "bias_delta")]
+pub use bias_delta::{BiasDeltaBuilder, BiasDeltaTable, BiasSite, LayerStat, WindowEntry};
+
 #[cfg(feature = "deep_manifold")]
 pub mod manifold_residual;
 

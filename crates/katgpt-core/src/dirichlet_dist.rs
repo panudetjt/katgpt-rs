@@ -805,7 +805,7 @@ mod tests {
         let eps = 4.0f32;
         // Class-wise concentration C = ε·Σw_raw = ε(1−β^filled) — the raw
         // geometric weights do NOT sum to 1 (the truncation), so C < ε.
-        let raw_mass: f32 = (0..8).map(|j| (1.0 - beta) * beta.powi(j as i32)).sum();
+        let raw_mass: f32 = (0..8_i32).map(|j| (1.0 - beta) * beta.powi(j)).sum();
         let conc = eps * raw_mass;
         let n_draws = 4_000usize;
         let mut acc = [0.0f32; 3];

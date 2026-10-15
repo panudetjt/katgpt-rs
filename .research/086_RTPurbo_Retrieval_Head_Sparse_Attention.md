@@ -10,6 +10,8 @@
 
 ---
 
+> **Addendum (2026-10-01, Research 600 cross-ref):** Duvvuri et al. [arXiv:2602.21371 "Interleaved Head Attention"] — convergent third signal that MULTI-KEY retrieval is the capacity bottleneck: cross-head pseudo-mixing's largest empirical win is Multi-Key Retrieval on RULER (+27/+32/+112% @4k/8k/16k), the same axis as this note's retrieval-head sparsity and riir-train Plan 433's positional-retrieval warm-up mechanism (arXiv:2609.39827). Three independent papers, one axis.
+
 ## Executive Summary
 
 RTPurbo demonstrates that full-attention LLMs are **intrinsically sparse** and can be converted to highly sparse inference with only ~600 training steps (~1M label tokens). Three key insights:
@@ -257,3 +259,4 @@ To promote `rt_turbo` from opt-in to default-on, we need:
 - Kimi Delta Attention (Kimi Team, 2025) — linear attention architecture
 
 > **PASS-Redirects (synthesis):** Bertsch et al. [arXiv:2608.10296 "Cracks in the Foundation: Seemingly Minor Architectural Choices Impact Long Context Extension"] — maturity caveat from OlmPool: at 140B tokens (early pretraining), retrieval-head scores were near-zero across ALL 26 models at generation time — head-calibration à la this note needs mature pretrained checkpoints, not young ones. Also: QK-norm models placed less attention on needle tokens at prefill (weaker retrieval signal to calibrate against). Compound-degradation recipe → riir-train Research 420; no action here.
+> **PASS-Redirects (synthesis):** Yamaguchi et al. [arXiv:2609.39827 "Synthetic Pre-pretraining Survives Scale, but Not as a Grammatical Prior"] — training-side convergence FOR this note's premise: long-range positional retrieval is a distinct, installable capability axis (their effective PPT warm-up tasks all require matching a token to a specific earlier position; verbatim-retrieval NLL improves 12/12 while grammatical acceptability is noise 1/12; the membership-tracking warm-up HURTS −7.2 pts). Independent evidence that retrieval is a separable circuit, which is exactly what RTPurbo's 16-dim low-frequency subspace exploits at inference. No policy change: their effect is installed by 500 steps of GD at pretraining-init (500M–7B scale, ~1% compute; the from-scratch warm-up recipe → riir-train Plan 433 micro-rung); the inference-side analog of the mechanism (exact positional-match routing) already ships as the prompt-continuation draft-override rule. Their multi-checkpoint finding (single-snapshot quality deltas flip sign 50%) converges with the box-state/measurement-honesty doctrine.

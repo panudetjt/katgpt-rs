@@ -2,6 +2,7 @@
 name = "katgpt-speculative"
 version = "0.1.0"
 edition = "2024"
+rust-version.workspace = true
 license = "MIT"
 description = "Speculative decoding + DDTree substrate shared by katgpt-rs and riir-engine (Issue 013)"
 repository = "https://github.com/katopz/katgpt-rs"
@@ -332,6 +333,17 @@ nf_flow_budget = []
 # Includes dep:half for the f16 weight path (Issue 136 — WeaverWeightsF16).
 weaver_runtime = ["dep:safetensors", "dep:bytemuck", "dep:blake3", "dep:half"]
 
+# Issue 917 T3 (2026-10-07): EB-Sampler-class entropy-bounded lane wiring.
+# Gates src/entropy_bounded.rs — the DDTree expansion variant whose
+# per-expansion child count is the EB prefix over candidate children's
+# marginal (surprisal) entropies, and the DFlash block commit that picks the
+# drafted block's committed prefix by the same Σ H − max H ≤ γ bound. Forwards
+# to katgpt-core/entropy_bounded_commit (the T1 primitive — consumed, never
+# reimplemented here). Opt-in: the legacy builders and dflash cores are
+# untouched and bit-identical with the flag off; T2 (D2F decode) remains
+# blocked on the riir-train Plan 437 checkpoint.
+entropy_bounded_commit = ["katgpt-core/entropy_bounded_commit"]
+
 [dev-dependencies]
 # katgpt-pruners is a DEV-ONLY dep here (echo_env's GOAT test imports BanditPruner
 # + BanditStrategy). Dev-deps do NOT propagate to dependents, so this does NOT
@@ -374,3 +386,25 @@ required-features = ["weaver_runtime"]
 [[test]]
 name = "weaver_real_checkpoint"
 required-features = ["weaver_runtime"]
+
+# Issue 917 T3 — G1-style gates for the lane wiring (no-stall on flat /
+# degenerate distributions, brute-force Σ−max agreement over seeded random
+# cases, determinism across input permutations, cap behavior, NaN handling).
+[[test]]
+name = "entropy_bounded_lane_wiring"
+required-features = ["entropy_bounded_commit"]
+
+# Issue 917 T3 G4 — zero-alloc steady state for both wired lanes (DDTree EB
+# build on warmed scratch, DFlash EB block commit on warmed scratch).
+# Separate single-fn binary (shared counting allocator convention).
+[[test]]
+name = "entropy_bounded_lane_alloc_check"
+required-features = ["entropy_bounded_commit"]
+
+# Issue 917 T3 — deterministic counts bench: EB vs fixed-width-k at matched
+# settings. Counts are the metric (per-pass commit-count distributions +
+# DDTree expansion counts) — box-independent, no timing.
+[[bench]]
+name = "bench_917_eb_lane_wiring"
+harness = false
+required-features = ["entropy_bounded_commit"]

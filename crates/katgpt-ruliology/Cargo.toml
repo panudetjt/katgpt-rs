@@ -2,6 +2,7 @@
 name = "katgpt-ruliology"
 version = "0.1.0"
 edition = "2024"
+rust-version.workspace = true
 license = "MIT"
 description = "Wolfram ruliology — exhaustive simple-program enumeration (FSM/CA/TM) as bandit arms (Plan 188, Research 168). Extracted from katgpt-rs root per Proposal 003 Phase 11 (2026-07-04)."
 repository = "https://github.com/katopz/katgpt-rs"

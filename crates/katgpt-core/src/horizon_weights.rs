@@ -856,7 +856,7 @@ mod tests {
         // eps = ((1-0.70)/(1-0.02))^2 ~= 0.093683.
         let t_min = 0.02f32;
         let eps = truncated_w_mass_fraction(0.70, t_min, 1.0);
-        let expect = (0.30f32 / 0.98).powi(2);
+        let expect = (0.3f32 / 0.98).powi(2);
         assert!((eps - expect).abs() < 1e-6, "{eps} vs {expect}");
         assert!((eps - 0.0937).abs() < 5e-4, "{eps}");
         let cut = terminal_truncation_ceiling(expect, t_min, 1.0);

@@ -2,6 +2,7 @@
 name = "katgpt-canon"
 version = "0.1.0"
 edition = "2024"
+rust-version.workspace = true
 license = "MIT"
 description = "Canonical Intent Space — architecture-neutral intent directions + per-model adapters (Proposal 009, Research 459). Composes orthogonal_procrustes (katgpt-spectral) with thin_svd_into (katgpt-core) into a CanonicalIntent × ModelAdapter → model-specific-latent functor. P0 ships CanonicalIntent + ProcrustesAdapter (same-arch); P1 ships SubspaceAdapter (cross-arch joint-SVD — Bench 423 G5 PASS at k∈{2,4}). The intra-arch path is unaffected by the P3c cross-arch exhaustion verdict. G1/G2/G4 GOAT stamp measured per Bench 562 (2026-07-28)."
 repository = "https://github.com/katopz/katgpt-rs"

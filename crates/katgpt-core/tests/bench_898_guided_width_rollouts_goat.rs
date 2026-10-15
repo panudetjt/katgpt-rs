@@ -578,7 +578,7 @@ fn run_family(
     );
     let (tables, posts) = fit_table(ctx, graphs, &train, fam).expect("table fit");
     let arms = [Arm::Det, Arm::Zero, Arm::Iso, Arm::Guided, Arm::Realloc];
-    let mut per_arm = Vec::new();
+    let mut per_arm = Vec::with_capacity(arms.len());
     for &arm in &arms {
         let mut outs = Vec::with_capacity(test.len());
         for (ii, inst) in test.iter().enumerate() {
@@ -607,8 +607,9 @@ fn run_family(
         per_arm.push((arm, outs));
     }
     // Plan 095 width sweep at fixed NK = 128 (arm Z).
-    let mut sweep = Vec::new();
-    for n in [1usize, 2, 4, 8, 16, 32] {
+    let cap_iter = [1usize, 2, 4, 8, 16, 32];
+    let mut sweep = Vec::with_capacity(cap_iter.len());
+    for n in cap_iter {
         let k = NK / n;
         let mut sel = Vec::new();
         let mut any = Vec::new();
@@ -869,8 +870,9 @@ fn g2(fails: &mut Vec<String>) {
     let evid = belief_state(&mut r);
     let acts = evid.evidence().kind_activations;
     let mut scratch = GuidedWidthScratch::with_capacity(8, 8);
-    let mut per_k = Vec::new();
-    for k in [16usize, 32] {
+    let cap_iter = [16usize, 32];
+    let mut per_k = Vec::with_capacity(cap_iter.len());
+    for k in cap_iter {
         let mut i = 0usize;
         let mut st = ReconstructionState::new(states[0]);
         st.accumulate(&[true; 6], &acts);

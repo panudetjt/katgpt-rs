@@ -306,6 +306,7 @@ impl StreamingMeanTable {
             acc += c;
             out.push(acc as f64 / self.grand_n as f64);
         }
+        out.shrink_to_fit();
         out
     }
 }

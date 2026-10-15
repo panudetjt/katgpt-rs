@@ -77,13 +77,19 @@ mod looping;
 mod lora;
 pub mod math;
 pub mod merkle;
-mod rng;
+pub mod rng;
 mod sense;
 /// SIMD-accelerated linear algebra kernels (NEON / AVX2 / WASM-SIMD128 /
 /// scalar fallback). Co-located with `types` because `types::math` calls
 /// these kernels and `simd::ternary` uses `types::TernaryWeights`.
 pub mod simd;
 pub mod slod;
+/// SyncBank — online second-order co-activation memory (Issue 930,
+/// Research 615). Unconditional leaf math (the TemporalDerivativeKernel
+/// precedent: the kernel is always compiled; the FEATURES gate the wiring —
+/// `sync_bank` in katgpt-sense gates the ReconstructionState field/accessor,
+/// and the katgpt-core + root rows forward it).
+pub mod sync_bank;
 pub mod temporal;
 mod ternary;
 /// Ternary `{-1,0,+1}` bit-planes with per-128 f16 group scale — the
@@ -156,7 +162,7 @@ pub use merkle::{
     HASH_SIZE, MERKLE_OCTREE_BRANCHING, MERKLE_OCTREE_DEPTH, MERKLE_OCTREE_INTERNAL,
     MERKLE_OCTREE_LEAVES, MERKLE_OCTREE_NODES, MerkleOctree, MerkleProof,
 };
-pub use rng::Rng;
+pub use rng::{Rng, SPLITMIX64_GAMMA, SplitMix64, splitmix64_finalize};
 #[allow(deprecated)]
 pub use sense::ShardEmbedding;
 pub use sense::{DilationConfig, SenseKind, SenseModule, TernaryDir};

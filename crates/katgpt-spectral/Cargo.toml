@@ -2,6 +2,7 @@
 name = "katgpt-spectral"
 version = "0.1.0"
 edition = "2024"
+rust-version.workspace = true
 license = "MIT"
 description = "Spectral quantization substrate — calibrated eigenbasis KV cache compression, Lloyd-Max / water-fill bit allocation, outlier-aware guard. Shared by katgpt-kv (ShardKV, KVarN) and non-KV consumers (funcattn_compose, chiaroscuro, benchmark). Spun out of katgpt-rs/src/spectralquant/ (Issue 015 Phase 2)."
 repository = "https://github.com/katopz/katgpt-rs"

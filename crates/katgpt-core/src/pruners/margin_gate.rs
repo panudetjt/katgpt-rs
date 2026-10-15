@@ -524,7 +524,7 @@ mod tests {
         let p = [0.45f32, 0.40, 0.15];
         // Target distribution: mass moved to token 2 (p[2] < q[2] → no
         // residual mass there).
-        let q = [0.10f32, 0.10, 0.80];
+        let q = [0.1f32, 0.10, 0.80];
         let mut scratch = [0.0f32; 3];
         let split = margin_split(&p);
         assert!(

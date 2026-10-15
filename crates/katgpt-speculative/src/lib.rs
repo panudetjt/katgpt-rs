@@ -40,6 +40,13 @@ pub mod correlation_budget;
 pub mod dd_tree;
 pub mod decomp_reviewer;
 pub mod dflash;
+// Issue 917 T3 — EB-Sampler-class entropy-bounded lane wiring: the DDTree
+// expansion variant whose per-expansion child count is the EB prefix and the
+// DFlash block commit that picks the drafted block's committed prefix by the
+// same Σ H − max H ≤ γ bound. Consumes katgpt_core::entropy_bounded_commit
+// (T1). Additive — the legacy builders and dflash cores are untouched.
+#[cfg(feature = "entropy_bounded_commit")]
+pub mod entropy_bounded;
 pub mod nf_flow;
 pub mod nf_flow_budget;
 pub mod nf_flow_fold;

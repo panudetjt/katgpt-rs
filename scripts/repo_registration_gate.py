@@ -242,9 +242,20 @@ def verdict(root: Path, ws: Path, scope: dict[str, str]):
     # Both directions: a SUBSET row whose file now covers every present repo
     # is a stale acknowledgement, and a row for a file no longer governed is
     # a pin that can never fail.
-    stale = sorted(n for n in scope
-                   if n not in governed or not (present - governed[n]))
-    return governed, incomplete, stale, strays, reg, present
+    # ⛔ PARTIAL-CLONE AXIS (the 10-04/10-07 docs_gate main-run failures): the
+    # stale direction is only decidable on a box that carries the registry.
+    # On a single-checkout CI lane `present` is this repo alone, every SUBSET
+    # file covering it reads "complete", and the gate reds on an environment
+    # property — the exact "reds every partial clone" class the incomplete
+    # direction already refuses (the docstring's own rule, one axis over).
+    # Undecidable here ⇒ disclosed on the PASS line, never failed.
+    full_view = reg <= present
+    if full_view:
+        stale = sorted(n for n in scope
+                       if n not in governed or not (present - governed[n]))
+    else:
+        stale = []
+    return governed, incomplete, stale, strays, reg, present, full_view
 
 
 def canary() -> list[str]:
@@ -372,7 +383,7 @@ def canary() -> list[str]:
             (ws / r / ".git").mkdir(parents=True)
             (ws / r / "BOUNDARY.md").write_text("x", encoding="utf-8")
 
-        gov, inc, stale, _, _, present = verdict(root, ws, {})
+        gov, inc, stale, _, _, present, _ = verdict(root, ws, {})
         check("tiny_floors.txt" not in gov,
               "a 1-row file entered the population — MIN_REPO_ROWS is not "
               "separating pin files from membership files")
@@ -382,16 +393,16 @@ def canary() -> list[str]:
               f"the missing set is wrong: {inc.get('partial_floors.txt')}")
 
         # the declaration silences exactly the declared file, and nothing else
-        gov, inc, stale, _, _, _ = verdict(root, ws, {"partial_floors.txt": "by design"})
+        gov, inc, stale, _, _, _, _ = verdict(root, ws, {"partial_floors.txt": "by design"})
         check(not inc, f"a declared SUBSET file still reported incomplete: {inc}")
 
         # ⛔ BOTH directions: declaring a COMPLETE file SUBSET is a stale
         # acknowledgement and must red, or the pin file only ever loosens.
-        gov, inc, stale, _, _, _ = verdict(root, ws, {"full_floors.txt": "wrong"})
+        gov, inc, stale, _, _, _, _ = verdict(root, ws, {"full_floors.txt": "wrong"})
         check("full_floors.txt" in stale,
               "a SUBSET row on a file that covers every present repo did NOT "
               "red — the pin file can then only ever loosen")
-        gov, inc, stale, _, _, _ = verdict(root, ws, {"gone_floors.txt": "wrong"})
+        gov, inc, stale, _, _, _, _ = verdict(root, ws, {"gone_floors.txt": "wrong"})
         check("gone_floors.txt" in stale,
               "a SUBSET row for a file no longer governed did NOT red")
 
@@ -399,12 +410,19 @@ def canary() -> list[str]:
         #    carry must NOT be demanded, or every partial clone reds.
         import shutil
         shutil.rmtree(ws / "riir-f")
-        gov, inc, _, _, _, present = verdict(root, ws, {})
+        gov, inc, _, _, _, present, full = verdict(root, ws, {})
         check("riir-f" not in present,
               "an ABSENT repo stayed in the demanded set — every partial "
               "clone would red on a row no sweep there could measure")
         check(not inc.get("full_floors.txt"),
               f"a complete file reds once a repo goes missing: {inc}")
+        # And the STALE direction must go quiet on the same partial box: a
+        # SUBSET declaration cannot be adjudicated from a partial view (the
+        # CI-lane failure class this axis exists for).
+        gov, inc, stale, _, _, _, _ = verdict(root, ws, {"full_floors.txt": "wrong"})
+        check(not full and not stale,
+              "the stale direction fired on a PARTIAL box — a single-checkout "
+              "CI lane reds on an environment property, not a content one")
 
     return fails
 
@@ -419,7 +437,7 @@ def main(argv) -> int:
 
     ws = REPO_ROOT.parent
     scope, errs = parse_scope(SCOPE_PINS)
-    gov, inc, stale, strays, reg, present = verdict(REPO_ROOT, ws, scope)
+    gov, inc, stale, strays, reg, present, full_view = verdict(REPO_ROOT, ws, scope)
 
     if "--list" in argv:
         for name in sorted(gov):
@@ -464,6 +482,10 @@ def main(argv) -> int:
             if absent else
             "  [⚠ every registered repo is on this box, so the absent-repo "
             "path is UNEXERCISED by live data and is asserted only by its arm]")
+    if not full_view:
+        tail += ("  [⚠ PARTIAL box — the SUBSET-stale direction is UNDECIDABLE "
+                 "here (a SUBSET scope reads complete over 1 repo) and is "
+                 "deferred to a full checkout, never failed]")
     print(f"    ✓ repo-registration gate PASSED — every one of {len(gov)} "
           f"per-repo pin file(s) has a row for all {len(present)} on-disk "
           f"canonical repo(s), {len(scope)} declared SUBSET, 0 stale, 0 "

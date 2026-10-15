@@ -5,7 +5,7 @@ exact flag is listed per example and in the catalog below. Examples that gate
 themselves internally (`#![cfg(feature = ...)]`) print a hint and exit cleanly if the
 flag is missing.
 
-**178 examples** across 25 groups. Full feature definitions live in
+**180 examples** across 25 groups. Full feature definitions live in
 [`Cargo.toml`](../Cargo.toml) and the [README Feature Flags](../README.md#feature-flags) section.
 
 ## Catalog
@@ -421,13 +421,15 @@ cargo run --example percepta_phase0 --features percepta_compile
 cargo run --example thinking_cot_demo --features thinking_cot
 cargo run --example mux_latent_compress --features mux_latent_context
 cargo run --example mux_latent_expand --features mux_latent_context
+cargo run --example kimi_k3_loop_alignment_probe --features kimi_k3_loader,loop_alignment_probe
+cargo run --example issue929_kimi_loop_alignment_probe --features kimi_k3_loader,loop_alignment_probe
 ```
 
 ---
 
 ## Feature Flags
 
-The flags below gate the example groups above. The full set (666 flags, including
+The flags below gate the example groups above. The full set (690 flags, including
 production-default architecture features) spans the workspace manifests — the root
 [`Cargo.toml`](../Cargo.toml) `[features]` plus the per-crate manifests under
 `crates/` — and is summarised in the [README Feature Flags](../README.md#feature-flags)

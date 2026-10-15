@@ -16,8 +16,8 @@
 //! Per the established katgpt-core precedent, this wrapper uses
 //! `Arc<RwLock<Arc<ProductKeyMemory>>>` rather than `arc_swap::ArcSwap`:
 //!
-//! 1. **katgpt-core does NOT depend on `arc-swap`** — only `riir-engine` does.
-//!    Adding it for one struct is scope-creep (mirrors the
+//! 1. **katgpt-core does NOT depend on `arc-swap`**, and since riir-ai Issue
+//!    950 T7 no workspace crate does at runtime (mirrors the
 //!    `induced_cwm/hot_swap.rs` decision, documented at length there).
 //! 2. **The hot path tolerates `RwLock` read-lock cost** (~10ns uncontended
 //!    on x86_64) because readers clone the `Arc` out (one refcount bump) and
@@ -25,13 +25,12 @@
 //!    `Arc`. The read critical section is just `guard.clone()` — sub-µs even
 //!    for the largest tables.
 //! 3. **Writers are rare** (sleep-cycle consolidation cadence, seconds-scale)
-//!    so `RwLock` writer contention is not a concern. `ArcSwap` would shave
-//!    nanoseconds per read but adds a dependency for no measurable gain at
-//!    this layer.
+//!    so `RwLock` writer contention is not a concern.
 //!
-//! If a future profile shows `RwLock` read contention on the hot path, swap
-//! to `arc-swap` (drop-in: `RwLock<Arc<T>>` → `ArcSwap<T>`, the
-//! `current()` body changes from `guard.clone()` to `guard.load()`).
+//! **Do NOT swap to `arc-swap`'s default strategy** if a profile ever shows
+//! read contention: riir-ai Issue 950 measured it handing readers
+//! freed-and-reused values under load (vorner/arc-swap#210). See
+//! `induced_cwm/hot_swap.rs` for the full note.
 //!
 //! # Why `RwLock<Arc<T>>` and not `RwLock<T>`
 //!

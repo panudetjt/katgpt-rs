@@ -59,7 +59,7 @@ impl CsrLegalSet {
         no_edge: usize,
     ) -> Self {
         let mut offsets = Vec::with_capacity(n_states + 1);
-        let mut tokens = Vec::new();
+        let mut tokens = Vec::with_capacity(n_states);
         offsets.push(0u32);
         for s in 0..n_states {
             let base = s * vocab_size;

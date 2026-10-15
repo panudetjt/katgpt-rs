@@ -162,8 +162,8 @@ pub struct SigmoidFusionConfig {
     pub rmsnorm_eps: f32,
     /// Additive bias on the gate logit: `gate = sigmoid(dot(q_norm,k_norm)/tau
     /// + logit_bias)`. Default `0.0` — bit-identical to the legacy gate
-    /// (`x + 0.0` is an exact f32 identity, including the `-0.0` edge: both
-    /// branch sides of `fast_sigmoid` map ±0.0 to the same `0.5`).
+    ///   (`x + 0.0` is an exact f32 identity, including the `-0.0` edge: both
+    ///   branch sides of `fast_sigmoid` map ±0.0 to the same `0.5`).
     ///
     /// Plan 364 Phase 4 (arXiv:2608.15062 GRT recipe — "bias toward identity,
     /// specialize gradually"): the xHC sparse-write gate inits CLOSED at

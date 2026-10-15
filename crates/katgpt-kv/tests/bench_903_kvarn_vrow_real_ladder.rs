@@ -142,6 +142,8 @@ fn main() {
             tile_size: TILE,
             var_norm: Default::default(),
             hadamard: false,
+            #[cfg(feature = "targeted_precision")]
+            precision_budget: None,
         };
         let mut cache = katgpt_kv::kvarn::kv_cache::KVarNKVCache::with_config(&cfg);
         if let Some((skip_varn, group)) = over {

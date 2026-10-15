@@ -787,6 +787,7 @@ fn cap_cycles_median_closest(cycles: Vec<Vec<usize>>, max_cycles: usize) -> Vec<
             out.push(c);
         }
     }
+    out.shrink_to_fit();
     out
 }
 

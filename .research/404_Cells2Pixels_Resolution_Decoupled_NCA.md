@@ -372,3 +372,5 @@ queryable at arbitrary LOD. Q3 (selling point) fails Super-GOAT — "continuous
 fields at any LOD" is a quality knob, not a pillar. Short plan for
 `katgpt-dec`/`cochain_point_sampler`; no private guide (Gain, not Super-GOAT).
 No parity claim with the paper's trained texture outputs (§3.6).
+
+> **Later distills (synthesis):** arXiv:2609.36126 "Reasoning with Neural Cellular Automata" (Google, 2026-09-28) — the NCA *compute-allocation* laws (per-cell confidence-gated fire rate 0.71× updates / 0.52× repair ops; niche-capped parallel-trajectory pruning 25/53/75% savings) distilled to `riir-ai/.research/393`: the cadence wedge narrowed onto riir-ai's `thermal_lod` cadence substrate (issue 1024, progress term + non-combat re-heat); the pool-pruning wedge DISCARDED at review (the pool's crowding is rank-spread by distinct rules, not outcome-duplicates — `RERANK_POOL` re-pin history); riir-train Plan 434 takes the training recipe (conditional, hard-stop-gated per instinct 009's out-of-priced-levers ruling). This note's DEC substrate stays the modelless CA kernel home.

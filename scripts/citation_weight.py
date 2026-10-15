@@ -45,6 +45,18 @@ from pathlib import Path
 # `P<NNN>` is rarer (284 vs 21,655) and `B<NNN>` rarer still (223 vs 4,944),
 # but they cost nothing to admit because the search is always for one specific
 # number.
+#
+# The CASE axis (Issue 924, measured 2026-10-07 over tracked text files):
+# long forms match case-insensitively because a house style that writes
+# lowercase prose was invisible to a case-sensitive table — seal-game-editor
+# is lowercase-DOMINANT (`plan` 1,119 vs `Plan` 591; `issue` 719 vs 228 —
+# ~2/3 of its plan citations and ~3/4 of its issue citations unread), and
+# the uppercase-majority repos still carry hundreds of lowercase sites
+# (riir-ai: 406 `plan` + 340 `issue`; katgpt-rs: 224 + 146). The
+# single-letter bare forms STAY UPPERCASE-only: lowercase `p<NNN>`/`b<NNN>`
+# occur in volume as identifiers/hex noise (riir-ai: 68/80 sites) and the
+# search is always for one specific number, so admitting them buys noise,
+# never signal.
 DIALECTS = {
     "Plan": ["Plan", "P"],
     "Research": ["Research", "R"],
@@ -74,7 +86,10 @@ def citation_re(kind: str, number: str) -> re.Pattern:
 
     The bare-letter forms are anchored to a 3-digit zero-padded number
     (`R020`, never `R20`), which is how the corpus writes them and which keeps
-    the pattern from matching a register name or a prefill length.
+    the pattern from matching a register name or a prefill length. Long forms
+    are case-insensitive (Issue 924: lowercase `plan N` prose is a real house
+    style, dominant in seal-game-editor); the bare letters stay
+    uppercase-only — lowercase `p<NNN>`/`b<NNN>` are identifier-shaped noise.
     """
     n = int(number)
     alts = []
@@ -82,7 +97,7 @@ def citation_re(kind: str, number: str) -> re.Pattern:
         if len(prefix) == 1:
             alts.append(rf"{prefix}-?{n:03d}")
         else:
-            alts.append(rf"{re.escape(prefix)}\s*#?\s*0*{n}")
+            alts.append(rf"(?i:{re.escape(prefix)})\s*#?\s*0*{n}")
     return re.compile(rf"\b(?:{'|'.join(alts)})\b")
 
 
@@ -251,15 +266,21 @@ def selftest() -> list[str]:
     """
     fails = []
     rx = citation_re("Research", "020")
-    for good in ("see Research 20", "Research 020", "Research #020", "(R020, P163)", "R-020 "):
+    for good in ("see Research 20", "Research 020", "Research #020", "(R020, P163)", "R-020 ",
+                 "see research 20"):                     # Issue 924: lowercase prose
         if not rx.search(good):
             fails.append(f"dialect: missed {good!r}")
-    for bad in ("Research 200", "R0201", "R20", "xR020"):
+    for bad in ("Research 200", "R0201", "R20", "xR020", "r020"):
+        # ^ lowercase bare-letter forms stay UNREAD (identifier noise, not prose)
         if rx.search(bad):
             fails.append(f"dialect: matched {bad!r}")
     rp = citation_re("Plan", "163")
     if not rp.search("(R020, P163)") or rp.search("P1630"):
         fails.append("dialect: Plan short form wrong")
+    if not rp.search("the plan 163 lane"):
+        fails.append("dialect: missed lowercase `plan 163`")   # Issue 924
+    if rp.search("p163"):
+        fails.append("dialect: lowercase bare `p163` must not match")
     # `Plan 20` must NOT match `Plan 200` -- the \b after 0*N is load-bearing
     if citation_re("Plan", "20").search("Plan 200"):
         fails.append("dialect: number boundary lost")

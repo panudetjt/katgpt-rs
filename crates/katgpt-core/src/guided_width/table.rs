@@ -378,7 +378,7 @@ mod tests {
     fn fit_recovers_the_dominant_success_axis_with_its_sign() {
         let d = 6;
         let mut deltas = Vec::new();
-        let mut w = Vec::new();
+        let mut w = Vec::with_capacity(40);
         for i in 0..40 {
             let t = (i as f32 * 0.37).sin() * 0.05;
             deltas.extend_from_slice(&[1.0, 0.5 + t, 0.0, -t, 0.0, 0.0]);

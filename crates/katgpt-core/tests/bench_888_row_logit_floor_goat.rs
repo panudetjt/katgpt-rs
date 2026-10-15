@@ -99,13 +99,9 @@ fn row(n: usize, sigma: f32, n_sink: usize, lift: f32, mask_frac: f32, seed: u32
         .iter()
         .copied()
         .fold(f32::NEG_INFINITY, f32::max);
-    for x in &mut r[..n_sink] {
-        *x = ctx_max + lift;
-    }
+    r[..n_sink].fill(ctx_max + lift);
     let n_mask = ((n - n_sink) as f32 * mask_frac) as usize;
-    for x in &mut r[n - n_mask..] {
-        *x = f32::NEG_INFINITY;
-    }
+    r[n - n_mask..].fill(f32::NEG_INFINITY);
     r
 }
 

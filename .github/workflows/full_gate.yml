@@ -120,7 +120,12 @@ jobs:
           # half. The wasm32 std lives in ~/.rustup, outside rust-cache's
           # scope, so this is a small per-run download — the price of the
           # lane actually compiling here instead of being skipped.
-          targets: wasm32-unknown-unknown
+          # x86_64-apple-darwin: same class, measured 2026-10-04/05 (runs
+          # 37168080754/37303896001) — Layer 2c's 30 x86_64 file(s) + 9
+          # avx2 file(s) go UNLINTED without it and the gate refuses as
+          # partial-platform, so every run since the 09-23 schedule re-arm
+          # was a structural red, not a content one.
+          targets: wasm32-unknown-unknown, x86_64-apple-darwin
 
       # Keyed on the lockfile; falls back to any prior cache for this OS so a
       # dep bump warms from the previous build instead of starting cold.

@@ -2,6 +2,7 @@
 name = "katgpt-attn-match"
 version = "0.1.0"
 edition = "2024"
+rust-version.workspace = true
 license = "MIT"
 description = "Attention Matching KV cache compaction — modelless (Plan 271, arxiv 2602.16284). Extracted from katgpt-rs root per Issue 359."
 repository = "https://github.com/katopz/katgpt-rs"

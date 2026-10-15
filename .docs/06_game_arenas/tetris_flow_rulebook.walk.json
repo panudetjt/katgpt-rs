@@ -1,0 +1,160 @@
+{
+ "gfflow_walk": 1,
+ "generated_by": "reflex-site scripts/render_flows.py",
+ "file": "tetris_flow_rulebook.svg",
+ "title": "Reflex · rulebook: plan three pieces ahead, play one move",
+ "accent": "#ff8a3d",
+ "intro": "Press play to walk the search over one recorded position — the real seed-607 turn that ends in the recorded tetris. The board beside each step replays that exact position.",
+ "steps": {
+  "fall": {
+   "n": "1",
+   "title": "Piece in play",
+   "lane": "look",
+   "color": "#ff8a3d"
+  },
+  "preview": {
+   "n": "2",
+   "title": "Preview chained",
+   "lane": "look",
+   "color": "#ff8a3d"
+  },
+  "bag": {
+   "n": "3",
+   "title": "Third is unknown",
+   "lane": "look",
+   "color": "#ff8a3d"
+  },
+  "score": {
+   "n": "4",
+   "title": "Score end boards",
+   "lane": "decide",
+   "color": "#ff8a3d"
+  },
+  "average": {
+   "n": "5",
+   "title": "Average, then pick",
+   "lane": "decide",
+   "color": "#ff8a3d"
+  },
+  "play": {
+   "n": "6",
+   "title": "Play move one",
+   "lane": "decide",
+   "color": "#ff8a3d"
+  }
+ },
+ "edges": [
+  {
+   "id": "fall->preview",
+   "back": false
+  },
+  {
+   "id": "preview->bag",
+   "back": false
+  },
+  {
+   "id": "bag->score",
+   "back": false
+  },
+  {
+   "id": "score->average",
+   "back": false
+  },
+  {
+   "id": "average->play",
+   "back": false
+  },
+  {
+   "id": "play->fall",
+   "back": true
+  }
+ ],
+ "walk": [
+  {
+   "title": "Look ahead — the falling piece",
+   "text": "The rulebook never reacts one piece at a time. It starts by listing every legal landing spot for the piece in play — every rotation in every column — and treats each one as a possible future board.",
+   "steps": [
+    "fall"
+   ],
+   "edges": [],
+   "illustrative": false,
+   "in": {
+    "lang": "json",
+    "src": "data/flows/tetris_rulebook/01_in.json",
+    "label": "the recorded seed-607 clear turn",
+    "from": "recorded from the Reflexer (rulebook search) lane, seed 607, 2026-09-25, arena/demo_oracle.json _meta.sources.tetris_rulebook · katgpt-rs examples/tetris_09_site_walk.rs · turn 32 (the recorded turn with the biggest clear)",
+    "body": "{\n  \"lane\": \"Reflex · rulebook (the search champion)\",\n  \"genome_id\": \"68cae9d382014662\",\n  \"piece\": \"I\",\n  \"board\": [\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..####....\",\n    \"########..\",\n    \"#########.\",\n    \"#########.\",\n    \"#########.\",\n    \"#########.\"\n  ],\n  \"landing_spots\": 17,\n  \"depth\": 3\n}"
+   }
+  },
+  {
+   "title": "Chain the preview piece",
+   "text": "Each candidate board is paired with every landing spot of the preview piece — and the tree is pruned hard: only the best six boards survive each level, so the search stays tiny instead of exploding.",
+   "steps": [
+    "preview"
+   ],
+   "edges": [
+    "fall->preview"
+   ],
+   "illustrative": false
+  },
+  {
+   "title": "Cover the unknown third piece",
+   "text": "The piece after that is not known yet. Rather than gamble on a single guess, the plan plays out every piece the bag could still deal — the search branches over all of them.",
+   "steps": [
+    "bag"
+   ],
+   "edges": [
+    "preview->bag"
+   ],
+   "illustrative": false
+  },
+  {
+   "title": "Score every end board",
+   "text": "Each final board is scored by the strategy rulebook — holes, bumpiness, stack height, wells, lines cleared — the instincts of a careful human player, written as numbers.",
+   "steps": [
+    "score"
+   ],
+   "edges": [
+    "bag->score"
+   ],
+   "illustrative": false
+  },
+  {
+   "title": "Average over the unknown · pick the plan",
+   "text": "A plan is only as good as its worst realistic draw: scores are averaged across the possible third pieces, so a line-clear that needs the I-piece rates low — it usually does not come. The sturdiest plan wins.",
+   "steps": [
+    "average"
+   ],
+   "edges": [
+    "score->average"
+   ],
+   "illustrative": false,
+   "out": {
+    "lang": "json",
+    "src": "data/flows/tetris_rulebook/01_out.json",
+    "label": "per-spot scores · the winning plan",
+    "from": "recorded from the Reflexer (rulebook search) lane, seed 607, 2026-09-25, arena/demo_oracle.json _meta.sources.tetris_rulebook · katgpt-rs examples/tetris_09_site_walk.rs · turn 32's answer (scores are the recorded display map)",
+    "body": "{\n  \"spot_scores\": [0.0677, 0.119, 0.2616, 0.1489, 0.0577, 0.0152, 0.0317, 0.2808, 0.188, 0.2341, 0.2328, 0.2383, 0.2324, 0.2605, 0.1837, 0.2417, 0.5],\n  \"pick\": 16,\n  \"ms_per_decision\": [0.014, 0.014, 0.014, 0.014, 0.014, 0.014, 0.014, 0.014, 0.014, 0.014, 0.014, 0.014, 0.014, 0.014, 0.014, 0.014, 0.014],\n  \"scores_note\": \"sigmoid((v − max v) / std(v)) over the champion's per-option root values (std floor 1e-9) — the pick reads 0.5; a display map, not a probability\"\n}"
+   }
+  },
+  {
+   "title": "Play the first move — then re-plan",
+   "text": "Only the winning plan's first move is played; the very next piece restarts the whole search from scratch. All of it runs in about a third of a millisecond — a thousand-plus searches would fit inside one 60 Hz frame.",
+   "steps": [
+    "play"
+   ],
+   "edges": [
+    "average->play",
+    "play->fall"
+   ],
+   "illustrative": false,
+   "out": {
+    "lang": "json",
+    "src": "data/flows/tetris_rulebook/02_out.json",
+    "label": "the recorded tetris landing",
+    "from": "recorded from the Reflexer (rulebook search) lane, seed 607, 2026-09-25, arena/demo_oracle.json _meta.sources.tetris_rulebook · katgpt-rs examples/tetris_09_site_walk.rs · after turn 32's pick lands (replayed off the record)",
+    "body": "{\n  \"lines_cleared\": 4,\n  \"lines_so_far\": 12,\n  \"score_so_far\": 1560,\n  \"pieces_so_far\": 33\n}"
+   }
+  }
+ ]
+}

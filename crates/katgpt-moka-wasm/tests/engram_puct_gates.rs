@@ -85,7 +85,7 @@ fn play_full_game(make: impl Fn() -> PuctPlayer + Copy, max_plies: usize) -> Vec
     let mut black = make();
     let mut white = make();
     let mut b = Board::new();
-    let mut seq = Vec::new();
+    let mut seq = Vec::with_capacity(max_plies);
     for _ in 0..max_plies {
         if b.is_game_over() {
             break;

@@ -284,6 +284,8 @@ Both architectures separate the expensive operation (LLM inference) from the che
 
 ---
 
+> **PASS-Redirects (synthesis):** Bilal et al. [arXiv:2608.05643 "Refining Over Resampling: Test-Time Self-Correction for LLM Reasoning"] — the breadth–depth refine-then-vote composition is LLM-lane-shaped (N×D×3 generation calls; no hot path we own runs it); the refine-over-resample PRINCIPLE transfers to exactly one modelless consumer — swarm deliberation plan-repair over fresh re-search (riir-ai Issue 1032, known plan-repair prior art: D\* Lite / LPA\*, Fox et al. 2006). Eq 1 saturation on our discrete labels degenerates to dominant-share/entropy reads of the shipped `EnsembleHistogram` (`katgpt-rs/crates/katgpt-core/src/perturbation_ensemble.rs`); Eq 2's perturbation floor (h > 0) does not bind deterministic modelless engines; reflex `mc_ensemble` breadth-perturbation remains measured-negative (Issue 055, 8/8) with no reopen trigger fired.
+
 ## Citation
 
 ```bibtex

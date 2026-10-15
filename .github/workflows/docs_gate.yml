@@ -312,8 +312,17 @@ jobs:
       DOCS_GATE_CI: 1
     steps:
       - uses: actions/checkout@v6
+        with:
+          # Full history is not optional: numbering_gate's historical-collision
+          # axis (removed-document numbers, the walk floor's 1200, the ratchet)
+          # reads `git log --diff-filter=D --full-history`, and a depth-1
+          # checkout reads every pinned collision row as STALE + trips the walk
+          # floor — the 10-04/10-07 main-run failures, an environment property
+          # reading as a content finding. Same class as the fetch-depth note in
+          # required_features_touched.yml.
+          fetch-depth: 0
 
-      # No toolchain, no cache, no cargo: the checks parse manifests as TOML and
+      # No toolchain, no cache, no cargo: the checks parse manifests as TOML
       # docs as text. tomllib is stdlib from 3.11, which ubuntu-latest ships.
       - name: Docs gate (flag counts, bench-doc labels, Cargo comments, skill repo sets, cfg-gated targets, orphaned attrs)
         run: ./scripts/docs_gate.sh

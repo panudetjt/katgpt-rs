@@ -173,6 +173,15 @@ impl AttnResWeights {
 /// The caller (decoder layer) is responsible for computing the correct
 /// summed value to push at each block boundary.
 ///
+/// # Per-summary view cache (Issue 933 T3)
+///
+/// Each summary's `Σ v²` (the RMSNorm reduction) depends only on the summary,
+/// never on the sublayer weights, yet every `apply_attn_res` call used to
+/// recompute it for every summary — `2·S` times per summary per token. It is
+/// computed once in [`push`](Self::push) and read by every later call. The
+/// summaries are private (read through [`residuals`](Self::residuals)), so a
+/// summary can only change via `push`/`clear`, which keep the cache in step.
+///
 /// # Zero-alloc steady state
 ///
 /// The inner `Vec<f32>` slots are pre-allocated once (in [`new_with_capacity`])
@@ -188,7 +197,9 @@ pub struct AttnResBlockState {
     /// `residuals.len()` is the logical length; the outer Vec's capacity is
     /// pre-allocated in `new_with_capacity`. Inner slots are NOT dropped on
     /// `clear()` — they move to `pool` for reuse.
-    pub residuals: Vec<Vec<f32>>,
+    residuals: Vec<Vec<f32>>,
+    /// Cached `Σ v²` per summary, parallel to `residuals` (Issue 933 T3).
+    sum_sq: Vec<f32>,
     /// Pre-allocated reusable slots (zero-alloc steady state).
     ///
     /// Pop on `push`, refill on `clear`. Eliminates per-token `Vec<f32>`
@@ -207,6 +218,7 @@ impl AttnResBlockState {
     pub fn new(hidden_size: usize) -> Self {
         Self {
             residuals: Vec::new(),
+            sum_sq: Vec::new(),
             pool: Vec::new(),
             hidden_size,
         }
@@ -225,6 +237,7 @@ impl AttnResBlockState {
             .collect();
         Self {
             residuals: Vec::with_capacity(max_entries),
+            sum_sq: Vec::with_capacity(max_entries),
             pool,
             hidden_size,
         }
@@ -234,6 +247,14 @@ impl AttnResBlockState {
     #[inline]
     pub fn len(&self) -> usize {
         self.residuals.len()
+    }
+
+    /// The accumulated block summaries, oldest first (read-only: mutation
+    /// goes through [`push`](Self::push) / [`clear`](Self::clear) so the
+    /// per-summary cache cannot go stale).
+    #[inline]
+    pub fn residuals(&self) -> &[Vec<f32>] {
+        &self.residuals
     }
 
     /// Whether the block state is empty.
@@ -256,6 +277,7 @@ impl AttnResBlockState {
         };
         debug_assert_eq!(slot.len(), self.hidden_size);
         slot.copy_from_slice(hidden);
+        self.sum_sq.push(simd_sum_sq(&slot, self.hidden_size));
         self.residuals.push(slot);
     }
 
@@ -268,6 +290,22 @@ impl AttnResBlockState {
         // reuse on the next forward pass.
         while let Some(slot) = self.residuals.pop() {
             self.pool.push(slot);
+        }
+        self.sum_sq.clear();
+    }
+
+    /// Replace the accumulated summaries with `rows` (checkpoint restore /
+    /// speculative rewind).
+    ///
+    /// Goes through [`clear`](Self::clear) + [`push`](Self::push) so the slot
+    /// pool and the per-summary `Σ v²` cache (Issue 933 T3) stay in step —
+    /// clearing directly and extending `residuals` would leave `sum_sq`
+    /// empty, and [`apply_attn_res`] zips scores against BOTH vectors (the
+    /// empty cache would silently no-op the whole mix).
+    pub fn restore(&mut self, rows: &[Vec<f32>]) {
+        self.clear();
+        for row in rows {
+            self.push(row);
         }
     }
 }
@@ -316,6 +354,12 @@ impl AttnResScratch {
 /// softmax-weighted combination. The mixing weights are computed from
 /// RMSNorm'd values dotted with the score weight (gamma ⊙ proj).
 ///
+/// Re-folds `scratch.score_weight` from `weights` on every call, so it stays
+/// correct if the weights change between calls. A caller whose weights are
+/// frozen for the scratch's lifetime folds once
+/// ([`AttnResScratch::recompute_score_weight`]) and calls
+/// [`apply_attn_res_prepared`] — bit-identical output.
+///
 /// # Arguments
 /// - `config` — the attention residual config
 /// - `weights` — the per-layer weights (norm + proj)
@@ -336,12 +380,26 @@ pub fn apply_attn_res<'a>(
     scratch: &'a mut AttnResScratch,
     prefix_sum: &[f32],
 ) -> &'a mut [f32] {
+    scratch.recompute_score_weight(weights);
+    apply_attn_res_prepared(config, block_state, scratch, prefix_sum)
+}
+
+/// [`apply_attn_res`] with `scratch.score_weight` already folded.
+///
+/// Precondition: [`AttnResScratch::recompute_score_weight`] was called with
+/// the weights this scratch serves, after their last change. Every summary's
+/// `Σ v²` comes from the block state's push-time cache (Issue 933 T3), so the
+/// per-call work is one dot per summary plus the weighted sum.
+pub fn apply_attn_res_prepared<'a>(
+    config: &AttnResConfig,
+    block_state: &AttnResBlockState,
+    scratch: &'a mut AttnResScratch,
+    prefix_sum: &[f32],
+) -> &'a mut [f32] {
     let d = config.d();
     debug_assert_eq!(prefix_sum.len(), d);
     debug_assert_eq!(scratch.score_weight.len(), d);
-
-    // Pre-compute score_weight = norm_weight ⊙ proj_weight
-    scratch.recompute_score_weight(weights);
+    debug_assert_eq!(block_state.sum_sq.len(), block_state.residuals.len());
 
     // Number of entries: block_residuals + 1 (the prefix_sum)
     let num_entries = block_state.len() + 1;
@@ -353,51 +411,116 @@ pub fn apply_attn_res<'a>(
     );
 
     let scores = &mut scratch.scores[..num_entries];
+    let score_weight = &scratch.score_weight[..d];
 
-    // Compute scores for each entry: score[i] = dot(rmsnorm(v[i]), score_weight)
-    // We compute rmsnorm inline (no gamma — gamma is in score_weight).
+    // score[i] = dot(rmsnorm(v[i]), score_weight) = inv_rms * dot(v[i], score_weight)
+    // (no gamma in the norm — gamma is folded into score_weight).
     let eps = config.rms_eps;
+    let inv_rms = |sum_sq: f32| 1.0 / ((sum_sq / d as f32 + eps).sqrt());
 
-    // Block residual entries
-    for (i, residual) in block_state.residuals.iter().enumerate() {
-        let sum_sq = simd_sum_sq(residual, d);
-        let inv_rms = 1.0 / ((sum_sq / d as f32 + eps).sqrt());
-        // score = dot(residual / rms, score_weight) = inv_rms * dot(residual, score_weight)
-        let raw_dot = simd_dot_f32(residual, &scratch.score_weight, d);
-        scores[i] = inv_rms * raw_dot;
-    }
-
-    // Prefix sum entry (the current hidden state)
+    for ((score, residual), &sum_sq) in scores
+        .iter_mut()
+        .zip(&block_state.residuals)
+        .zip(&block_state.sum_sq)
     {
-        let sum_sq = simd_sum_sq(prefix_sum, d);
-        let inv_rms = 1.0 / ((sum_sq / d as f32 + eps).sqrt());
-        let raw_dot = simd_dot_f32(prefix_sum, &scratch.score_weight, d);
-        scores[num_entries - 1] = inv_rms * raw_dot;
+        *score = inv_rms(sum_sq) * simd_dot_f32(residual, score_weight, d);
     }
+    scores[num_entries - 1] =
+        inv_rms(simd_sum_sq(prefix_sum, d)) * simd_dot_f32(prefix_sum, score_weight, d);
 
-    // Softmax over scores
     softmax(scores);
 
-    // Weighted average of ORIGINAL v values (not normed k):
-    // out = Σ_i probs[i] · v[i]
+    // Weighted average of ORIGINAL v values (not normed k): out = Σ_i probs[i] · v[i].
+    // Same summation order as before; zipped slices let LLVM vectorize.
     let out = &mut scratch.out[..d];
-    // Zero output
-    for x in out.iter_mut() {
-        *x = 0.0;
-    }
-
-    // Block residual contributions
-    for (i, residual) in block_state.residuals.iter().enumerate() {
-        let prob = scores[i];
-        for (j, &rv) in residual.iter().enumerate() {
-            out[j] += prob * rv;
+    out.fill(0.0);
+    for (&prob, residual) in scores.iter().zip(&block_state.residuals) {
+        for (o, &rv) in out.iter_mut().zip(&residual[..d]) {
+            *o += prob * rv;
         }
     }
-
-    // Prefix sum contribution
     let prob = scores[num_entries - 1];
-    for (j, &pv) in prefix_sum.iter().enumerate() {
-        out[j] += prob * pv;
+    for (o, &pv) in out.iter_mut().zip(&prefix_sum[..d]) {
+        *o += prob * pv;
+    }
+
+    out
+}
+
+// ─── Fixed-query (depth-profile) arm — Issue 933 T4 ────────────────────────
+
+/// katgpt-rs Issue 933 T4 — the fixed-query **modelless** mixing arm
+/// (Research 619 E5, MSAR's conv-removal motivation): the learned
+/// `score_weight` query is replaced by a deterministic exponential-depth
+/// profile, `score[i] = -λ·age[i]` (age 0 = `prefix_sum`, +1 per completed
+/// block older). No RMSNorm, no content scoring — the mixing weights are a
+/// pure recency prior over the depth axis. For checkpoints WITHOUT AttnRes
+/// weights (Gemma-2-class) this is the only constructible form of the
+/// mechanism.
+///
+/// `λ = f32::INFINITY` is the DISARMED identity posture: `out` is a
+/// byte-copy of `prefix_sum`, no entry contributes — the α=0 bit-identity
+/// law (Issue 929 T2.1 precedent), pinned by test below. Finite large λ
+/// saturates toward but never exactly reaches identity (softmax tails are
+/// nonzero), which is why the arm exists explicitly.
+///
+/// Same entry order and weighted-sum accumulation shape as
+/// [`apply_attn_res_prepared`], so the two arms share numerical structure
+/// wherever they overlap.
+///
+/// # Panics
+/// Debug builds assert `prefix_sum` non-empty, `scratch.out` sized to the
+/// hidden dim, and `block_state.hidden_size == prefix_sum.len()`.
+pub fn apply_attn_res_depth_profile<'a>(
+    block_state: &AttnResBlockState,
+    scratch: &'a mut AttnResScratch,
+    lambda: f32,
+    prefix_sum: &[f32],
+) -> &'a mut [f32] {
+    let d = prefix_sum.len();
+    debug_assert!(d > 0, "empty prefix_sum");
+    debug_assert_eq!(scratch.out.len(), d, "out buffer sized for another d");
+    debug_assert_eq!(block_state.hidden_size, d);
+
+    let out = &mut scratch.out[..d];
+
+    // The disarmed posture: identity by construction (a memcpy is exact).
+    if !lambda.is_finite() {
+        out.copy_from_slice(prefix_sum);
+        return out;
+    }
+    debug_assert!(
+        lambda >= 0.0,
+        "negative λ inverts the recency prior; use a finite ≥ 0 rate"
+    );
+
+    // scores[i] = -λ·age[i]: the prefix (age 0) scores 0, each completed
+    // block one λ lower. Entry order matches `apply_attn_res_prepared`.
+    let num_entries = block_state.len() + 1;
+    debug_assert!(
+        scratch.scores.len() >= num_entries,
+        "scores buffer too small: {} < {}",
+        scratch.scores.len(),
+        num_entries
+    );
+    let scores = &mut scratch.scores[..num_entries];
+    for (i, score) in scores.iter_mut().enumerate() {
+        *score = -lambda * (num_entries - 1 - i) as f32;
+    }
+
+    softmax(scores);
+
+    // Weighted average of ORIGINAL v values — identical accumulation shape
+    // to `apply_attn_res_prepared`.
+    out.fill(0.0);
+    for (&prob, residual) in scores.iter().zip(&block_state.residuals) {
+        for (o, &rv) in out.iter_mut().zip(&residual[..d]) {
+            *o += prob * rv;
+        }
+    }
+    let prob = scores[num_entries - 1];
+    for (o, &pv) in out.iter_mut().zip(&prefix_sum[..d]) {
+        *o += prob * pv;
     }
 
     out
@@ -565,5 +688,116 @@ mod tests {
         // Max entries = 2 + 1 = 3. Round up generously for safety.
         let num_layers = 8;
         (num_layers / config.block_size + 1) + 1
+    }
+
+    // ── Issue 933 T4: the depth-profile (fixed-query) arm ──────────────────
+
+    #[test]
+    fn depth_profile_lambda_inf_is_bitwise_identity() {
+        // The disarmed posture: out must equal prefix_sum EXACTLY (to_bits),
+        // even with entries present that a finite λ would mix in.
+        let config = AttnResConfig::kimi_k3_0_40b();
+        let mut block_state = AttnResBlockState::new(config.d());
+        block_state.push(&vec![7.0; config.d()]);
+        block_state.push(&vec![-3.0; config.d()]);
+        let mut scratch = AttnResScratch::new(&config, max_entries(&config));
+
+        let prefix_sum: Vec<f32> = (0..config.d()).map(|i| (i as f32).sin() * 0.1).collect();
+        let out = apply_attn_res_depth_profile(
+            &block_state,
+            &mut scratch,
+            f32::INFINITY,
+            &prefix_sum,
+        );
+        for i in 0..config.d() {
+            assert_eq!(
+                out[i].to_bits(),
+                prefix_sum[i].to_bits(),
+                "λ=∞ must be bitwise identity at [{i}]"
+            );
+        }
+    }
+
+    #[test]
+    fn depth_profile_lambda_zero_is_uniform_mean() {
+        // λ=0 → every score 0 → softmax uniform. With ONE residual + prefix
+        // the weights are exactly [0.5, 0.5] (exp(0)/2), so constant vectors
+        // 2.0 and 4.0 mix to exactly 3.0.
+        let config = AttnResConfig::kimi_k3_0_40b();
+        let mut block_state = AttnResBlockState::new(config.d());
+        block_state.push(&vec![2.0; config.d()]);
+        let mut scratch = AttnResScratch::new(&config, max_entries(&config));
+
+        let prefix_sum = vec![4.0; config.d()];
+        let out = apply_attn_res_depth_profile(&block_state, &mut scratch, 0.0, &prefix_sum);
+        for i in 0..config.d() {
+            assert_eq!(out[i], 3.0, "λ=0 must be the exact uniform mean at [{i}]");
+        }
+    }
+
+    #[test]
+    fn depth_profile_recency_is_monotone_in_lambda() {
+        // λ>0 pulls the mix toward the prefix (age 0). With residual 10.0 and
+        // prefix 0.0 the output must sit below the uniform mean (5.0) and
+        // shrink monotonically as λ grows.
+        let config = AttnResConfig::kimi_k3_0_40b();
+        let mut block_state = AttnResBlockState::new(config.d());
+        block_state.push(&vec![10.0; config.d()]);
+        let prefix_sum = vec![0.0; config.d()];
+
+        let mut prev = f32::MAX;
+        for lambda in [0.5f32, 1.0, 2.0, 4.0, 8.0] {
+            let mut scratch = AttnResScratch::new(&config, max_entries(&config));
+            let out =
+                apply_attn_res_depth_profile(&block_state, &mut scratch, lambda, &prefix_sum);
+            assert!(
+                out[0] < 5.0,
+                "λ={lambda}: recency must pull below the uniform mean, got {}",
+                out[0]
+            );
+            assert!(
+                out[0] < prev,
+                "λ={lambda}: mix must shrink monotonically ({} !< {prev})",
+                out[0]
+            );
+            prev = out[0];
+        }
+    }
+
+    #[test]
+    fn depth_profile_empty_state_returns_prefix() {
+        // No residuals → a single entry → softmax [1.0] → prefix, any λ.
+        let config = AttnResConfig::kimi_k3_0_40b();
+        let block_state = AttnResBlockState::new(config.d());
+        let prefix_sum: Vec<f32> = (0..config.d()).map(|i| (i as f32) * 0.25).collect();
+        for lambda in [0.0f32, 2.0, 100.0, f32::INFINITY] {
+            let mut scratch = AttnResScratch::new(&config, max_entries(&config));
+            let out =
+                apply_attn_res_depth_profile(&block_state, &mut scratch, lambda, &prefix_sum);
+            for i in 0..config.d() {
+                assert_eq!(
+                    out[i].to_bits(),
+                    prefix_sum[i].to_bits(),
+                    "empty state, λ={lambda}: must return prefix at [{i}]"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn depth_profile_deterministic_same_inputs_same_output() {
+        let config = AttnResConfig::kimi_k3_0_40b();
+        let mut block_state = AttnResBlockState::new(config.d());
+        block_state.push(&(0..config.d()).map(|i| (i as f32).sin() * 0.1).collect::<Vec<_>>());
+        block_state.push(&(0..config.d()).map(|i| (i as f32).cos() * 0.1).collect::<Vec<_>>());
+        let prefix_sum: Vec<f32> = (0..config.d()).map(|i| (i as f32) * 0.05 - 1.0).collect();
+
+        let mut s1 = AttnResScratch::new(&config, max_entries(&config));
+        let mut s2 = AttnResScratch::new(&config, max_entries(&config));
+        let o1 = apply_attn_res_depth_profile(&block_state, &mut s1, 1.5, &prefix_sum).to_vec();
+        let o2 = apply_attn_res_depth_profile(&block_state, &mut s2, 1.5, &prefix_sum);
+        for i in 0..config.d() {
+            assert_eq!(o1[i].to_bits(), o2[i].to_bits(), "non-deterministic at [{i}]");
+        }
     }
 }

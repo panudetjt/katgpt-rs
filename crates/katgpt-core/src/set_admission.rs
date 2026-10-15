@@ -1625,6 +1625,7 @@ mod tests {
                 j = 1;
             }
         }
+        set.shrink_to_fit();
         set
     }
 
@@ -1650,7 +1651,7 @@ mod tests {
     #[test]
     fn orthonormal_set_saturates_at_min_k_d() {
         // K = 5 orthonormal members in d = 8: vendi = PR = min(K, d) = 5.
-        let mut set = Vec::new();
+        let mut set = Vec::with_capacity(5);
         for j in 0..5 {
             let mut x = [0.0_f32; DIM];
             x[j] = 1.0;
@@ -1750,6 +1751,7 @@ mod tests {
                 pool.push(unit(x));
             }
         }
+        pool.shrink_to_fit();
         pool
     }
 
@@ -1864,9 +1866,10 @@ mod tests {
         // (orthogonal bases ⇒ near-zero mutual overlap), so κ's log-det
         // correction keeps winning for as long as fresh fillers exist.
         let q0 = unit([1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0]);
-        let mut pool = Vec::new();
+        let cap_iter = [1_usize, 3, 5, 7];
+        let mut pool = Vec::with_capacity(cap_iter.len());
         // Paraphrase dups: base e0, wobble on the odd axes, g = 1.0.
-        for j in [1_usize, 3, 5, 7] {
+        for j in cap_iter {
             for sign in [1.0_f32, -1.0] {
                 let mut x = [0.0_f32; DIM];
                 x[0] = 1.0;
@@ -2116,7 +2119,7 @@ mod tests {
     #[test]
     fn admission_is_deterministic_and_rho_invariant() {
         let mut rng = Rng::with_seed(0xA0_AD_00_01_u64);
-        let mut pool = Vec::new();
+        let mut pool = Vec::with_capacity(64);
         for _ in 0..64 {
             let mut x = [0.0_f32; DIM];
             for v in x.iter_mut() {

@@ -12,8 +12,8 @@
 //! runtime primitive for this crate. Classical ancestry — Multiple
 //! Hypothesis Tracking (Reid 1979) and IMM filtering (Blom & Bar-Shalom
 //! 1988) — is cited, not claimed: the deltas here are latent inner beliefs,
-//! the telescoping readout, the zero-alloc fixed-array runtime, and the
-//! commit/revive behavior semantics.
+//!       the telescoping readout, the zero-alloc fixed-array runtime, and the
+//!       commit/revive behavior semantics.
 //!
 //! # Update rule (per tick, one token)
 //!

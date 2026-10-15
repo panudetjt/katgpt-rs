@@ -257,8 +257,8 @@ fn g1_estimator_fed_schedule_matches_oracle_range() {
     let oracle = AsentmaxSchedule::Derived { sigma_hat: sigma };
     let est_sched = est.to_schedule();
 
-    let mut oracle_ranges = Vec::new();
-    let mut est_ranges = Vec::new();
+    let mut oracle_ranges = Vec::with_capacity(rows.len());
+    let mut est_ranges = Vec::with_capacity(rows.len());
     for row in &rows {
         let mut a = row.clone();
         let mut b = row.clone();

@@ -2,6 +2,7 @@
 name = "katgpt-device-verify"
 version = "0.1.0"
 edition = "2024"
+rust-version.workspace = true
 license = "MIT"
 description = "no_std device-side verification primitives for the Satellite tier (riir-chain Issues 108/109, katgpt-rs Issue 685). Fair-roll die verification (BLAKE3 + integer rejection sampling) and binary-Merkle inclusion verification, with pinned cross-target vectors. Alloc-free, panic-free on the verify path, no getrandom."
 repository = "https://github.com/katopz/katgpt-rs"

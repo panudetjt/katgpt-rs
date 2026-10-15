@@ -213,7 +213,7 @@ mod tests {
             rng.shuffle(&mut idx);
             perms.push(idx);
         }
-        let mut checksums = Vec::new();
+        let mut checksums = Vec::with_capacity(perms.len());
         for perm in &perms {
             let mut h: LtHash = LtHash::identity();
             for &i in perm {

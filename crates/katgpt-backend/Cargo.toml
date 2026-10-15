@@ -2,6 +2,7 @@
 name = "katgpt-backend"
 version = "0.1.0"
 edition = "2024"
+rust-version.workspace = true
 license = "MIT"
 description = "Device inference backends (CPU/ANE/GPU) for the transformer forward pass — the InferenceBackend trait + provider impls (Issue 413)"
 repository = "https://github.com/katopz/katgpt-rs"

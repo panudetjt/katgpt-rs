@@ -2,6 +2,7 @@
 name = "katgpt-pruners"
 version = "0.1.0"
 edition = "2024"
+rust-version.workspace = true
 license = "MIT"
 description = "Domain-specific constraint pruners for the DDTree search engine (Plan 005 extraction from katgpt-rs/src/pruners/)."
 repository = "https://github.com/katopz/katgpt-rs"
@@ -72,6 +73,16 @@ ropd_rubric = ["bandit"]
 subterranean = ["bandit"]
 tes_loop = ["bandit", "katgpt-core/tes_loop"]
 cna_steering = ["bandit"]
+# Bias-space persistent deltas (katgpt-rs Issue 920 T1, HyperThink modelless
+# lane, arXiv:2610.03039): the projection-window sibling of cna_steering —
+# dense signed per-window mean shifts as a frozen constant overlay. Pure math
+# over captured f32 vectors (no dep, no forward code) — the capture/apply
+# seams live in the consuming repos (riir-infer fork, consumer overlays).
+# OPT-IN, measurement-only — the modelless track CLOSED-NEGATIVE (issue 920,
+# negative_results §46): C2 measured the OPPOSITE of the premise — the
+# bias-capturable constant component is front-loaded (late-third ρ 0.5719 <
+# rest 0.7624), so a persistent last-half overlay has nothing to carry.
+bias_delta = []
 deep_manifold = []
 federation = ["bandit"]
 federation_composer = ["bandit"]

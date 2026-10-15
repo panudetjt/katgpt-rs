@@ -2,6 +2,7 @@
 name = "katgpt-deprecated"
 version = "0.1.0"
 edition = "2024"
+rust-version.workspace = true
 license = "MIT"
 description = "Exiled primitives — dead stubs, off-topic research toys, GOAT-failed mechanisms, and explicitly demoted primitives awaiting deletion. Never default-on. Kept for regression comparison and GOAT-gate audit trail. See .docs/001_loser_sweep_audit.md for the membership table with citations."
 repository = "https://github.com/katopz/katgpt-rs"

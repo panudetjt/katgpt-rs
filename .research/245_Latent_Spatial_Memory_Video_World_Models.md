@@ -7,6 +7,7 @@
 > **Classification:** Public
 > **Cross-ref (riir-ai):** `riir-ai/crates/riir-games-civ/src/civ/spatial_cognition.rs::SpatialMemory` (shipped prior art), `riir-ai/crates/riir-games-shared/src/game_traits/spatial.rs::GenericSpatialBelief`, `riir-ai/crates/riir-engine/src/ns_csg.rs::SpatialBelief`
 > **PASS-Redirects (synthesis):** Huang et al. [arXiv:2609.10540 "Programmable World Model"] — same class (interactive video world model; adopts AlayaWorld's geometry-aligned spatial memory, Mirage's cousin). Its measured thesis — explicit engine-maintained state decoupled from rendering beats implicit generative state (94% Count Acc / 98% State Acc vs 32–58% for implicit-state baselines) — is external validation of the architecture this stack natively ships (authoritative sim → zone sync/AOI reveal → view; `induced_cwm` for the program half); the signature mechanism (OBB → camera-projected pixel-aligned conditioning maps) has no non-video analog here, same as Mirage's pinhole z-buffer readout.
+> **PASS-Redirects (synthesis):** Wei et al. [arXiv:2609.38597 "PixelUMM: Encoder-Free Unified Image and Video Understanding and Generation"] — same class (unified image/video understanding + generation, encoder-free pixel space, NVIDIA); its training machinery has no consumer here, and F8 (4-FPS tubelet input ≈ 1-FPS per-frame for understanding, ±0.7 pts) is external support for sparse observation sampling over dense temporal packing — the cadence limelight (Bench 960) + SightingRing already own. Training-recipe transfer filed as riir-train Plan 443.
 
 ---
 

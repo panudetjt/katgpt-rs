@@ -26,6 +26,12 @@ impl TestRecursionGenerator {
     }
 }
 
+impl Default for TestRecursionGenerator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SpeculativeGenerator for TestRecursionGenerator {
     type Condition = ();
     type Output = Vec<f32>;

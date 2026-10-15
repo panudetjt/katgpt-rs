@@ -1,0 +1,106 @@
+{
+ "gfflow_walk": 1,
+ "generated_by": "reflex-site scripts/render_flows.py",
+ "file": "tetris_flow_raw.svg",
+ "title": "raw baseline: the engine with its heads removed — the honest floor",
+ "accent": "#ff8a3d",
+ "intro": "Press play to walk the same recorded turn through the bare engine: it abstains, and the abstain plays a labelled random spot.",
+ "steps": {
+  "sentence": {
+   "n": "1",
+   "title": "The same sentence",
+   "lane": "ask",
+   "color": "#ff8a3d"
+  },
+  "engine": {
+   "n": "2",
+   "title": "Corpus engine",
+   "lane": "engine",
+   "color": "#ff8a3d"
+  },
+  "play": {
+   "n": "3a",
+   "title": "In corpus → play",
+   "lane": "engine",
+   "color": "#ff8a3d"
+  },
+  "abstain": {
+   "n": "3b",
+   "title": "Abstain → random",
+   "lane": "floor",
+   "color": "#ff8a3d"
+  }
+ },
+ "edges": [
+  {
+   "id": "sentence->engine",
+   "back": false
+  },
+  {
+   "id": "engine->play",
+   "back": false
+  },
+  {
+   "id": "engine->abstain",
+   "back": false
+  }
+ ],
+ "walk": [
+  {
+   "title": "The same sentence",
+   "text": "The same recorded opening turn, sent to the engine with every fitted head removed. Only the corpus remains: nearest-neighbour lookup over what it has literally seen before.",
+   "steps": [
+    "sentence"
+   ],
+   "edges": [],
+   "illustrative": false,
+   "in": {
+    "lang": "json",
+    "src": "data/flows/tetris_raw/01_in.json",
+    "label": "the same recorded opening turn",
+    "from": "recorded from the raw baseline lane, seed 607, 2026-09-25, arena/demo_oracle.json _meta.sources.tetris_raw · scripts/record_demo_walks.mjs · the opening turn (turn 0)",
+    "body": "{\n  \"grammar\": \"laya-tetris-v3\",\n  \"question\": \"Does the stack look clean?\",\n  \"state\": \"The stack stands low and the surface is mostly flat. There are no holes under the blocks. The square piece is falling.\",\n  \"piece\": \"O\",\n  \"board\": [\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\"\n  ],\n  \"landing_spots\": 9\n}"
+   }
+  },
+  {
+   "title": "Corpus engine",
+   "text": "With no heads, the engine can only compare the sentence against its corpus. The spot sentences of a real game are almost all new — so this branch is the one the recorded raw game took, five hundred and fifteen times in a row.",
+   "steps": [
+    "engine"
+   ],
+   "edges": [
+    "sentence->engine"
+   ],
+   "illustrative": false
+  },
+  {
+   "title": "In corpus → play the highest",
+   "text": "When a sentence lands close to something the corpus holds, the engine answers like laya would and the highest-probability neighbour wins. In the whole recorded raw game this path never fired — that honesty is what makes it the floor.",
+   "steps": [
+    "play"
+   ],
+   "edges": [
+    "engine->play"
+   ],
+   "illustrative": false
+  },
+  {
+   "title": "Off corpus → abstain, play random",
+   "text": "Every outcome comes back null — the engine abstains rather than guess. The abstain plays a random legal spot from a separate seeded stream, labelled as random in the replay so nothing pretends to be a decision.",
+   "steps": [
+    "abstain"
+   ],
+   "edges": [
+    "engine->abstain"
+   ],
+   "illustrative": false,
+   "out": {
+    "lang": "json",
+    "src": "data/flows/tetris_raw/01_out.json",
+    "label": "every P(clean) null · a recorded random pick",
+    "from": "recorded from the raw baseline lane, seed 607, 2026-09-25, arena/demo_oracle.json _meta.sources.tetris_raw · scripts/record_demo_walks.mjs · the opening turn's answer",
+    "body": "{\n  \"p_clean_per_spot\": [\n    null,\n    null,\n    null,\n    null,\n    null,\n    null,\n    null,\n    null,\n    null\n  ],\n  \"pick\": 6,\n  \"abstained\": true,\n  \"policy\": \"argmax, abstain → Rng(seed+1) random spot\"\n}"
+   }
+  }
+ ]
+}

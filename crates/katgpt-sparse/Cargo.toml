@@ -2,6 +2,7 @@
 name = "katgpt-sparse"
 version = "0.1.0"
 edition = "2024"
+rust-version.workspace = true
 license = "MIT"
 description = "Sparse task-vector family — SOPTV/SPLAT (Plan 264/265). Sparse Off-Principal Task Vector storage + specialist projection. Extracted from katgpt-rs root per Proposal 003 Phase 11 (2026-07-04)."
 repository = "https://github.com/katopz/katgpt-rs"

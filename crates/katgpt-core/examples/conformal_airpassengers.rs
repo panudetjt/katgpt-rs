@@ -3,10 +3,10 @@
 //! Reproduces the CSP forecaster's AirPassengers CRPS within 2×. The actual
 //! AirPassengers series (Box & Jenkins 1976, 144 monthly observations, 1949–
 //! 1960) is not freely redistributable in-source, so we embed a synthetic
-//! proxy with the same statistical signature: multiplicative seasonality with
-//! period m=12, a log-linear trend, and Gaussian noise. The CRPS / coverage
-//! / RMSE comparison against Seasonal-Naive is the "Report the Floor"
-//! reference.
+//!       proxy with the same statistical signature: multiplicative seasonality with
+//!       period m=12, a log-linear trend, and Gaussian noise. The CRPS / coverage
+//!       / RMSE comparison against Seasonal-Naive is the "Report the Floor"
+//!       reference.
 //!
 //! Run with: `cargo run --release --example conformal_airpassengers
 //! --features conformal_predictive_intervals`

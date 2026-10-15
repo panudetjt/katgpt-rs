@@ -2,7 +2,7 @@
 //!
 //! **Purpose:** decide whether the SoA BranchBank anchor optimization (Issue
 //! 636) is worth building. The issue's recommendation is "measure before
-//! building" — this bench IS that measurement.
+//!      building" — this bench IS that measurement.
 //!
 //! **Setup:** production NPCs have `DEFAULT_SEEDED_BRANCH_COUNT = 8` active
 //! branches, each with a D=8 spawn anchor (8 × 8 × 4B = 256B total — fits in

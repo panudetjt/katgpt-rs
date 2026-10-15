@@ -54,7 +54,7 @@ fn g4_zero_alloc_exit_and_calibration_steady_state() {
             .iter()
             .map(|(s, c)| TrajectorySample::new(s, c))
             .collect();
-        let upper = [0.70f32, 0.75, 0.80, 0.85, 0.90, 0.95];
+        let upper = [0.7f32, 0.75, 0.80, 0.85, 0.90, 0.95];
         let lower = [
             ScheduleParams {
                 c: 8.0 / 24.0,

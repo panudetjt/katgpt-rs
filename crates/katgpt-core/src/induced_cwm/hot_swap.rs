@@ -17,8 +17,8 @@
 //!
 //! Per Plan 296 §T4.2, this is the SAME atomic-swap pattern used by:
 //!
-//! - the private runtime's ArcSwap-backed A/B LoRA weight swap
-//!   (riir-ai Plan 092).
+//! - the private runtime's A/B LoRA weight swap (riir-ai Plan 092; it was
+//!   `ArcSwap`-backed until riir-ai Issue 950 moved it to `RwLock<Arc<_>>`).
 //! - [`crate::micro_belief::snapshot::MicroRecurrentKernelSnapshot`] (BLAKE3
 //!   snapshot with `u64 version`, the precedent Phase 1's `CwmCommitment`
 //!   follows).
@@ -26,21 +26,22 @@
 //! No new concurrency primitive is introduced. The implementation uses
 //! `std::sync::Arc<std::sync::RwLock<Option<...>>>` because:
 //!
-//! 1. **It's in `std`** — zero new dependencies. `arc-swap` is a
-//!    `riir-engine` dep but NOT a `katgpt-core` dep; adding it for one
-//!    struct is scope-creep.
+//! 1. **It's in `std`** — zero new dependencies. No crate in the workspace
+//!    depends on `arc-swap` at runtime any more (riir-ai Issue 950 T7).
 //! 2. **The hot path tolerates `RwLock` read-lock cost** (~10ns on x86_64
 //!    uncontended) because readers clone the kernel out (one `K: clone()`
 //!    per tick), not because they hold the lock for long. The read critical
 //!    section is just `lock().clone()` — microseconds at most even for a
 //!    KB-scale kernel.
 //! 3. **Writers are rare** (minutes-scale cadence) so `RwLock` writer
-//!    contention is not a concern. `ArcSwap` would shave nanoseconds per
-//!    read but adds a dependency for no measurable gain at this layer.
+//!    contention is not a concern.
 //!
-//! If a future profile shows `RwLock` read contention on the hot path,
-//! swap to `arc-swap` (it's a drop-in: `RwLock<Option<T>>` →
-//! `ArcSwapOption<T>`, `read().clone()` → `load().clone()`).
+//! **Do NOT swap to `arc-swap`'s default strategy if a profile ever shows
+//! read contention here.** riir-ai Issue 950 measured it handing readers
+//! freed-and-reused values under load on aarch64 (vorner/arc-swap#210,
+//! ~1/80 test iterations, arc-swap 1.9.1 and 1.9.2), and riir-engine itself
+//! moved its A/B LoRA swap OFF `ArcSwap` and onto this same `RwLock<Arc<_>>`
+//! pattern. Shard the lock or batch reads instead.
 //!
 //! # Latent vs raw boundary (AGENTS.md)
 //!

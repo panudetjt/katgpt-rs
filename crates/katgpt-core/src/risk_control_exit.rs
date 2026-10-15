@@ -1186,9 +1186,9 @@ mod tests {
         //   0.75 → A2+A3 → 0.5; 0.85 → 0.0 (looks attractive but sits PAST
         //   the violation → must be EXCLUDED from selection).
         let a1 = ([0.58f32, 0.58, 0.58], [false, false, false]);
-        let a2 = ([0.60f32, 0.60, 0.78], [true, false, false]);
-        let a3 = ([0.50f32, 0.56, 0.76], [false, true, false]);
-        let a4 = ([0.40f32, 0.40, 0.40], [false, false, false]);
+        let a2 = ([0.6f32, 0.60, 0.78], [true, false, false]);
+        let a3 = ([0.5f32, 0.56, 0.76], [false, true, false]);
+        let a4 = ([0.4f32, 0.40, 0.40], [false, false, false]);
         let mut samples = Vec::with_capacity(100);
         for (s, c) in [&a1, &a2, &a3, &a4] {
             for _ in 0..25 {

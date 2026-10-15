@@ -158,6 +158,36 @@ impl FittedTokenTable {
         Some(&self.data[base..base + self.width])
     }
 
+    /// The tracked-row index for `token` — the layer-independent half of
+    /// [`Self::row`], for callers that resolve the lookup once per position
+    /// and reuse it across layers (riir-infer Issue 013 T4: the fused
+    /// deferred-restore read resolves the index at `set_token` time, never
+    /// per layer per step). `None` = untracked / out of vocab — the miss
+    /// path, never a zero-row guess. `row_index_of(t).is_some()` ⇔
+    /// `row(l, t).is_some()` for every layer, and the index feeds
+    /// [`Self::layer_rows_slab`] reads.
+    #[inline]
+    #[must_use]
+    pub fn row_index_of(&self, token: u32) -> Option<u32> {
+        match self.row_of_token.get(token as usize) {
+            Some(&u32::MAX) | None => None,
+            Some(&r) => Some(r),
+        }
+    }
+
+    /// One layer's tracked rows as ONE contiguous slab (row-major by row
+    /// index; `rows × width` floats) — the deferred-restore epilogue reads
+    /// whole rows by pre-resolved index, so the per-call slice construction
+    /// of [`Self::row`] hoists out of its loop. Row `r` lives at
+    /// `slab[r·width .. (r+1)·width]` — the same rows [`Self::row`] serves.
+    #[inline]
+    #[must_use]
+    pub fn layer_rows_slab(&self, layer: usize) -> &[f32] {
+        debug_assert!(layer < self.n_layer, "layer {layer} ≥ n_layer");
+        let base = layer * self.rows * self.width;
+        &self.data[base..base + self.rows * self.width]
+    }
+
     /// Tapped layers.
     #[must_use]
     pub fn n_layer(&self) -> usize {
@@ -498,6 +528,39 @@ mod tests {
             vec![1, u32::MAX, 0],
             vec![1.0, 2.0, 3.0, -1.0, 0.5, 0.25],
         )
+    }
+
+    /// `row_index_of` is the layer-independent half of `row`: same miss
+    /// predicate, and the index it returns addresses `layer_rows_slab`
+    /// exactly where `row` reads — the T4 fused path's two accessors agree
+    /// with the primitive they hoist (riir-infer Issue 013 T4).
+    #[test]
+    fn row_index_and_layer_slab_agree_with_row() {
+        let t = table_2x3();
+        // Same miss predicate as `row`, at every layer.
+        for layer in 0..t.n_layer() {
+            for token in [0u32, 1, 2, 99] {
+                assert_eq!(
+                    t.row_index_of(token).is_some(),
+                    t.row(layer, token).is_some(),
+                    "token {token} layer {layer}"
+                );
+            }
+        }
+        assert_eq!(t.row_index_of(1), None, "untracked → None");
+        assert_eq!(t.row_index_of(99), None, "out of vocab → None");
+        // The slab row addressed by the index is the row `row` serves.
+        let slab = t.layer_rows_slab(0);
+        assert_eq!(slab.len(), t.rows() * t.width());
+        for token in [0u32, 2] {
+            let r = t.row_index_of(token).unwrap() as usize;
+            let w = t.width();
+            assert_eq!(&slab[r * w..(r + 1) * w], t.row(0, token).unwrap());
+        }
+        // A multi-layer table: slab 1 is slab 0's offset twin.
+        let t2 = FittedTokenTable::from_rows(2, 2, vec![0], vec![1.0, 2.0, 3.0, 4.0]);
+        assert_eq!(t2.layer_rows_slab(0), &[1.0, 2.0]);
+        assert_eq!(t2.layer_rows_slab(1), &[3.0, 4.0]);
     }
 
     #[test]

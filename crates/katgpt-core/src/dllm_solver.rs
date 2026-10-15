@@ -1974,7 +1974,7 @@ mod tests {
     fn renoise_level_skippable_wraps_the_ceiling() {
         // At eps = ((1-0.70)/(1-0.02))^2, levels at/above 0.70 are
         // skippable and levels below are not.
-        let eps = (0.30f32 / 0.98).powi(2);
+        let eps = (0.3f32 / 0.98).powi(2);
         assert!(renoise_level_skippable(0.70, eps, 0.02, 1.0));
         assert!(renoise_level_skippable(0.98, eps, 0.02, 1.0));
         assert!(!renoise_level_skippable(0.69, eps, 0.02, 1.0));

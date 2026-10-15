@@ -95,7 +95,14 @@ KINDS = {
 # A plural kind word may head a LIST: "Issues 724, 725", "Issues 490/493",
 # "Plans 596 and 597". Reading only the head number under-reports the class —
 # `Issues 490/493` hid its second referent from the first version of this scan.
-_HEAD = re.compile(r"\b(%s)(s?)\s+(\d{2,4})" % "|".join(KINDS))
+# The kind word is CASE-INSENSITIVE (Issue 924, measured 2026-10-07): a house
+# style that writes lowercase prose — seal-game-editor is lowercase-DOMINANT
+# (`plan` 1,119 vs `Plan` 591; `issue` 719 vs 228 over its tracked text files)
+# — was invisible to a case-sensitive head, and the citations this gate counts
+# are no exception. `citations()` normalizes the matched word back to the
+# canonical KIND so every downstream bucket keys on one spelling.
+_HEAD = re.compile(r"\b((?i:%s))(s?)\s+(\d{2,4})" % "|".join(KINDS))
+_CANON = {k.lower(): k for k in KINDS}
 # `.match(s, pos)` already anchors AT pos — Python `re` has no `\G`.
 _TAIL = re.compile(r"\s*(?:,|/|and|&)\s*(\d{2,4})")
 
@@ -133,14 +140,14 @@ NUMBERED = re.compile(r"^(\d+)_")
 # own complement — counted every run, pinned at 0, and a breach is exit 2
 # (instrument untrustworthy), not exit 1 (prose drift): the prose did not get
 # worse, the scope grew a form the verdict cannot see.
-_HEAD_1D = re.compile(r"\b(?:%s)s?\s+(\d)(?!\d)" % "|".join(KINDS))
+_HEAD_1D = re.compile(r"\b(?i:%s)s?\s+(\d)(?!\d)" % "|".join(KINDS))
 # The tail complement carries `_HEAD`'s own PLURAL precondition: a singular
 # head never expands a list, which is exactly why `Plan 460, 31.5%` is inert
 # TODAY and why dropping the width bound without dropping the plural rule would
 # still be a regression. Measuring the complement without it over-states what a
 # widening would cost, in the direction that makes the widening look worse.
 _TAIL_1D = re.compile(
-    r"\b(?:%s)s\s+\d{2,4}\s*(?:,|/|and|&)\s*(\d)(?!\d)" % "|".join(KINDS))
+    r"\b(?i:%s)s\s+\d{2,4}\s*(?:,|/|and|&)\s*(\d)(?!\d)" % "|".join(KINDS))
 
 
 def unseen_by_width(text: str) -> tuple[int, int]:
@@ -743,7 +750,7 @@ def alias_trail_owners(line: str, kind: str, n: int,
     and it lands the same way for the same reason: an emitted false positive is
     read and dismissed, a suppressed row is invisible to the sample that
     measures the error rate. Lead-only stays — MEASURED, not assumed."""
-    m = re.search(rf"\b{kind}s?\s+0*{n}\b", line)
+    m = re.search(rf"\b(?i:{kind})s?\s+0*{n}\b", line)
     if not m:
         return set()
     trail = line[m.end():m.end() + _ALIAS_REACH]
@@ -791,7 +798,7 @@ def citations(text: str) -> list[tuple[int, str, int, str]]:
     out = []
     for i, line in enumerate(lines, 1):
         for m in _HEAD.finditer(line):
-            kind = m.group(1)
+            kind = _CANON[m.group(1).lower()]   # `plan 22` keys as Plan (Issue 924)
             lead = line[max(0, m.start() - _ALIAS_REACH):m.start()]
             out.append((i, kind, int(m.group(3)), lead))
             if not m.group(2):  # singular "Issue 47" never heads a list
@@ -855,10 +862,19 @@ def selftest() -> list[str]:
        ["Bench", "Issue", "Plan", "Proposal", "Research"])
     eq("a leading zero is not a separate number",
        cites("Issue 059 is closed"), [("Issue", 59)])
+    # ⚑ Issue 924: a lowercase house style was invisible to a case-sensitive
+    # head — seal-game-editor writes `plan 22` / `issues 724, 725` in prose.
+    # The matched word must come back CANONICAL so every bucket keys one spelling.
+    eq("⚑ a lowercase citation reads as its canonical kind",
+       cites("the plan 22 lane"), [("Plan", 22)])
+    eq("⚑ a lowercase plural list is expanded",
+       cites("(issues 724, 725)"), [("Issue", 724), ("Issue", 725)])
     # The width bound is load-bearing (Issue 753), not a blind spot to widen.
     eq("a single-digit citation is outside the width bound", cites("Issue 7"), [])
     eq("unseen_by_width counts what the bound cannot see",
        unseen_by_width("Issue 7 and Issues 12, 3"), (1, 1))
+    eq("⚑ unseen_by_width counts the lowercase form too (Issue 924)",
+       unseen_by_width("issue 7 today"), (1, 0))
     # ⚑ The LEAD window, added by Issue 790 T3. `citations` hands `qualifiers`
     # `line[m.start() - _ALIAS_REACH : m.start()]`, and nothing asserted its
     # extent: an off-by-one flip on that subtraction changes which prose counts

@@ -2,6 +2,7 @@
 name = "katgpt-proof-cert"
 version = "0.1.0"
 edition = "2024"
+rust-version.workspace = true
 license = "MIT"
 description = "Hierarchical GOAT Proof Certificates (Plan 145, Research 106). Standalone, serializable proof certificates with dependency chains, topological verification, and blake3 checksum integrity. Extracted from katgpt-rs root per Proposal 003 Phase 12 (2026-07-04)."
 repository = "https://github.com/katopz/katgpt-rs"

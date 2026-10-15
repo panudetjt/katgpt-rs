@@ -5,6 +5,7 @@
 > **Date:** 2026-05-31
 > **Related:** Plan 066 (D2F), Plan 089 (tri-mode), Plan 097 (training-free loop), Plan 108 (LT2), Research 034 (D2F), Research 055 (Nemotron tri-mode)
 > **Applies to:** `katgpt-rs` D2F training (`dllm.rs`), D2F decode (`src/speculative/d2f.rs`), LT2 loop (`tf_loop.rs`)
+> **PASS-Redirects (synthesis):** Wei et al. [arXiv:2609.38597 "PixelUMM: Encoder-Free Unified Image and Video Understanding and Generation"] — third independent confirmation of the clean-prediction law at production scale: its pixel objective is JiT-style x-prediction with velocity-space v-loss (mirrored interpolation z = (1−t)x + t·ε, t̄ = max(t, 0.05) clamp) spanning images + 4×16×16 video tubelets + unified AR text in one 8B MoT; no modelless delta beyond this note's verdict (our D2F already uses clean prediction — the paper validates). Text-transferable training recipes filed as riir-train Plan 443.
 
 ## Executive Summary
 

@@ -57,6 +57,7 @@ fn random_unit_corpus(n: usize, seed: u64) -> Vec<[f32; DIM]> {
         }
         out.push(unit(x));
     }
+    out.shrink_to_fit();
     out
 }
 

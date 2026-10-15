@@ -196,4 +196,4 @@ let cache = TurboQuantKVCache::new_asymmetric(&config);
   - **Storage dial:** a top-K table costs `P(K) = b_w·L·K·d_v` bytes.
   - The shipped `RopeAction` is transcendental-bound, so P3 decode is 14–15× slower. A cheap-angle rotation kernel is still missing.
 
-🔧 Feature flags: `fitted_value_tables` (P1+P2) · `fitted_v_reconstruct` (P3). Both are **OPT-IN**. The model-level half (gemma-2-2b PPL, retention walk, NIAH, tg128) is riir-infer Issue 013.
+🔧 Feature flags: `fitted_value_tables` (P1+P2 — **OPT-IN**) · `fitted_v_reconstruct` (P3 — **PROMOTED DEFAULT-ON 2026-10-05**, Issue 883 P3: primitive compile availability only; the default read path stays the bitwise `VReadPath::FullCache` kill switch, and the demoted losers `V := K` / `V := K+` stay opt-in recorded negatives). The model-level half (gemma-2-2b PPL, retention walk, NIAH, tg128) is riir-infer Issue 013.

@@ -171,6 +171,31 @@ alone, so it is REPORTED and deliberately NOT gated (a ceiling would red
 whenever somebody writes a perfectly correct citation to a new local number a
 sibling also happens to have — `staged_set_audit.py`'s rationale one axis over).
 
+The two-lane GAP (Issue 921 Arm B) — preventive, membership-shaped
+------------------------------------------------------------------
+A repo whose kind dir carries `.highwater_local` (riir-infer `.issues` 035,
+riir-rethink 23) DECLARES — machine-readably, per its AGENTS.md numbering
+section — that the local lane tops at that counter and the range above it is
+inherited-only. For such a repo the GAP is `counter < n < floor`, where floor
+is the smallest git-log FILE ADD above the counter (`--diff-filter=A`, full
+history — the same record source `file_and_history_allocated` reads; NOT the
+worktree walk, and NOT the heading oracle, whose additions are
+order-dependent and must never shrink the gap). Citations inside the gap are
+NOT local-intent: they classify CROSS/ORPHAN — actionable, with the
+mechanical repeat repair — instead of collecting forever as UNDECIDED
+IN-LOCAL-RANGE behind a breached ceiling (the measured founding row:
+riir-infer's bare `Issue 980`, which sat at n=980 <= top 1004 with no local
+record anywhere). Repos without the file derive an empty gap and
+byte-identical behavior. The derived floor prints on the per-repo line;
+`.highwater_local` rides both advisory patterns (a dirty or upstream-moved
+counter can move verdicts, so it is IN this sweep's population and
+discloses). `--prove-fires` replays the founding specimen two-sided at
+riir-infer `f0191e3^` (the bare 980 must classify CROSS -> riir-ai, gap
+35..998) vs `f0191e3` (the repaired row must find nothing): a local CLONE,
+not an archive extraction, because the floor leg is a git-log leg and an
+extraction has no history — it would derive the tree's smallest add (1003)
+and under-test the very derivation the arm exists to pin.
+
 Two audited sub-questions (Issue 751 T2) — both decided with evidence
 --------------------------------------------------------------------
 **A crate name is NOT a qualification form.** The workspace's crate->repo map
@@ -346,6 +371,73 @@ def top_allocated(repo: Path, alloc: dict[str, set[int]]) -> dict[str, int]:
 
 FULL = "--full" in sys.argv
 
+# Issue 921 Arm B. The file whose PRESENCE declares the two-lane discipline
+# (the repo's AGENTS.md numbering section is the prose half): the local lane
+# tops here, the range above is inherited-only. Membership is read from the
+# FILE, so a repo without it never enters the gap branch.
+HW_LOCAL = ".issues/.highwater_local"
+
+
+def _local_counter(disk: Path, subdir: str) -> int | None:
+    """The declared local-lane top, or None when this kind dir has no lane.
+
+    Malformed content reads as None (no lane) rather than guessing: the
+    numbering gates own the counter's format, and an unparseable declaration
+    must not invent a gap boundary.
+    """
+    p = disk / subdir / ".highwater_local"
+    if not p.is_file():
+        return None
+    try:
+        return int(p.read_text(encoding="utf-8").strip().split()[-1])
+    except (ValueError, IndexError, OSError):
+        return None
+
+
+def _file_adds(disk: Path, subdir: str) -> set[int]:
+    """Numbers FILE-BACKED in this kind dir across FULL history: git-log
+    ADDITIONS only (`--diff-filter=A`), never the worktree walk.
+
+    The same record source `file_and_history_allocated` reads — minus its
+    worktree leg, on purpose: a worktree file can be another session's
+    in-flight scratch, while an add is a durable allocation event. riir-infer
+    998 is the working case: added, later removed, absent from every tree —
+    and still the smallest file-backed allocation above that repo's counter.
+    """
+    log = subprocess.run(
+        ["git", "-C", str(disk), "log", "--all", "--diff-filter=A",
+         "--name-only", "--pretty=format:", "--", f"{subdir}/"],
+        capture_output=True, encoding="utf-8", errors="replace",
+    )
+    out: set[int] = set()
+    prefix = re.compile(re.escape(subdir) + r"/(\d+)_")
+    for line in log.stdout.splitlines():
+        m = prefix.match(line.strip())
+        if m:
+            out.add(int(m.group(1)))
+    return out
+
+
+def gap_bounds(disk: Path) -> dict[str, tuple[int, int | None]]:
+    """The two-lane GAP per kind dir: `{kind: (counter, floor)}` (Issue 921
+    Arm B). Empty for every repo without a `.highwater_local` — the branch is
+    membership-shaped and those repos are byte-identical.
+
+    floor is the smallest file-backed allocation ABOVE the counter; None when
+    no add sits above it, which leaves the gap open — the repo declared its
+    local lane tops at the counter, so nothing above can be local-intent.
+    Heading-oracle allocations are deliberately EXCLUDED from the floor: an
+    Arm-A-style heading addition must not shrink the gap (order-dependence).
+    """
+    out: dict[str, tuple[int, int | None]] = {}
+    for kind, sub in icg.KINDS.items():
+        counter = _local_counter(disk, sub)
+        if counter is None:
+            continue          # no lane declared -> no git-log leg either
+        above = sorted(n for n in _file_adds(disk, sub) if n > counter)
+        out[kind] = (counter, above[0] if above else None)
+    return out
+
 
 _ROW_KEY = re.compile(r"^(\S+?):(\d+)\s+(\S+)\s+(\d+)\s")
 
@@ -447,6 +539,7 @@ def audit(repo: Path, sibs: list[Path], alloc: dict[str, dict[str, set[int]]],
     # keys, qualifier matching) stays the CONTRACT spelling of the handle.
     disk = repo_alias.real(repo)
     top = top_allocated(disk, mine)
+    gaps = gap_bounds(disk)   # Issue 921 Arm B — empty without .highwater_local
     elsewhere: dict[str, dict[int, list[str]]] = {k: {} for k in icg.KINDS}
     for s in sibs:
         for kind in icg.KINDS:
@@ -456,7 +549,7 @@ def audit(repo: Path, sibs: list[Path], alloc: dict[str, dict[str, set[int]]],
     got = {"n_docs": 0, "n_cites": 0, "ambiguous": set(), "misleading": 0,
            "misattributed": 0, MISATTR_IN_RANGE: [],
            "cross_units": set(), "repeat": 0,
-           "unseen_width": 0, "alias_trailing": 0,
+           "unseen_width": 0, "alias_trailing": 0, "gap": gaps,
            CROSS: [], IN_RANGE: [], ORPHAN: [], ORACLE_STALE: []}
     for doc in docs:
         text = read(disk / doc)
@@ -517,8 +610,22 @@ def audit(repo: Path, sibs: list[Path], alloc: dict[str, dict[str, set[int]]],
                 continue
             ctx = "\n".join(lines[max(0, ln - 3):ln])
             hint = _crate_hits(ctx, crates, patterns) - {repo.name}
-            cls = (IN_RANGE if n <= top[kind] else CROSS if owners else ORPHAN)
+            # Issue 921 Arm B: the two-lane gap. A repo carrying
+            # `.highwater_local` declares its local lane tops at the counter,
+            # so counter < n < floor is NOT local-intent and must not park in
+            # UNDECIDED IN-LOCAL-RANGE — it is an actionable CROSS/ORPHAN,
+            # with the mechanical repeat repair. Membership-shaped: `gaps` is
+            # empty without the file and this branch is dead for that repo.
+            g = gaps.get(kind)
+            in_gap = g is not None and g[0] < n and (g[1] is None or n < g[1])
+            cls = ((CROSS if owners else ORPHAN) if in_gap
+                   else (IN_RANGE if n <= top[kind]
+                         else CROSS if owners else ORPHAN))
             tag = ""
+            gap_note = (
+                f"  [two-lane gap {g[0]}..{g[1] if g[1] is not None else 'open'}: "
+                f"the local lane tops at {g[0]}, the range above is inherited]"
+            ) if in_gap else ""
             # ⛔ `written_names`, NOT `adj`. The accusation half must be able
             # to QUOTE the address it says was written, and `adj` pools full
             # directory names with short-form ALIASES. An alias match that
@@ -593,7 +700,8 @@ def audit(repo: Path, sibs: list[Path], alloc: dict[str, dict[str, set[int]]],
             got[cls].append(
                 f"{doc}:{ln}  {kind} {n} -> "
                 f"{'/'.join(owners) if owners else 'NO REPO IN THE WORKSPACE'}"
-                f"{f' (local top {top[kind]})' if cls is IN_RANGE else ''}{tag}\n"
+                f"{f' (local top {top[kind]})' if cls is IN_RANGE else ''}"
+                f"{tag}{gap_note}\n"
                 f"          {lines[ln - 1].strip()[:110]}")
     return got
 
@@ -735,6 +843,149 @@ def worktree_arms() -> list[str]:
               f"back to the worktree here would report a committed finding "
               f"that does not exist")
     return fails
+
+
+# ── Issue 921 Arm B: the two-sided fixture ─────────────────────────────────
+# The commit that REPAIRED the founding specimen (the bare `Issue 980` row in
+# riir-infer HISTORY.md — the citation-drift sweep's own founding ILR row)
+# and its parent. At the parent the row must classify CROSS -> riir-ai
+# through the gap; at the fix it must find nothing. Numbers are FROZEN
+# history, so the fixture's answer is independent of every working tree.
+PROVE_REPO = "riir-infer"
+PROVE_PARENT = "f0191e3^"
+PROVE_FIX = "f0191e3"
+PROVE_N = 980
+PROVE_OWNER = "riir-ai"
+# counter=35 (.highwater_local 035); floor=998 — the smallest full-history
+# `.issues` ADD above 035 (998/1003/1004 are the inherited carve docs; 998
+# was added and later REMOVED, which is exactly why the fixture below CLONES
+# the repo instead of archive-extracting it: the floor leg is a git-log leg,
+# and an extraction has no history — it would derive the tree's smallest
+# remaining add and under-test the very derivation this arm pins).
+PROVE_GAP = (35, 998)
+
+
+def prove_fires() -> int:
+    """Two-sided known-answer at the riir-infer fixtures (Issue 921 Arm B).
+
+    Follows `platform_dead_code_audit.prove_fires`' shape — run the classifier
+    over a tree whose answer is known independently, require BOTH sides, and
+    refuse loudly when the fixture cannot be assembled — with one adaptation
+    the family shape does not need: this classifier's floor leg reads
+    `git log`, so the fixture is a LOCAL CLONE checked out at each rev
+    (read-only against the source), not an archive extraction.
+
+    `unreliable` is INJECTED EMPTY, exactly as the Issue-827 selftest arm
+    injects its oracle: the fixture pins the CLASSIFIER's buckets, never this
+    box's fetch schedule — a stale riir-ai checkout must not flip the
+    expected verdict (staleness is that arm's subject, separately armed).
+    """
+    import tempfile
+
+    repos = icg.contract_repos(WORKSPACE)
+    src = next((r for r in repos if r.name == PROVE_REPO), None)
+    if src is None:
+        print(f"  ⚠ DEFERRED — {PROVE_REPO} is not in the derived population "
+              f"on this box, so the fixture cannot be assembled (a loud "
+              f"deferral, never a green: the gap branch is untested here)")
+        return 0
+    src_disk = repo_alias.real(src)
+    if not src_disk.is_dir():
+        print(f"  ⚠ DEFERRED — {PROVE_REPO}'s checkout is not on disk here")
+        return 0
+    for rev in (PROVE_PARENT, PROVE_FIX):
+        v = subprocess.run(
+            ["git", "-C", str(src_disk), "rev-parse", "--verify", "--quiet",
+             f"{rev}^{{commit}}"], capture_output=True, encoding="utf-8")
+        if v.returncode != 0:
+            print(f"  ⛔ fixture commit {rev} is not reachable in "
+                  f"{src_disk.name} — a box that HAS the repo must have the "
+                  f"fixture; refusing rather than reporting a vacuous pass")
+            return 2
+
+    docs = icg.parse_pins(GATE_PINS)["documents"]
+    assert isinstance(docs, list)
+    crates = crate_map(repos)
+    patterns = {c: re.compile(r"\b" + re.escape(c).replace(r"\-", "[-_]") + r"\b")
+                for c in crates}
+    alloc_base = {r.name: {k: icg.allocated(repo_alias.real(r), d)
+                           for k, d in icg.KINDS.items()}
+                  for r in repos if r.name != PROVE_REPO}
+    sibs = [r for r in repos if r.name != PROVE_REPO]
+    key = ("HISTORY.md", "Issue", str(PROVE_N))
+
+    rc = 0
+    with tempfile.TemporaryDirectory() as td:
+        # The directory carries the ON-DISK spelling, so repo_alias.real()
+        # resolves to it on every box; the audit HANDLE carries the CONTRACT
+        # name, so alloc keys, owner names and stdout stay in the contract
+        # vocabulary (the round-1 Hole-1 keying note).
+        dest = Path(td) / repo_alias.disk(PROVE_REPO)
+        c = subprocess.run(
+            ["git", "clone", "--quiet", "--no-hardlinks",
+             str(src_disk), str(dest)],
+            capture_output=True, encoding="utf-8")
+        if c.returncode != 0:
+            print(f"  ⛔ fixture clone failed: {c.stderr.strip()}")
+            return 2
+        for rev, want_gap in ((PROVE_PARENT, True), (PROVE_FIX, False)):
+            co = subprocess.run(
+                ["git", "-C", str(dest), "checkout", "--quiet",
+                 "--detach", rev], capture_output=True, encoding="utf-8")
+            if co.returncode != 0:
+                print(f"  ⛔ fixture checkout {rev} failed: {co.stderr.strip()}")
+                return 2
+            handle = Path(td) / PROVE_REPO
+            alloc = {**alloc_base,
+                     PROVE_REPO: {k: icg.allocated(dest, d)
+                                  for k, d in icg.KINDS.items()}}
+            got = audit(handle, sibs, alloc, docs, crates, patterns,
+                        unreliable={})
+            if got["n_cites"] == 0:
+                print(f"  ⛔ {rev}: zero citations in the fixture — the walk "
+                      f"went blind and the arm measured NOTHING")
+                rc = 2
+                continue
+            g = got["gap"].get("Issue")
+            rows = [r for c_ in _CLASSES for r in got[c_]
+                    if _row_key(r) == key]
+            cross = [r for r in got[CROSS] if _row_key(r) == key]
+            tail = (f" — cites={got['n_cites']} ilr={len(got[IN_RANGE])} "
+                    f"cross={len(got[CROSS])} orphan={len(got[ORPHAN])}")
+            if want_gap:
+                ok = (g == PROVE_GAP and len(rows) == 1 and len(cross) == 1
+                      and PROVE_OWNER in cross[0])
+                print(f"  {'✓' if ok else '✗'} {rev}: Issue {PROVE_N} "
+                      f"{'CROSS -> ' + PROVE_OWNER if len(cross) == 1 else rows} "
+                      f"[gap {g}]{tail}")
+                if ok:
+                    continue
+                rc = rc or 1
+                if g != PROVE_GAP:
+                    print(f"      gap derived {g} != {PROVE_GAP} "
+                          f"(counter 35; floor = the smallest full-history "
+                          f".issues ADD above it = 998)")
+                if len(cross) != 1 or PROVE_OWNER not in (cross[0] if cross else ""):
+                    print(f"      expected exactly one CROSS row -> "
+                          f"{PROVE_OWNER}; got {rows}")
+            else:
+                ok = not rows and g == PROVE_GAP
+                print(f"  {'✓' if ok else '✗'} {rev}: Issue {PROVE_N} "
+                      f"{'no finding (qualified)' if not rows else rows} "
+                      f"[gap {g}]{tail}")
+                if ok:
+                    continue
+                rc = rc or 1
+                if rows:
+                    print(f"      the repaired row must find NOTHING; got {rows}")
+                if g != PROVE_GAP:
+                    print(f"      gap derived {g} != {PROVE_GAP}")
+    if rc:
+        print("  ⛔ --prove-fires did not reproduce the known answer")
+    else:
+        print("  ✓ --prove-fires PASSED — both sides of the two-lane gap "
+              "fixture fire as recorded")
+    return rc
 
 
 def selftest() -> list[str]:
@@ -1019,6 +1270,106 @@ def selftest() -> list[str]:
         if len(cd["ambiguous"]) != 1:
             fails.append(f"control D: the row must remain AMBIGUOUS: {cd['ambiguous']}")
 
+        # ── Issue 921 Arm B: the two-lane gap via .highwater_local ──────────
+        # `gp` is its OWN fixture (not `me`) so the git-dance phase below
+        # cannot leak repo state into the arms above. Membership first:
+        # WITHOUT the file the branch is dead and the classification is the
+        # pre-921 one, byte for byte.
+        gp = ws / "riir-gaprepo"
+        (gp / ".issues").mkdir(parents=True)
+        (gp / ".issues" / "010_local.md").write_text("x", encoding="utf-8")
+        (gp / ".issues" / ".highwater").write_text("600", encoding="utf-8")
+        alloc["riir-gaprepo"] = {k: (set() if k != "Issue" else {10})
+                                 for k in icg.KINDS}
+
+        (gp / "AGENTS.md").write_text("Issue 500 bare, no local lane.\n",
+                                      encoding="utf-8")
+        nb = audit(gp, [sib], alloc, ["AGENTS.md"], crates, pats)
+        if nb["gap"] or len(nb[IN_RANGE]) != 1 or nb[CROSS] or nb[ORPHAN]:
+            fails.append(f"921 membership: without .highwater_local the "
+                         f"classification must be the pre-921 one (gap empty, "
+                         f"Issue 500 IN-LOCAL-RANGE): gap={nb['gap']} "
+                         f"cross={nb[CROSS]} ilr={nb[IN_RANGE]}")
+
+        (gp / ".issues" / ".highwater_local").write_text("010", encoding="utf-8")
+        (gp / "AGENTS.md").write_text(
+            "Issue 500 is inherited-only.\n"          # 10 < 500, floor open -> CROSS
+            "Issue 009 is under the counter.\n"       # 9 <= 10 -> IN-LOCAL-RANGE
+            "Issue 010 is allocated here.\n"          # local (ambiguous w/ sib)
+            "Issue 011 is one above the counter.\n",  # in gap, unowned -> ORPHAN
+            encoding="utf-8")
+        gp2 = audit(gp, [sib], alloc, ["AGENTS.md"], crates, pats)
+        if gp2["gap"] != {"Issue": (10, None)}:
+            fails.append(f"921: derived gap {gp2['gap']} != "
+                         f"{{'Issue': (10, None)}}")
+        if (len(gp2[CROSS]) != 1 or "500" not in gp2[CROSS][0]
+                or "riir-fakesib" not in gp2[CROSS][0]
+                or "two-lane gap" not in gp2[CROSS][0]):
+            fails.append(f"921: an open-floor gap row must be CROSS -> "
+                         f"riir-fakesib carrying the gap note: {gp2[CROSS]}")
+        if len(gp2[IN_RANGE]) != 1 or "009" not in gp2[IN_RANGE][0]:
+            fails.append(f"921: BELOW the counter stays UNDECIDED-local: "
+                         f"{gp2[IN_RANGE]}")
+        if len(gp2[ORPHAN]) != 1 or "11" not in gp2[ORPHAN][0]:
+            fails.append(f"921: counter<n<floor with no owner must be ORPHAN "
+                         f"— actionable, never UNDECIDED: {gp2[ORPHAN]}")
+        if gp2["ambiguous"] != {("Issue", 10)}:
+            fails.append(f"921: the locally-allocated 010 must stay local "
+                         f"(AMBIGUOUS with the sibling's 10): {gp2['ambiguous']}")
+
+        # Phase 2: a BOUNDED floor needs real git-log ADDS — the same record
+        # source `file_and_history_allocated` reads. The fixture is committed
+        # so the temp tree answers the git-log leg deterministically.
+        (gp / ".issues" / "050_floor_edge.md").write_text("x", encoding="utf-8")
+
+        def _g(*args):
+            subprocess.run(["git", "-C", str(gp), *args], check=True,
+                           capture_output=True)
+
+        _g("init", "-q", "-b", "main")
+        _g("config", "user.email", "t@t")
+        _g("config", "user.name", "t")
+        _g("add", "-A")
+        _g("commit", "-qm", "fx")
+        (gp / "AGENTS.md").write_text(
+            "Issue 500 is at or above the floor.\n"   # 500 >= 50 -> IN-RANGE again
+            "Issue 030 rides the gap.\n",             # 10 < 30 < 50 -> ORPHAN
+            encoding="utf-8")
+        gp3 = audit(gp, [sib], alloc, ["AGENTS.md"], crates, pats)
+        if gp3["gap"] != {"Issue": (10, 50)}:
+            fails.append(f"921: the git-log floor {gp3['gap']} != "
+                         f"{{'Issue': (10, 50)}}")
+        if len(gp3[IN_RANGE]) != 1 or "500" not in gp3[IN_RANGE][0]:
+            fails.append(f"921: the gap must STOP at the floor (500 >= 50 "
+                         f"stays IN-LOCAL-RANGE): {gp3[IN_RANGE]} / {gp3[CROSS]}")
+        if len(gp3[ORPHAN]) != 1 or "30" not in gp3[ORPHAN][0]:
+            fails.append(f"921: inside the bounded gap must be actionable: "
+                         f"{gp3[ORPHAN]}")
+
+        # Phase 3: heading allocations are EXCLUDED from the floor — an
+        # Arm-A-style heading addition must not shrink the gap
+        # (order-dependence). The heading DOES allocate 30 and the arm proves
+        # that below, so the exclusion is deliberate and not oracle blindness;
+        # a number BETWEEN the heading and the floor discriminates.
+        (gp / "HISTORY.md").write_text(
+            "## Issue 030 (2026-01-01) — a heading inside the gap\n",
+            encoding="utf-8")
+        alloc["riir-gaprepo"]["Issue"] = {10, 30}
+        (gp / "AGENTS.md").write_text(
+            "Issue 040 sits between heading and floor.\n", encoding="utf-8")
+        gp4 = audit(gp, [sib], alloc, ["AGENTS.md"], crates, pats)
+        if gp4["gap"] != {"Issue": (10, 50)}:
+            fails.append(f"921: a heading allocation must NOT shrink the "
+                         f"floor (heading additions are order-dependent): "
+                         f"{gp4['gap']}")
+        if len(gp4[ORPHAN]) != 1 or "40" not in gp4[ORPHAN][0]:
+            fails.append(f"921: 40 must stay inside the gap: {gp4[ORPHAN]}")
+        if 30 not in icg.heading_allocated(gp, ".issues", ["riir-gaprepo"]):
+            fails.append("921: the heading-exclusion arm is dishonest — the "
+                         "heading oracle does not even see 30, so the arm "
+                         "proves blindness, not exclusion")
+        del alloc["riir-gaprepo"]
+
         # pin parser: globals + 5-field rows, comments stripped, arity enforced
         pins = ws / "pins.txt"
         pins.write_text("# c\nmin_repos = 15\nrepo-a 10 0 0 0  # trailing\n\n", encoding="utf-8")
@@ -1191,6 +1542,11 @@ def main() -> int:
             print(f"    {f}")
         return 2
 
+    if "--prove-fires" in sys.argv:
+        print("citation sweep — --prove-fires (the Issue-921 two-lane gap "
+              "fixtures, riir-infer f0191e3^ vs f0191e3)")
+        return prove_fires()
+
     if not PINS.is_file():
         print(f"✗ pins file missing: {PINS}")
         return 2
@@ -1310,10 +1666,15 @@ def main() -> int:
         # PINS adjudicate HEAD. A tracked expectations file is a claim about a
         # repo, and a repo's state is its commits — a ceiling re-pinned against
         # somebody's in-flight edit reds on every other box.
-        scope = sorted(set(dirty_files(repo_disk)) & set(docs))
+        dirty = dirty_files(repo_disk)
+        scope = sorted(set(dirty) & set(docs))
+        # Issue 921 Arm B: the two-lane counter moves the gap this sweep
+        # classifies against, so it is IN this sweep's population — a dirty
+        # counter discloses on the advisory below instead of silently
+        # re-verdicting (the same standing as any other verdict-moving file).
+        hw_dirty = HW_LOCAL in dirty
         judge = got
         if scope:
-            dirty_scope[repo.name] = len(scope)
             heads = {d: head_text(repo_disk, d) for d in scope}
 
             def _read(p: Path, _heads=heads, _repo=repo_disk) -> str | None:
@@ -1331,6 +1692,8 @@ def main() -> int:
             n_masked += len(masked)
             for r in masked:
                 print(f"⛔ MASKED  {repo.name}: {r}")
+        if scope or hw_dirty:
+            dirty_scope[repo.name] = len(scope) + int(hw_dirty)
 
         row = pins.get(repo.name)
         tot["docs"] += got["n_docs"]
@@ -1397,6 +1760,11 @@ def main() -> int:
         # support in the percentile audit — it ORDERS the work, it is not a
         # second verdict, and neither number is the finding count on its own.
         acc, shp, nov = blind[repo.name]
+        # Issue 921 Arm B: the derived two-lane floor, printed so the
+        # mechanism is visible on every run for the repos that DECLARE a
+        # local lane. Empty string — zero bytes — without the file.
+        gap_s = "".join(f" {k.lower()}_gap={c}..{'open' if f is None else f}"
+                        for k, (c, f) in sorted(got["gap"].items()))
         # `novel` is the part of `heading_unread` that could change ANY
         # verdict (Issue 828 T4): the rest is already known from a file. Shown
         # beside the count, never instead of it - the count is what says
@@ -1407,7 +1775,7 @@ def main() -> int:
               f"cross={len(got[CROSS]):<4d} over {units:<3d} num "
               f"in_local_range={len(got[IN_RANGE]):<3d} "
               f"orphan={len(got[ORPHAN])} ambiguous={len(got['ambiguous'])}"
-              f"{style}")
+              f"{gap_s}{style}")
         # 12 rows keeps the whole-workspace run readable; `--full` is for the
         # one job the truncated view cannot do — writing the OWNING repo's
         # issue, which needs every row it is being asked to repair.
@@ -1467,9 +1835,10 @@ def main() -> int:
     # `sweep_advisory_membership_gate` has been asserting all along by
     # accepting either. The patterns are the sweep's OWN documents, not a
     # glob: `behind_origin` should be asked about exactly the files whose
-    # staleness could move a row.
+    # staleness could move a row — plus `.highwater_local` (Issue 921 Arm B),
+    # which moves the two-lane gap and so can move a verdict from upstream.
     _stale, _unver = upstream_axis([repo_alias.real(r) for r in repos],
-                                   tuple(docs))
+                                   tuple(docs) + (HW_LOCAL,))
     deferred.extend(worktree_advisory(dirty_scope, n_uncommitted, n_masked,
                                       stale=_stale, unverified=_unver))
 
@@ -1605,7 +1974,10 @@ def main() -> int:
           f"signal. A `cross=0` above is NOT a claim about those.")
     print(f"  IN-LOCAL-RANGE is UNDECIDED, never 'clean': the number is at or "
           f"under the repo's own top allocation, so a local referent that was "
-          f"skipped or never committed is plausible.")
+          f"skipped or never committed is plausible. EXCEPT the two-lane gap "
+          f"(Issue 921 Arm B): a repo declaring `.highwater_local` classifies "
+          f"counter < n < floor as CROSS/ORPHAN — the range above its local "
+          f"lane is inherited, not local-intent.")
 
     if bad:
         print("✗ citation sweep FAILED — see the ✗ rows above")

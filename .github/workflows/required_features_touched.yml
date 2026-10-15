@@ -49,6 +49,17 @@
 # replay diffs base..CHECKOUT, not base against its own commit, so a base only
 # 8 commits back already selected 32 rows. Choose a dispatch base accordingly.
 #
+# ── Promote windows (the 10-04 measured instance: 300 rows > 24, REFUSE) ─────
+# A develop→main FF promote IS a broad window: every manifest that moved
+# in-range selects all its rows at once, so the gate REFUSES (exit 1) by
+# design rather than truncate — measured 2026-10-04 (run 37168080844, 300
+# rows) and again 2026-10-07. A red here on a promote is the REFUSE posture,
+# not a content finding; the per-commit coverage the lane exists for happens
+# on ordinary pushes, and the promote's rows are covered by the weekly
+# sweeps + workstation gates (develop pushes fire nothing — the standing
+# owner call). A per-commit attribution mode for promote windows is the
+# future shape if this red becomes noise nobody reads.
+#
 # ── What a green here does NOT say, stated because the gate prints it too ────
 # It selects a row when the row's own target source changed, or when the row's
 # (kind, name, required-features) tuple moved. A changed `src/**.rs` can break

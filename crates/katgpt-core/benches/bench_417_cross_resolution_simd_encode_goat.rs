@@ -66,7 +66,7 @@ const G2_PRODUCTION_DIMS: &[(usize, usize)] = &[(64, 8), (64, 16), (256, 8), (25
 
 /// Pre-Plan-417 strided gather-dot encode: `spectral[j] = Σ_r phi_src[r*k + j]
 /// * src_state[r]`. Each `j` walks a stride-`k` column of `phi_src`, defeating
-/// SIMD gather. Kept verbatim (including the `needless_range_loop` rationale)
+///   SIMD gather. Kept verbatim (including the `needless_range_loop` rationale)
 ///   as the GOAT-baseline loser.
 #[inline]
 #[allow(clippy::needless_range_loop)] // verbatim pre-417 kernel: indices participate in stride arithmetic (r*k+j)

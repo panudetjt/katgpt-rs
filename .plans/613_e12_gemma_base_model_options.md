@@ -1,6 +1,6 @@
 # Plan 613 (task E12 of plan 611) — the base-model recirculation check: accept the Gemma license, or retire the check
 
-**Status:** DRAFT for owner decision (master `riir-ai/.issues/1016` row E12; this repo's `.issues/906_owner_gate_pickup.md`; evidence `.benchmarks/668_recirculation_goat_and_poc.md:118-131`). No option executed; the pick is the owner's.
+**Status:** RETIRED (option b) 2026-10-05 — delegated owner verdict (master `riir-ai/.issues/1016` row E12; record `HISTORY.md` Issue-906 section; evidence `.benchmarks/668_recirculation_goat_and_poc.md:118-131`). Basis: the negative stands — 12/12 harmful cells at a stable rate (the IT-vs-base caveat refines a negative, never flips it); paper-scale Run 3 never collected; both boxes carry only IT-tuned Gemma GGUFs; accepting the Gemma license is not an agent act; Gemma is low priority beside Bonsai.
 
 ## The decision in one paragraph
 
@@ -53,5 +53,5 @@ there).
 
 ## Verdict row (owner fills one line)
 
-- [ ] **(a)** accept + provision — date: ______ , token location: box env only
-- [ ] **(b)** retire the check as permanently blocked — date: ______
+- [-] **(a)** accept + provision — date: ______ , token location: box env only **(owner act — provision pending; (b) retired 2026-10-05)**
+- [x] **(b)** retire the check as permanently blocked — date: 2026-10-05 (delegated owner verdict)

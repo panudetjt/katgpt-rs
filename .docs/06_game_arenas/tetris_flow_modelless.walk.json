@@ -1,0 +1,113 @@
+{
+ "gfflow_walk": 1,
+ "generated_by": "reflex-site scripts/render_flows.py",
+ "file": "tetris_flow_modelless.svg",
+ "title": "Reflex · modelless: laya's answers distilled into a µs head",
+ "accent": "#ff8a3d",
+ "intro": "Press play to walk the same recorded turn through the distillation: the same sentence in, a different pick out — in microseconds.",
+ "steps": {
+  "sentence": {
+   "n": "1",
+   "title": "The same sentence",
+   "lane": "wire",
+   "color": "#ff8a3d"
+  },
+  "decode": {
+   "n": "2",
+   "title": "Decode to features",
+   "lane": "decode",
+   "color": "#ff8a3d"
+  },
+  "head": {
+   "n": "3",
+   "title": "A tiny linear head",
+   "lane": "head",
+   "color": "#ff8a3d"
+  },
+  "play": {
+   "n": "4",
+   "title": "Play the highest",
+   "lane": "head",
+   "color": "#ff8a3d"
+  }
+ },
+ "edges": [
+  {
+   "id": "sentence->decode",
+   "back": false
+  },
+  {
+   "id": "decode->head",
+   "back": false
+  },
+  {
+   "id": "head->play",
+   "back": false
+  }
+ ],
+ "walk": [
+  {
+   "title": "The same sentence",
+   "text": "The distillation changes nothing about the input: the very same recorded opening turn the laya lane reads. That is the point — same question, a different (much cheaper) answerer.",
+   "steps": [
+    "sentence"
+   ],
+   "edges": [],
+   "illustrative": false,
+   "in": {
+    "lang": "json",
+    "src": "data/flows/tetris_modelless/01_in.json",
+    "label": "the same recorded opening turn",
+    "from": "recorded from the KatGPT modelless lane, seed 607, 2026-09-25, arena/demo_oracle.json _meta.sources.tetris_head · scripts/record_demo_walks.mjs · the opening turn (turn 0)",
+    "body": "{\n  \"grammar\": \"laya-tetris-v3\",\n  \"question\": \"Does the stack look clean?\",\n  \"state\": \"The stack stands low and the surface is mostly flat. There are no holes under the blocks. The square piece is falling.\",\n  \"piece\": \"O\",\n  \"board\": [\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\",\n    \"..........\"\n  ],\n  \"landing_spots\": 9\n}"
+   }
+  },
+  {
+   "title": "Decode to features",
+   "text": "The sentence is decoded back into the board features it came from: holes left, how flat the surface sits, stack height, which side it lands on, lines cleared. A handful of numbers — no words reach the head.",
+   "steps": [
+    "decode"
+   ],
+   "edges": [
+    "sentence->decode"
+   ],
+   "illustrative": false
+  },
+  {
+   "title": "A tiny linear head",
+   "text": "A small linear head, fitted offline on laya's recorded answers, scores the features. It imitates laya — 44 of 120 picks agree on the pinned corpus — so it plays like laya, only about a hundred-thousand times faster.",
+   "steps": [
+    "head"
+   ],
+   "edges": [
+    "decode->head"
+   ],
+   "illustrative": false,
+   "out": {
+    "lang": "json",
+    "src": "data/flows/tetris_modelless/01_out.json",
+    "label": "the head's answer to the same turn",
+    "from": "recorded from the KatGPT modelless lane, seed 607, 2026-09-25, arena/demo_oracle.json _meta.sources.tetris_head · scripts/record_demo_walks.mjs · the opening turn's answer",
+    "body": "{\n  \"p_clean_per_spot\": [0.5325405, 0.5325405, 0.534729, 0.534729, 0.53691745, 0.53691745, 0.5391059, 0.5391059, 0.54129434],\n  \"pick\": 8\n}"
+   }
+  },
+  {
+   "title": "Play the highest",
+   "text": "The top-scoring spot drops. The head runs as WebAssembly in your tab — it is the lane playing live in the arena below, one pick per piece at microsecond cost.",
+   "steps": [
+    "play"
+   ],
+   "edges": [
+    "head->play"
+   ],
+   "illustrative": false,
+   "out": {
+    "lang": "json",
+    "src": "data/flows/tetris_modelless/01_out.json",
+    "label": "the played spot",
+    "from": "recorded from the KatGPT modelless lane, seed 607, 2026-09-25, arena/demo_oracle.json _meta.sources.tetris_head · scripts/record_demo_walks.mjs · the opening turn's answer",
+    "body": "{\n  \"p_clean_per_spot\": [0.5325405, 0.5325405, 0.534729, 0.534729, 0.53691745, 0.53691745, 0.5391059, 0.5391059, 0.54129434],\n  \"pick\": 8\n}"
+   }
+  }
+ ]
+}

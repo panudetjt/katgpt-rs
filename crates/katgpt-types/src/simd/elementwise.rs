@@ -531,7 +531,7 @@ pub(super) fn scalar_sum_f32(x: &[f32]) -> f32 {
 
 /// Scalar fallback for `simd_masked_sum_count_f32`. Branchless: `(mask[i] !=
 /// 0) as u32` produces a 0/1 multiplier; `d * (m as f32)` and `count += m`
-/// avoid the branch that would defeat pipelining.
+///    avoid the branch that would defeat pipelining.
 #[inline(always)]
 #[allow(dead_code)]
 pub(super) fn scalar_masked_sum_count_f32(x: &[f32], mask: &[u8]) -> (f32, u32) {

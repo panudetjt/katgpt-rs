@@ -2,6 +2,7 @@
 name = "katgpt-moka-wasm"
 version = "0.1.0"
 edition = "2024"
+rust-version.workspace = true
 license = "MIT"
 description = "Minimal standalone WASM build of the Moka v1 port (Plan 565) — no katgpt-core dependency, so no ahash/getrandom wasm32 backend friction. A real browser deployment shouldn't carry hashmap-DoS-resistance RNG machinery it never uses."
 publish = false

@@ -57,7 +57,7 @@
 //! valid, and no test in this module can see it. The uncertainty model is
 //! conservative; the Lipschitz budget is the caller's proof obligation.
 
-use core::f32;
+
 
 /// Lipschitz constant of the logistic sigmoid — `sup |s'(z)| = s'(0) = 1/4`.
 ///

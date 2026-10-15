@@ -164,6 +164,16 @@ pub use variants::forward_looped;
 #[cfg(feature = "domain_latent")]
 pub use variants::forward_with_domain_latent;
 
+// Plan 617 — LoopCD recurrent-depth contrast guidance. The whole module is
+// `#![cfg(loop_guidance)]` (compiles to nothing without the feature — the
+// T0.2 discipline); the forward wiring is a cfg'd `Option` parameter (the
+// `weight_shared_advantage_gate`/`gain_cost_halt` precedent).
+#[cfg(feature = "loop_guidance")]
+pub mod loop_guidance;
+#[cfg(feature = "loop_guidance")]
+pub use loop_guidance::{adaptive_omega, default_adaptive_config, top_two_margin,
+                        GuidanceMode, LoopGuidance, LoopGuidanceConfig};
+
 // Issue 717 — deep-loop instrumentation + stabilization knobs. The stats
 // surface is ungated (an `Option` parameter on `forward_looped`, the
 // elastic-override precedent); the damping/scale knob types are gated on
