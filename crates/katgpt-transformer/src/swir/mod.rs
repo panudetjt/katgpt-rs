@@ -21,6 +21,12 @@
 //!   embedding at switch instants (paper Eq. 4), keeping the residual stream
 //!   continuous across the mode boundary.
 //!
+//! A fourth surface, [`ProvenanceLedger`] (Issue 941), carries the
+//! decode-position provenance contract: `Tok` positions persist into
+//! the materialized token history M(L) samplers read; `Lat`
+//! (soft-embedding) positions are think-brain scratch that never
+//! serializes. Metadata, never an attention mask.
+//!
 //! All three are **zero-allocation** after construction. The controller uses a
 //! fixed-size injection ring; the soft-embedding kernel accumulates into a
 //! caller-provided scratch buffer; the mix kernel is in-place.
@@ -95,6 +101,14 @@ pub mod bench;
 mod controller;
 mod convex_hull_check;
 mod entropy;
+// Plan 626: anchor-exit boundary set (T0.1) — the controller extension lands
+// behind `swir_anchor_exit` (implies `swir_switch_thinking`); flag-OFF
+// compiles the module to nothing (the zero-code posture).
+#[cfg(feature = "swir_anchor_exit")]
+pub mod anchor;
+// Issue 942: report-only latent pseudo-text readout + health sensors.
+pub mod pseudo_text;
+mod position_provenance;
 mod signal_mix;
 mod soft_embedding;
 // Phase 12 T4.6 (2026-07-04): strategy_adapter moved here from katgpt-rs root.
@@ -106,7 +120,11 @@ mod types;
 pub use controller::SwiRController;
 pub use convex_hull_check::in_vocab_convex_hull;
 pub use entropy::{entropy_from_logits, shannon_entropy};
+pub use position_provenance::{PositionProvenance, ProvenanceLedger};
 pub use signal_mix::{SignalMixKind, mix_thinking_signal};
+pub use pseudo_text::{
+    LatentLoopSensor, LatentReadoutBank, NearestToken, PseudoTextCollapseSensor, span_readability,
+};
 pub use soft_embedding::soft_embedding;
 pub use types::{ControlToken, StepAction, SwiRConfig, SwiRStats, ThinkMode};
 

@@ -2312,6 +2312,7 @@ These are additional standalone features with their own plans that were not cove
 | `data_gate` | 111 | Task-level data gating for self-play training stability (Research 075) |
 | `vortex_flow` | — | VortexFlow attention substrate (parent of MSA family) |
 | `pyramid_topk` | 612 | PISA pyramid Top-K + LSE block selection — coarse-to-fine key pyramid, root-seeded bounded expansion, exact-LSE leaf scoring (arXiv:2609.31093); implies `dash_attn`. Opt-in — **G2 iso-quality NEGATIVE** (Bench 612: −0.133 Recall@8 vs the single-level exact-LSE scan at 32K+; latency slope CONFIRMED 1.07 vs 1.99) |
+| `swir_anchor_exit` | 626 | SwiR anchor-exit BoundarySet — the anchor-agreement/exit-boundary substrate for `swir_switch_thinking` (root forward: `katgpt-transformer/swir_anchor_exit`; fuel-side probes via riir-engine `swir_validation` consume it). Opt-in — Phase-0 kill gate IN FLIGHT (B1–B4 bars pre-registered in Bench 941 before the run; promotes only after the T0.5 GOAT) |
 
 ### Remaining smaller primitives (cross-reference)
 
@@ -5653,3 +5654,95 @@ Memory Machines), Research 615. Source:
   `crates/katgpt-types/tests/sync_bank_g1b_real_fixture.rs`, re-measured
   every run). **PROMOTED TO DEFAULT 2026-10-12** (owner GO); the pinning
   test re-reds past the recorded margins.
+
+## 148. phase_belief — Phase-Carrying Belief Kernel POC (Issue 939 / Research 620)
+
+Feature `phase_belief` (OPT-IN, **defer-until-pull** — promotion requires
+P1–P4 green AND a named consumer pull from the drive/FSM stack; the P3
+real-boot FSM test is the deciding gate). Source: arXiv:2610.13341
+(damping-regime framework), Research 620. Source:
+`crates/katgpt-sense/src/phase_belief.rs` (forward chain root →
+katgpt-core → katgpt-sense).
+
+- **`ModularPhaseCounter`** — the exact undamped phase code (the paper's
+  E.1 modular counter, CONSTRUCTED not trained): a `u32` count mod `m`
+  (2..=256) + precomputed cos/sin LUTs — bit-deterministic by
+  construction, zero drift over unbounded streams, O(1) LUT readout.
+  `readout()` is the cos half (injective on ℤ_m ONLY at m=2 — parity);
+  `readout_pair()` is the full phase code; `drive_readout(gain)` =
+  `fast_sigmoid(gain·cos φ)` for the FSM-facing scalar (sigmoid, never
+  softmax).
+- **`DampedPhaseBlock`** — the non-trivial primitive: per-channel 2×2
+  underdamped κ-block `z ← ρ·R(θ)·z + u`, fixed `[f32; 2]` state,
+  precomputed rotation, single-rounding `mul_add` folds (Issue 940 kernel
+  discipline). Phase and magnitude fade TOGETHER (`ρⁿ·R(nθ)` closed form
+  pinned by test to f32 tolerance; with constant writes the iterate
+  matches the geometric series `(1−wⁿ)/(1−w)`, w = ρe^{iθ}). The
+  paper's C.3 steady state `‖u‖/|1−ρe^{iθ}|` ships as
+  `steady_state_bound` / `write_budget_for(ε)` — the P4 per-channel
+  write-budget design constraint, with the θ-dependence honestly
+  exposed: ρ→1 ⇒ 2·sin(θ/2) (large-θ channels win), θ→0 ⇒ the leaky
+  kernel's own (1−ρ) scale (the rotation buys nothing there).
+- **Signal-diff vs the cousins**: katgpt-core `phase_rotation_coupling`
+  (Plan 322, §§ above) is a phase-modulated MIX between two named
+  vectors — a gate, not a state integrator; Research 169 (LinOSS) is
+  free oscillation as architecture; Research 371 is population-level
+  DMFT. The only claim: first constructed phase code on OUR belief
+  substrate (engineering claim, never a Super-GOAT).
+- **Gates (11, `tests/phase_belief_gates.rs`, required-features row)**:
+  P1 integer counter exact over 10⁶ random events at every m in a sweep
+  + the f32-accumulation drift pin (mean |Δcos| > 0.2 over 1000
+  checkpoints at 10⁶ events — the justification, guarded against a
+  future "simplification" back to f32); P1 damped free run = ρⁿ·R(nθ)
+  and constant write = the geometric series (f64 reference); P2 parity
+  classified exactly while a timing-compensated leaky pair orders
+  BACKWARDS (odd > even — the parity-blindness witness); P2 mod-3
+  degeneracy pinned (cos(2π/3) = cos(4π/3)) with the pair delivering;
+  P2 fade-together smoke (22 ticks at θ=π/2 → phase π at <10%
+  confidence, predictors read it without stepping); P4 constant write
+  converges to the C.3 bound incl. the ρ→1 θ-only agreement;
+  constructor domain guards; sigmoid readout shape. **P3 (FSM real-boot
+  progress test) NOT BUILT — it is the promotion-deciding gate and
+  waits for the named pull** (the house behaviour law: the ringing
+  drive must assert PROGRESS through the FSM, no oscillation flip-flop;
+  ζ-budget floor is the control).
+- **Local-only state**: nothing here crosses a sync boundary; if a
+  consumer ever syncs the readout, the SCALAR crosses, never the
+  `[f32; 2]` block.
+
+## 149. set_refine — Set-Refined State Embedding (Plan 627 / reflex Issue 090 C2)
+
+Feature `set_refine` (OPT-IN, **measured NEGATIVE at the GOAT — stays
+opt-in with the record**, the Bench-109 shape). Source: Jeva Prop 1
+(arXiv:2610.18773) — the one capability an independent per-option scorer
+structurally lacks is set-dependent preference; their fix is a
+candidate-conditioned attention block. The modelless analog:
+`crates/katgpt-core/src/set_refine.rs` — a thin composition over
+`set_attention` (Plan 354), NOT a fresh kernel.
+
+- **The operator**: `x' = x + (γ/n) · Σᵢ wᵢ·(kᵢ − x)`, `wᵢ =
+  σ(dot(x, kᵢ)/τ)` (sigmoid, NEVER softmax) — ONE query (the state
+  embedding) refined by the sigmoid-gated option set; options immutable
+  (read-only), permutation-invariant by sum symmetry, γ=0 verbatim-copy
+  short-circuit, caller-owned grow-only scratch (zero-alloc). Ships
+  `refine_state_into` + `SetRefineScratch`.
+- **The wide entry**: `set_sigmoid_attention_wide_into` — identical math,
+  caller-owned scratch, NO `d` cap; the legacy entry's `assert!(d ≤ 16)` is
+  a `[f32; 16]` stack-scratch artifact while decision embeddings run
+  d=256 (reflex `EMBED_DIM`). Legacy is now a thin stack-scratch wrapper,
+  bit-identical at d ≤ 16 (tested).
+- **Gates**: the S1–S5 set-awareness suite
+  (`tests/set_refine_suite.rs`, required-features row) — S1 reversal
+  capability (the independent scorer CANNOT flip, asserted; the refined
+  scorer flips A→B when a B-shaped decoy joins, decoy never wins), S2
+  permutation, S3 sigmoid-not-softmax, S4 immutability+bound, S5 γ=0
+  byte-identity; the A2-exemption gate suite (`set_refine` deliberately
+  BREAKS decoy-invariance A2 by design — Jeva Prop 1).
+- **GOAT verdict (reflex Bench 150, the consumer lane)**: **G1 FAIL** —
+  −12.3..−14.0 pt on banking77/massive/ag_news at γ=1.0/τ=0.5, monotone
+  in γ (the 0.25 probe shows no reversal — structural, not a too-hot
+  knob: unit-centroid keys pull the state toward the corpus mean). G2
+  PASS at bench scale (454 µs p99; O(n·d²) caveat), G3 PASS (flag-off
+  byte-identity), G4 PASS (0 allocs). Promotion refused; re-open = a
+  different KEY family (per-option fitted directions — riir-train
+  territory), never a γ/τ retune.
