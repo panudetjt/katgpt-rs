@@ -69,6 +69,31 @@
 //! Bartels–Stewart eigenbasis diagonalization (one-time `O(d_h³)` + per-iter
 //! `O(r·d_h²)`); the paper-Par K=8/M=24/R=2 (d_h=166_752) config remains
 //! out of reach without further factorization.
+//!
+//! KARC — Kolmogorov-Arnold Reservoir Computing delay-basis-ridge forecaster
+//! (Plan 308, Research 288, arXiv:2606.19984). Modelless, inference-time
+//! trajectory forecaster: delay-embedding × sealed KarcBasis (Fourier/Chebyshev/
+//! BSpline) × closed-form ridge readout, with a zero-alloc forecast matvec.
+//! DEFAULT-ON (Phase 22, 2026-07-21, Plan 308 promotion under Issue 186 Path D3
+//! split-config G1 gate contract — see Cargo.toml default block + Bench 308).
+//!
+//! KARC Regime Gate re-export — Plan 556 Phase 1 (2026-07-20).
+//! The gate itself is a sibling submodule under `karc::`; the public surface
+//! is re-exported here for caller ergonomics so consumers don't need to
+//! reach into the `karc::regime_gate` path.
+//!
+//! (`WelfordVariance` left this list for the ungated `welford` module above —
+//! `katgpt_core::WelfordVariance` now resolves in EVERY configuration.)
+//!
+//! Plan 556 Phase 2 — KARC Batched MatVec. SIMD-batched forecast across N
+//! forecasters of identical (D, M, K) shape. Crowd-scale perf primitive
+//! (unblocks Plan 514 Phase 3 octree-batched dispatch). Pure modelless
+//! (linear algebra only). Re-exported here for caller ergonomics.
+//!
+//! Plan 556 Phase 3 — KARC LOD Tier. Config tag + tier-promotion Wout
+//! projection. Three nested tiers map to different KarcForecaster configs;
+//! promotion is a pure index remap (no re-fit required for forecast continuity
+//! on the surviving features). Re-exported here for caller ergonomics.
 
 pub use crate::linalg::ridge_solve::{
     chol_solve_f64, cholesky_f64, ridge_solve_direct_f64, ridge_solve_woodbury_f32,
@@ -562,9 +587,7 @@ pub fn feature_expand_higher_order<B: KarcBasis<M>, const M: usize, const R: usi
             }
             debug_assert_eq!(idx, d_h_1 * (d_h_1 + 1) / 2, "pair buffer size mismatch");
         }
-        _ => panic!(
-            "feature_expand_higher_order: R={R} not implemented (only R ∈ {{1,2}})"
-        ),
+        _ => panic!("feature_expand_higher_order: R={R} not implemented (only R ∈ {{1,2}})"),
     }
 }
 
@@ -799,7 +822,6 @@ pub struct LowRankFitScratch {
     //
     // The dominant allocation is `eigvecs_g` at `d_h × d_h` f64 — e.g.
     // ~2.6 GB at d_h = 18_720 (the Issue 185 K=8/M=8/R=2 target).
-
     /// Eigenvalues of `G = XᵀX`, length `d_h` f64. Computed once per fit
     /// (outside the ALS loop) by [`low_rank_fit_jacobi_bstep`].
     pub eigvals_g: Vec<f64>,

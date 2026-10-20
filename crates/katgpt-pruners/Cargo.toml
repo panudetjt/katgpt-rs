@@ -68,6 +68,24 @@ echo_env_predictor = ["bandit", "katgpt-speculative/echo_env_predictor"]
 # Bandit dependents
 delta_mem = ["bandit"]
 g_zero = ["bandit"]
+
+# FDR family-calibrated partial credit (issue 948 T1, Terminal-RSI extraction):
+# frozen per-family p90 divisors with a tail-support freeze gate + the
+# calibrated absorb adapter on DeltaGatedAbsorbCompress.
+fdr_credit = ["g_zero"]
+
+# SPR success-offset lexicographic ordering (issue 948 T2, Terminal-RSI extraction):
+# the strict class dominates; pair ordering canonical, float form transport.
+spr_order = []
+
+# InfiLoop gated N/D running summary (issue 950, arXiv:2610.11570 modelless
+# extraction): β-decayed gated running mean, step-view sigmoid gate
+# (never softmax), t=1 edge pinned, β∈(0,1) refused loud; β=1 + fixed-w is
+# bit-for-bit oracle-compatible with posterior::PrecisionVector (P4).
+# GOAT bench_946 (.benchmarks/946_issue950_gated_summary_goat.md).
+# OPT-IN — consumers unwired (riir-train Plan 465 / game belief ticks).
+gated_summary = ["posterior_evolution"]
+
 dreamer = ["bandit"]
 ropd_rubric = ["bandit"]
 subterranean = ["bandit"]

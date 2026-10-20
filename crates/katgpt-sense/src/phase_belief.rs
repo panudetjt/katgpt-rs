@@ -147,7 +147,10 @@ impl ModularPhaseCounter {
     /// `[cos φ, sin φ]` — the FULL phase code (both quadratures), injective
     /// on ℤ_m for every m. This is the paper's actual readout surface.
     pub fn readout_pair(&self) -> [f32; 2] {
-        [self.cos_lut[self.count as usize], self.sin_lut[self.count as usize]]
+        [
+            self.cos_lut[self.count as usize],
+            self.sin_lut[self.count as usize],
+        ]
     }
 
     /// The drive-shaped scalar readout: `fast_sigmoid(gain · cos φ)` —
@@ -227,6 +230,13 @@ impl DampedPhaseBlock {
     ///
     /// Write `u` may be `[0.0, 0.0]` (pure decay — the free run). Ordered
     /// per-component `mul_add` folds (Issue 940 kernel discipline).
+    ///
+    /// **fp32-rotation law (Issue 945 P5):** the rotation here is computed
+    /// and applied in f32 REGARDLESS of any future storage dtype — at bf16
+    /// the per-step rotation stops being orthogonal (`cos²+sin² = 1 ± 2⁻⁸`)
+    /// and `‖z‖` random-walks ~13% over 1000 steps (arXiv:2610.18174
+    /// numerics law; the failure is reproduced by the reduced-precision
+    /// canary in `tests/issue945_fp32_rotation_law.rs`).
     pub fn step(&mut self, write: [f32; 2]) {
         let [x, y] = self.z;
         let (c, s, r) = (self.cos_theta, self.sin_theta, self.rho);
@@ -251,21 +261,13 @@ impl DampedPhaseBlock {
     /// readout matches `count 0`).
     pub fn phase_cos(&self) -> f32 {
         let m = self.magnitude();
-        if m <= 0.0 {
-            1.0
-        } else {
-            self.z[0] / m
-        }
+        if m <= 0.0 { 1.0 } else { self.z[0] / m }
     }
 
     /// `sin φ` — the phase's quadrature partner (same zero-state convention).
     pub fn phase_sin(&self) -> f32 {
         let m = self.magnitude();
-        if m <= 0.0 {
-            0.0
-        } else {
-            self.z[1] / m
-        }
+        if m <= 0.0 { 0.0 } else { self.z[1] / m }
     }
 
     /// Drive-shaped readout `fast_sigmoid(gain · cos φ)`.

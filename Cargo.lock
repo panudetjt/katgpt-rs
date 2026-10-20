@@ -1966,6 +1966,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "katgpt-extract"
+version = "0.1.0"
+dependencies = [
+ "blake3",
+ "katgpt-core",
+ "serde_json",
+]
+
+[[package]]
 name = "katgpt-forward"
 version = "0.1.0"
 dependencies = [
@@ -2143,6 +2152,7 @@ dependencies = [
  "katgpt-tetris",
  "katgpt-tokenizer",
  "katgpt-transformer",
+ "katgpt-types",
  "katgpt-validator",
  "log",
  "memmap2",

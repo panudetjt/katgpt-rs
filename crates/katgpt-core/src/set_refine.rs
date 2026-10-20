@@ -60,6 +60,10 @@
 //! via [`SetRefineScratch`] (grow-only, reused across decisions), matching
 //! the kernel's G4 law. The `gamma == 0.0` short-circuit copies the state
 //! verbatim — the byte-identity twin of the engine-side flag-off gate (S5).
+//!
+//! Set-Refine — the decision-plane composition of set_attention (Plan 627,
+//! reflex Issue 090 C2): set-conditioned state refinement for option scoring.
+//! Thin wrapper over set_sigmoid_attention_wide_into — no fresh kernel.
 
 use crate::set_attention::{
     SetAttentionConfig, identity_projection_into, set_sigmoid_attention_wide_into,
@@ -294,11 +298,7 @@ mod tests {
         let cfg = SetRefineConfig::new(1.0, 0.0, d);
         let mut sc = SetRefineScratch::new(d, 3);
         refine_state_into(&state, &options, &mut out, &cfg, &mut sc).unwrap();
-        assert_eq!(
-            bits(&out),
-            bits(&state),
-            "S5: byte-identity at gamma=0"
-        );
+        assert_eq!(bits(&out), bits(&state), "S5: byte-identity at gamma=0");
     }
 
     #[test]
@@ -318,9 +318,6 @@ mod tests {
         let cfg = SetRefineConfig::new(1.0, 0.5, d);
         let mut sc = SetRefineScratch::new(d, 2);
         let r = refine_state_into(&vec![0.1; d], &vec![0.2; d + 1], &mut out, &cfg, &mut sc);
-        assert_eq!(
-            r,
-            Err(SetRefineError::OptionsLenMismatch { got: d + 1, d })
-        );
+        assert_eq!(r, Err(SetRefineError::OptionsLenMismatch { got: d + 1, d }));
     }
 }

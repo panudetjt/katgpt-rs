@@ -126,6 +126,21 @@ statrs = "0.17"
 
 [features]
 
+# path_kernel_sim (Issue 949, from Research 625 / arXiv:2012.00152 path-kernel
+# lens, 2026-10-20): the sensitivity-fingerprint response-space kernel —
+# K(x,x') = cos(∇_w f(x;w0), ∇_w f(x';w0)) over an authored scorer's p ≤ 64
+# knobs. Training-free, zero new deps; closed-form gradient arm for
+# sigmoid-gated scorers + pinned-h central-difference arm for opaque ones;
+# near-zero-norm fingerprints ABSTAIN (sentinel, never NaN). The collapse
+# caveat binds (issue header): for scorers linear in their knobs the
+# normalized kernel IS the input-feature cosine — signal claims live only in
+# the knob-nonlinear fixtures (T5c/T5d), and the GOAT verdict demotes to
+# keep-off unless the fingerprint beats BOTH the input-cosine and the
+# output-vector baselines there. All outputs LOCAL to the computing process
+# (POC scope — if ever routed into synced belief attribution, the Issue-940
+# determinism law binds).
+path_kernel_sim = []
+
 # probe_guidance (core half, Plan 617 T1.2): compiles the contrast_combine
 # module for the 865 probe-guidance consumer. Root `probe_guidance` forwards
 # here. No behavior of its own — the kernel is pure arithmetic.
@@ -471,6 +486,19 @@ kl_depth_probe = []
 # Implies `margin_gate`: the probe's top1−top2 read is `margin_split` — one
 # top-2 implementation, not two.
 loop_alignment_probe = ["margin_gate"]
+
+# qrr_convergence (Issue 945 / Research 623, arXiv:2610.18174 QRR): the
+# quotient-convergence extraction — P1 per-channel delta-sequence AR(2) mode
+# fitter (ring-buffer, zero-alloc, ridge-repaired; companion roots → (r, ω)),
+# P2 two-channel oscillation verdict in GainCostLoopHalter (`with_mode_verdict()`
+# — OscillatingButSettling suppresses the halt, LimitCycle keeps it at
+# unchanged latency; kill-switch env KATGPT_QRR_OSC_VERDICT=0 demotes
+# decision-only), P3 settling-budget predictor (τ_δ = log(1/δ)/(−log r)) + the
+# two-signal r=1 certificate (advisory-only until a consumer wires an exit).
+# Opt-in POC — no promotion claim; P4 rides `phase_belief` defer-until-pull
+# (Issue 939), P6 report-only (issue file). Composes with `gain_cost_halt`
+# (P2 needs both; P1/P3 stand alone).
+qrr_convergence = []
 
 # saddle_escape (Plan 593 / Research 546, arXiv:2609.04963 "Fractal basins trap
 # latent reasoning"): three-way Continue / Halt{Converged} / Halt{Trapped} /
@@ -1347,6 +1375,21 @@ escalation_probe_gate = ["state_probe"]
 # Proposal 014 Phase-1 engine; promotion rides the GOAT gate.
 decision_wire = []
 
+# extraction_wire (Plan 628 T0.1 / Proposal 016): the Fathom extraction
+# wire contract — ExtractionRequest/ExtractionResponse over the nine-kind
+# field vocabulary (text/number/date/time/datetime/duration/list/estimate/
+# forecast), with abstention first-class (null + p_null), Clairic's honest
+# null-with-guess adopted, byte-offset spans as the provenance primitive,
+# constraints enforced by construction, and contract_version + additive-
+# only evolution (unknown versions refuse loud). WIRE ONLY — no engine
+# logic; the F0 floor lives in the katgpt-extract member crate. The
+# `decision_wire` sibling, extraction-flavored. Serde (json + postcard)
+# round-trips + a golden JSON byte-pin + fail-closed structural validation
+# ride in the module. Zero new deps. OPT-IN per the no-default-consumer
+# rule — the consumer is the Proposal 016 Phase-1 assembly; promotion
+# rides the GOAT gate.
+extraction_wire = []
+
 # runetrace (seal-remake Proposal 005 Phase 2 T2.1 / katgpt-rs Plan 624):
 # the scene-as-text format — RunetraceDoc { version, tick, scene, entities }
 # with per-entity glyph-led condition rows + parent-indexed DAG rows, a
@@ -1938,6 +1981,16 @@ required-features = ["factorized_action"]
 name = "bench_419_canvas_schema_goat"
 harness = false
 required-features = ["canvas_schema"]
+
+# Issue 949 — path_kernel_sim GOAT gate (T6 latency + T9 verdict).
+# G2: fingerprint ≤5 µs/call + similarity ≤1 µs/pair at the p=64 envelope
+# (black_box args + receiver). T9: the planted-class battery at release —
+# the verdict line is the record (a tie vs the output-vector baseline is a
+# KEEP-OFF per T5d's own law; the feature ships opt-in either way).
+[[bench]]
+name = "path_kernel_sim_goat"
+harness = false
+required-features = ["path_kernel_sim"]
 
 [[bench]]
 name = "flow_field_bench"
@@ -4626,3 +4679,44 @@ required-features = ["scale_invariant_attn"]
 [[test]]
 name = "scale_invariant_goat"
 required-features = ["scale_invariant_attn"]
+
+# Issue 945 — the QRR gates: P1 mode-fit recovery (spiral/flip/ridge/SNR
+# sweep/stillness), P2 verdict discrimination (settling flip/spiral never
+# Oscillation-halt; limit cycle at unchanged latency; kill-switch child
+# byte-identity), P3 budget calibration (×2 on ≥95% of the synthetic
+# corpus) + two-sided certificate. Gated: gain_cost_halt + qrr_convergence
+# (P2 needs both; the green-zero rule — without the row, a plain `cargo
+# test` prints `ok. 0 passed` over the cfg'd-empty binary).
+[[test]]
+name = "issue945_qrr_gates"
+required-features = ["gain_cost_halt", "qrr_convergence"]
+
+# Issue 949 T8 — the path_kernel_sim G4 zero-alloc canary (crate-binary-
+# unique counting allocator). Same green-zero rule as the rows above:
+# without the row a plain `cargo test` prints `ok. 0 passed` over the
+# cfg'd-empty binary (the SILENT-NOW wall, Issue 742).
+[[test]]
+name = "path_kernel_sim_g4_alloc"
+required-features = ["path_kernel_sim"]
+
+# Issue 945 P6 — the Sylvester attribution gates: the Kronecker solve
+# (P S − AP = B_c, refused exactly on the σ(A)∩σ(S) overlap — the uniqueness
+# precondition surfacing as a verdict), the complement energy split (rate
+# inheritance: the r=0.999 coupled share dominates the ρ(A)=0.5 intrinsic
+# share at t=200), and the α-intervention replay (α ∈ {0, ½, 1} exact in the
+# linear instrument; a corrupted coupling measured against a stale P is the
+# recorded-negative path, matches=false). Gated: qrr_convergence alone (the
+# green-zero rule — without the row, a plain `cargo test` prints `ok. 0
+# passed` over the cfg'd-empty binary). Report-only lane — no production
+# consumer in this ticket (bench_011/013 extractors + Issue 717 are the
+# declared future consumers).
+[[test]]
+name = "issue945_qrr_sylvester_gates"
+required-features = ["qrr_convergence"]
+
+# Issue 945 P6 — the report instrument: builds the coupled-stall fixture,
+# prints the energy split + the three α replays + the recorded-negative
+# probe and ONE verdict line. Report-only: prints, exits 0, writes nothing.
+[[example]]
+name = "issue945_qrr_sylvester_report"
+required-features = ["qrr_convergence"]

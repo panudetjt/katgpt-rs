@@ -1,0 +1,11 @@
+# fmt_gate.py — the Issue 946 DRAIN LIST: files still diverging from rustfmt
+# defaults, held back from the one-time format commit because a commit touched
+# them in the 48 h before it (a concurrent session may be mid-edit; reformatting
+# under it turns its next rebase into a conflict).
+#
+# Format:  <relpath> # reason        (a reasonless row is REFUSED)
+#
+# Reds in BOTH directions: a drifted file with no row (UNPINNED), and a row
+# whose file is now clean (STALE). Drain a row by formatting the file —
+# `rustfmt --edition 2024 <file>` — and deleting the row in the SAME commit.
+# NEVER add a row for new drift: format the file instead. This list only shrinks.

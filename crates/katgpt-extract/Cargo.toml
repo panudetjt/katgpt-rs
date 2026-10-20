@@ -1,0 +1,115 @@
+[package]
+name = "katgpt-extract"
+version = "0.1.0"
+edition = "2024"
+rust-version.workspace = true
+license = "MIT"
+description = "Modelless extraction substrate — the Fathom F0 floor (Plan 628 / Proposal 016): span_pointer span scoring, deterministic typed parsers, conformal estimate/forecast heads, and the Temper calibration/abstention gate."
+readme = "README.md"
+repository = "https://github.com/katopz/katgpt-rs"
+keywords = ["extraction", "information-extraction", "nlp", "conformal-prediction", "modelless"]
+categories = ["algorithms", "text-processing"]
+# Publish-ready leaf on the katgpt-core release train (the katgpt-assign
+# convention); the crates.io push is an owner act.
+
+[dependencies]
+# The ONE dep — the wire contract (extraction_wire) + the Plan-340 conformal
+# substrate (conformal_predictive_intervals, karc_forecaster), each pulled
+# only by the feature that needs it. default-features = false: this crate
+# must never drag core's default feature tree into a leaf build.
+katgpt-core = { path = "../katgpt-core", optional = true, default-features = false }
+
+[features]
+# OPT-IN (demoted 2026-10-20, Bench 950 re-run): the first landing measured
+# a GOAT PASS on an asymmetric comparison — the alias table was derived from
+# the scored test rows (the mention's own surface usually rode its alias
+# list) and the floor was denied it. The verdict-round REVISE forced the
+# fair re-run: TRAIN-split schema vocabulary (never the scored rows) + two
+# gazetteer arms given the SAME (canonical, aliases) inputs. Round 2: the
+# longest-match gazetteer BEAT the bare pointer (77.8% vs 74.3%) — demoted.
+# Round 3: the boundary-snap hybrid cleared the bar (+7) and re-landed the
+# promotion — REVISED (the margin rode the 17 fallback exacts; no control
+# arm, no McNemar, no held-out). Round 4 (verdict executed): the
+# `floor+ptr_fallback` control arm — the floor's answer, the pointer(gate)
+# window ONLY where the floor abstains — BEATS the snap on BOTH domains
+# (movie 2321 vs 2311, McNemar control-vs-snap p<0.001; held-out
+# MIT-Restaurant 1493 vs 1464, p=0.041), and the snap-over-floor edge is
+# significant only on the held-out domain (p=0.002; movie n.s. p=0.324).
+# The promotion basis is the CONTROL pattern, shipped as
+# `SpanPointer::floor_first_span` + `longest_match` (round 5, zero-alloc,
+# G4-gated). `span_pointer` STAYS opt-in pending ONE pre-registered gate:
+# a release-profile G2 run with a quiet-box preflight line (environmentally
+# blocked — box load 14.6 with 8 sibling cargo processes at round-4 time).
+default = ["extraction_estimate"]
+
+# span_pointer (Plan 628 T0.2): candidate-window span scoring — BM25/ngram
+# lexical + hashed-feature embedding similarity + optional alias tables;
+# sigmoid normalization (never softmax); exact byte-offset spans;
+# zero-alloc hot path (`score_into`). Consumes the wire's FieldSpec/
+# FieldConstraints vocabulary (choices = the F0-readable alias table).
+span_pointer = ["dep:katgpt-core", "katgpt-core/extraction_wire"]
+
+# typed_parsers (Plan 628 T0.3): deterministic typed parsers — number/
+# date/time/datetime/duration/list. Grammar design translated from Meta
+# Duckling (Apache-2.0) + Microsoft Recognizers-Text (MIT), credited in
+# module docs; constraints enforced by construction; relative dates
+# anchored to the request's reference_date (deterministic — no clock).
+typed_parsers = ["dep:katgpt-core", "katgpt-core/extraction_wire"]
+
+# extraction_estimate (Plan 628 T0.4): the cross-sectional estimate
+# conditioner (kNN over comparables → conformal overlay → median/p10/p90)
+# and the time-series forecast head, over katgpt-core's Plan-340
+# substrate. The G1 floor comparison (run_floor_comparison) is the
+# promotion gate: beat ConformalIntervalCalibrator<SeasonalNaiveForecaster>
+# or the floor serves.
+extraction_estimate = [
+    "dep:katgpt-core",
+    "katgpt-core/extraction_wire",
+    "katgpt-core/conformal_predictive_intervals",
+    "katgpt-core/karc_forecaster",
+]
+
+# temper (Plan 628 T0.5, gate half): the calibration/abstention gate —
+# per-field residual pools, sigmoid confidence readout, fused abstain
+# (confidence ∧ distance), null-with-guess emission onto the wire.
+# Opt-in: gate substrate, no independent floor of its own yet.
+temper = ["dep:katgpt-core", "katgpt-core/extraction_wire"]
+
+# Opt-in measurement axis (the katgpt-assign pattern): makes the
+# alloc-tracking test module compile in --release so the G4 zero-alloc
+# gate can run against optimised code. Off in every shipped build.
+alloc_tracking = []
+
+# Plan 628 T0.6 G5: the external BLAKE3-pinned Recognizers-Text harness
+# (tests/g5_external_fixture.rs). The required-features row is the
+# repo-birth gate discipline — without `typed_parsers` the target compiles
+# to nothing (and its katgpt_core import would not resolve).
+[[test]]
+name = "g5_external_fixture"
+path = "tests/g5_external_fixture.rs"
+required-features = ["typed_parsers"]
+
+# Plan 628 T0.7 G5: the span-baseline arms (tests/g5_span_baselines.rs) —
+# span_pointer vs the rule floor on the MIT-Movie fixture. Without
+# `span_pointer` the target compiles to nothing.
+[[test]]
+name = "g5_span_baselines"
+path = "tests/g5_span_baselines.rs"
+required-features = ["span_pointer"]
+
+[dev-dependencies]
+# The G5 harness's pin gate + JSONL reader. Mirrored at the workspace
+# lock's existing versions (blake3 1.8.5, serde_json 1.0.150) — no new
+# versions beyond the lock.
+blake3 = "1"
+serde_json = "1"
+
+# Plan 628 T0.6 G2: the F0-floor perf bench (harness = false — the repo's
+# no-criterion convention; plain main() + Instant). The required-features
+# row is the repo-birth gate discipline — without the four features the
+# bench's module imports would not resolve, and --all-targets must not
+# build it to an empty shell.
+[[bench]]
+name = "bench_628_f0_g2"
+harness = false
+required-features = ["span_pointer", "typed_parsers", "temper", "extraction_estimate"]

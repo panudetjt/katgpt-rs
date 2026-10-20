@@ -375,8 +375,11 @@ impl SketchPopulation {
     /// by HashMap iteration order (a bare stable sort keeps that order).
     pub fn sorted_by_elo(&self) -> Vec<&SketchEntry> {
         let mut entries: Vec<&SketchEntry> = self.sketches.values().collect();
-        entries
-            .sort_by(|a, b| b.elo_rating.total_cmp(&a.elo_rating).then(a.id.0.cmp(&b.id.0)));
+        entries.sort_by(|a, b| {
+            b.elo_rating
+                .total_cmp(&a.elo_rating)
+                .then(a.id.0.cmp(&b.id.0))
+        });
         entries
     }
 
@@ -980,7 +983,7 @@ mod tests {
     /// doesn't put the min-id entry last (probability 1 − 1/N per run).
     #[test]
     fn best_elo_tie_resolves_by_lowest_id_not_hash_order() {
-        let mut pop = SketchPopulation::new(PopulationConfig::PAPER_DEFAULTS);
+        let mut pop = SketchPopulation::with_paper_defaults();
         let n = 16;
         for _ in 0..n {
             pop.insert_no_evict(make_entry(DEFAULT_ELO)); // all tied at 0.0
@@ -1002,7 +1005,7 @@ mod tests {
     /// HashMap iteration order (which a stable sort preserves verbatim).
     #[test]
     fn sorted_by_elo_ties_order_by_id_not_hash_order() {
-        let mut pop = SketchPopulation::new(PopulationConfig::PAPER_DEFAULTS);
+        let mut pop = SketchPopulation::new(4); // top_k = 4: the truncate below
         for _ in 0..12 {
             pop.insert_no_evict(make_entry(DEFAULT_ELO)); // all tied
         }

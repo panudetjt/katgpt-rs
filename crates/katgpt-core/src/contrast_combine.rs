@@ -24,6 +24,14 @@
 //! the `(1−lam)` weight hoisted once outside the loop (the Issue-865 form).
 //! The 865 combine-kernel tests pin exact equality against the pre-extraction
 //! arithmetic; any reassociation here is a formula break, not a refactor.
+//!
+//! contrast_combine — the affine strong−weak combine, ONE home for the
+//! `strong + ω·(strong − weak)` arithmetic (Plan 617 T1.2): the 865
+//! probe-guidance convex blend (`λ·x + (1−λ)·p`) and the LoopCD
+//! recurrent-depth extrapolation (`z_R + ω(z_R − z_k)`, the same family at
+//! `λ = 1 + ω`) share this formula-preserving kernel. Gated
+//! `any(probe_guidance, loop_guidance)` — a build carrying neither consumer
+//! compiles it to nothing; each root feature forwards its core twin.
 
 /// `out[i] ← lam·out[i] + (1−lam)·ref[i]` over the full extent of `out`.
 ///
@@ -89,7 +97,11 @@ mod tests {
         let omega = 0.5f32;
         let mut out = z.to_vec();
         affine_combine(&mut out, &k, 1.0 + omega);
-        let want: Vec<f32> = z.iter().zip(k.iter()).map(|(&a, &b)| a + omega * (a - b)).collect();
+        let want: Vec<f32> = z
+            .iter()
+            .zip(k.iter())
+            .map(|(&a, &b)| a + omega * (a - b))
+            .collect();
         assert_eq!(out, want);
     }
 

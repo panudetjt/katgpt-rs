@@ -12,6 +12,12 @@
 //! over the configuration scalars' little-endian `u64` encodings, in feed
 //! order. The only property anyone may rely on: the same configuration yields
 //! the same seed. It is NOT a hash for any other purpose.
+//!
+//! Deterministic configuration-seeded draws — the shared LSH seed discipline
+//! (the Issue 809 T3 law: same configuration → same projection stream). Moved
+//! DOWN from katgpt-pruners/lsh_cache.rs (Plan 619 substrate duty — ships
+//! once, here; pruners re-exports). Ungated: local-only compute, the
+//! config-audit precedent; lsh_cache (always-on) consumes it unconditionally.
 
 /// FNV-1a over the configuration scalars' little-endian `u64` bytes, in order.
 ///
@@ -50,7 +56,12 @@ mod tests {
 
     /// Independent re-derivation of the original algorithm (not the shared
     /// fn) so the test cannot pass by construction.
-    fn golden_for(logit_dim: u64, num_buckets: u64, bucket_capacity: u64, hamming_radius: u64) -> u64 {
+    fn golden_for(
+        logit_dim: u64,
+        num_buckets: u64,
+        bucket_capacity: u64,
+        hamming_radius: u64,
+    ) -> u64 {
         const OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
         const PRIME: u64 = 0x0000_0100_0000_01b3;
         let mut h = OFFSET;

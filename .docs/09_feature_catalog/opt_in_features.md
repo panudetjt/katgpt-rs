@@ -5389,11 +5389,18 @@ parallel commit under a factorized proposal.
   the file so the target's `required-features` row is unchanged. Gates: clippy
   green at default / feature / feature+cousins postures; 205/155/131 lib tests
   at those postures.
-- Promotion pending the lane G2/G3 A/B only: the D2F τ_conf A/B stays blocked
-  on the trained checkpoint (riir-train Plan 437 Phase 4, owner-gated 4090
-  windows); the γ dial is uncalibrated until that lane A/B runs. T2 wiring is
-  complete; the riir-side `gemma2_d2f` GPU model-forward commit policy is the
-  one unwired lane, a future slice only if the A/B wants it.
+- **Lane A/B EXECUTED 2026-10-18** (riir-train Bench 645 = Plan 437 T0.2, the
+  Phase-0 0.4B checkpoint, M3 Metal): EB converges 16/16 at 8.00 NFE vs every
+  τ ∈ {0.5, 0.7, 0.9} stuck at 16.00 — the near-uniform ~0.02 committed
+  confidence never crosses any fixed τ — at matched confidence (0.0202 vs
+  0.0199) and the same 0/128 floor; a policy-behavior read on the weak
+  checkpoint, priced as such by the 2026-10-08 owner verdict. **Promotion
+  stays pending a separating checkpoint** (plan-410 T3 / Plan 437 Phase 4,
+  owner-gated 4090 windows): the A/B re-runs with the quality axis live; the
+  γ dial stays uncalibrated for production until then. The riir-side
+  `gemma2_d2f` GPU model-forward commit policy wired 2026-10-16 (riir-infer
+  `44ca3cb` + riir-gpu `34e462835`, `Gemma2D2fConfig.eb_gamma` disarm-default).
+  Issue 917 closed 2026-10-19; the record lives in katgpt-rs HISTORY.md.
 
 ## 142. gmm_support — Density-Ratio Support Gate (Plan 618 / Research 604, arXiv:2610.02126)
 
@@ -5746,3 +5753,192 @@ candidate-conditioned attention block. The modelless analog:
   byte-identity), G4 PASS (0 allocs). Promotion refused; re-open = a
   different KEY family (per-option fitted directions — riir-train
   territory), never a γ/τ retune.
+
+## 150. qrr_convergence — QRR Quotient-Convergence Extraction (Issue 945 / Research 623)
+
+Feature `qrr_convergence` (OPT-IN POC, **no promotion claim** — the gates
+pin mechanics, never a perf gain). Source: arXiv:2610.18174 (Quotient
+Recurrent Reasoner — rate inheritance Thm 3.2, quotient halting, the
+tension law), Research 623. Source:
+`crates/katgpt-core/src/qrr_convergence.rs` (+ the P2 verdict inside
+`gain_cost_halt.rs`, the P5 gate in katgpt-sense).
+
+- **P1 `ModeFitter`** — per-channel sliding-window AR(2) fit
+  `δ_{t+2} = a·δ_{t+1} + b·δ_t`: fixed 16-triple ring, O(1)/step,
+  zero-alloc; companion roots of `z² − az − b` ARE the linearized Jacobian's
+  dominant mode `(r, ω)` — complex pair `r = √(−b)`, `ω = acos(a/2r)`; real
+  dominant root (negative ⇒ the FPRM alternating flip). Two measured
+  numerics laws ride the implementation: the sliding `+=`/`-=` ring sums
+  cancel catastrophically in f32 (~3–14% sum error → the ρ²-shadow root;
+  the window sums accumulate in f64 and reproduce the exact-arithmetic fit),
+  and a relative Tikhonov ridge repairs the rank-deficient single-mode
+  window (min-norm solution; the dominant root still recovers λ exactly).
+  Guards refuse to fabricate verdicts: cold window, exact stillness
+  (aperiodic/stuck), and the BLIND channel (the near-90° signed projection
+  is rounding noise — the Issue-720 trigger-happy edge — where the
+  incumbent verdict stands).
+- **P2 two-channel oscillation verdict** —
+  `GainCostLoopHalter::with_mode_verdict()`: the halter feeds the SIGNED
+  one-lag projection `s_t = gain·cosθ`; at a reversal-at-patience loop the
+  fitted modulus separates `OscillatingButSettling` (r < 1−ε — the halt is
+  SUPPRESSED; a genuinely converged loop still exits via `GainBelowCost`)
+  from `LimitCycle` (the incumbent halt fires at UNCHANGED latency — pinned
+  by the equal-patience twin). Kill-switch env `KATGPT_QRR_OSC_VERDICT=0`
+  demotes DECISION-ONLY (the fitter keeps observing;
+  `last_oscillation_verdict()` stays live); the byte-identity gate runs in
+  a child process so the parent env stays untouched. Cold-window posture:
+  patience < `MIN_FIT_SAMPLES` (6) still false-halts the first reversals —
+  patience ≥ the warmup is the arming contract.
+- **P3 settling budget + certificate** — `settling_steps(r, δ)` =
+  `τ_δ = log(1/δ)/(−log r)`, invertible (`tolerance_for_budget`); gate:
+  predicted vs actual settling within ×2 on ≥95% of a 36-run synthetic
+  corpus (damped spirals ρ∈{0.6,0.75,0.9,0.97} × θ + flips × 3 seeds,
+  relative noise), the constant-budget floor printed beside the mean
+  predicted budget. The `r = 1` certificate is TWO-SIGNAL
+  (`R1Certificate`: near-one modulus streak AND consumer-owned complement
+  stagnation) — one alone never acts, the tension law; advisory-only until
+  a consumer wires an exit.
+- **P5 fp32-rotation law + canary** — `DampedPhaseBlock` (the
+  rotation-carrying primitive) stays f32-internal regardless of storage
+  dtype; the shipped path drifts 1.0e-3 relative over 1000 free steps while
+  a bf16-emulated counterfactual (RNE rounding on every rotation op) drifts
+  4.0 — the loud-zero defense that keeps the 2% law bound honest.
+- **Not landed here (per the issue's own split)**: P4 the write-residual
+  commit law (defer-until-pull, rides Issue 939's posture — the gauge
+  quotient is WRONG on single-scalar orbits; the free-dynamics innovation
+  residual is the sound form, Research 623 §4.3), P6 the Sylvester
+  attribution + α-intervention replay (report-only, offline). Guard: NO
+  quotient residual (`r_G`) may ever be wired into `forward_looped` or the
+  halter — non-equivariant loops are the paper's own 23%-false-halt
+  ablation.
+
+## 151. fdr_credit + spr_order — Terminal-RSI Modelless Extractions (Issue 948 / riir-train Research 477, arXiv:2610.22192)
+
+Two closed-world scoring primitives from the Terminal-RSI paper's reward
+family — no training, no domain semantics; the modelless residue of its
+dense-reward design. Both OPT-IN landings with **no promotion claim** (the
+issue's GOAT shapes are named, not yet run).
+
+- **`fdr_credit` — the Family Dense Reward `R = max(P/D_f, 0)`.**
+  `FdrCalibration::freeze` computes per-family p90 divisors from a reference
+  corpus and `credit()` scores raw values against them
+  (`crates/katgpt-pruners/src/g_zero/fdr_credit.rs`; zero-alloc hot path:
+  binary search + one division; unknown family → `None`, the caller keeps
+  the incumbent raw hinge — the primitive never invents a divisor). Three
+  pinned laws: the
+  **freeze gate** refuses any family whose tail support `n − idx` is under
+  `MIN_TAIL_SUPPORT = 10` at the nearest-rank p90 index (the
+  percentile-index audit lesson — `sorted[(n·0.9) as usize]` reports the MAX
+  as a percentile for every n ≤ 10; ≥ 90 rows freeze, 89 refuse, loud
+  `FreezeError`, never a silent thin-corpus divisor); a non-positive or
+  non-finite p90 divisor refuses (ratio semantics); the table is
+  deterministic under input/sample reordering and BLAKE3-stamped
+  (`digest()` — byte-identical freezes agree). Adapter:
+  `DeltaGatedAbsorbCompress::observe_hint_delta_calibrated` — the arm index
+  is the family key (the template that produced the hint); unfrozen arms
+  keep the raw hinge byte-identically. The paper independently converged on
+  our own harness lesson ("fused-gate birth thresholds do NOT transfer: fit
+  per suite") — normalization is frozen per family, never per batch.
+- **`spr_order` — the Success-Prioritized Reward ordering law.** The strict
+  class dominates: **no amount of partial credit ever promotes a failure
+  over a success**. `SprKey { passed, partial }` is the CANONICAL pair
+  ordering (total_cmp inside a class — NaN partials sort deterministically
+  and never poison the separation; executable property test over 11
+  edge-valued partials including inf/NaN); `mm_squash` is the Michaelis-
+  Menten saturating squash `P/(P+D')` in the overflow-free reciprocal form
+  `1/(1 + D'/P)`, fails soft (no panic, no NaN on the ranking path);
+  `spr_reward = S + squash` is the documented TRANSPORT form — in real
+  arithmetic its order equals the pair order (squash < 1), at f32 width the
+  guarantee is non-strict and the rounding corner (failure's squash rounds
+  up to 1.0 against a zero-pass success) is executed in a test, not
+  hand-waved; `mass_on_failures` is the paper's F1 eval-board diagnostic
+  (fraction of reward mass on failures) — sequential fold, local-only.
+- **Deferred (per the issue's own split)**: T1's GOAT (G1 FDR-vs-raw-P
+  ordering on adjudicated held-out quality + bootstrap D_f stability + G4
+  alloc-free scoring) and T2's paired read on a frozen candidate corpus
+  (byte-identical-to-incumbent = honest no-op, kept as a drift guard) —
+  both need corpus/bench windows; T3 (decay-free bounded-credit reshape vs
+  the shipped 0.7 decay) is a pinned-posture bench campaign, deferred with
+  the issue.
+
+## 152. gated_summary — InfiLoop Gated N/D Running Summary (Issue 950 / riir-train Plan 465 track, Research 626, arXiv:2610.11570)
+
+The loop-native residual of InfiLoop, stripped of training: a β-decayed,
+content-gated running mean `h_t = N_t/D_t` with the write gate
+`e_t = exp(clip(s_t, ±8))` and the step view `γ_t = σ(s_t − ln(β·D))`
+(sigmoid, never softmax). `GatedSummary<const D>` in
+`crates/katgpt-pruners/src/posterior/gated_summary.rs`; implies
+`posterior_evolution` (it lives in that leaf, beside its oracle).
+
+- **P4 oracle — the compatibility law**: β=1 + fixed `w=1` reproduces
+  `posterior::PrecisionVector`'s mean AND precision trajectory
+  **bit-for-bit** over a seeded 512-step stream (same nudged-mean storage,
+  same in-order ops — a tolerance oracle would hide the ordering
+  divergence it exists to catch). `PrecisionVector` itself is untouched.
+- **Pinned numerics**: β ∈ (0,1) refused loud at construction (β=1 is the
+  named `new_oracle()` posture only — the paper's ablation marks β=1 and
+  β>1 as broken-decay regimes); score clip ±8 is load-bearing (unclipped
+  `exp` overflows and poisons the mass — must-fail-when-broken test);
+  t=1 edge pinned (mass 0 ⇒ γ = 1 exactly — the first solid write is
+  accepted fully, never left to log-domain luck); zero-alloc, f32,
+  byte-deterministic.
+- **Properties by construction (tested)**: convex hull `‖h_t‖ ≤ max‖z_i‖`
+  (adversarial single-dominant candidates included); never decays to zero
+  on a rejected-write stream (leaky-EMA differential); sigmoid/ratio gate
+  identity within f32.
+- **GOAT — bench_946, four-control battery + leaky-EMA/carry-last
+  externals, two-axis protocol** (`.benchmarks/946_issue950_gated_summary_goat.md`):
+  the full posture is the only retention×adaptation Pareto arm — mid-burst
+  retention 0.060 vs PV 0.084 / leaky 0.894 / carry-last 2.568 (content-class,
+  3.2× tax vs content-only's 0.019, inside the pinned 4× bound), while its
+  post-jump adaptation error 0.0355 beats content-only (1.073) and PV
+  (0.739) by 21–30×. Per-delta: the content gate owns retention, the decay
+  axis owns adaptation. G2 ns/write 31/72/457 at D=8/64/512 (--release,
+  black_box chain defense); G4 zero-alloc (counting allocator, 10k writes);
+  G3 = the P4 oracle + an additive-only landing.
+- **Scope findings recorded**: (1) the decay arm's forget horizon — a
+  fully-rejected stretch decays the mass to the rejection floor
+  `e_adv/(1−β)` in ~10 writes at β=0.55, softening the gate (the first
+  measured run's 32-write starvation bursts dragged it; the protocol was
+  resized to the paper's per-write shape and the limit recorded);
+  (2) decay-only (no gate) is no defense at all — fixed-w decayed mass
+  equilibrates at `w/(1−β)`, so every write lands at gain ~0.31 mid-burst.
+- **OPT-IN, no promotion claim**: consumers unwired — riir-train Plan 465
+  (the training track) consumes this kernel as substrate; game-side belief
+  ticks are the downstream consumer posture.
+
+## 153. path_kernel_sim — Sensitivity-Fingerprint Response-Space Kernel (Issue 949 / Research 625, arXiv:2012.00152 path-kernel lens)
+
+The degenerate path kernel of an *authored, untrained* deterministic scorer:
+`K(x,x') = cos(∇_w f(x;w0), ∇_w f(x';w0))` over the scorer's `p ≤ 64` knobs —
+a training-free, positive-semidefinite response-space similarity. Closed-form
+gradient arm for sigmoid-gated scorers (`σ'` from the same `fast_sigmoid` the
+scorer evaluates with) + pinned-`h` central-difference arm for opaque ones
+(`dot_f32_ordered` sequential folds throughout, the Issue-940 law).
+Near-zero-norm fingerprints ABSTAIN (sentinel, never NaN). Diagnostics:
+Spearman ρ (input-distance vs fingerprint-similarity rank correlation) and
+PR / effective rank over the fingerprint Gram (eigendecomposed by the
+existing `linalg::symmetric_eig` substrate — no new solver).
+
+- **G1**: T5a linear-in-knobs oracle (kernel ≡ input-feature cosine — the
+  collapse caveat, proven), T5b amplitude-sine fixture, T1 zero-norm
+  abstain guard (stationary-point + NaN defense), T2 arms-agree,
+  T3 Spearman monotone/degenerate, T4 known-spectra PR/effective-rank.
+- **G2**: 79 ns/call `fingerprint_into` + 49 ns/pair `similarity` at p=64
+  (bars 5 µs / 1 µs — 63×/20× headroom), `black_box` args + receiver.
+- **G3**: purely additive feature — OFF posture compiles the module away;
+  default suite byte-identical by construction.
+- **G4**: zero-alloc hot path (`path_kernel_sim_g4_alloc`, counting
+  allocator, 100 warm pairs at p=64); the set-level
+  `gram_spectrum_into` diagnostic allocates a small order Vec by design.
+- **T9 VERDICT: KEEP-OFF (2026-10-20)** — the planted-class battery
+  (independent labels, pure-cross-term scorer, release posture) reads a
+  THREE-WAY TIE (fingerprint 1.000 · input-cosine 1.000 · output-vector
+  1.000). T5d's own law: a tie vs the output-vector baseline means the
+  tangent kernel adds nothing over gradient-free response probing at
+  matched information → promoted nowhere, ships opt-in as a diagnostic
+  instrument. Structural finding recorded: for any scorer, the fingerprint
+  is a deterministic transform of x, so a full-rank probe battery (m ≥ p
+  informative settings) is at-least-as-informative; the residual edge
+  regimes (probe coverage m ≪ p, probe degradation) are priced out of POC
+  scope. Re-open = a consumer whose probe budget is genuinely ≪ p.
