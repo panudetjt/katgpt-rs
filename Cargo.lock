@@ -2152,7 +2152,6 @@ dependencies = [
  "katgpt-tetris",
  "katgpt-tokenizer",
  "katgpt-transformer",
- "katgpt-types",
  "katgpt-validator",
  "log",
  "memmap2",
